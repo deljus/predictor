@@ -1,18 +1,24 @@
-from flask import Flask
-from flask.ext.restful import reqparse, abort, Api, Resource
-from flask.ext.sqlalchemy import SQLAlchemy
+from flask import render_template
+from app import app
 
-app = Flask(__name__)
-app.config.from_object('config')
+@app.route('/')
+@app.route('/index')
+def index():
+    user = { 'nickname': 'Miguel' } # выдуманный пользователь
+    return render_template("index.html",
+        title = 'Home',
+        user = user)
+
+
+from flask.ext.restful import reqparse, abort, Api, Resource
 api = Api(app)
-db = SQLAlchemy(app)
+
 
 TODOS = {
     'todo1': {'task': 'build an API'},
     'todo2': {'task': '?????'},
     'todo3': {'task': 'profit!'},
 }
-
 
 def abort_if_todo_doesnt_exist(todo_id):
     if todo_id not in TODOS:
@@ -49,9 +55,11 @@ class TodoList(Resource):
 
     def post(self):
         args = parser.parse_args()
+
         todo_id = int(max(TODOS.keys()).lstrip('todo')) + 1
         todo_id = 'todo%i' % todo_id
         TODOS[todo_id] = {'task': args['task']}
+        print(todo_id)
         return TODOS[todo_id], 201
 
 ##
@@ -60,6 +68,3 @@ class TodoList(Resource):
 api.add_resource(TodoList, '/predictor/reactions')
 api.add_resource(Todo, '/predictor/reactions/<reaction_id>')
 
-
-if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000)

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Marvin JS - v15.2.23</title>
+<link type="text/css" rel="stylesheet" href="css/index.css" />
+<script src="/static/js/lib/jquery-1.9.1.min.js"></script>
+<script src="/static/gui/lib/promise-0.1.1.min.js"></script>
+<script src="/static/js/marvinjslauncher.js"></script>
+<script>
+var marvinSketcherInstance;
+/****
+$(document).ready(function handleDocumentReady (e) {
+
+
+	MarvinJSUtil.getEditor("#sketch").then(function (sketcherInstance) {
+		marvinSketcherInstance = sketcherInstance;
+	},function (error) {
+	});
+
+});
+***/
+$(document).ready(function handleDocumentReady (e) {
+	var p = MarvinJSUtil.getEditor("#sketch");
+	p.then(function (sketcherInstance) {
+		marvinSketcherInstance = sketcherInstance;
+		initControl();
+	}, function (error) {
+		alert("Cannot retrieve sketcher instance from iframe:"+error);
+	});
+});
+
+function initControl () {
+
+	// get mol button
+	$("#btn-getmol").on("click", function (e) {
+		marvinSketcherInstance.exportStructure("mrv").then(function(source) {
+			//$("#molsource").text(source);
+			//alert(source);
+			var data = JSON.stringify({
+				"tas1k":source
+			});
+
+			$.ajax({
+				"url": "/predictor/reactions"
+				,"type": "POST"
+				,"dataType": "json"
+				,"contentType": "application/json"
+				,"data": data
+			}).done(function (data, textStatus, jqXHR) {
+				alert(data)
+			}).fail(handleRequestError);
+
+		}, function(error) {
+			alert("Molecule export failed:"+error);
+		});
+	});
+}
+
+</script>
+
+</head>
+<body>
+<div class="resizable">
+	<iframe src="/static/editor.html" id="sketch" data-toolbars="reporting" class="sketcher-frame" style="overflow: hidden; min-width: 500px; min-height: 450px; border: 1px solid darkgray;" ></iframe>
+</div>
+<div>
+<input type="button" id="btn-getmol" value="экспорт молекулы">
+</div>
+
+
+</body>
+</html>
