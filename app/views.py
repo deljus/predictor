@@ -1,5 +1,6 @@
 from flask import render_template
 from app import app
+from flask.ext.restful import reqparse, abort, Api, Resource
 
 @app.route('/')
 @app.route('/index')
@@ -9,16 +10,13 @@ def index():
         title = 'Home',
         user = user)
 
-
-from flask.ext.restful import reqparse, abort, Api, Resource
 api = Api(app)
-
-
 TODOS = {
     'todo1': {'task': 'build an API'},
     'todo2': {'task': '?????'},
     'todo3': {'task': 'profit!'},
 }
+
 
 def abort_if_todo_doesnt_exist(todo_id):
     if todo_id not in TODOS:
@@ -29,42 +27,41 @@ parser.add_argument('task', type=str)
 
 
 # Todo
-#   show a single todo item and lets you delete them
+# shows a single todo item and lets you delete a todo item
 class Todo(Resource):
-    def get(self, reaction_id):
-        abort_if_todo_doesnt_exist(reaction_id)
-        return TODOS[reaction_id]
+    def get(self, todo_id):
+        abort_if_todo_doesnt_exist(todo_id)
+        return TODOS[todo_id]
 
-    def delete(self, reaction_id):
-        abort_if_todo_doesnt_exist(reaction_id)
-        del TODOS[reaction_id]
+    def delete(self, todo_id):
+        abort_if_todo_doesnt_exist(todo_id)
+        del TODOS[todo_id]
         return '', 204
 
-    def put(self, reaction_id):
+    def put(self, todo_id):
         args = parser.parse_args()
         task = {'task': args['task']}
-        TODOS[reaction_id] = task
+        TODOS[todo_id] = task
         return task, 201
 
-
+#TEST
 # TodoList
-#   shows a list of all todos, and lets you POST to add new tasks
+# shows a list of all todos, and lets you POST to add new tasks
 class TodoList(Resource):
     def get(self):
         return TODOS
 
     def post(self):
         args = parser.parse_args()
-
         todo_id = int(max(TODOS.keys()).lstrip('todo')) + 1
         todo_id = 'todo%i' % todo_id
         TODOS[todo_id] = {'task': args['task']}
-        print(todo_id)
         return TODOS[todo_id], 201
 
 ##
 ## Actually setup the Api resource routing here
 ##
-api.add_resource(TodoList, '/predictor/reactions')
-api.add_resource(Todo, '/predictor/reactions/<reaction_id>')
+api.add_resource(TodoList, '/todos')
+api.add_resource(Todo, '/todos/<todo_id>')
+
 
