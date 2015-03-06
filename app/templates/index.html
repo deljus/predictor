@@ -30,44 +30,230 @@ $(document).ready(function handleDocumentReady (e) {
 	});
 });
 
-function initControl () {
+function isMolEmpty(data)
+{
+    return (String(data).indexOf('MChemicalStruct')<0)
+}
+/******************************************************/
+STATUS_TASK_CREATED    = 0;
+STATUS_REQ_MAPPING     = 1;
+STATUS_MAPPING_DONE    = 2;
+STATUS_REQ_MODELLING   = 3;
+STATUS_MODELLING_DONE  = 4;
 
-	// get mol button
-	$("#btn-getmol").on("click", function (e) {
+var TIMER_INTERVAL = 7000;
+
+var TAMER_ID;
+
+function show_reactions(reactions)
+{
+    console.log('show_reactions->');
+    $("#reactions-pnl").show();
+    var jTbl = $("#reactions-table");
+    // jList.empty();
+    var str = '';
+    for (var i=0;i<reactions.length;i++)
+    {
+        var _r = reactions[i];
+        str+='<tr>';
+        str+='<td>'+_r.id+'</td>';
+        str+='<td>'+_r.model+'</td>';
+        str+='<td>'+_r.solvent+'</td>';
+        str+='<td>'+_r.temperature+'</td>';
+        str+='</tr>';
+    }
+    jTbl.append(str);
+}
+
+
+
+
+function set_task_status(task_id, status)
+{
+    console.log('set_task_status->'+status);
+    var data =  JSON.stringify({"task_status": status});
+    return $.ajax({
+        "url": "/task/"+task_id
+        ,"type": "PUT"
+        ,"dataType": "json"
+        ,"contentType": "application/json"
+        ,"data": data
+    });
+}
+
+function get_task_status(task_id)
+{
+    console.log('get_task_status->'+status);
+    return $.ajax({
+        "url": "/task/"+task_id
+        ,"type": "GET"
+        ,"dataType": "json"
+        ,"contentType": "application/json"
+        ,"data": ""
+    });
+}
+
+function load_reactions(task_id)
+{
+    console.log('load_reactions->');
+    $.ajax({
+        "url": "/task_reactions/"+task_id
+        ,"type": "GET"
+        ,"dataType": "json"
+        ,"contentType": "application/json"
+        ,"data": {}
+    }).done(function (data, textStatus, jqXHR){
+
+        console.log(data);
+        // отобразим список реакций
+        try {
+            show_reactions(data);
+        }
+        catch (err){console.log(err)}
+
+    }).fail(function(jqXHR, textStatus, errorThrown){console.log('ERROR:load_reactions->' + textStatus+ ' ' + errorThrown)});
+    return true;
+}
+
+function check_task_status(task_id)
+{
+    console.log('check_task_status->');
+    get_task_status(task_id).done(function (data, textStatus, jqXHR){
+
+        // если задача выполнена-остановим таймер
+        var status = data['task_status'];
+
+console.log('check_task_status-> пришел ответ ' +status);
+
+        if (status==STATUS_MAPPING_DONE)
+        {
+            clearInterval(TAMER_ID);
+            // загрузим список реакция с моделями
+            load_reactions(task_id);
+        }
+        else
+            console.log('Ждем ответа сервера ' +Date());
+
+    }).fail(function(jqXHR, textStatus, errorThrown){
+        clearInterval(TAMER_ID);
+        console.log('ERROR:check_task_status->' + textStatus+ ' ' + errorThrown);
+    });
+
+}
+
+function mapping_process(task_id)
+{
+    console.log('mapping_process->');
+    set_task_status(task_id, STATUS_REQ_MAPPING).done(function (data, textStatus, jqXHR){
+
+        // запустим опрос сервера
+        TAMER_ID = setInterval(function(){check_task_status(task_id)}, TIMER_INTERVAL);
+
+    }).fail(function(){alert('ERROR:set_task_status->')});
+
+}
+
+
+function upload_draw_data(draw_data)
+{
+    console.log('upload_draw_data->');
+    var data = JSON.stringify({"reaction_data": draw_data});
+
+    $.ajax({
+            "url": "/tasks"
+            ,"type": "POST"
+            ,"dataType": "json"
+            ,"contentType": "application/json"
+            ,"data": data
+    }).done(function (data, textStatus, jqXHR) {
+
+        var task_id = data;
+
+        // запомним ID задачи
+        $("#task_id").val(task_id);
+
+        // отправим на mapping
+        mapping_process(task_id);
+
+    }).fail(handleRequestError);
+}
+
+function upload_data()
+{
+    console.log('upload_data->');
+    // если указан файл-грузим файл
+    var file = false;
+    if (file)
+    {
+        upload_file();
+    }
+    else
+    {
 		marvinSketcherInstance.exportStructure("mrv").then(function(source) {
-			//$("#molsource").text(source);
-			//alert(source);
-			var data = JSON.stringify({
-				"tas1k":source
-			});
 
-			$.ajax({
-				"url": "/predictor/reactions"
-				,"type": "POST"
-				,"dataType": "json"
-				,"contentType": "application/json"
-				,"data": data
-			}).done(function (data, textStatus, jqXHR) {
-				alert(data)
-			}).fail(handleRequestError);
+			console.log(source);
+            // проверим, нарисовал ли пользователь что-нибудь
+            if (isMolEmpty(source))
+            {
+                alert('Необходимо нарисовать реакцию или выбрать файл');
+                return false;
+            }
+            else
+                upload_draw_data(source);
 
 		}, function(error) {
 			alert("Molecule export failed:"+error);
 		});
+    }
+}
+
+function initControl () {
+
+	// get mol button
+	$("#btn-upload-data").on("click", function (e) {
+        upload_data();
 	});
 }
 
+
+//curl http://127.0.0.1:5000/tasks   -d "reaction_data=<xml></xml>" -X POST
+//curl http://127.0.0.1:5000/task/ce99375015b1ee7ac4d87bfee941296b   -d "task_status=0" -X GET
+//curl http://127.0.0.1:5000/task/ce99375015b1ee7ac4d87bfee941296b   -d "task_status=1" -X PUT
 </script>
 
 </head>
 <body>
-<div class="resizable">
-	<iframe src="/static/editor.html" id="sketch" data-toolbars="reporting" class="sketcher-frame" style="overflow: hidden; min-width: 500px; min-height: 450px; border: 1px solid darkgray;" ></iframe>
-</div>
-<div>
-<input type="button" id="btn-getmol" value="экспорт молекулы">
+
+<div class="resizable"  style="display:inline-block">
+    <iframe src="/static/editor.html" id="sketch" data-toolbars="reporting" class="sketcher-frame" style="overflow: hidden; min-width: 500px; min-height: 450px; border: 1px solid darkgray;" ></iframe>
 </div>
 
+<div style="display:inline-block;vertical-align: top;">
+    <div>
+        <input type="button" id="btn-upload-data" value="Загрузить данные"/>
+<br/>
+        <input type="button" onclick="return set_task_status($('#task_id').val(),STATUS_MAPPING_DONE)" value="DEBUG: map реакцию"/>
+ <input type="button" onclick="return load_reactions( '111' )" value="DEBUG: load реакцию"/>
+    </div>
+
+    <div id="reactions-pnl" style="display:none">
+        <span>Реакции</span>
+    <table id="reactions-table" border="1">
+        <thead>
+        <tr>
+            <th>№</th>
+            <th>Модель</th>
+            <th>Растворитель</th>
+            <th>Температура</th>
+        </tr>
+        </thead>
+
+    </table>
+        <input type="button" value="Запустить моделирование" />
+    </div>
+</div>
+
+<input id="task_id" type="hidden" value="7d060d6a7cba6e5111d0b101ca0217ad"/>
 
 </body>
 </html>
