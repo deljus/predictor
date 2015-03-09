@@ -2,258 +2,74 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Marvin JS - v15.2.23</title>
-<link type="text/css" rel="stylesheet" href="css/index.css" />
+<link type="text/css" rel="stylesheet" href="/static/css/index.css" />
+<!-- Bootstrap -->
+<link href="/static/css/bootstrap.min.css" rel="stylesheet" media="screen">
+
+<link type="text/css" rel="stylesheet" href="/static/css/nprogress.css" />
 <script src="/static/js/lib/jquery-1.9.1.min.js"></script>
 <script src="/static/gui/lib/promise-0.1.1.min.js"></script>
 <script src="/static/js/marvinjslauncher.js"></script>
-<script>
-var marvinSketcherInstance;
-/****
-$(document).ready(function handleDocumentReady (e) {
+<script src="/static/js/predictor.js"></script>
 
-
-	MarvinJSUtil.getEditor("#sketch").then(function (sketcherInstance) {
-		marvinSketcherInstance = sketcherInstance;
-	},function (error) {
-	});
-
-});
-***/
-$(document).ready(function handleDocumentReady (e) {
-	var p = MarvinJSUtil.getEditor("#sketch");
-	p.then(function (sketcherInstance) {
-		marvinSketcherInstance = sketcherInstance;
-		initControl();
-	}, function (error) {
-		alert("Cannot retrieve sketcher instance from iframe:"+error);
-	});
-});
-
-function isMolEmpty(data)
-{
-    return (String(data).indexOf('MChemicalStruct')<0)
-}
-/******************************************************/
-STATUS_TASK_CREATED    = 0;
-STATUS_REQ_MAPPING     = 1;
-STATUS_MAPPING_DONE    = 2;
-STATUS_REQ_MODELLING   = 3;
-STATUS_MODELLING_DONE  = 4;
-
-var TIMER_INTERVAL = 7000;
-
-var TAMER_ID;
-
-function show_reactions(reactions)
-{
-    console.log('show_reactions->');
-    $("#reactions-pnl").show();
-    var jTbl = $("#reactions-table");
-    // jList.empty();
-    var str = '';
-    for (var i=0;i<reactions.length;i++)
-    {
-        var _r = reactions[i];
-        str+='<tr>';
-        str+='<td>'+_r.id+'</td>';
-        str+='<td>'+_r.model+'</td>';
-        str+='<td>'+_r.solvent+'</td>';
-        str+='<td>'+_r.temperature+'</td>';
-        str+='</tr>';
-    }
-    jTbl.append(str);
-}
-
-
-
-
-function set_task_status(task_id, status)
-{
-    console.log('set_task_status->'+status);
-    var data =  JSON.stringify({"task_status": status});
-    return $.ajax({
-        "url": "/task/"+task_id
-        ,"type": "PUT"
-        ,"dataType": "json"
-        ,"contentType": "application/json"
-        ,"data": data
-    });
-}
-
-function get_task_status(task_id)
-{
-    console.log('get_task_status->'+status);
-    return $.ajax({
-        "url": "/task/"+task_id
-        ,"type": "GET"
-        ,"dataType": "json"
-        ,"contentType": "application/json"
-        ,"data": ""
-    });
-}
-
-function load_reactions(task_id)
-{
-    console.log('load_reactions->');
-    $.ajax({
-        "url": "/task_reactions/"+task_id
-        ,"type": "GET"
-        ,"dataType": "json"
-        ,"contentType": "application/json"
-        ,"data": {}
-    }).done(function (data, textStatus, jqXHR){
-
-        console.log(data);
-        // отобразим список реакций
-        try {
-            show_reactions(data);
-        }
-        catch (err){console.log(err)}
-
-    }).fail(function(jqXHR, textStatus, errorThrown){console.log('ERROR:load_reactions->' + textStatus+ ' ' + errorThrown)});
-    return true;
-}
-
-function check_task_status(task_id)
-{
-    console.log('check_task_status->');
-    get_task_status(task_id).done(function (data, textStatus, jqXHR){
-
-        // если задача выполнена-остановим таймер
-        var status = data['task_status'];
-
-console.log('check_task_status-> пришел ответ ' +status);
-
-        if (status==STATUS_MAPPING_DONE)
-        {
-            clearInterval(TAMER_ID);
-            // загрузим список реакция с моделями
-            load_reactions(task_id);
-        }
-        else
-            console.log('Ждем ответа сервера ' +Date());
-
-    }).fail(function(jqXHR, textStatus, errorThrown){
-        clearInterval(TAMER_ID);
-        console.log('ERROR:check_task_status->' + textStatus+ ' ' + errorThrown);
-    });
-
-}
-
-function mapping_process(task_id)
-{
-    console.log('mapping_process->');
-    set_task_status(task_id, STATUS_REQ_MAPPING).done(function (data, textStatus, jqXHR){
-
-        // запустим опрос сервера
-        TAMER_ID = setInterval(function(){check_task_status(task_id)}, TIMER_INTERVAL);
-
-    }).fail(function(){alert('ERROR:set_task_status->')});
-
-}
-
-
-function upload_draw_data(draw_data)
-{
-    console.log('upload_draw_data->');
-    var data = JSON.stringify({"reaction_data": draw_data});
-
-    $.ajax({
-            "url": "/tasks"
-            ,"type": "POST"
-            ,"dataType": "json"
-            ,"contentType": "application/json"
-            ,"data": data
-    }).done(function (data, textStatus, jqXHR) {
-
-        var task_id = data;
-
-        // запомним ID задачи
-        $("#task_id").val(task_id);
-
-        // отправим на mapping
-        mapping_process(task_id);
-
-    }).fail(handleRequestError);
-}
-
-function upload_data()
-{
-    console.log('upload_data->');
-    // если указан файл-грузим файл
-    var file = false;
-    if (file)
-    {
-        upload_file();
-    }
-    else
-    {
-		marvinSketcherInstance.exportStructure("mrv").then(function(source) {
-
-			console.log(source);
-            // проверим, нарисовал ли пользователь что-нибудь
-            if (isMolEmpty(source))
-            {
-                alert('Необходимо нарисовать реакцию или выбрать файл');
-                return false;
-            }
-            else
-                upload_draw_data(source);
-
-		}, function(error) {
-			alert("Molecule export failed:"+error);
-		});
-    }
-}
-
-function initControl () {
-
-	// get mol button
-	$("#btn-upload-data").on("click", function (e) {
-        upload_data();
-	});
-}
-
-
-//curl http://127.0.0.1:5000/tasks   -d "reaction_data=<xml></xml>" -X POST
-//curl http://127.0.0.1:5000/task/ce99375015b1ee7ac4d87bfee941296b   -d "task_status=0" -X GET
-//curl http://127.0.0.1:5000/task/ce99375015b1ee7ac4d87bfee941296b   -d "task_status=1" -X PUT
-</script>
-
+<script src='/static/js/nprogress.js'></script>
+<link rel='stylesheet' href='nprogress.css'/>
 </head>
 <body>
 
-<div class="resizable"  style="display:inline-block">
-    <iframe src="/static/editor.html" id="sketch" data-toolbars="reporting" class="sketcher-frame" style="overflow: hidden; min-width: 500px; min-height: 450px; border: 1px solid darkgray;" ></iframe>
+<div class="resizable"  style="display:inline-block" id="div-editor">
+    <iframe src="/static/editorws.html" id="sketch" data-toolbars="reporting" class="sketcher-frame" style="overflow: hidden; min-width: 500px; min-height: 450px; border: 1px solid darkgray;" ></iframe>
 </div>
 
 <div style="display:inline-block;vertical-align: top;">
     <div>
-        <input type="button" id="btn-upload-data" value="Загрузить данные"/>
+        <input type="button" id="btn-upload-data" value="Upload reaction" class="btn btn-primary"/>
 <br/>
         <input type="button" onclick="return set_task_status($('#task_id').val(),STATUS_MAPPING_DONE)" value="DEBUG: map реакцию"/>
- <input type="button" onclick="return load_reactions( '111' )" value="DEBUG: load реакцию"/>
+<input type="button" onclick="return set_task_status($('#task_id').val(),STATUS_MODELLING_DONE)" value="DEBUG: modelling  done"/>
+ <input type="button" onclick="return load_task_reactions( '111' )" value="DEBUG: load реакции"/>
     </div>
 
     <div id="reactions-pnl" style="display:none">
-        <span>Реакции</span>
-    <table id="reactions-table" border="1">
-        <thead>
-        <tr>
-            <th>№</th>
-            <th>Модель</th>
-            <th>Растворитель</th>
-            <th>Температура</th>
-        </tr>
-        </thead>
 
-    </table>
-        <input type="button" value="Запустить моделирование" />
+        <h3>Reactions</h3>
+    <form id="reaction-form">
+        <table id="reactions-table" class="table table-hover">
+            <thead>
+            <tr>
+                <th>№</th>
+                <th>Model</th>
+                <th>Solvent</th>
+                <th>Temperature</th>
+            </tr>
+            </thead>
+            <tbody id="reactions-tbody"></tbody>
+
+        </table>
+    </form>
+        <input type="button" value="Start modelling" onclick="start_modelling()" class="btn btn-primary" />
+    </div>
+
+    <div id="results-pnl" style="display:none">
+        <h3>Modelling results</h3>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>№</th>
+                    <th>Value 1</th>
+                    <th>Value 2</th>
+                    <th>Value 3</th>
+                </tr>
+            </thead>
+            <tbody id="results-tbody"></tbody>
+        </table>
     </div>
 </div>
 
-<input id="task_id" type="hidden" value="7d060d6a7cba6e5111d0b101ca0217ad"/>
+<input id="task_id" type="hidden" value="111"/>
+<input id="reaction_id" type="hidden" value=""/>
 
 </body>
 </html>
