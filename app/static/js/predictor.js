@@ -16,6 +16,24 @@ function handleRequestError()
 }
 
 
+$(function() {
+    $('#upload-file-btn').click(function() {
+        var form_data = new FormData($('#upload-file')[0]);
+        $.ajax({
+            type: 'POST',
+            url: '/uploadajax',
+            data: form_data,
+            contentType: false,
+            cache: false,
+            processData: false,
+            async: false,
+            success: function(data) {
+                alert('File has been uploaded successfully! ');
+            },
+        });
+    });
+});
+
 
 function isMolEmpty(data)
 {
@@ -253,17 +271,27 @@ function display_task_reactions(reactions)
     var jTbl = $("#reactions-tbody");
     jTbl.empty();
     var str = '';
+    var reaction_ids = '';
     for (var i=0;i<reactions.length;i++)
     {
         var _r = reactions[i];
+        var _r_id = _r.reaction_id;
+
         str+='<tr>';
-        str+='<td class="reaction_id" reaction_id="'+_r.reaction_id+'">'+(i+1)+'</td>';
-        str+='<td><select class="model"  model="'+_r.model+'" ></select></td>';
-        str+='<td><select class="solvent"  solvent="'+_r.solvent+'" ></select></td>';
-        str+='<td><input  class="temperature" type="text" value="'+_r.temperature+'" /></td>';
+        str+='<td class="reaction_id" reaction_id="'+_r_id+'">'+(i+1)+'</td>';
+        str+='<td><select class="model" name="model_'+_r_id+'" model="'+_r.model+'" ></select></td>';
+        str+='<td><select class="solvent" name="solvent_'+_r_id+'" solvent="'+_r.solvent+'" ></select></td>';
+        str+='<td><input  class="temperature" name="temperature_'+_r_id+'" type="text" value="'+_r.temperature+'" /></td>';
         str+='</tr>';
+
+        if (reaction_ids=='')
+            reaction_ids+=_r_id;
+        else
+            reaction_ids+=','+_r_id;
     }
     jTbl.append(str);
+
+    $('#task_reaction_ids').val(reaction_ids);
 
     jTbl.find(".reaction_id").click(function (){
                                     var r_id = $(this).attr('reaction_id');
@@ -401,22 +429,31 @@ function upload_reaction_form()
 {
     NProgress.start();
     console.log('upload_reaction_form->');
-    var data = JSON.stringify({"reaction_data": draw_data});
-
+    var task_id = $("#task_id").val();
+    var data = {};
+    $("#reactions-form").serializeArray().map(function(x){data[x.name] = x.value;});
+    data = JSON.stringify(data);
     return $.ajax({
-        "url": "/task_reactions/"+task_id
-        ,"type": "GET"
+        "url": "/task_modelling/"+task_id
+        ,"type": "PUT"
         ,"dataType": "json"
         ,"contentType": "application/json"
-        ,"data": {}
+        ,"data": data
     }).done(function (data, textStatus, jqXHR){
+
+        console.log('form upload '+data);
+        start_modelling();
+
+    }).fail(function(jqXHR, textStatus, errorThrown){
+		console.log('upload_reaction_forms->' + textStatus+ ' ' + errorThrown);
+		handleRequestError();
+	});
 }
 
 function start_modelling()
 {
     console.log('start_modelling->');
 
-    NProgress.start();
     var task_id = $("#task_id").val();
     set_task_status(task_id, STATUS_REQ_MODELLING).done(function (data, textStatus, jqXHR){
 
@@ -457,7 +494,7 @@ function load_modelling_results(task_id)
 {
     console.log('load_modelling_results->');
     $.ajax({
-        "url": "/task_results/"+task_id
+        "url": "/task_modelling/"+task_id
         ,"type": "GET"
         ,"dataType": "json"
         ,"contentType": "application/json"

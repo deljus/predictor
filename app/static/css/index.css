@@ -9,7 +9,13 @@ body {
 	margin: 20px;
 }
 
- 
+.div {
+    margin: 5px;
+}
+
+.button {
+    margin:2px;
+}
  
 iframe{
 	border:none;
@@ -21,11 +27,12 @@ iframe{
 .sketcher-frame {
 	margin: -2px;
 	resize: none;
-	min-width: 370px;
-	min-height: 370px;
+	min-width: 500px;
+	min-height: 400px;
+/*
 	height: 100%;
 	width: 100%;
-
+*/
 	overflow: hidden;
 	
 }
@@ -35,10 +42,12 @@ iframe{
 	padding: 0px 8px 8px 0px;
 	border: 0px;
 	resize: both;
+	/*
 	width: 880px;
 	height: 460px;
-	min-width: 370px;
-	min-height: 370px;
+	*/
+	min-width: 500px;
+	min-height: 400px;
 	overflow: auto;
 	background-color: transparent;
 }

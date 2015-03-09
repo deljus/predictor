@@ -7,23 +7,36 @@
 <link type="text/css" rel="stylesheet" href="/static/css/index.css" />
 <!-- Bootstrap -->
 <link href="/static/css/bootstrap.min.css" rel="stylesheet" media="screen">
-
+<!-- Progress -->
 <link type="text/css" rel="stylesheet" href="/static/css/nprogress.css" />
+
 <script src="/static/js/lib/jquery-1.9.1.min.js"></script>
 <script src="/static/gui/lib/promise-0.1.1.min.js"></script>
 <script src="/static/js/marvinjslauncher.js"></script>
 <script src="/static/js/predictor.js"></script>
-
 <script src='/static/js/nprogress.js'></script>
-<link rel='stylesheet' href='nprogress.css'/>
+
+
+
 </head>
 <body>
 
 <div class="resizable"  style="display:inline-block" id="div-editor">
-    <iframe src="/static/editorws.html" id="sketch" data-toolbars="reporting" class="sketcher-frame" style="overflow: hidden; min-width: 500px; min-height: 450px; border: 1px solid darkgray;" ></iframe>
+    <iframe src="/static/editorws.html" id="sketch" data-toolbars="reporting" class="sketcher-frame"></iframe>
 </div>
 
 <div style="display:inline-block;vertical-align: top;">
+    <div id="container">
+         <form id="upload-file" method="post" enctype="multipart/form-data">
+
+             <div style="margin-bottom:4px;margin-top:4px;">
+                <input name="file" type="file" >
+             </div>
+             <div style="margin-bottom:4px;margin-top:4px;">
+                <button id="upload-file-btn" type="button" class="btn btn-primary">Upload file</button>
+             </div>
+         </form>
+    </div>
     <div>
         <input type="button" id="btn-upload-data" value="Upload reaction" class="btn btn-primary"/>
 <br/>
@@ -35,7 +48,7 @@
     <div id="reactions-pnl" style="display:none">
 
         <h3>Reactions</h3>
-    <form id="reaction-form">
+    <form id="reactions-form">
         <table id="reactions-table" class="table table-hover">
             <thead>
             <tr>
@@ -48,8 +61,9 @@
             <tbody id="reactions-tbody"></tbody>
 
         </table>
+        <input type="hidden" id="task_reaction_ids" name="task_reaction_ids" value="" />
     </form>
-        <input type="button" value="Start modelling" onclick="start_modelling()" class="btn btn-primary" />
+        <input type="button" value="Start modelling" onclick="upload_reaction_form()" class="btn btn-primary" />
     </div>
 
     <div id="results-pnl" style="display:none">
@@ -70,6 +84,9 @@
 
 <input id="task_id" type="hidden" value="111"/>
 <input id="reaction_id" type="hidden" value=""/>
+
+
+
 
 </body>
 </html>

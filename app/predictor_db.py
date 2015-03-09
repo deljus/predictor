@@ -88,6 +88,12 @@ class PredictorDataBase:
 
         return ['SN1','SN2','E1','E2']
 
+    def update_task_reactions(self):
+        '''
+        функция записывает в базу ввведенные пользователем данные для моделирования
+        :return:
+        '''
+
 
 
 

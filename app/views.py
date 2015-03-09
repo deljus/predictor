@@ -4,8 +4,14 @@ from app import app
 from flask.ext.restful import reqparse, abort, Api, Resource
 import time
 import hashlib
+import sys
+import os
 from app.predictor_db import PredictorDataBase as pdb
 from random import randint
+from flask import (request, render_template, jsonify)
+
+basedir = os.path.abspath(os.path.dirname(__file__))
+
 
 @app.route('/')
 @app.route('/index')
@@ -14,6 +20,19 @@ def index():
     return render_template("index.html",
         title = 'Home',
         user = user)
+
+
+@app.route('/uploadajax', methods=['POST'])
+def uploadfile():
+    if request.method == 'POST':
+        files = request.files['file']
+        if files and allowed_file(files.filename):
+            filename = files.filename
+            updir = os.path.join(basedir, 'upload/')
+            file_path = os.path.join(updir, filename)
+            files.save(file_path)
+            return jsonify(name=file_path)
+    return 'error'
 
 api = Api(app)
 pdb = pdb()
@@ -55,6 +74,10 @@ MAPPING_DONE    = 2
 REQ_MODELLING   = 3
 MODELLING_DONE  = 4
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1] in app.config['ALLOWED_EXTENSIONS']
+
 def abort_if_task_doesnt_exist(task_id):
    if task_id not in TASKS:
        print (' задача не найдена '+task_id)
@@ -75,16 +98,18 @@ def find_reaction(reaction_id):
     return REACTIONS.get(reaction_id)
 
 
-def update_reaction(reaction_id, data, solvent, temperature):
-    reaction = REACTIONS.get(reaction_id)
-    if data:
-        reaction['reaction_data'] = data
-    if solvent:
-        reaction['solvent'] = solvent
-    if temperature:
-        reaction['temperature'] = temperature
-
-
+def update_reaction(reaction_id, data=None, solvent=None, temperature=None):
+    try:
+        reaction = REACTIONS.get(reaction_id)
+        if data is not None:
+            reaction['reaction_data'] = data
+        if solvent is not None:
+            reaction['solvent'] = solvent
+        if temperature is not None:
+            reaction['temperature'] = temperature
+    except:
+        print('update_reaction->', sys.exc_info()[0])
+        pass
 
 
 parser = reqparse.RequestParser()
@@ -92,7 +117,6 @@ parser.add_argument('reaction_data', type=str)
 parser.add_argument('temperature', type=str)
 parser.add_argument('solvent', type=str)
 parser.add_argument('task_status', type=int)
-
 
 
 class ReactionListAPI(Resource):
@@ -181,8 +205,6 @@ class TaskAPI (Resource):
         abort_if_task_doesnt_exist(task_id)
         args = parser.parse_args()
         task_status = args['task_status']
-        print('task_id='+task_id)
-        print('args[ task_status ]=' + str(task_status))
         update_task_status(task_id,task_status)
         return task_id
 
@@ -202,9 +224,33 @@ class SolventsAPI(Resource):
         return pdb.get_solvents()
 
 
-class TaskResultsAPI(Resource):
+class TaskModellingAPI(Resource):
     def get(self, task_id):
         return pdb.get_results_by_task(task_id)
+
+
+    def put(self, task_id):
+        _parser = reqparse.RequestParser()
+        _parser.add_argument('task_reaction_ids', type=str)
+        args = _parser.parse_args()
+        reaction_ids = args['task_reaction_ids'];
+        for r_id in reaction_ids.split(','):
+            try:
+                _m = 'model_'+r_id
+                _s = 'solvent_'+r_id
+                _t = 'temperature_'+r_id
+                _parser.add_argument(_m, type=str)
+                _parser.add_argument(_s, type=str)
+                _parser.add_argument(_t, type=str)
+                args = _parser.parse_args()
+                update_reaction(r_id, solvent=args[_s], temperature=args[_t])
+                _parser.remove_argument(_m)
+                _parser.remove_argument(_s)
+                _parser.remove_argument(_t)
+            except:
+                print('TaskModellingAPI->PUT->', sys.exc_info()[0])
+                pass
+        return 'OK'
 
 
 ##
@@ -218,7 +264,8 @@ api.add_resource(TaskListAPI, '/tasks')
 
 api.add_resource(TaskReactionsAPI, '/task_reactions/<task_id>')
 
-api.add_resource(TaskResultsAPI, '/task_results/<task_id>')
+api.add_resource(TaskModellingAPI, '/task_modelling/<task_id>')
 
 api.add_resource(ModelsAPI, '/models')
 api.add_resource(SolventsAPI, '/solvents')
+
