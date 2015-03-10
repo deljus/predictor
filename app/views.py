@@ -6,7 +6,7 @@ import time
 import hashlib
 import sys
 import os
-from app.predictor_db import PredictorDataBase as pdb
+from app.models import PredictorDataBase as pdb
 from random import randint
 from flask import (request, render_template, jsonify)
 
@@ -16,8 +16,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 @app.route('/')
 @app.route('/index')
 def index():
-    user = { 'nickname': 'Miguel' } # выдуманный пользователь
-    return render_template("index.html",     title = 'Home',        user = user)
+    return render_template("index.html")
 
 
 @app.route('/uploadajax', methods=['POST'])
@@ -29,8 +28,9 @@ def uploadfile():
             updir = os.path.join(basedir, 'upload/')
             file_path = os.path.join(updir, filename)
             files.save(file_path)
-            return jsonify(name=file_path)
-    return 'error'
+            parse_file(file_path)
+            return 'OK'
+    return 'ERROR'
 
 api = Api(app)
 pdb = pdb()
@@ -71,6 +71,31 @@ REQ_MAPPING     = 1
 MAPPING_DONE    = 2
 REQ_MODELLING   = 3
 MODELLING_DONE  = 4
+
+import requests
+import json
+from xml.dom.minidom import parse, parseString
+
+def parse_file(file_path):
+    try:
+        url="http://localhost:8080/webservices/rest-v0/util/calculate/stringMolExport"
+        file_str = open('c://temp//1.rdf','r').read()
+        conversionOptions = {
+            "structure": file_str,
+            "parameters": "mrv"
+        }
+        headers = {'content-type': 'application/json'}
+        result = requests.post(url, data=json.dumps(conversionOptions), headers=headers)
+        xmldoc = parseString(result.text)
+        reaction_list = xmldoc.getElementsByTagName('MDocument')
+        for _reaction in reaction_list:
+            print(_reaction.text())
+
+    except:
+        print('parse_file->', sys.exc_info()[0])
+
+    pass
+
 
 def allowed_file(filename):
     """TODO: чек файла сделает мой парсер."""
@@ -160,7 +185,10 @@ def update_task_status(task_id, task_status):
 def insert_reaction(task_id, mol_data):
     reaction_id = get_new_id()
     REACTIONS[reaction_id] = {'task_id': task_id,
-                              'reaction_data': mol_data}
+                              'reaction_data': mol_data,
+                              'temperature': '',
+                              'solvent': '',
+                              'model': ''}
 
 
 def find_task_reactions(task_id):
@@ -172,7 +200,6 @@ def find_task_reactions(task_id):
                 reactions.append(val)
         except:
             pass
-    print('кол-во найденных реакций '+str(len(reactions)))
     return reactions
 
 
