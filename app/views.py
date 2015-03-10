@@ -17,9 +17,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 @app.route('/index')
 def index():
     user = { 'nickname': 'Miguel' } # выдуманный пользователь
-    return render_template("index.html",
-        title = 'Home',
-        user = user)
+    return render_template("index.html",     title = 'Home',        user = user)
 
 
 @app.route('/uploadajax', methods=['POST'])
@@ -75,6 +73,7 @@ REQ_MODELLING   = 3
 MODELLING_DONE  = 4
 
 def allowed_file(filename):
+    """TODO: чек файла сделает мой парсер."""
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in app.config['ALLOWED_EXTENSIONS']
 

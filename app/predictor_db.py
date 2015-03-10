@@ -14,7 +14,7 @@ class PredictorDataBase:
         '''
         функция возвращает задачу по заданному ID
         :param id: ID добавляемой задачи
-        :return: Задача
+        :return: status
         '''
         pass
 
@@ -24,26 +24,26 @@ class PredictorDataBase:
         функция обновляет статус у задачи
         :param id: ID задачи (str)
         :param status: устанавливаемое значение (int)
-        :return:
+        :return: True|False
         '''
         pass
 
 
-    def insert_reaction(self, task_id, reaction_id, reaction_data, solvent, temperature, conditions):
+    def insert_reaction(self, task_id, reaction_id, reaction_structure, solvent, temperature):
         '''
         функция добавляет в таблицу новую реакцию с заданными параметрами
         :param task_id(str): ID задачи
         :param reaction_id(str): ID реакции
-        :param reaction_data(str): Структура реакции в формате mrv
+        :param reaction_structure(str): Структура реакции в формате mrv
         :param solvent(str): Растворитель
         :param temperature(str): Температура
-        :param conditions(dict): Дополнительные условаия
+        :param conditions(dict): Дополнительные условаия (nah)
         :return:
         '''
         pass
 
 
-    def get_reaction_data(self, id):
+    def get_reaction_structure(self, id):
         '''
         функция возвращает структуру реакции по заданному ID
         :param id(str): ID реакции
@@ -56,7 +56,7 @@ class PredictorDataBase:
         '''
         функция возвращает список реакций для заданной задачи
         :param task_id: ID задачи
-        :return: список реакций
+        :return: список реакций (ID, solvent, temperature, models)
         '''
         pass
 
