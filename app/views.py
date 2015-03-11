@@ -101,6 +101,10 @@ class ReactionAPI(Resource):
         pdb.update_reaction_conditions(reaction_id, temperature=args['temperature'], solvent=args['solvent'])
         return reaction_id, 201
 
+class ReactionListAPI(Resource):
+    def get(self):
+        return pdb.get_reactions()
+
 
 class TaskListAPI(Resource):
     def get(self):
@@ -174,6 +178,8 @@ class TaskModellingAPI(Resource):
 ##
 api.add_resource(ReactionAPI, '/reaction/<reaction_id>')
 api.add_resource(ReactionStructureAPI, '/reaction_structure/<reaction_id>')
+
+api.add_resource(ReactionListAPI, '/reactions')
 
 # работа со статусами задач
 api.add_resource(TaskStatusAPI, '/task_status/<task_id>')

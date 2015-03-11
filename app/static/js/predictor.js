@@ -280,12 +280,15 @@ function display_task_reactions(reactions)
     {
         var _r = reactions[i];
         var _r_id = _r.reaction_id;
+        try {_t = _r.temperature}catch(err){_t='';}
+        try {_m = _r.model}catch(err){_m='';}
+        try {_s = _r.solvent}catch(err){_s='';}
 
         str+='<tr>';
         str+='<td class="reaction_id" reaction_id="'+_r_id+'">'+(i+1)+'</td>';
-        str+='<td><select class="model" name="model_'+_r_id+'" model="'+_r.model+'" ></select></td>';
-        str+='<td><select class="solvent" name="solvent_'+_r_id+'" solvent="'+_r.solvent+'" ></select></td>';
-        str+='<td><input  class="temperature" name="temperature_'+_r_id+'" type="text" value="'+_r.temperature+'" /></td>';
+        str+='<td><select class="model" name="model_'+_r_id+'" model="'+_m+'" ></select></td>';
+        str+='<td><select class="solvent" name="solvent_'+_r_id+'" solvent="'+_s+'" ></select></td>';
+        str+='<td><input  class="temperature" name="temperature_'+_r_id+'" type="text" value="'+_t+'" /></td>';
         str+='</tr>';
 
         if (reaction_ids=='')
@@ -416,7 +419,7 @@ function upload_draw_reaction(data)
 	if (reaction_id!='')
 	{
 	    NProgress.start();
-	    put_reaction(reaction_id,data ).done(function (data, textStatus, jqXHR) {
+	    put_reaction_structure(reaction_id,data ).done(function (data, textStatus, jqXHR) {
 
         NProgress.done();
         alert('Reaction has been saved successfully');
