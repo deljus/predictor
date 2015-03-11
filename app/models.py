@@ -1,14 +1,10 @@
 # -*- coding: utf-8 -*-
 from pony.orm import *
+from collections import defaultdict
+
 from hashlib import md5
+
 import time
-
-SALT = "bla-bla"
-
-
-def id_gen(name):
-    return md5(''.join([SALT, name, "%.6f" % time.time()])).hexdigest()
-
 
 db = Database("sqlite", "database.sqlite", create_db=True)
 
@@ -16,21 +12,19 @@ db = Database("sqlite", "database.sqlite", create_db=True)
 class Users(db.Entity):
     id = PrimaryKey(int, auto=True)
     email = Required(str, 128, unique=True)
-    uid = Required(str, 128)
     tasks = Set("Tasks")
 
 
 class Tasks(db.Entity):
     id = PrimaryKey(int, auto=True)
     user = Optional(Users)
-    tid = Required(str, 128)
     chemicals = Set("Chemicals")
     status = Required(int, default=0)
+    create_date = Required(int)
 
 
 class Chemicals(db.Entity):
     id = PrimaryKey(int, auto=True)
-    rid = Required(str, 128)
     status = Required(int, default=0)
     temperature = Optional(float)
     solvents = Set("Solventsets")
@@ -42,8 +36,8 @@ class Chemicals(db.Entity):
 
 class Structures(db.Entity):
     id = PrimaryKey(int, auto=True)
+    key = Optional(str)
     structure = Required(str)
-    strID = Optional(str, unique=True)
     chemicals = Set(Chemicals)
 
 
@@ -64,13 +58,11 @@ class Models(db.Entity):
 
 class Solvents(db.Entity):
     id = PrimaryKey(int, auto=True)
-    solID = Required(int, unique=True)
     name = Required(str, unique=True)
     solventsets = Set("Solventsets")
 
 
 class Solventsets(db.Entity):
-    id = PrimaryKey(int, auto=True)
     amount = Required(float)
     solvent = Required(Solvents)
     chemical = Required(Chemicals)
@@ -82,44 +74,53 @@ db.generate_mapping(create_tables=True)
 
 class PredictorDataBase:
     @db_session
+    def get_tasks(self, status=None):
+        if status:
+            t = select(x for x in Tasks if x.status==status)
+        else:
+            t = select(x for x in Tasks)    # удалить в продакшене
+        return {x.id: x.status for x in t}
+
+
+
+    @db_session
     def insert_task(self, email=None):
         '''
         функция добавляет в таблицу новую задачу
         :param email: мыло если есть.
         :return:
         '''
-        tid = id_gen("task")
         if email:
             user = Users.get(email=email)
             if not user:
-                user = Users(email=email, uid=id_gen("user"))
+                user = Users(email=email)
         else:
             user = None
 
-        Tasks(user=user, tid=tid)
-        return tid
+        task = Tasks(user=user, create_date=int(time.time()))
+        return task.id
 
     @db_session
-    def get_task_status(self, id):
+    def get_task_status(self, task_id):
         '''
         функция возвращает задачу по заданному ID
-        :param id: ID добавляемой задачи
+        :param task_id: ID добавляемой задачи
         :return: status
         '''
-        t = Tasks.get(tid=id)
+        t = Tasks.get(id=task_id)
         if t:
             return t.status
         return None
 
     @db_session
-    def update_task_status(self, id, status):
+    def update_task_status(self, task_id, status):
         '''
         функция обновляет статус у задачи
-        :param id: ID задачи (str)
+        :param task_id: ID задачи (str)
         :param status: устанавливаемое значение (int)
         :return: True|False
         '''
-        t = Tasks.get(tid=id)
+        t = Tasks.get(id=task_id)
         if t:
             t.status = status
             return True
@@ -131,49 +132,63 @@ class PredictorDataBase:
         '''
         функция добавляет в таблицу новую реакцию с заданными параметрами
         :param task_id(str): ID задачи
-        :param reaction_id(str): ID реакции
         :param reaction_structure(str): Структура реакции в формате mrv
         :param solvent(str): Растворитель
         :param temperature(str): Температура
         :return: reaction id or False
         '''
-        t = Tasks.get(tid=task_id)
+        t = Tasks.get(uid=task_id)
         if t:
-            cid = id_gen("reaction")
-            structure = Structures(strID=structurekey, structure=reaction_structure)
-            chem = Chemicals(task=t, rid=cid, structure=structure, temperature=temperature)
+            structure = Structures(key=structurekey, structure=reaction_structure)
+            chem = Chemicals(task=t, structure=structure, temperature=temperature)
             if solvent:
                 for k, v in solvent.items():
-                    solv = Solvents.get(solID=k)
-                    if solv:
-                        Solventsets(amount=v, solvent=solv, chemical=chem)
+                    db_solvent = Solvents.get(id=k)
+                    if db_solvent:
+                        Solventsets(amount=v, solvent=db_solvent, chemical=chem)
 
-            return cid
+            return chem.id
         else:
             return False
 
     @db_session
-    def get_reaction_structure(self, id):
+    def get_reaction_structure(self, reaction_id):
         '''
         функция возвращает структуру реакции по заданному ID
         :param id(str): ID реакции
         :return: структура реакции
         '''
-        c = Chemicals.get(rid=id)
+        c = Chemicals.get(id=reaction_id)
         if c:
             return c.structure.structure
         else:
             return None
 
     @db_session
-    def update_reaction_structure(self, id, structure):
+    def get_reaction(self, reaction_id):
+        '''
+        функция возвращает структуру реакции по заданному ID
+        :param id(str): ID реакции
+        :return: поля реакции
+        '''
+        c = Chemicals.get(id=reaction_id)
+        if c:
+            return dict(structure=c.structure.structure,
+                        temperature=c.temperature,
+                        models={y.id: y.name for y in c.models},
+                        solvents={y.id: y.amount for y in c.solvents})
+        else:
+            return None
+
+    @db_session
+    def update_reaction_structure(self, reaction_id, structure):
         '''
         функция возвращает структуру реакции по заданному ID
         :param id(str): ID реакции
         :param structure(str): структура реакции
         :return: true, false
         '''
-        c = Chemicals.get(rid=id)
+        c = Chemicals.get(id=reaction_id)
         if c:
             c.structure.structure = structure
             return True
@@ -181,12 +196,12 @@ class PredictorDataBase:
             return False
 
     @db_session
-    def update_reaction_conditions(self, reaction_id, temperature=None, solvent=None):
+    def update_reaction_conditions(self, reaction_id, temperature=None, solvent=None, model=None):
         '''
         функция записывает в базу ввведенные пользователем данные для моделирования
         :return:
         '''
-        c = Chemicals.get(rid=reaction_id)
+        c = Chemicals.get(id=reaction_id)
         if c:
             if temperature:
                 c.temperature = temperature
@@ -194,9 +209,14 @@ class PredictorDataBase:
                 for x in c.solvents:  # очистка старых растворителей.
                     x.delete()
                 for k, v in solvent.items():  # новые данные по растворителям
-                    solv = Solvents.get(solID=k)
-                    if solv:
-                        Solventsets(amount=v, solvent=solv, chemical=c)
+                    db_solvent = Solvents.get(id=k)
+                    if db_solvent:
+                        Solventsets(amount=v, solvent=db_solvent, chemical=c)
+            if model:
+                for k in model:
+                    m = Models.get(id=k)
+                    if m:
+                        pass
             return True
         else:
             return False
@@ -208,11 +228,12 @@ class PredictorDataBase:
         :param task_id: ID задачи
         :return: список реакций (ID, solvent, temperature, models)
         '''
-        t = Tasks.get(tid=task_id)
+        t = Tasks.get(id=task_id)
         if t:
-            return {x.rid: dict(temperature=x.temperature,
-                                models={y.id: y.name for y in x.models},
-                                solvents={y.solID: y.amount for y in x.solvents}) for x in t.chemicals}
+            return {x.id: dict(temperature=x.temperature,
+                                models={m.id: m.name for m in x.models},
+                                solvents={s.id: s.amount for s in x.solvents},
+                                errors={}) for x in t.chemicals}
         else:
             return None
 
@@ -223,13 +244,13 @@ class PredictorDataBase:
         :param task_id(str): ID задачи
         :return: Результаты моделирования
         '''
-        t = Tasks.get(tid=task_id)
+        t = Tasks.get(id=task_id)
         if t:
             out = {}
             for x in t.chemicals:
-                out[x.rid] = defaultdict(dict)
+                out[x.id] = defaultdict(dict)
                 for y in x.results:
-                    out[x.rid][y.model.name][y.attrib] = y.value
+                    out[x.id][y.model.name][y.attrib] = y.value
             return out
         else:
             return None
@@ -240,7 +261,7 @@ class PredictorDataBase:
         функция возвращает список растворителей из базы
         :return: список растворителей
         '''
-        return select({'id': x.sloID, 'name': x.name} for x in Solvents)[:]
+        return select({'id': x.id, 'name': x.name} for x in Solvents)[:]
 
     @db_session
     def get_models(self):

@@ -48,7 +48,7 @@ function set_task_status(task_id, status)
     console.log('set_task_status->'+status);
     var data =  JSON.stringify({"task_status": status});
     return $.ajax({
-        "url": "/task/"+task_id
+        "url": "/task_status/"+task_id
         ,"type": "PUT"
         ,"dataType": "json"
         ,"contentType": "application/json"
@@ -60,7 +60,7 @@ function get_task_status(task_id)
 {
     console.log('get_task_status->'+status);
     return $.ajax({
-        "url": "/task/"+task_id
+        "url": "/task_status/"+task_id
         ,"type": "GET"
         ,"dataType": "json"
         ,"contentType": "application/json"
@@ -68,11 +68,11 @@ function get_task_status(task_id)
     });
 }
 
-function get_reaction(reaction_id)
+function get_reaction_structure(reaction_id)
 {
-    console.log('get_reaction->'+reaction_id);
+    console.log('get_reaction_structure->'+reaction_id);
     return $.ajax({
-        "url": "/reaction/"+reaction_id
+        "url": "/reaction_structure/"+reaction_id
         ,"type": "GET"
         ,"dataType": "json"
         ,"contentType": "application/json"
@@ -80,13 +80,13 @@ function get_reaction(reaction_id)
     });
 }
 
-function put_reaction(reaction_id, data)
+function put_reaction_structure(reaction_id, data)
 { 
-    console.log('put_reaction->');
-    var data = JSON.stringify({"reaction_data": data});
+    console.log('put_reaction_structure->');
+    var data = JSON.stringify({"reaction_structure": data});
 
     return $.ajax({
-            "url": "/reaction/"+reaction_id
+            "url": "/reaction_structure/"+reaction_id
             ,"type": "PUT"
             ,"dataType": "json"
             ,"contentType": "application/json"
@@ -118,12 +118,25 @@ function get_solvents()
     });
 }
 
+function get_reactions_by_task(task_id)
+{
+    return $.ajax({
+        "url": "/task_reactions/"+task_id
+        ,"type": "GET"
+        ,"dataType": "json"
+        ,"contentType": "application/json"
+        ,"data": {}
+    })
+}
+
 /******************************************************/
-STATUS_TASK_CREATED    = 0;
-STATUS_REQ_MAPPING     = 1;
-STATUS_MAPPING_DONE    = 2;
-STATUS_REQ_MODELLING   = 3;
-STATUS_MODELLING_DONE  = 4;
+TASK_CREATED    = 0
+REQ_MAPPING     = 1
+LOCK_MAPPING    = 2
+MAPPING_DONE    = 3
+REQ_MODELLING   = 4
+LOCK_MODELLING  = 5
+MODELLING_DONE  = 6
 
 var TIMER_INTERVAL = 7000;
 var MOL_FORMAT = 'mrv';
@@ -183,7 +196,7 @@ function upload_task_draw_data(draw_data)
 {
     NProgress.start();
     console.log('upload_task_draw_data->');
-    var data = JSON.stringify({"reaction_data": draw_data});
+    var data = JSON.stringify({"reaction_structure": draw_data});
 
     $.ajax({
             "url": "/tasks"
@@ -203,7 +216,7 @@ function start_task_mapping(task_id)
 {
     console.log('start_task_mapping->');
 	
-    set_task_status(task_id, STATUS_REQ_MAPPING).done(function (data, textStatus, jqXHR){
+    set_task_status(task_id, REQ_MAPPING).done(function (data, textStatus, jqXHR){
 
         TAMER_ID = setInterval(function(){check_task_mapping_status(task_id)}, TIMER_INTERVAL);
 
@@ -220,11 +233,8 @@ function check_task_mapping_status(task_id)
 	
     get_task_status(task_id).done(function (data, textStatus, jqXHR){
 
-		try{
-			var status = data['task_status'];
-		}catch(err){var status=undefined}
-		
-		if (status==STATUS_MAPPING_DONE)
+        console.log('status='+data)
+		if (data==MAPPING_DONE)
 		{
 			clearInterval(TAMER_ID);
 			load_task_reactions(task_id);
@@ -242,13 +252,7 @@ function load_task_reactions(task_id)
 {
     console.log('load_task_reactions->');
 	
-    $.ajax({
-        "url": "/task_reactions/"+task_id
-        ,"type": "GET"
-        ,"dataType": "json"
-        ,"contentType": "application/json"
-        ,"data": {}
-    }).done(function (data, textStatus, jqXHR){
+    get_reactions_by_task(task_id).done(function (data, textStatus, jqXHR){
 
         NProgress.done();
 
@@ -360,13 +364,13 @@ function display_task_reactions(reactions)
 function load_reaction(reaction_id)
 {
     console.log('load_reaction->');
-    get_reaction(reaction_id).done(function (data, textStatus, jqXHR){
+    get_reaction_structure(reaction_id).done(function (data, textStatus, jqXHR){
 
         console.log(data);
         $('#reaction_id').val(reaction_id);
 
         try {
-            draw_moldata(data['reaction_data']);
+            draw_moldata(data);
         }
         catch (err){console.log(err)}
 
@@ -455,7 +459,7 @@ function start_modelling()
     console.log('start_modelling->');
 
     var task_id = $("#task_id").val();
-    set_task_status(task_id, STATUS_REQ_MODELLING).done(function (data, textStatus, jqXHR){
+    set_task_status(task_id, REQ_MODELLING).done(function (data, textStatus, jqXHR){
 
         TAMER_ID = setInterval(function(){check_modelling_status(task_id)}, TIMER_INTERVAL);
 
@@ -476,7 +480,7 @@ function check_modelling_status(task_id)
 			var status = data['task_status'];
 		}catch(err){var status=undefined}
 
-		if (status==STATUS_MODELLING_DONE)
+		if (status==MODELLING_DONE)
 		{
 			clearInterval(TAMER_ID);
 			load_modelling_results(task_id);
@@ -533,6 +537,6 @@ function display_modelling_results(results)
     $("#results-pnl").show("normal");
 }
 
-//curl http://127.0.0.1:5000/tasks   -d "reaction_data=<xml></xml>" -X POST
+//curl http://127.0.0.1:5000/tasks   -d "reaction_structure=<xml></xml>" -X POST
 //curl http://127.0.0.1:5000/task/ce99375015b1ee7ac4d87bfee941296b   -d "task_status=0" -X GET
 //curl http://127.0.0.1:5000/task_reactions/584534ef05de9a8ec3061e4a5a46d8ce   -d "task_status=1" -X GET
