@@ -51,7 +51,7 @@ from xml.dom.minidom import parse, parseString
 def parse_file(file_path):
     try:
         url="http://localhost:8080/webservices/rest-v0/util/calculate/stringMolExport"
-        file_str = open('c://temp//1.rdf','r').read()
+        file_str = open('c://temp//1.rdf', 'r').read()
         conversionOptions = {
             "structure": file_str,
             "parameters": "mrv"
