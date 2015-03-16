@@ -32,7 +32,8 @@ for i in task.json():
                                      headers=headers)
         #print(standardised.json())
         data = json.dumps({"structure": standardised.text, "parameters": "rxn"})
-        out = requests.post("%s/rest-v0/util/calculate/stringMolExport" % CHEMAXON, data=data)
+        print(data)
+        out = requests.post("%s/rest-v0/util/calculate/stringMolExport" % CHEMAXON, data=data, headers=headers)
         print(out.text)
 
         #requests.put("%s:%d/task_status/%s" % (SERVER, PORT, i['id']), params={'task_status': MAPPING_DONE})
