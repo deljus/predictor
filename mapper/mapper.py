@@ -26,16 +26,14 @@ for i in task.json():
     chemicals = requests.get("%s:%d/task_reactions/%s" % (SERVER, PORT, i['id']))
     for j in chemicals.json():
         structure = requests.get("%s:%d/reaction_structure/%s" % (SERVER, PORT, j['reaction_id']))
-        print(structure.text)
         data = json.dumps({"structure": structure.json(), "parameters": {"standardizerDefinition": STANDARD}})
-        print(data)
         standardised = requests.post("%s/rest-v0/util/convert/standardizer" % CHEMAXON,
                                      data=data,
                                      headers=headers)
-        print(standardised.text)
-        # out = requests.post("%s/rest-v0/util/calculate/stringMolExport" % CHEMAXON,
-        #                     params={"structure": standardised.text,
-        #                             "parameters": "rxn"})
-        # print(out.text)
+        #print(standardised.json())
+        out = requests.post("%s/rest-v0/util/calculate/stringMolExport" % CHEMAXON,
+                            params={"structure": standardised.json(),
+                                    "parameters": "rxn"})
+        print(out.text)
 
         #requests.put("%s:%d/task_status/%s" % (SERVER, PORT, i['id']), params={'task_status': MAPPING_DONE})
