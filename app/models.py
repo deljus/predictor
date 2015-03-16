@@ -2,9 +2,9 @@
 from pony.orm import *
 from collections import defaultdict
 
-from hashlib import md5
-
 import time
+import os
+import sys
 
 db = Database("sqlite", "database.sqlite", create_db=True)
 
@@ -54,6 +54,7 @@ class Models(db.Entity):
     name = Required(unicode)
     chemicals = Set(Chemicals)
     results = Set(Results)
+    app_domains = Set(AppDomains)
 
 
 class Solvents(db.Entity):
@@ -69,9 +70,14 @@ class Solventsets(db.Entity):
     chemical = Required(Chemicals)
 
 
+class AppDomains(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    hash = Required(str)
+    model = Set(Models)
+
+
 sql_debug(True)
 db.generate_mapping(create_tables=True)
-
 
 class PredictorDataBase:
     @db_session
@@ -150,6 +156,7 @@ class PredictorDataBase:
         t = Tasks.get(id=task_id)
         if t:
             structure = Structures(structure=reaction_structure)
+            commit()
             chem = Chemicals(task=t, structure=structure, temperature=temperature)
             commit()
             if solvent:
@@ -160,6 +167,7 @@ class PredictorDataBase:
 
             return chem.id
         else:
+            print('TASK NOT FOUND!!!')
             return False
 
     @db_session
@@ -206,9 +214,8 @@ class PredictorDataBase:
                             temperature=r.temperature,
                             models={m.id: m.name for m in r.models},
                             solvents={s.id: s.amount for s in r.solvents}))
-            return arr
-        else:
-            return None
+        return arr
+
 
     @db_session
     def update_reaction_structure(self, reaction_id, structure):
@@ -306,5 +313,29 @@ class PredictorDataBase:
         '''
         query = select((x.id,x.name) for x in Models)
         return [{'id': x, 'name': y} for x, y in query]
+
+
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+
+# загрузим данные
+@db_session
+def import_solvents():
+    file = open(os.path.join(os.path.dirname(__file__), "import_data/solvents.txt"), "r")
+    for _line in file.readlines():
+        try:
+            arr = _line.split("\t")
+            sm = arr[0]
+            n = arr[1].strip(' \t\n\r')
+            s = Solvents.get(smiles=sm)
+            if not s:
+                  Solvents(smiles=sm, name=n)
+        except:
+            print('import_solvents->', sys.exc_info()[0])
+            pass
+    file.close()
+
+
+import_solvents()
 
 
