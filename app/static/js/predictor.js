@@ -18,6 +18,12 @@ function handleRequestError()
 
 $(function() {
     $('#upload-file-btn').click(function() {
+
+        if ($('#file').val()=='')
+        {
+            alert('You have to select file');
+            return false;
+        }
         var form_data = new FormData($('#upload-file')[0]);
         $.ajax({
             type: 'POST',
@@ -33,6 +39,14 @@ $(function() {
         });
     });
 });
+
+function isEmpty(val)
+{
+    if (val=='' || val==undefined || val=='undefined' || val==null || val=='null')
+        return true;
+    else
+        return false;
+}
 
 
 function isMolEmpty(data)
@@ -280,7 +294,12 @@ function display_task_reactions(reactions)
     {
         var _r = reactions[i];
         var _r_id = _r.reaction_id;
-        try {_t = _r.temperature}catch(err){_t='';}
+        try {
+            _t = _r.temperature;
+
+            if (isEmpty(_t))
+                _t = '';
+        }catch(err){_t='';}
         try {_m = _r.model}catch(err){_m='';}
         try {_s = _r.solvent}catch(err){_s='';}
 

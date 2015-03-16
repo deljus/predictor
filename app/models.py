@@ -77,10 +77,16 @@ class PredictorDataBase:
     @db_session
     def get_tasks(self, status=None):
         if status:
-            t = select(x for x in Tasks if x.status == status)
+            tasks = select(x for x in Tasks if x.status == status)
         else:
-            t = select(x for x in Tasks)    # удалить в продакшене
-        return {x.id: x.status for x in t}
+            tasks = select(x for x in Tasks)    # удалить в продакшене
+
+        arr = []
+        for t in tasks:
+            arr.append(dict(id=t.id,
+                            status=t.status))
+        return arr
+
 
 
 
@@ -194,7 +200,8 @@ class PredictorDataBase:
         '''
         arr = []
         for r in select(x for x in Chemicals):
-            arr.append(dict(task_id=r.task.id,
+            arr.append(dict(reaction_id=r.id,
+                            task_id=r.task.id,
                             structure=r.structure.structure,
                             temperature=r.temperature,
                             models={m.id: m.name for m in r.models},
