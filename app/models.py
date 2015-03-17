@@ -253,7 +253,7 @@ class PredictorDataBase:
                 for k in model:
                     m = Models.get(id=k)
                     if m:
-                        pass
+                        m.chemicals = c
             return True
         else:
             return False
@@ -341,6 +341,18 @@ class PredictorDataBase:
         '''
         query = select((x.id,x.name, x.is_reaction) for x in Models)
         return [{'id': x, 'name': y, 'is_reaction': z} for x, y, z in query]
+
+
+    @db_session
+    def insert_model(self, name, is_reaction, reaction_hash=None):
+        model = Models(name=name, is_reaction=is_reaction)
+        if reaction_hash:
+            domain = AppDomains(hash=reaction_hash, model=model)
+        else:
+            domain = None
+        commit()
+        return model.id
+
 
 
 basedir = os.path.abspath(os.path.dirname(__file__))

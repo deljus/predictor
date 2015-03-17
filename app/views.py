@@ -153,6 +153,15 @@ class ModelListAPI(Resource):
     def get(self):
         return pdb.get_models()
 
+    def post(self):
+        _parser = reqparse.RequestParser()
+        _parser.add_argument('name', type=str)
+        _parser.add_argument('hash', type=str)
+        _parser.add_argument('is_reaction', type=bool)
+        args = _parser.parse_args()
+        model_id = pdb.insert_model(name=args['name'], hash=args['hash'])
+        return model_id, 201
+
 
 class SolventsAPI(Resource):
     def get(self):
