@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
+from FEAR.RDFread import RDFread
+from FEAR.CGR import CGR
 
 __author__ = 'stsouko'
 import requests
@@ -18,22 +20,57 @@ REQ_MODELLING = 4
 LOCK_MODELLING = 5
 MODELLING_DONE = 6
 
-headers = {'content-type': 'application/json'}
-task = requests.get("%s:%d/tasks" % (SERVER, PORT), params={'task_status': REQ_MAPPING})
-print(task.json())
-for i in task.json():
-    #requests.put("%s:%d/task_status/%s" % (SERVER, PORT, i['id']), params={'task_status': LOCK_MAPPING})
-    chemicals = requests.get("%s:%d/task_reactions/%s" % (SERVER, PORT, i['id']))
-    for j in chemicals.json():
-        structure = requests.get("%s:%d/reaction_structure/%s" % (SERVER, PORT, j['reaction_id']))
-        data = json.dumps({"structure": structure.json(), "parameters": {"standardizerDefinition": STANDARD}})
-        standardised = requests.post("%s/rest-v0/util/convert/standardizer" % CHEMAXON,
-                                     data=data,
-                                     headers=headers)
-        #print(standardised.json())
-        data = json.dumps({"structure": standardised.text, "parameters": "rxn"})
-        print(data)
-        out = requests.post("%s/rest-v0/util/calculate/stringMolExport" % CHEMAXON, data=data, headers=headers)
-        print(out.text)
 
-        #requests.put("%s:%d/task_status/%s" % (SERVER, PORT, i['id']), params={'task_status': MAPPING_DONE})
+def serverget(url, params):
+    q = requests.get("%s:%d/%s" % (SERVER, PORT, url), params=params)
+    return q.json()
+
+
+def serverput(url, params):
+    requests.put("%s:%d/%s" % (SERVER, PORT, url), params=params)
+
+
+def chemaxpost(url, data):
+    q = requests.post("%s/rest-v0/util/%s" % (CHEMAXON, url),
+                      data=json.dumps(data),
+                      headers={'content-type': 'application/json'})
+    return q.text
+
+
+def gettask():
+    return serverget('tasks', {'task_status': REQ_MAPPING})
+
+
+def main():
+    fear = CGR()
+    tasks = gettask()
+    for i in tasks:
+        #serverput("task_status/%s" % (i['id']), {'task_status': LOCK_MAPPING})
+        chemicals = serverget("task_reactions/%s" % (i['id']), None)
+        for j in chemicals:
+            structure = serverget("reaction_structure/%s" % (j['reaction_id']), None)
+
+            data = {"structure": structure, "parameters": {"standardizerDefinition": STANDARD}}
+            standardised = chemaxpost('convert/standardizer', data)
+
+            data = {"structure": standardised, "parameters": {"autoMappingStyle": "OFF"}}
+            structure = chemaxpost('convert/reactionConverter', data)
+
+            data = {"structure": structure, "parameters": "rxn"}
+            structure = chemaxpost('calculate/stringMolExport', data)
+
+            with open('/tmp/tmp_standard.rxn', 'w') as tmp:
+                tmp.write(structure)
+
+            fearinput = RDFread('/tmp/tmp_standard.rxn')
+            fearinput = next(fearinput.readdata())
+            res = fear.firstcgr(fearinput)
+            print(res)
+            print(fearinput['meta'])
+
+
+            #serverput("task_status/%s" % (i['id']), {'task_status': MAPPING_DONE})
+
+
+if __name__ == '__main__':
+    main()
