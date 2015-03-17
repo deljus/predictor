@@ -112,8 +112,16 @@ class ReactionAPI(Resource):
         return pdb.get_reaction(reaction_id), 201
 
     def put(self, reaction_id):
-        args = parser.parse_args()
-        pdb.update_reaction_conditions(reaction_id, temperature=args['temperature'], solvent=args['solvent'])
+        print("ReactionAPI->put->")
+        _parser = reqparse.RequestParser()
+        _parser.add_argument('temperature', type=str)
+        _parser.add_argument('solvent', type=str)
+        _parser.add_argument('model', type=str)
+        args = _parser.parse_args()
+        m = args['model'].split(',')
+        t = args['temperature']
+        s = args['solvent'].split(',')
+        pdb.update_reaction_conditions(reaction_id, temperature=t, solvent=s, model=m)
         return reaction_id, 201
 
 class ReactionListAPI(Resource):

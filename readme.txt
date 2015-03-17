@@ -20,7 +20,7 @@
 # обновление реакции
 #       url:  "http://server:port/reaction/<reaction_id>"
 #       method: PUT
-#       parameters: {'temperature': <TEMPERATURE>, 'solvent': <SOLVENT>}
+#       parameters: {'temperature': <FLOAT>, 'solvent': <SOLVENT>}
 
 # обновление результатов моделирования
 #       url:  "http://server:port/reaction_result/<reaction_id>"

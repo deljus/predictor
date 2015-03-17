@@ -72,7 +72,7 @@ class Solvents(db.Entity):
 
 
 class Solventsets(db.Entity):
-    amount = Required(float)
+    amount = Required(float, default=0)
     solvent = Required(Solvents)
     chemical = Required(Chemicals)
 
@@ -245,15 +245,15 @@ class PredictorDataBase:
             if solvent:
                 for x in c.solvents:  # очистка старых растворителей.
                     x.delete()
-                for k, v in solvent.items():  # новые данные по растворителям
-                    db_solvent = Solvents.get(id=k)
+                for s in solvent:  # новые данные по растворителям
+                    db_solvent = Solvents.get(id=int(s))
                     if db_solvent:
-                        Solventsets(amount=v, solvent=db_solvent, chemical=c)
+                        Solventsets(solvent=db_solvent, chemical=c)
             if model:
                 for k in model:
-                    m = Models.get(id=k)
+                    m = Models.get(id=int(k))
                     if m:
-                        m.chemicals = c
+                        c.models.add(m)
             return True
         else:
             return False

@@ -574,4 +574,4 @@ function display_modelling_results(results)
 
 //curl http://127.0.0.1:5000/tasks   -d "reaction_structure=<xml></xml>" -X POST
 //curl http://127.0.0.1:5000/task/ce99375015b1ee7ac4d87bfee941296b   -d "task_status=0" -X GET
-//curl http://127.0.0.1:5000/task_reactions/584534ef05de9a8ec3061e4a5a46d8ce   -d "task_status=1" -X GET
+//curl http://127.0.0.1:5000/reaction/2   -d "model=1,2" -X PUT
