@@ -2,11 +2,9 @@
 <StandardizerConfiguration Version="0.1">
   <Actions>
     <Dearomatize ID="Dearomatize"/>
-    <Tautomerize ID="Tautomerize"/>
     <Transformation Exact="false" ID="Transform NO2 (1)" SearchOptions="" Structure="[O:1]=[N:2]=[O:3]&gt;&gt;[o:3]:[n:2]:[o:1]" format="cxsmarts"/>
     <Aromatize ID="Aromatize" Type="basic"/>
     <MapReaction ID="Map Reaction" KeepMapping="true" MappingStyle="COMPLETE" MarkBonds="false"/>
     <AddExplicitH ID="AddExplicitH"/>
-    <Clean2D ID="Clean2D" Type="Full"/>
   </Actions>
 </StandardizerConfiguration>
