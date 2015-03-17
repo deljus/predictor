@@ -13,14 +13,28 @@
 #       РЕАКЦИИ
 #
 # получение списка реакция для данной задачи
-#       url:  "http://server:port//task_reactions/<task_id>"
+#       url:  "http://server:port/task_reactions/<task_id>"
 #       method: GET
 #       parameters: {}
 #
 # обновление реакции
-#       url:  "http://server:port///reaction/<reaction_id>"
+#       url:  "http://server:port/reaction/<reaction_id>"
 #       method: PUT
 #       parameters: {'temperature': <TEMPERATURE>, 'solvent': <SOLVENT>}
+
+# обновление результатов моделирования
+#       url:  "http://server:port/reaction_result/<reaction_id>"
+#       method: PUT
+#       parameters: {'model_id': <INT>, 'param': <STR>, 'value': <FLOAT>}
+
+# обновление структуры   реакции
+#       url:  "http://server:port/reaction_structure/<reaction_id>"
+#       method: PUT
+#       parameters: {'reaction_structure': <STR>}
+
+
+
+
 
 
 # Пример

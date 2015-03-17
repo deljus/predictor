@@ -80,6 +80,9 @@ parser.add_argument('reaction_structure', type=str)
 parser.add_argument('temperature', type=str)
 parser.add_argument('solvent', type=str)
 parser.add_argument('task_status', type=int)
+parser.add_argument('model_id', type=int)
+parser.add_argument('param', type=str)
+parser.add_argument('value', type=float)
 
 
 class ReactionStructureAPI(Resource):
@@ -90,6 +93,18 @@ class ReactionStructureAPI(Resource):
         args = parser.parse_args()
         pdb.update_reaction_structure(reaction_id, args['reaction_structure'])
         return reaction_id, 201
+
+
+class ReactionResultAPI(Resource):
+    def get(self, reaction_id):
+        return pdb.get_reaction_structure(reaction_id)
+
+    def put(self, reaction_id):
+        args = parser.parse_args()
+        pdb.update_reaction_result(reaction_id, args['model_id'])
+        return reaction_id, 201
+
+
 
 
 class ReactionAPI(Resource):
@@ -134,7 +149,7 @@ class TaskReactionsAPI (Resource):
         return pdb.get_reactions_by_task(task_id)
 
 
-class ModelsAPI(Resource):
+class ModelListAPI(Resource):
     def get(self):
         return pdb.get_models()
 
@@ -178,6 +193,7 @@ class TaskModellingAPI(Resource):
 ##
 api.add_resource(ReactionAPI, '/reaction/<reaction_id>')
 api.add_resource(ReactionStructureAPI, '/reaction_structure/<reaction_id>')
+api.add_resource(ReactionResultAPI, '/reaction_result/<reaction_id>')
 
 api.add_resource(ReactionListAPI, '/reactions')
 
@@ -191,6 +207,6 @@ api.add_resource(TaskReactionsAPI, '/task_reactions/<task_id>')
 
 api.add_resource(TaskModellingAPI, '/task_modelling/<task_id>')
 
-api.add_resource(ModelsAPI, '/models')
+api.add_resource(ModelListAPI, '/models')
 api.add_resource(SolventsAPI, '/solvents')
 

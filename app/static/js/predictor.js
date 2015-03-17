@@ -320,8 +320,8 @@ function display_task_reactions(reactions)
     $('#task_reaction_ids').val(reaction_ids);
 
     jTbl.find(".reaction_id").click(function (){
-                                    var r_id = $(this).attr('reaction_id');
-                                    load_reaction(r_id);
+                                        var r_id = $(this).attr('reaction_id');
+                                        load_reaction(r_id);
                                     });
 
     /*********** Loading models ***************/
@@ -332,8 +332,9 @@ function display_task_reactions(reactions)
             var str = '<option value=""></option>';
             for (var i=0; i<data.length; i++)
             {
-                var _m = data[i];
-                str+='<option value="'+_m+'">'+_m+'</option>';
+                var _id = data[i].id;
+                var _name = data[i].name;
+                str+='<option value="'+_id+'">'+_name+'</option>';
             }
 
             jTbl.find('.model').each(function(){
@@ -386,9 +387,17 @@ function display_task_reactions(reactions)
 function load_reaction(reaction_id)
 {
     console.log('load_reaction->');
+    if (isNaN(reaction_id))
+    {
+        alert('An error occurred when loading the reaction');
+        console.log('load_reaction-> reaction_id isNaN:'+reaction_id);
+        return false;
+    }
+	NProgress.start();
+
     get_reaction_structure(reaction_id).done(function (data, textStatus, jqXHR){
 
-        console.log(data);
+        NProgress.done();
         $('#reaction_id').val(reaction_id);
 
         try {
@@ -498,11 +507,7 @@ function check_modelling_status(task_id)
 
     get_task_status(task_id).done(function (data, textStatus, jqXHR){
 
-		try{
-			var status = data['task_status'];
-		}catch(err){var status=undefined}
-
-		if (status==MODELLING_DONE)
+    	if (data==MODELLING_DONE)
 		{
 			clearInterval(TAMER_ID);
 			load_modelling_results(task_id);
@@ -545,16 +550,24 @@ function display_modelling_results(results)
     var jTbl = $("#results-tbody");
     jTbl.empty();
     var str = '';
-    for (var i=0;i<results.length;i++)
+    for (var i=0;i<results.length; i++)
     {
-        var _r = results[i];
+        var result = results[i];
+        r_id = result.reaction_id;
+        var reaction_results = result.results;
         str+='<tr>';
-        str+='<td>'+(i+1)+'</td>';
-        str+='<td>'+_r.value1+'</td>';
-        str+='<td>'+_r.value2+'</td>';
-        str+='<td>'+_r.value3+'</td>';
-        str+='</tr>';
+        str+='<td rowspan="'+reaction_results.length+'">'+(i+1)+'</td>';
+
+        for (var j=0;j<reaction_results.length;j++)
+        {
+            _res = reaction_results[j];
+            str+='<td>'+_res.model+'</td>';
+            str+='<td>'+_res.param+'</td>';
+            str+='<td>'+_res.value+'</td>';
+            str+='</tr>';
+        }
     }
+
     jTbl.append(str);
     $("#results-pnl").show("normal");
 }

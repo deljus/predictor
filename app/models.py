@@ -49,12 +49,19 @@ class Results(db.Entity):
     model = Required("Models")
 
 
+class AppDomains(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    hash = Required(str)
+    model = Set("Models")
+
+
 class Models(db.Entity):
     id = PrimaryKey(int, auto=True)
     name = Required(unicode)
     chemicals = Set(Chemicals)
     results = Set(Results)
-    app_domains = Set(AppDomains)
+    is_reaction = Required(bool, default=False)
+    app_domains = Set("AppDomains")
 
 
 class Solvents(db.Entity):
@@ -68,12 +75,6 @@ class Solventsets(db.Entity):
     amount = Required(float)
     solvent = Required(Solvents)
     chemical = Required(Chemicals)
-
-
-class AppDomains(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    hash = Required(str)
-    model = Set(Models)
 
 
 sql_debug(True)
@@ -112,7 +113,6 @@ class PredictorDataBase:
 
         task = Tasks(user=user, create_date=int(time.time()))
         commit()
-        print('insert_task->task_id='+str(task.id))
         return task.id
 
     @db_session
@@ -258,6 +258,19 @@ class PredictorDataBase:
         else:
             return False
 
+
+    @db_session
+    def update_reaction_result(self, reaction_id, model_id, param, value):
+        '''
+        функция записывает в базу ввведенные пользователем данные для моделирования
+        :return:
+        '''
+        reaction = Chemicals.get(id=reaction_id)
+        model = Models.get(id=model_id)
+        if reaction and model:
+            Results(chemical=reaction, model=model, attrib=param, value=value)
+
+
     @db_session
     def get_reactions_by_task(self, task_id):
         '''
@@ -278,6 +291,7 @@ class PredictorDataBase:
         else:
             return None
 
+
     @db_session
     def get_results_by_task(self, task_id):
         '''
@@ -285,16 +299,30 @@ class PredictorDataBase:
         :param task_id(str): ID задачи
         :return: Результаты моделирования
         '''
+
+########################
+
         t = Tasks.get(id=task_id)
         if t:
-            out = {}
-            for x in t.chemicals:
-                out[x.id] = defaultdict(dict)
-                for y in x.results:
-                    out[x.id][y.model.name][y.attrib] = y.value
-            return out
-        else:
-            return None
+            for reaction in t.chemicals:
+                for _m in select(m for m in Models):
+                    result = Results(chemical=reaction, model=_m, attrib='logC', value=111)
+
+###########################
+
+        out = []
+        t = Tasks.get(id=task_id)
+        if t:
+            for r in t.chemicals:
+                result_arr = []
+                for res in r.results:
+                    result_arr.append(dict(
+                                    model=res.model.name,
+                                    param=res.attrib,
+                                    value=res.value))
+                out.append(dict(reaction_id=r.id, results=result_arr))
+        return out
+
 
     @db_session
     def get_solvents(self):
@@ -311,8 +339,8 @@ class PredictorDataBase:
         функция возвращает список доступных моделей
         :return: список моделей
         '''
-        query = select((x.id,x.name) for x in Models)
-        return [{'id': x, 'name': y} for x, y in query]
+        query = select((x.id,x.name, x.is_reaction) for x in Models)
+        return [{'id': x, 'name': y, 'is_reaction': z} for x, y, z in query]
 
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -336,6 +364,31 @@ def import_solvents():
     file.close()
 
 
+@db_session
+def import_models():
+    file = open(os.path.join(os.path.dirname(__file__), "import_data/models.txt"), "r")
+    for _line in file.readlines():
+        try:
+            arr = _line.split("\t")
+            _name = arr[0]
+            _hash = arr[1].strip(' \t\n\r')
+            _flag = arr[2].strip(' \t\n\r')
+            model = Models.get(name=_name)
+            hash = AppDomains.get(hash=_hash)
+            if not model and not hash:
+                hash = AppDomains(hash=_hash)
+                model = Models(name=_name)
+                if _flag == '1':
+                    model.is_reaction = True
+                hash.model = model
+
+        except:
+            print('import_solvents->', sys.exc_info()[0])
+            pass
+    file.close()
+
+
 import_solvents()
+import_models()
 
 

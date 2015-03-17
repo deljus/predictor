@@ -42,7 +42,7 @@
 <br/>
         <input type="button" onclick="return set_task_status($('#task_id').val(),MAPPING_DONE)" value="DEBUG: map реакцию"/>
 <input type="button" onclick="return set_task_status($('#task_id').val(),MODELLING_DONE)" value="DEBUG: modelling  done"/>
- <input type="button" onclick="return load_task_reactions( '1' )" value="DEBUG: load реакции"/>
+ <input type="button" onclick="return load_task_reactions( '3' )" value="DEBUG: load реакции"/>
     </div>
 
     <div id="reactions-pnl" style="display:none">
@@ -71,10 +71,10 @@
         <table class="table table-striped">
             <thead>
                 <tr>
-                    <th>№</th>
-                    <th>Value 1</th>
-                    <th>Value 2</th>
-                    <th>Value 3</th>
+                    <th>Reaction</th>
+                    <th>Model</th>
+                    <th>Parameter</th>
+                    <th>Value</th>
                 </tr>
             </thead>
             <tbody id="results-tbody"></tbody>
@@ -82,7 +82,7 @@
     </div>
 </div>
 
-<input id="task_id" type="hidden" value="111"/>
+<input id="task_id" type="hidden" value=""/>
 <input id="reaction_id" type="hidden" value=""/>
 
 
