@@ -233,7 +233,7 @@ class PredictorDataBase:
             return False
 
     @db_session
-    def update_reaction_conditions(self, reaction_id, temperature=None, solvent=None, model=None):
+    def update_reaction_conditions(self, reaction_id, temperature=None, solvent=None, models=None):
         '''
         функция записывает в базу ввведенные пользователем данные для моделирования
         :return:
@@ -249,8 +249,8 @@ class PredictorDataBase:
                     db_solvent = Solvents.get(id=int(s))
                     if db_solvent:
                         Solventsets(solvent=db_solvent, chemical=c)
-            if model:
-                for k in model:
+            if models:
+                for k in models:
                     m = Models.get(id=int(k))
                     if m:
                         c.models.add(m)

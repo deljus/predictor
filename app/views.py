@@ -117,10 +117,10 @@ class ReactionAPI(Resource):
         _parser.add_argument('solvent', type=str)
         _parser.add_argument('model', type=str)
         args = _parser.parse_args()
-        m = args['model'].split(',')
+        m = args['models'].split(',')
         t = args['temperature']
         s = args['solvent'].split(',')
-        pdb.update_reaction_conditions(reaction_id, temperature=t, solvent=s, model=m)
+        pdb.update_reaction_conditions(reaction_id, temperature=t, solvent=s, models=m)
         return reaction_id, 201
 
 class ReactionListAPI(Resource):
