@@ -20,7 +20,8 @@
 # обновление реакции
 #       url:  "http://server:port/reaction/<reaction_id>"
 #       method: PUT
-#       parameters: {'temperature': <FLOAT>, 'solvent': <SOLVENT>}
+#       parameters: {'temperature': <FLOAT,OPT>, 'solvent': <SOLVENT,OPT>, 'model':<STR,OPT>}
+#!!! model передается в виде строки id моделей через зпт "1,2,3"
 
 # обновление результатов моделирования
 #       url:  "http://server:port/reaction_result/<reaction_id>"
