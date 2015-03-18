@@ -195,7 +195,7 @@ class PredictorDataBase:
             return dict(structure=c.structure.structure,
                         temperature=c.temperature,
                         models={y.id: y.name for y in c.models},
-                        solvents={y.id: y.amount for y in c.solvents})
+                        solvents={y.id: y.name for y in c.solvents})
         else:
             return None
 
@@ -238,25 +238,27 @@ class PredictorDataBase:
         функция записывает в базу ввведенные пользователем данные для моделирования
         :return:
         '''
-        c = Chemicals.get(id=reaction_id)
-        if c:
-            if temperature:
-                c.temperature = temperature
-            if solvent:
-                for x in c.solvents:  # очистка старых растворителей.
-                    x.delete()
-                for s in solvent:  # новые данные по растворителям
-                    db_solvent = Solvents.get(id=int(s))
-                    if db_solvent:
-                        Solventsets(solvent=db_solvent, chemical=c)
-            if models:
-                for k in models:
-                    m = Models.get(id=int(k))
-                    if m:
-                        c.models.add(m)
-            return True
-        else:
-            return False
+        try:
+            c = Chemicals.get(id=reaction_id)
+            if c:
+                if temperature:
+                    c.temperature = temperature
+                if solvent:
+                    for x in c.solvents:  # очистка старых растворителей.
+                        x.delete()
+                    for s in solvent:  # новые данные по растворителям
+                        db_solvent = Solvents.get(id=int(s))
+                        if db_solvent:
+                            Solventsets(solvent=db_solvent, chemical=c)
+                if models:
+                    for k in models:
+                        m = Models.get(id=int(k))
+                        if m:
+                            c.models.add(m)
+                return True
+        except:
+            print('update_reaction_conditions->', sys.exc_info()[0])
+        return False
 
 
     @db_session
@@ -284,8 +286,8 @@ class PredictorDataBase:
             for x in t.chemicals:
                 arr.append(dict(reaction_id=x.id,
                                 temperature=x.temperature,
-                                models={m.id: m.name for m in x.models},
-                                solvents={s.id: s.amount for s in x.solvents},
+                                models=[dict(id=x.id, name=x.name) for x in x.models],
+                                solvents=[dict(id=x.id, name=x.name) for x in x.solvents.solvent],
                                 errors={}))
             return arr
         else:
@@ -316,10 +318,10 @@ class PredictorDataBase:
             for r in t.chemicals:
                 result_arr = []
                 for res in r.results:
-                    result_arr.append(dict(
-                                    model=res.model.name,
-                                    param=res.attrib,
-                                    value=res.value))
+                    result_arr.append(dict(reaction_id=r.id,
+                                           model=res.model.name,
+                                           param=res.attrib,
+                                           value=res.value))
                 out.append(dict(reaction_id=r.id, results=result_arr))
         return out
 

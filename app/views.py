@@ -2,13 +2,15 @@
 from flask import render_template
 from app import app
 from flask.ext.restful import reqparse, abort, Api, Resource
-import time
-import hashlib
+
 import sys
 import os
 from app.models import PredictorDataBase as pdb
-from random import randint
 from flask import (request, render_template, jsonify)
+
+import requests
+import json
+from xml.dom.minidom import parse, parseString
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -44,13 +46,14 @@ REQ_MODELLING   = 4
 LOCK_MODELLING  = 5
 MODELLING_DONE  = 6
 
-import requests
-import json
-from xml.dom.minidom import parse, parseString
+WEBSERVICES_SERVER_NAME = "http://localhost:8080/webservices"
+WEBSERVICES = {"molconvertws": WEBSERVICES_SERVER_NAME+"/rest-v0/util/calculate/molExport"}
+
+
 
 def parse_file(file_path):
     try:
-        url="http://localhost:8080/webservices/rest-v0/util/calculate/stringMolExport"
+        url="webservices/rest-v0/util/calculate/stringMolExport"
         file_str = open('c://temp//1.rdf', 'r').read()
         conversionOptions = {
             "structure": file_str,
@@ -115,11 +118,15 @@ class ReactionAPI(Resource):
         _parser = reqparse.RequestParser()
         _parser.add_argument('temperature', type=str)
         _parser.add_argument('solvent', type=str)
-        _parser.add_argument('model', type=str)
+        _parser.add_argument('models', type=str)
         args = _parser.parse_args()
-        m = args['models'].split(',')
+        m = args['models']
+        if m:
+            m = m.split(',')
         t = args['temperature']
-        s = args['solvent'].split(',')
+        s = args['solvent']
+        if s:
+            s = s.split(',')
         pdb.update_reaction_conditions(reaction_id, temperature=t, solvent=s, models=m)
         return reaction_id, 201
 
@@ -158,10 +165,20 @@ class TaskReactionsAPI (Resource):
 
 class ModelListAPI(Resource):
     def get(self):
-        _parser = reqparse.RequestParser()
-        _parser.add_argument('hash', type=str)
-        args = _parser.parse_args()
-        return pdb.get_models(model_hash=args['hash'])
+        try:
+            _parser = reqparse.RequestParser()
+            _parser.add_argument('model_hash', type=str)
+            args = _parser.parse_args()
+            model_hash = args['model_hash']
+        except:
+            model_hash = None
+            print("ModelListAPI->get:", sys.exc_info()[0])
+        models = pdb.get_models(model_hash=model_hash)
+        print(models)
+        return models, 201
+
+
+
 
     def post(self):
         _parser = reqparse.RequestParser()
@@ -187,7 +204,7 @@ class TaskModellingAPI(Resource):
         _parser = reqparse.RequestParser()
         _parser.add_argument('task_reaction_ids', type=str)
         args = _parser.parse_args()
-        reaction_ids = args['task_reaction_ids'];
+        reaction_ids = args['task_reaction_ids']
         for r_id in reaction_ids.split(','):
             try:
                 _m = 'model_'+r_id
@@ -197,7 +214,18 @@ class TaskModellingAPI(Resource):
                 _parser.add_argument(_s, type=str)
                 _parser.add_argument(_t, type=str)
                 args = _parser.parse_args()
-                pdb.update_reaction_conditions(r_id, solvent=args[_s], temperature=args[_t], model=args[_m])
+                _m = args[_m]
+                _s = args[_s]
+                _t = args[_t]
+                print('model='+_m)
+                print('solvent='+_s)
+                print('temp='+_t)
+                if _m:
+                    _m = _m.split(',')
+                if _s:
+                    _s = _s.split(',')
+
+                pdb.update_reaction_conditions(r_id, solvent=_s, temperature=_t, models=_m)
                 _parser.remove_argument(_m)
                 _parser.remove_argument(_s)
                 _parser.remove_argument(_t)
@@ -212,14 +240,34 @@ class ModelAPI (Resource):
         return pdb.get_model(model_id)
 
 
+class ReactionImgAPI(Resource):
+    def get(self, reaction_id):
+        try:
+            url = WEBSERVICES['molconvertws']
+            print(url)
+            structure = pdb.get_reaction_structure(reaction_id)
+            print(structure)
+            conversionOptions = {
+                "structure": structure,
+                "parameters": "png"
+            }
+            headers = {'content-type': 'application/json'}
+            result = requests.post(url, data=json.dumps(conversionOptions), headers=headers)
+            return result.text, 201
+        except:
+            print('ReactionImgAPI->get->', sys.exc_info()[0])
+
+
+
 ##
 ## Actually setup the Api resource routing here
 ##
+api.add_resource(ReactionListAPI, '/reactions')
+
 api.add_resource(ReactionAPI, '/reaction/<reaction_id>')
 api.add_resource(ReactionStructureAPI, '/reaction_structure/<reaction_id>')
 api.add_resource(ReactionResultAPI, '/reaction_result/<reaction_id>')
-
-api.add_resource(ReactionListAPI, '/reactions')
+api.add_resource(ReactionImgAPI, '/reaction_img/<reaction_id>')
 
 # работа со статусами задач
 api.add_resource(TaskStatusAPI, '/task_status/<task_id>')

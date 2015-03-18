@@ -108,15 +108,16 @@ function put_reaction_structure(reaction_id, data)
     }); 	
 }
 
-function get_models()
+function get_models(model_hash)
 {
+    data = JSON.stringify({"model_hash": model_hash});
     console.log('get_models->');
     return $.ajax({
         "url": "/models"
         ,"type": "GET"
         ,"dataType": "json"
         ,"contentType": "application/json"
-        ,"data": ""
+        ,"data": data
     });
 }
 
@@ -292,22 +293,38 @@ function display_task_reactions(reactions)
     var reaction_ids = '';
     for (var i=0;i<reactions.length;i++)
     {
-        var _r = reactions[i];
-        var _r_id = _r.reaction_id;
+        var _reaction = reactions[i];
+        var _r_id = _reaction.reaction_id;
         try {
-            _t = _r.temperature;
+            _temperature = _reaction.temperature;
+            if (isEmpty(_temperature))
+                _temperature = '';
+        }catch(err){_temperature='';}
 
-            if (isEmpty(_t))
-                _t = '';
-        }catch(err){_t='';}
-        try {_m = _r.model}catch(err){_m='';}
-        try {_s = _r.solvent}catch(err){_s='';}
+        try {
+            _solvent_id = _reaction.solvents[0].id;
+        }catch(err){_solvent_id='';}
+
+        _s='';
 
         str+='<tr>';
         str+='<td class="reaction_id" reaction_id="'+_r_id+'">'+(i+1)+'</td>';
-        str+='<td><select class="model" name="model_'+_r_id+'" model="'+_m+'" ></select></td>';
-        str+='<td><select class="solvent" name="solvent_'+_r_id+'" solvent="'+_s+'" ></select></td>';
-        str+='<td><input  class="temperature" name="temperature_'+_r_id+'" type="text" value="'+_t+'" /></td>';
+        str+='<td>';
+        str+='<select class="model" name="model_'+_r_id+'">';
+        str+='<option value=""></option>';
+        try {
+            for (var j=0; j < _reaction.models.length; j++)
+            {
+                _m = _reaction.models[j];
+                str+='<option value="'+_m.id+'">'+_m.name+'</option>';
+            }
+        }
+        catch(err){console.log(err)}
+        str+='</select>';
+        str+='</td>';
+
+        str+='<td><select class="solvent" name="solvent_'+_r_id+'" solvent="'+_solvent_id+'" ></select></td>';
+        str+='<td><input  class="temperature" name="temperature_'+_r_id+'" type="text" value="'+_temperature+'" /></td>';
         str+='</tr>';
 
         if (reaction_ids=='')
@@ -326,8 +343,7 @@ function display_task_reactions(reactions)
 
     /*********** Loading models ***************/
     try {
-
-        get_models().done(function(data, textStatus, jqXHR){
+        get_models('').done(function(data, textStatus, jqXHR){
 
             var str = '<option value=""></option>';
             for (var i=0; i<data.length; i++)
@@ -339,9 +355,10 @@ function display_task_reactions(reactions)
 
             jTbl.find('.model').each(function(){
                 var jSelect = $(this);
-                jSelect.append(str);
-                jSelect.find('option[value='+jSelect.attr('model')+']').attr('selected','selected');
-
+                // если модели еще не были загружены
+                if (jSelect.find('option').length==1)
+                    jSelect.append(str);
+                //jSelect.find('option[value='+jSelect.attr('model')+']').attr('selected','selected');
             })
          })
     }
@@ -364,7 +381,6 @@ function display_task_reactions(reactions)
                 var jSelect = $(this);
                 jSelect.append(str);
                 jSelect.find('option[value='+jSelect.attr('solvent')+']').attr('selected','selected');
-
             })
          })
     }
@@ -465,6 +481,11 @@ function upload_reaction_form()
     NProgress.start();
     console.log('upload_reaction_form->');
     var task_id = $("#task_id").val();
+    if (isEmpty(task_id))
+    {
+        alert('Session task not defined');
+        return false;
+    }
     var data = {};
     $("#reactions-form").serializeArray().map(function(x){data[x.name] = x.value;});
     data = JSON.stringify(data);
@@ -480,6 +501,7 @@ function upload_reaction_form()
         start_modelling();
 
     }).fail(function(jqXHR, textStatus, errorThrown){
+        alert('Upload  reactions failure');
 		console.log('upload_reaction_forms->' + textStatus+ ' ' + errorThrown);
 		handleRequestError();
 	});
@@ -544,7 +566,16 @@ function load_modelling_results(task_id)
 }
 
 
+function load_reaction_img(reaction_id)
+{
+    return $.ajax({
+        "url": "/reaction_img/"+reaction_id
+        ,"type": "GET"
+        ,"dataType": "json"
+        ,"contentType": "application/json"
+    });
 
+}
 function display_modelling_results(results)
 {
     var jTbl = $("#results-tbody");
@@ -556,7 +587,7 @@ function display_modelling_results(results)
         r_id = result.reaction_id;
         var reaction_results = result.results;
         str+='<tr>';
-        str+='<td rowspan="'+reaction_results.length+'">'+(i+1)+'</td>';
+        str+='<td rowspan="'+reaction_results.length+'"><img class="reaction_img" reaction_id="'+r_id+'" src=""  alt="bla-bla"/></td>';
 
         for (var j=0;j<reaction_results.length;j++)
         {
@@ -570,6 +601,22 @@ function display_modelling_results(results)
 
     jTbl.append(str);
     $("#results-pnl").show("normal");
+    jTbl.find('.reaction_img').each(function(){
+
+        var jImg = $(this);
+        load_reaction_img( jImg.attr('reaction_id' )).done(function (data, textStatus, jqXHR){
+
+            try {
+                var response = JSON.parse(data)
+                var img_url = response['contentUrl'];
+                jImg.attr('src',img_url);
+            }
+            catch(err){console.log(err)}
+
+        })
+
+    });
+
 }
 
 //curl http://127.0.0.1:5000/tasks   -d "reaction_structure=<xml></xml>" -X POST
