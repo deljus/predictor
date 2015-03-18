@@ -112,7 +112,6 @@ class ReactionAPI(Resource):
         return pdb.get_reaction(reaction_id), 201
 
     def put(self, reaction_id):
-        print("ReactionAPI->put->")
         _parser = reqparse.RequestParser()
         _parser.add_argument('temperature', type=str)
         _parser.add_argument('solvent', type=str)
@@ -159,7 +158,10 @@ class TaskReactionsAPI (Resource):
 
 class ModelListAPI(Resource):
     def get(self):
-        return pdb.get_models()
+        _parser = reqparse.RequestParser()
+        _parser.add_argument('hash', type=str)
+        args = _parser.parse_args()
+        return pdb.get_models(model_hash=args['hash'])
 
     def post(self):
         _parser = reqparse.RequestParser()
@@ -205,6 +207,11 @@ class TaskModellingAPI(Resource):
         return 'OK'
 
 
+class ModelAPI (Resource):
+    def get(self, model_id):
+        return pdb.get_model(model_id)
+
+
 ##
 ## Actually setup the Api resource routing here
 ##
@@ -225,5 +232,8 @@ api.add_resource(TaskReactionsAPI, '/task_reactions/<task_id>')
 api.add_resource(TaskModellingAPI, '/task_modelling/<task_id>')
 
 api.add_resource(ModelListAPI, '/models')
+api.add_resource(ModelAPI, '/model/<model_id>')
+
+
 api.add_resource(SolventsAPI, '/solvents')
 

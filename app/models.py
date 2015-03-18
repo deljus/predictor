@@ -52,7 +52,7 @@ class Results(db.Entity):
 class AppDomains(db.Entity):
     id = PrimaryKey(int, auto=True)
     hash = Required(str)
-    model = Set("Models")
+    models = Set("Models")
 
 
 class Models(db.Entity):
@@ -334,13 +334,29 @@ class PredictorDataBase:
         return [{'id': x, 'name': y} for x, y in query]
 
     @db_session
-    def get_models(self):
+    def get_models(self, model_hash=None):
         '''
         функция возвращает список доступных моделей
         :return: список моделей
         '''
-        query = select((x.id,x.name, x.is_reaction) for x in Models)
-        return [{'id': x, 'name': y, 'is_reaction': z} for x, y, z in query]
+        if model_hash:
+            models = select(x.models for x in AppDomains if x.hash == model_hash)
+            models = [(x.id, x.name, x.is_reaction) for x in models]
+        else:
+            models = select((x.id, x.name, x.is_reaction) for x in Models)
+
+        return [{'id': x, 'name': y, 'is_reaction': z} for x, y, z in models]
+
+
+    @db_session
+    def get_model(self, model_id):
+        '''
+        функция возвращает список доступных моделей
+        :return: список моделей
+        '''
+        return Models.get(id=model_id)
+
+
 
 
     @db_session

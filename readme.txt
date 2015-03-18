@@ -32,6 +32,11 @@
 #       method: PUT
 #       parameters: {'reaction_structure': <STR>}
 
+# получение моделей
+#       url:  "http://server:port/models"
+#       method: GET
+#       parameters: {'hash':'<STR,OPTION>'}
+
 
 
 
