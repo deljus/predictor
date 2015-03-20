@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from flask import render_template
+from flask import render_template, url_for, redirect
 from app import app
 from flask.ext.restful import reqparse, abort, Api, Resource
 
@@ -17,8 +17,10 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 @app.route('/')
 @app.route('/index')
+@app.route('/home/')
 def index():
-    return render_template("index.html")
+    #return render_template("index.html")
+    return redirect(url_for('static', filename='index.html'))
 
 
 @app.route('/uploadajax', methods=['POST'])
@@ -244,12 +246,12 @@ class ReactionImgAPI(Resource):
     def get(self, reaction_id):
         try:
             url = WEBSERVICES['molconvertws']
-            print(url)
             structure = pdb.get_reaction_structure(reaction_id)
-            print(structure)
             conversionOptions = {
                 "structure": structure,
-                "parameters": "png"
+                "parameters": "png",
+                "width": 500,
+                "height": 150
             }
             headers = {'content-type': 'application/json'}
             result = requests.post(url, data=json.dumps(conversionOptions), headers=headers)

@@ -1,18 +1,92 @@
 var marvinSketcherInstance;
 
 $(document).ready(function handleDocumentReady (e) {
-	var p = MarvinJSUtil.getEditor("#sketch");
+	
+
+	MarvinJSUtil.getPackage("sketch").then(function (marvinNameSpace) {
+		marvinNameSpace.onReady(function () {
+			marvin = marvinNameSpace;
+		});
+	}, function () {
+		alert("Cannot retrieve marvin instance from iframe");
+	});
+	
+		
+	var p = MarvinJSUtil.getEditor("sketch");
 	p.then(function (sketcherInstance) {
 		marvinSketcherInstance = sketcherInstance;
 		initControl();
 	}, function (error) {
 		alert("Cannot retrieve sketcher instance from iframe:"+error);
 	});
+	
+	MarvinJSUtil.getPackage("#sketch").then(function (marvinNameSpace) {
+		marvinNameSpace.onReady(function () {
+			marvin = marvinNameSpace;
+		});
+	}, function () {
+		alert("Cannot retrieve marvin instance from iframe");
+	});
+		
 });
+
+var Progress = {}
+Progress.increase_progress = function(value){
+	
+	console.log('increase_progress->');
+	try {	
+		var jPrg= $('.progress div[role=progressbar]');
+		if (value)
+			var prc = value;
+		else
+		{
+			var prc = parseInt(jPrg.attr('aria-valuenow'));
+			if (prc>=90)
+				prc = 0;
+				
+			prc+=10;				
+		}
+		
+
+		jPrg.attr('aria-valuenow', prc);
+		jPrg.width(prc+'%').text(prc+'%');	
+	}
+	catch(err){
+		console.log(err);
+	}
+}
+
+Progress.start = function(){
+	$('.progress').show();
+	this.timer_id = setInterval(this.increase_progress, 1000);
+}
+
+Progress.done = function(){
+	clearInterval(this.timer_id);
+	this.increase_progress(100);
+	setTimeout(function(){$('.progress').hide()}, 1000);	
+} 
 
 function handleRequestError()
 {
-    NProgress.done();
+    Progress.done();
+}
+
+
+function select_mode(mode)
+{
+    switch(mode)
+    {
+        case 'file':
+
+            break;
+        case 'editor':
+            $('#editor-div').show(1000);
+            break;
+
+    }
+    $('#select-mode-div').hide(2000);
+
 }
 
 
@@ -158,10 +232,6 @@ var MOL_FORMAT = 'mrv';
 
 var TAMER_ID;
 
-// progress bar
-$(function() {
-  NProgress.configure({ parent: '#div-editor' });
-});
 /******************************************************/
 
 function initControl ()
@@ -172,9 +242,22 @@ function initControl ()
 	});
 }
 
+
+function hide_editor()
+{
+	$('#editor-div').hide();	
+}
+
+function hide_reactions()
+{
+	$('#reactions-div').hide();	
+}
+
 function upload_data()
 {
     console.log('upload_data->');
+	
+	$("#btn-upload-data").hide();
 
     var file = false;
     if (file)
@@ -203,13 +286,13 @@ function upload_data()
 
 function upload_task_file_data()
 {
-    NProgress.start();
+    Progress.start();
 	console.log('upload_task_file_data->');
 }
 
 function upload_task_draw_data(draw_data)
 {
-    NProgress.start();
+    Progress.start();
     console.log('upload_task_draw_data->');
     var data = JSON.stringify({"reaction_structure": draw_data});
 
@@ -269,7 +352,7 @@ function load_task_reactions(task_id)
 	
     get_reactions_by_task(task_id).done(function (data, textStatus, jqXHR){
 
-        NProgress.done();
+        Progress.done();
 
         console.log(data);
         try {
@@ -287,7 +370,7 @@ function display_task_reactions(reactions)
 {
     console.log('display_task_reactions->');
 	
-    var jTbl = $("#reactions-tbody");
+    var jTbl = $("#reactions-tbd");
     jTbl.empty();
     var str = '';
     var reaction_ids = '';
@@ -345,7 +428,7 @@ function display_task_reactions(reactions)
     try {
         get_models('').done(function(data, textStatus, jqXHR){
 
-            var str = '<option value=""></option>';
+            var str = '';
             for (var i=0; i<data.length; i++)
             {
                 var _id = data[i].id;
@@ -387,7 +470,7 @@ function display_task_reactions(reactions)
     catch (err){console.log('display_task_reactions->load models->'+err)}
 
 
-    $("#reactions-pnl").show("normal");
+    $("#reactions-div").show("normal");
 
     /*********** Add reaction save button to the editor ***************/
     var jso =  {
@@ -409,11 +492,11 @@ function load_reaction(reaction_id)
         console.log('load_reaction-> reaction_id isNaN:'+reaction_id);
         return false;
     }
-	NProgress.start();
+	Progress.start();
 
     get_reaction_structure(reaction_id).done(function (data, textStatus, jqXHR){
 
-        NProgress.done();
+        Progress.done();
         $('#reaction_id').val(reaction_id);
 
         try {
@@ -462,10 +545,10 @@ function upload_draw_reaction(data)
 	var reaction_id = $('#reaction_id').val();
 	if (reaction_id!='')
 	{
-	    NProgress.start();
+	    Progress.start();
 	    put_reaction_structure(reaction_id,data ).done(function (data, textStatus, jqXHR) {
 
-        NProgress.done();
+        Progress.done();
         alert('Reaction has been saved successfully');
 
     	}).fail(handleRequestError);
@@ -478,7 +561,7 @@ function upload_draw_reaction(data)
 
 function upload_reaction_form()
 {
-    NProgress.start();
+    Progress.start();
     console.log('upload_reaction_form->');
     var task_id = $("#task_id").val();
     if (isEmpty(task_id))
@@ -546,6 +629,7 @@ function check_modelling_status(task_id)
 function load_modelling_results(task_id)
 {
     console.log('load_modelling_results->');
+	
     $.ajax({
         "url": "/task_modelling/"+task_id
         ,"type": "GET"
@@ -554,7 +638,7 @@ function load_modelling_results(task_id)
         ,"data": ""
     }).done(function (data, textStatus, jqXHR){
 
-        NProgress.done();
+        Progress.done();
         console.log(data);
         try {
             display_modelling_results(data);
@@ -573,11 +657,17 @@ function load_reaction_img(reaction_id)
         ,"type": "GET"
         ,"dataType": "json"
         ,"contentType": "application/json"
+
     });
 
 }
 function display_modelling_results(results)
 {
+	// скроем редактор
+	hide_editor();
+	// скроем таблицу с реакциями
+	hide_reactions();
+		
     var jTbl = $("#results-tbody");
     jTbl.empty();
     var str = '';
@@ -600,10 +690,11 @@ function display_modelling_results(results)
     }
 
     jTbl.append(str);
-    $("#results-pnl").show("normal");
+    $("#results-div").show("normal");
     jTbl.find('.reaction_img').each(function(){
 
         var jImg = $(this);
+		/*
         load_reaction_img( jImg.attr('reaction_id' )).done(function (data, textStatus, jqXHR){
 
             try {
@@ -614,10 +705,36 @@ function display_modelling_results(results)
             catch(err){console.log(err)}
 
         })
+		*/
+		get_reaction_structure( jImg.attr('reaction_id') ).done(function(data, textStatus, jqXHR){
+			
+			var settings = {
+					'carbonLabelVisible' : false,
+					'cpkColoring' : true,
+					'implicitHydrogen' : false,
+					'width' : 400,
+					'height' : 100
+			};			
+			var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",settings);
+			jImg.attr('src',dataUrl);						
+		});
+
 
     });
 
 }
+
+/*
+				var settings = {
+						'carbonLabelVisible' : $("#chbx-carbonVis").is(':checked'),
+						'cpkColoring' : $("#chbx-coloring").is(':checked'),
+						'implicitHydrogen' : $("#implicittype").val(),
+						'width' : parseInt($("#w").val(), 10),
+						'height' : parseInt($("#h").val(), 10)
+				};
+				var dataUrl = marvin.ImageExporter.molToDataUrl($("#text").val(),"image/png",settings);
+				$("#image").attr("src", dataUrl);
+*/
 
 //curl http://127.0.0.1:5000/tasks   -d "reaction_structure=<xml></xml>" -X POST
 //curl http://127.0.0.1:5000/task/ce99375015b1ee7ac4d87bfee941296b   -d "task_status=0" -X GET
