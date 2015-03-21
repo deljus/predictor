@@ -73,7 +73,7 @@ def run():
                 res = fear.firstcgr(fearinput)
                 if not res:
                     rhash = fearinput['meta']['!reaction_center_hash_0'].split("'")[0][5:]
-                    models = serverget("models", {'hash': rhash})
+                    models = serverget("models", {'model_hash': rhash})
                     serverput("reaction/%s" % (i['id']), {'models': ','.join([str(x['id']) for x in models])})
             except:
                 pass

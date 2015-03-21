@@ -179,7 +179,10 @@ class ModelListAPI(Resource):
         print(models)
         return models, 201
 
-
+    def delete(self):
+        """TODO:
+        удалить модель по ее id. для чистки устаревших."""
+        pass
 
 
     def post(self):
