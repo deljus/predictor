@@ -156,7 +156,7 @@ class TaskStatusAPI (Resource):
     def put(self,task_id):
         args = parser.parse_args()
         task_status = args['task_status']
-        pdb.update_task_status(task_id,task_status)
+        pdb.update_task_status(task_id, task_status)
         return task_id, 201
 
 
