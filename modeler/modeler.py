@@ -53,12 +53,11 @@ def main():
 
     for x in toattach:
         model = models.MODELS[x]
-        serverpost("models", {'name': x, 'is_reaction': model.is_reation(), 'hashes': model.gethashes()})
+        serverpost("models", {'name': x, 'desc': model.getdesc(),
+                              'is_reaction': model.is_reation(), 'hashes': model.gethashes()})
 
     for x in todelete:
         serverdel("models", {'id': registeredmodels[x]})
-
-
 
     for i in models.MODELS.values():
         print(i.getdesc())

@@ -167,29 +167,34 @@ class TaskReactionsAPI (Resource):
 
 class ModelListAPI(Resource):
     def __init__(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('hash', type=str)
-        parser.add_argument('id', type=int)
-        parser.add_argument('name', type=str)
-        parser.add_argument('hashes', type=str, action='append')
-        parser.add_argument('is_reaction', type=bool)
+        parserget = reqparse.RequestParser()
+        parserget.add_argument('hash', type=str)
 
-        self.parser = parser
+        parserdel = reqparse.RequestParser()
+        parserdel.add_argument('id', type=int)
+
+        parserpost = reqparse.RequestParser()
+        parserpost.add_argument('name', type=str)
+        parserpost.add_argument('desc', type=str)
+        parserpost.add_argument('hashes', type=str, action='append')
+        parserpost.add_argument('is_reaction', type=bool)
+
+        self.parser = dict(get=parserget, post=parserpost, delete=parserdel)
 
     def get(self):
-        args = self.parser.parse_args()
+        args = self.parser['get'].parse_args()
         models = pdb.get_models(model_hash=args['hash'])
         return models, 201
 
     def delete(self):
         """TODO:
         удалить модель по ее id."""
-        args = self.parser.parse_args()
+        args = self.parser['delete'].parse_args()
         model_id = args['id']
         pdb.delete_model(model_id)
 
     def post(self):
-        args = self.parser.parse_args()
+        args = self.parser['post'].parse_args()
         model_id = pdb.insert_model(args['name'], args['is_reaction'], args['hashes'])
         return model_id, 201
 
