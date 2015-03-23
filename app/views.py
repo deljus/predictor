@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from flask import render_template, url_for, redirect
 from app import app
-from flask.ext.restful import reqparse, abort, Api, Resource
+from flask.ext.restful import reqparse, abort, Api, Resource, fields, marshal
 
 import sys
 import os
@@ -166,32 +166,31 @@ class TaskReactionsAPI (Resource):
 
 
 class ModelListAPI(Resource):
+    def __init__(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('hash', type=str)
+        parser.add_argument('id', type=int)
+        parser.add_argument('name', type=str)
+        parser.add_argument('hashes', type=str, action='append')
+        parser.add_argument('is_reaction', type=bool)
+
+        self.parser = parser
+
     def get(self):
-        try:
-            _parser = reqparse.RequestParser()
-            _parser.add_argument('model_hash', type=str)
-            args = _parser.parse_args()
-            model_hash = args['model_hash']
-        except:
-            model_hash = None
-            print("ModelListAPI->get:", sys.exc_info()[0])
-        models = pdb.get_models(model_hash=model_hash)
-        print(models)
+        args = self.parser.parse_args()
+        models = pdb.get_models(model_hash=args['hash'])
         return models, 201
 
     def delete(self):
         """TODO:
-        удалить модель по ее id. для чистки устаревших."""
-        pass
-
+        удалить модель по ее id."""
+        args = self.parser.parse_args()
+        model_id = args['id']
+        pdb.delete_model(model_id)
 
     def post(self):
-        _parser = reqparse.RequestParser()
-        _parser.add_argument('name', type=str)
-        _parser.add_argument('hash', type=str)
-        _parser.add_argument('is_reaction', type=bool)
-        args = _parser.parse_args()
-        model_id = pdb.insert_model(name=args['name'], hash=args['hash'])
+        args = self.parser.parse_args()
+        model_id = pdb.insert_model(args['name'], args['is_reaction'], args['hashes'])
         return model_id, 201
 
 

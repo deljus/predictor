@@ -3,8 +3,26 @@ import pkgutil
 import sched
 import time
 import modelset as models
+import requests
 
 __author__ = 'stsouko'
+SERVER = "http://130.79.41.97"
+#SERVER = "http://127.0.0.1"
+PORT = 5000
+
+
+def serverget(url, params):
+    q = requests.get("%s:%d/%s" % (SERVER, PORT, url), params=params)
+    return q.json()
+
+
+def serverdel(url, params):
+    requests.delete("%s:%d/%s" % (SERVER, PORT, url), params=params)
+
+
+def serverpost(url, params):
+    q = requests.post("%s:%d/%s" % (SERVER, PORT, url), data=params)
+    return q.json()
 
 
 def run():
@@ -12,7 +30,7 @@ def run():
     # It is an .egg-friendly alternative to os.listdir() walking.
     #for mloader, pname, ispkg in pkgutil.iter_modules(models.__path__):
     #    __import__('modelset.%s' % pname)
-    print(models.MODELS)
+    pass
 
 
 class PeriodicScheduler(object):
@@ -28,6 +46,24 @@ class PeriodicScheduler(object):
 
 
 def main():
+    registeredmodels = {x['name']: x['id'] for x in serverget("models", None)}
+
+    todelete = set(registeredmodels).difference(models.MODELS)
+    toattach = set(models.MODELS).difference(registeredmodels)
+
+    for x in toattach:
+        model = models.MODELS[x]
+        serverpost("models", {'name': x, 'is_reaction': model.is_reation(), 'hashes': model.gethashes()})
+
+    for x in todelete:
+        serverdel("models", {'id': registeredmodels[x]})
+
+
+
+    for i in models.MODELS.values():
+        print(i.getdesc())
+        print(i.getresult([]))
+
     #periodic_scheduler = PeriodicScheduler()
     #periodic_scheduler.setup(INTERVAL, run)
     #periodic_scheduler.run()

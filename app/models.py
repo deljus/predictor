@@ -358,20 +358,30 @@ class PredictorDataBase:
         '''
         return Models.get(id=model_id)
 
+    def insert_model(self, name, is_reaction, reaction_hashes):
+        with db_session:
+            model = Models(name=name, is_reaction=is_reaction)
+            if reaction_hashes:
+                for x in reaction_hashes:
+                    reaction_hash = AppDomains.get(hash=x)
+                    if not reaction_hash:
+                        reaction_hash = AppDomains(hash=x)
+                    model.app_domains.add(reaction_hash)
 
-
-
-    @db_session
-    def insert_model(self, name, is_reaction, reaction_hash=None):
-        model = Models(name=name, is_reaction=is_reaction)
-        if reaction_hash:
-            domain = AppDomains(hash=reaction_hash, model=model)
-        else:
-            domain = None
-        commit()
         return model.id
 
+    @db_session
+    def delete_model(self, model_id):
+        model = Models.get(id=model_id)
+        if model:
+            reaction_hashes = model.app_domains.copy()
+            model.delete()
 
+            for x in reaction_hashes:
+                if not x.models:
+                    x.delete()
+
+        return True
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -418,7 +428,7 @@ def import_models():
     file.close()
 
 
-import_solvents()
-import_models()
+#import_solvents()
+#import_models()
 
 

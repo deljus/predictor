@@ -3,8 +3,31 @@ __author__ = 'stsouko'
 from modelset import register_model
 
 
-class Testmodel():
+class Model():
     def __init__(self):
         print("started")
 
-register_model('tesmodelname', Testmodel)
+    def getdesc(self):
+        desc = 'this model nothing do, but return something'
+        return desc
+
+    def getname(self):
+        name = 'tesmodelname'
+        return name
+
+    def is_reation(self):
+        return 1
+
+    def gethashes(self):
+        hashlist = ['1212.1212', '555.666']
+        return hashlist
+
+    def getresult(self, chemical):
+        """do some operations on chemical"""
+
+        result = dict(key1='value1', key2='value2')
+        return result
+
+
+model = Model()
+register_model(model.getname(), model)
