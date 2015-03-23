@@ -36,7 +36,7 @@ def uploadfile():
             # создадим задачу
             task_id = pdb.insert_task()
             parse_file(task_id, file_path)
-        return task_id
+        return task_id, 201
     except:
         print('uploadfile->post->', sys.exc_info()[0])
         return 'ERROR', 401
@@ -61,18 +61,19 @@ WEBSERVICES = {"molconvertws": WEBSERVICES_SERVER_NAME+"/rest-v0/util/calculate/
 
 def parse_file(task_id, file_path):
     try:
-        url = WEBSERVICES_SERVER_NAME + "rest-v0/util/calculate/stringMolExport"
-        file_str = open(file_path, 'r').read()
-        conversionOptions = {
-            "structure": file_str,
-            "parameters": "mrv"
-        }
-        headers = {'content-type': 'application/json'}
-        result = requests.post(url, data=json.dumps(conversionOptions), headers=headers)
-        xmldoc = parseString(result.text)
-        reaction_list = xmldoc.getElementsByTagName('MDocument')
-        for _reaction in reaction_list:
-            print(_reaction.text())
+        pass
+        # url = WEBSERVICES_SERVER_NAME + "rest-v0/util/calculate/stringMolExport"
+        # file_str = open(file_path, 'r').read()
+        # conversionOptions = {
+        #     "structure": file_str,
+        #     "parameters": "mrv"
+        # }
+        # headers = {'content-type': 'application/json'}
+        # result = requests.post(url, data=json.dumps(conversionOptions), headers=headers)
+        # xmldoc = parseString(result.text)
+        # reaction_list = xmldoc.getElementsByTagName('MDocument')
+        # for _reaction in reaction_list:
+        #     print(_reaction.text())
 
     except:
         print('parse_file->', sys.exc_info()[0])
@@ -189,8 +190,10 @@ class ModelListAPI(Resource):
 
     def get(self):
         args = self.parser['get'].parse_args()
-        models = pdb.get_models(model_hash=args['hash'])
+        model_hash = args['hash']
+        models = pdb.get_models(model_hash=model_hash)
         return models, 201
+
 
     def delete(self):
         """TODO:
@@ -201,7 +204,7 @@ class ModelListAPI(Resource):
 
     def post(self):
         args = self.parser['post'].parse_args()
-        model_id = pdb.insert_model(args['name'], args['is_reaction'], args['hashes'])
+        model_id = pdb.insert_model(name=args['name'], is_reaction=args['is_reaction'], reaction_hashes=args['hashes'])
         return model_id, 201
 
 
