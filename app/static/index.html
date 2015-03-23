@@ -9,14 +9,39 @@
       <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
       <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
     <![endif]-->
-
-
-    <script src="js/lib/jquery-1.9.1.min.js"></script>
-    <script src="gui/lib/promise-0.1.1.min.js"></script>
+ 
+	<script src="js/lib/jquery-1.9.1.min.js"></script>
+    <script src="gui/lib/promise-1.0.0.min.js"></script>
     <script src="js/marvinjslauncher.js"></script>
+   
     <script src="js/predictor.js"></script>
-
-
+    
+	<link href="css/jasny-bootstrap.min.css" rel="stylesheet">
+	<script src="js/jasny-bootstrap.min.js"></script>    
+ 
+ <style>   
+ 
+     .btn-file {
+    position: relative;
+    overflow: hidden;
+    }
+    .btn-file input[type=file] {
+    position: absolute;
+    top: 0;
+    right: 0;
+    min-width: 100%;
+    min-height: 100%;
+    font-size: 100px;
+    text-align: right;
+    filter: alpha(opacity=0);
+    opacity: 0;
+    outline: none;
+    background: white;
+    cursor: inherit;
+    display: block;
+    }
+	
+	</style>
   </head>
   <body>
 	<div class="wrapper container">
@@ -74,12 +99,39 @@
                     <div class="row">
                     
                         <div class="col-md-14">
+
                             <div class="resizable"  id="editor-div" style="display:none">
-                                <iframe src="/static/editorws.html" id="sketch" data-toolbars="reporting" class="sketcher-frame"></iframe>
+
+                                <iframe src="/static/editorws.html" id="sketch" data-toolbars="reaction" class="sketcher-frame"></iframe>
+
+                            
                                 <div style="text-align:center">
                                 	<button class="btn btn-primary" id="btn-upload-data">Upload reaction</button>
                                 </div>
+ 
                             </div>
+                            
+                            <div id="file-upload-div" style="display:none" style="text-align:center">
+                                 <form id="upload-file-form" method="post" enctype="multipart/form-data">
+                        
+ 
+                                
+                                     <div style="margin-bottom:4px;margin-top:4px;">
+                                       <!-- <input name="file" id="file" type="file" > -->
+<div class="fileinput fileinput-new input-group" data-provides="fileinput">
+  <div class="form-control" data-trigger="fileinput"><i class="glyphicon glyphicon-file fileinput-exists"></i> <span class="fileinput-filename"></span></div>
+  <span class="input-group-addon btn btn-default btn-file"><span class="fileinput-new">Select file</span><span class="fileinput-exists">Change</span><input type="file" id="file" name="file"></span>
+  <a href="#" class="input-group-addon btn btn-default fileinput-exists" data-dismiss="fileinput">Remove</a>
+</div>
+                                        
+                                     </div>
+                                     <div style="margin-bottom:4px;margin-top:4px;">
+                                        <button id="upload-file-btn" type="button" class="btn btn-primary">Upload file</button>
+                                     </div>
+                                 </form>   
+                            </div>                         
+
+                         	
                         </div>
                         
                         <div class="col-md-10">
@@ -89,7 +141,7 @@
                                 <form id="reactions-form">
                                     <input id="task_id" type="hidden" value=""/>
                                     <input id="reaction_id" type="hidden" value=""/>
-                                    <table id="reactions-tbl" class="table table-hover">
+                                    <table id="reactions-tbl" class="table table-hover table-bordered">
                                         <thead>
                                         <tr>
                                             <th>№</th>
@@ -113,10 +165,10 @@
                     <div class="row">                    
                         <div id="results-div" style="display:none">
                             <h3>Modelling results</h3>
-                            <table class="table table-striped" id="results-tbl">
+                            <table class="table table-striped table-bordered" id="results-tbl">
                                 <thead>
                                     <tr>
-                                        <th style="width:300px;">Reaction</th>
+                                        <th>Reaction</th>
                                         <th>Model</th>
                                         <th>Parameter</th>
                                         <th>Value</th>
@@ -125,9 +177,9 @@
                                 <tbody id="results-tbody"></tbody>
                             </table>
                             <div style="text-align:center">
-                                <button onclick="alert('GUI 1')" class="btn btn-primary">Export result(MS Excel)</button>
-                                <button onclick="alert('GUI 1')" class="btn btn-primary">Export result(CSV)</button>
-                                <button onclick="alert('GUI 1')" class="btn btn-primary">Export result(PDF)</button>
+                                <button onclick="alert('GUI 1')" class="btn btn-primary">Export (MS Excel)</button>
+                                <button onclick="alert('GUI 1')" class="btn btn-primary">Export (CSV)</button>
+                                <button onclick="alert('GUI 1')" class="btn btn-primary">Export (PDF)</button>
                             </div>                            
                         </div>                                                                 
 					</div>

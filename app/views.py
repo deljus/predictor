@@ -25,16 +25,22 @@ def index():
 
 @app.route('/uploadajax', methods=['POST'])
 def uploadfile():
-    if request.method == 'POST':
+    try:
         files = request.files['file']
-        if files and allowed_file(files.filename):
+        if files:
             filename = files.filename
-            updir = os.path.join(basedir, 'upload/')
+            updir = os.path.join(basedir, 'upload')
             file_path = os.path.join(updir, filename)
+            # сохраним файл на сервере
             files.save(file_path)
-            parse_file(file_path)
-            return 'OK'
-    return 'ERROR'
+            # создадим задачу
+            task_id = pdb.insert_task()
+            parse_file(task_id, file_path)
+        return task_id
+    except:
+        print('uploadfile->post->', sys.exc_info()[0])
+        return 'ERROR', 401
+
 
 api = Api(app)
 pdb = pdb()
@@ -53,10 +59,10 @@ WEBSERVICES = {"molconvertws": WEBSERVICES_SERVER_NAME+"/rest-v0/util/calculate/
 
 
 
-def parse_file(file_path):
+def parse_file(task_id, file_path):
     try:
-        url="webservices/rest-v0/util/calculate/stringMolExport"
-        file_str = open('c://temp//1.rdf', 'r').read()
+        url = WEBSERVICES_SERVER_NAME + "rest-v0/util/calculate/stringMolExport"
+        file_str = open(file_path, 'r').read()
         conversionOptions = {
             "structure": file_str,
             "parameters": "mrv"

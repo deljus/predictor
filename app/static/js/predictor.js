@@ -1,24 +1,10 @@
 var marvinSketcherInstance;
 
 $(document).ready(function handleDocumentReady (e) {
-	
-
-	MarvinJSUtil.getPackage("sketch").then(function (marvinNameSpace) {
-		marvinNameSpace.onReady(function () {
-			marvin = marvinNameSpace;
-		});
-	}, function () {
-		alert("Cannot retrieve marvin instance from iframe");
-	});
-	
-		
-	var p = MarvinJSUtil.getEditor("sketch");
-	p.then(function (sketcherInstance) {
+	initControl();
+	MarvinJSUtil.getEditor("#sketch").then(function (sketcherInstance) {
 		marvinSketcherInstance = sketcherInstance;
-		initControl();
-	}, function (error) {
-		alert("Cannot retrieve sketcher instance from iframe:"+error);
-	});
+	},function (error) {});
 	
 	MarvinJSUtil.getPackage("#sketch").then(function (marvinNameSpace) {
 		marvinNameSpace.onReady(function () {
@@ -26,9 +12,11 @@ $(document).ready(function handleDocumentReady (e) {
 		});
 	}, function () {
 		alert("Cannot retrieve marvin instance from iframe");
-	});
-		
+	});	
+
 });
+
+
 
 var Progress = {}
 Progress.increase_progress = function(value){
@@ -78,14 +66,15 @@ function select_mode(mode)
     switch(mode)
     {
         case 'file':
-
+			$('#file-upload-div').show(1000);	
+			
             break;
         case 'editor':
             $('#editor-div').show(1000);
             break;
 
     }
-    $('#select-mode-div').hide(2000);
+    $('#select-mode-div').hide(1000);
 
 }
 
@@ -98,7 +87,8 @@ $(function() {
             alert('You have to select file');
             return false;
         }
-        var form_data = new FormData($('#upload-file')[0]);
+        var form_data = new FormData($('#upload-file-form')[0]);
+		//console.log(form_data)
         $.ajax({
             type: 'POST',
             url: '/uploadajax',
@@ -110,6 +100,9 @@ $(function() {
             success: function(data) {
                 alert('File has been uploaded successfully! ');
             },
+			error:function (data) {
+				console.log(data)
+			}
         });
     });
 });
@@ -237,8 +230,8 @@ var TAMER_ID;
 function initControl ()
 {
 	// get mol button
-	$("#btn-upload-data").on("click", function (e) {
-        upload_data();
+	$("#btn-upload-sketcher-data").on("click", function (e) {
+        upload_sketcher_data();
 	});
 }
 
@@ -253,22 +246,10 @@ function hide_reactions()
 	$('#reactions-div').hide();	
 }
 
-function upload_data()
+function upload_sketcher_data()
 {
-    console.log('upload_data->');
-	
-	$("#btn-upload-data").hide();
-
-    var file = false;
-    if (file)
-    {
-        upload_task_file_data();
-    }
-    else
-    {
 		marvinSketcherInstance.exportStructure(MOL_FORMAT).then(function(source) {
 
-			console.log(source);
 
             if (isMolEmpty(source))
             {
@@ -281,7 +262,6 @@ function upload_data()
 		}, function(error) {
 			alert("Molecule export failed:"+error);
 		});
-    }
 }
 
 function upload_task_file_data()
@@ -712,11 +692,16 @@ function display_modelling_results(results)
 					'carbonLabelVisible' : false,
 					'cpkColoring' : true,
 					'implicitHydrogen' : false,
-					'width' : 400,
+					'width' : 300,
 					'height' : 100
-			};			
-			var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",settings);
-			jImg.attr('src',dataUrl);						
+			};		
+			try {	
+				var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",settings);
+				jImg.attr('src',dataUrl);						
+			}
+			catch(err){
+				console.log(err);
+			}
 		});
 
 

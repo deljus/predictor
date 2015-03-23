@@ -1,7 +1,7 @@
 // Define the default location of webservices
 
 function getDefaultServicesPrefix() {
-	var servername = "http://127.0.0.1:8080";
+	var servername = "http://130.79.41.107:8080";
 	var webapp = "/webservices";
 	return servername + webapp;
 }
