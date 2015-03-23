@@ -341,14 +341,17 @@ class PredictorDataBase:
         функция возвращает список доступных моделей
         :return: список моделей
         '''
-        if model_hash:
-            models = select(x.models for x in AppDomains if x.hash == model_hash)
-            models = [(x.id, x.name, x.is_reaction) for x in models]
-        else:
-            models = select((x.id, x.name, x.is_reaction) for x in Models)
+        try:
+            if model_hash:
+                models = select(x.models for x in AppDomains if x.hash == model_hash)
+                models = [(x.id, x.name, x.is_reaction) for x in models]
+            else:
+                models = select((x.id, x.name, x.is_reaction) for x in Models)
 
-        return [{'id': x, 'name': y, 'is_reaction': z} for x, y, z in models]
-
+            return [{'id': x, 'name': y, 'is_reaction': z} for x, y, z in models]
+        except:
+            print('get_models->', sys.exc_info()[0])
+        return None
 
     @db_session
     def get_model(self, model_id):

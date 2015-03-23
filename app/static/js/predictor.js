@@ -139,26 +139,12 @@ function set_task_status(task_id, status)
 
 function get_task_status(task_id)
 {
-    console.log('get_task_status->'+status);
-    return $.ajax({
-        "url": "/task_status/"+task_id
-        ,"type": "GET"
-        ,"dataType": "json"
-        ,"contentType": "application/json"
-        ,"data": ""
-    });
+    return $.get("/task_status/"+task_id);
 }
 
 function get_reaction_structure(reaction_id)
 {
-    console.log('get_reaction_structure->'+reaction_id);
-    return $.ajax({
-        "url": "/reaction_structure/"+reaction_id
-        ,"type": "GET"
-        ,"dataType": "json"
-        ,"contentType": "application/json"
-        ,"data": ""
-    });
+    return $.get("/reaction_structure/"+reaction_id);
 }
 
 function put_reaction_structure(reaction_id, data)
@@ -177,38 +163,18 @@ function put_reaction_structure(reaction_id, data)
 
 function get_models(model_hash)
 {
-    data = JSON.stringify({"model_hash": model_hash});
-    console.log('get_models->');
-    return $.ajax({
-        "url": "/models"
-        ,"type": "GET"
-        ,"dataType": "json"
-        ,"contentType": "application/json"
-        ,"data": data
-    });
+    data = {"hash": model_hash};
+    return $.get("/models", data);
 }
 
 function get_solvents()
 {
-    console.log('get_solvents->');
-    return $.ajax({
-        "url": "/solvents"
-        ,"type": "GET"
-        ,"dataType": "json"
-        ,"contentType": "application/json"
-        ,"data": ""
-    });
+    return $.get("/solvents");
 }
 
 function get_reactions_by_task(task_id)
 {
-    return $.ajax({
-        "url": "/task_reactions/"+task_id
-        ,"type": "GET"
-        ,"dataType": "json"
-        ,"contentType": "application/json"
-        ,"data": {}
-    })
+    return $.get("/task_reactions/"+task_id)
 }
 
 /******************************************************/
@@ -610,16 +576,9 @@ function load_modelling_results(task_id)
 {
     console.log('load_modelling_results->');
 	
-    $.ajax({
-        "url": "/task_modelling/"+task_id
-        ,"type": "GET"
-        ,"dataType": "json"
-        ,"contentType": "application/json"
-        ,"data": ""
-    }).done(function (data, textStatus, jqXHR){
+    $.get("/task_modelling/"+task_id).done(function (data, textStatus, jqXHR){
 
         Progress.done();
-        console.log(data);
         try {
             display_modelling_results(data);
         }
@@ -632,13 +591,7 @@ function load_modelling_results(task_id)
 
 function load_reaction_img(reaction_id)
 {
-    return $.ajax({
-        "url": "/reaction_img/"+reaction_id
-        ,"type": "GET"
-        ,"dataType": "json"
-        ,"contentType": "application/json"
-
-    });
+    return $.get("/reaction_img/"+reaction_id);
 
 }
 function display_modelling_results(results)
