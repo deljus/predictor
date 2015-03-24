@@ -70,12 +70,42 @@ function select_mode(mode)
 			
             break;
         case 'editor':
-            $('#editor-div').show(1000);
+            show_editor(true);
             break;
 
     }
     $('#select-mode-div').hide(1000);
 
+}
+
+function upload_file(data)
+{
+       return  $.ajax({
+            type: 'POST',
+            url: '/uploadajax',
+            data: data,
+            contentType: false,
+            cache: false,
+            processData: false,
+            async: false,
+        });	
+	
+}
+
+function upload_task_file_data()
+{
+	console.log('upload_task_file_data->');
+	Progress.start();
+			
+	var form_data = new FormData($('#upload-file-form')[0]);	
+	upload_file(form_data).done(function (data, textStatus, jqXHR) {
+
+		hide_file_upload();
+		
+        $("#task_id").val(data);
+        start_task_mapping(data);
+
+    }).fail(handleRequestError);
 }
 
 
@@ -87,23 +117,7 @@ $(function() {
             alert('You have to select file');
             return false;
         }
-        var form_data = new FormData($('#upload-file-form')[0]);
-		//console.log(form_data)
-        $.ajax({
-            type: 'POST',
-            url: '/uploadajax',
-            data: form_data,
-            contentType: false,
-            cache: false,
-            processData: false,
-            async: false,
-            success: function(data) {
-                alert('File has been uploaded successfully! ');
-            },
-			error:function (data) {
-				console.log(data)
-			}
-        });
+		upload_task_file_data();
     });
 });
 
@@ -207,9 +221,21 @@ function hide_editor()
 	$('#editor-div').hide();	
 }
 
+function show_editor(show_upload_reaction_button)
+{
+	$('#editor-div').show(1000);
+	if (show_upload_reaction_button)
+		$('#btn-upload-sketcher-data-div').show();
+}
+
 function hide_reactions()
 {
 	$('#reactions-div').hide();	
+}
+
+function hide_file_upload()
+{
+	$('#file-upload-div').hide();	
 }
 
 function upload_sketcher_data()
@@ -230,11 +256,7 @@ function upload_sketcher_data()
 		});
 }
 
-function upload_task_file_data()
-{
-    Progress.start();
-	console.log('upload_task_file_data->');
-}
+ 
 
 function upload_task_draw_data(draw_data)
 {
@@ -299,7 +321,7 @@ function load_task_reactions(task_id)
     get_reactions_by_task(task_id).done(function (data, textStatus, jqXHR){
 
         Progress.done();
-
+		
         console.log(data);
         try {
             display_task_reactions(data);
@@ -315,6 +337,9 @@ function load_task_reactions(task_id)
 function display_task_reactions(reactions)
 {
     console.log('display_task_reactions->');
+	
+	// если скрыт редактор - покажем его
+	show_editor();
 	
     var jTbl = $("#reactions-tbd");
     jTbl.empty();

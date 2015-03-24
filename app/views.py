@@ -18,6 +18,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 @app.route('/')
 @app.route('/index')
 @app.route('/home/')
+@app.route('/predictor/')
 def index():
     #return render_template("index.html")
     return redirect(url_for('static', filename='index.html'))
@@ -33,13 +34,11 @@ def uploadfile():
             file_path = os.path.join(updir, filename)
             # сохраним файл на сервере
             files.save(file_path)
-            # создадим задачу
-            task_id = pdb.insert_task()
-            parse_file(task_id, file_path)
-        return task_id, 201
+            task_id = create_task_from_file(file_path)
+            return str(task_id), 201
     except:
         print('uploadfile->post->', sys.exc_info()[0])
-        return 'ERROR', 401
+    return 'ERROR', 401
 
 
 api = Api(app)
@@ -59,26 +58,18 @@ WEBSERVICES = {"molconvertws": WEBSERVICES_SERVER_NAME+"/rest-v0/util/calculate/
 
 
 
-def parse_file(task_id, file_path):
+def create_task_from_file(file_path):
     try:
-        pass
-        # url = WEBSERVICES_SERVER_NAME + "rest-v0/util/calculate/stringMolExport"
-        # file_str = open(file_path, 'r').read()
-        # conversionOptions = {
-        #     "structure": file_str,
-        #     "parameters": "mrv"
-        # }
-        # headers = {'content-type': 'application/json'}
-        # result = requests.post(url, data=json.dumps(conversionOptions), headers=headers)
-        # xmldoc = parseString(result.text)
-        # reaction_list = xmldoc.getElementsByTagName('MDocument')
-        # for _reaction in reaction_list:
-        #     print(_reaction.text())
-
+        task_id = pdb.insert_task()
+        file_str = open(file_path, 'r').read()
+        print(file_str)
+        for _reaction in file_str.split('$$$'):
+            pdb.insert_reaction(task_id=task_id, reaction_structure=_reaction.strip(' \t\n'), temperature=298)
+        return task_id
     except:
-        print('parse_file->', sys.exc_info()[0])
+        print('create_task_from_file->', sys.exc_info()[0])
+    return 0
 
-    pass
 
 
 def allowed_file(filename):
@@ -113,7 +104,7 @@ class ReactionResultAPI(Resource):
 
     def put(self, reaction_id):
         args = parser.parse_args()
-        pdb.update_reaction_result(reaction_id, args['model_id'])
+        pdb.update_reaction_result(reaction_id=reaction_id, model_id=args['model_id'], param=args['param'], value=args['value'])
         return reaction_id, 201
 
 

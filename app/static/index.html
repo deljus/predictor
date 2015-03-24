@@ -19,29 +19,6 @@
 	<link href="css/jasny-bootstrap.min.css" rel="stylesheet">
 	<script src="js/jasny-bootstrap.min.js"></script>    
  
- <style>   
- 
-     .btn-file {
-    position: relative;
-    overflow: hidden;
-    }
-    .btn-file input[type=file] {
-    position: absolute;
-    top: 0;
-    right: 0;
-    min-width: 100%;
-    min-height: 100%;
-    font-size: 100px;
-    text-align: right;
-    filter: alpha(opacity=0);
-    opacity: 0;
-    outline: none;
-    background: white;
-    cursor: inherit;
-    display: block;
-    }
-	
-	</style>
   </head>
   <body>
 	<div class="wrapper container">
@@ -105,7 +82,7 @@
                                 <iframe src="/static/editorws.html" id="sketch" data-toolbars="reaction" class="sketcher-frame"></iframe>
 
                             
-                                <div style="text-align:center">
+                                <div style="text-align:center;display:none" id="btn-upload-sketcher-data-div">
                                 	<button class="btn btn-primary" id="btn-upload-sketcher-data">Upload reaction</button>
                                 </div>
  
@@ -117,21 +94,25 @@
  
                                 
                                      <div style="margin-bottom:4px;margin-top:4px;">
-                                       <!-- <input name="file" id="file" type="file" > -->
-<div class="fileinput fileinput-new input-group" data-provides="fileinput">
-  <div class="form-control" data-trigger="fileinput"><i class="glyphicon glyphicon-file fileinput-exists"></i> <span class="fileinput-filename"></span></div>
-  <span class="input-group-addon btn btn-default btn-file"><span class="fileinput-new">Select file</span><span class="fileinput-exists">Change</span><input type="file" id="file" name="file"></span>
-  <a href="#" class="input-group-addon btn btn-default fileinput-exists" data-dismiss="fileinput">Remove</a>
-</div>
+                                        <div class="fileinput fileinput-new input-group" data-provides="fileinput">
+                                          <div class="form-control" data-trigger="fileinput">
+                                          	<i class="glyphicon glyphicon-file fileinput-exists"></i>
+                                            	<span class="fileinput-filename"></span>
+                                          </div>
+                                          <span class="input-group-addon btn btn-default btn-file">
+                                          	<span class="fileinput-new">Select file</span>
+                                          	<span class="fileinput-exists">Change</span>
+                                          	<input type="file" id="file" name="file">
+                                          </span>
+                                          <a href="#" class="input-group-addon btn btn-default fileinput-exists" data-dismiss="fileinput">Remove</a>
+                                        </div>
                                         
                                      </div>
                                      <div style="margin-bottom:4px;margin-top:4px;">
                                         <button id="upload-file-btn" type="button" class="btn btn-primary">Upload file</button>
                                      </div>
                                  </form>   
-                            </div>                         
-
-                         	
+                            </div>                                                  	
                         </div>
                         
                         <div class="col-md-10">
