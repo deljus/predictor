@@ -2,6 +2,7 @@
 from flask import render_template, url_for, redirect
 from app import app
 from flask.ext.restful import reqparse, abort, Api, Resource, fields, marshal
+from flask.ext import excel
 
 import sys
 import os
@@ -11,6 +12,8 @@ from flask import (request, render_template, jsonify)
 import requests
 import json
 from xml.dom.minidom import parse, parseString
+
+
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -22,6 +25,11 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 def index():
     #return render_template("index.html")
     return redirect(url_for('static', filename='index.html'))
+
+
+@app.route("/download", methods=['GET'])
+def download_file():
+    return excel.make_response_from_array([[1,2], [3, 4]], "xls")
 
 
 @app.route('/uploadajax', methods=['POST'])
