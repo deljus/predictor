@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+import threading
+import subprocess as sp
+
 from flask import render_template, url_for, redirect
 from app import app
 from flask.ext.restful import reqparse, abort, Api, Resource, fields, marshal
-from flask.ext import excel
+#from flask.ext import excel
 
 import sys
 import os
@@ -16,7 +19,7 @@ from xml.dom.minidom import parse, parseString
 
 
 basedir = os.path.abspath(os.path.dirname(__file__))
-
+molconvert = '/home/stsouko/.ChemAxon/JChem/bin/molconvert'
 
 @app.route('/')
 @app.route('/index')
@@ -32,21 +35,32 @@ def download_file():
     return excel.make_response_from_array([[1,2], [3, 4]], "xls")
 
 
-@app.route('/uploadajax', methods=['POST'])
-def uploadfile():
-    try:
-        files = request.files['file']
-        if files:
-            filename = files.filename
-            updir = os.path.join(basedir, 'upload')
-            file_path = os.path.join(updir, filename)
-            # сохраним файл на сервере
-            files.save(file_path)
-            task_id = create_task_from_file(file_path)
-            return str(task_id), 201
-    except:
-        print('uploadfile->post->', sys.exc_info()[0])
-    return 'ERROR', 401
+def create_task_from_file(file_path, task_id):
+    #todo: надо добавить изменение статуса на готовое к маппингу
+    tmp_file = '/tmp/tmp-%d.mrv' % task_id
+    sp.call([molconvert, 'mrv', file_path, '-o', tmp_file])
+    file = open(tmp_file, 'r')
+    next(file)
+
+    for mol in file:
+        pdb.insert_reaction(task_id=task_id, reaction_structure=mol, temperature=298)
+
+
+
+class UploadFile(Resource):
+    def __init__(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('filename.path', type=str)
+
+        self.parser = parser
+
+    def post(self):
+        args = self.parser.parse_args()
+        task_id = pdb.insert_task()
+        t = threading.Thread(target=create_task_from_file, args=(args['filename.path'], task_id))
+        t.daemon = True
+        t.start()
+        return str(task_id), 201
 
 
 api = Api(app)
@@ -63,21 +77,6 @@ MODELLING_DONE  = 6
 
 WEBSERVICES_SERVER_NAME = "http://localhost:8080/webservices"
 WEBSERVICES = {"molconvertws": WEBSERVICES_SERVER_NAME+"/rest-v0/util/calculate/molExport"}
-
-
-
-def create_task_from_file(file_path):
-    try:
-        task_id = pdb.insert_task()
-        file_str = open(file_path, 'r').read()
-        print(file_str)
-        for _reaction in file_str.split('$$$'):
-            pdb.insert_reaction(task_id=task_id, reaction_structure=_reaction.strip(' \t\n'), temperature=298)
-        return task_id
-    except:
-        print('create_task_from_file->', sys.exc_info()[0])
-    return 0
-
 
 
 def allowed_file(filename):
@@ -110,7 +109,7 @@ class ReactionResultAPI(Resource):
     def get(self, reaction_id):
         return pdb.get_reaction_structure(reaction_id)
 
-    def put(self, reaction_id):
+    def post(self, reaction_id):
         args = parser.parse_args()
         pdb.update_reaction_result(reaction_id=reaction_id, model_id=args['model_id'], param=args['param'], value=args['value'])
         return reaction_id, 201
@@ -302,3 +301,5 @@ api.add_resource(ModelAPI, '/model/<model_id>')
 
 api.add_resource(SolventsAPI, '/solvents')
 
+
+api.add_resource(UploadFile, '/upload')

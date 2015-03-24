@@ -47,7 +47,7 @@ def run():
         for j in chemicals:
             structure = serverget("reaction/%s" % (j['reaction_id']), None)
             serverpost("reaction_result/%s" % (j['reaction_id']),
-                       {x: models.MODELS[y].getresult(structure) for x, y in structure['models'].items()})
+                       {'models': {x: models.MODELS[y].getresult(structure) for x, y in structure['models'].items()}})
 
         serverput("task_status/%s" % (i['id']), {'task_status': MODELLING_DONE})
 
