@@ -9,6 +9,11 @@ __author__ = 'stsouko'
 SERVER = "http://130.79.41.97"
 #SERVER = "http://127.0.0.1"
 PORT = 5000
+INTERVAL = 2
+
+REQ_MODELLING = 4
+LOCK_MODELLING = 5
+MODELLING_DONE = 6
 
 
 def serverget(url, params):
@@ -20,17 +25,31 @@ def serverdel(url, params):
     requests.delete("%s:%d/%s" % (SERVER, PORT, url), params=params)
 
 
+def serverput(url, params):
+    requests.put("%s:%d/%s" % (SERVER, PORT, url), params=params)
+
+
 def serverpost(url, params):
     q = requests.post("%s:%d/%s" % (SERVER, PORT, url), data=params)
     return q.json()
 
 
+def gettask():
+    return serverget('tasks', {'task_status': REQ_MODELLING})
+
+
 def run():
-    # Import tracker handlers on fly.
-    # It is an .egg-friendly alternative to os.listdir() walking.
-    #for mloader, pname, ispkg in pkgutil.iter_modules(models.__path__):
-    #    __import__('modelset.%s' % pname)
-    pass
+    tasks = gettask()
+
+    for i in tasks:
+        serverput("task_status/%s" % (i['id']), {'task_status': LOCK_MODELLING})
+        chemicals = serverget("task_reactions/%s" % (i['id']), None)
+        for j in chemicals:
+            structure = serverget("reaction/%s" % (j['reaction_id']), None)
+            serverpost("reaction_result/%s" % (j['reaction_id']),
+                       {x: models.MODELS[y].getresult(structure) for x, y in structure['models'].items()})
+
+        serverput("task_status/%s" % (i['id']), {'task_status': MODELLING_DONE})
 
 
 class PeriodicScheduler(object):
@@ -59,14 +78,9 @@ def main():
     for x in todelete:
         serverdel("models", {'id': registeredmodels[x]})
 
-    for i in models.MODELS.values():
-        print(i.getdesc())
-        print(i.getresult([]))
-
-    #periodic_scheduler = PeriodicScheduler()
-    #periodic_scheduler.setup(INTERVAL, run)
-    #periodic_scheduler.run()
-    run()
+    periodic_scheduler = PeriodicScheduler()
+    periodic_scheduler.setup(INTERVAL, run)
+    periodic_scheduler.run()
 
 if __name__ == '__main__':
     main()
