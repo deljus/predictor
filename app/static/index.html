@@ -23,7 +23,7 @@
   <body>
 	<div class="wrapper container">
 		<header>
-			<a href="/"><img src="images/logo.png"  width="50" height="50" alt="Whitesquare logo"></a>
+			<a href="/"><img src="images/logo.png"  width="70" height="70" alt="Whitesquare logo"></a>
 			<form name="search" action="#" method="get" class="form-inline form-search pull-right">
 				<div class="input-group">
 					<label class="sr-only" for="searchInput">Search</label>
@@ -60,7 +60,7 @@
 					<li class="list-group-item active">Lorem ipsum</li>
 					<li class="list-group-item"><a href="#" onclick="set_task_status($('#task_id').val(),MAPPING_DONE);return false;">mapping done</a></li>
 					<li class="list-group-item"><a href="#" onclick="set_task_status($('#task_id').val(),MODELLING_DONE);return false;">Modelling done</a></li>
-					<li class="list-group-item"><a href="/download">Etiam pharetra</a></li>
+					<li class="list-group-item"><a href="/download/50">Etiam pharetra</a></li>
 
 				</ul>
 			</aside>
@@ -89,9 +89,7 @@
                             </div>
                             
                             <div id="file-upload-div" style="display:none" style="text-align:center">
-                                 <form id="upload-file-form" method="post" enctype="multipart/form-data">
-                        
- 
+                                 <form id="upload-file-form" method="post" enctype="multipart/form-data">                         
                                 
                                      <div style="margin-bottom:4px;margin-top:4px;">
                                         <div class="fileinput fileinput-new input-group" data-provides="fileinput">
@@ -158,8 +156,8 @@
                                 <tbody id="results-tbody"></tbody>
                             </table>
                             <div style="text-align:center">
-                                <button onclick="alert('GUI 1')" class="btn btn-primary">Export (MS Excel)</button>
-                                <button onclick="alert('GUI 1')" class="btn btn-primary">Export (CSV)</button>
+                                <button onclick="download_results('xls')" class="btn btn-primary">Export (MS Excel)</button>
+                                <button onclick="download_results('csv')" class="btn btn-primary">Export (CSV)</button>
                                 <button onclick="alert('GUI 1')" class="btn btn-primary">Export (PDF)</button>
                             </div>                            
                         </div>                                                                 

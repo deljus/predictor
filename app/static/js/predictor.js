@@ -60,6 +60,11 @@ function handleRequestError()
     Progress.done();
 }
 
+function download_results(format)
+{
+	var task_id = $('#task_id').val();
+	window.open('/download/'+task_id+'?format='+format);	
+}
 
 function select_mode(mode)
 {

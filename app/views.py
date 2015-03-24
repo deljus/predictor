@@ -5,7 +5,10 @@ import subprocess as sp
 from flask import render_template, url_for, redirect
 from app import app
 from flask.ext.restful import reqparse, abort, Api, Resource, fields, marshal
-#from flask.ext import excel
+from flask.ext import excel
+import pyexcel.ext.xls
+import pyexcel.ext.xlsx
+
 
 import sys
 import os
@@ -41,23 +44,21 @@ def create_task_from_file(file_path, task_id):
     sp.call([molconvert, 'mrv', file_path, '-o', tmp_file])
     file = open(tmp_file, 'r')
     next(file)
-
     for mol in file:
-        pdb.insert_reaction(task_id=task_id, reaction_structure=mol, temperature=298)
-
+        pdb.insert_reaction(task_id=task_id, reaction_structure=mol.rstrip())
+    pdb.update_task_status(task_id, REQ_MAPPING)
 
 
 class UploadFile(Resource):
     def __init__(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('filename.path', type=str)
-
+        parser.add_argument('file.path', type=str)
         self.parser = parser
 
     def post(self):
         args = self.parser.parse_args()
         task_id = pdb.insert_task()
-        t = threading.Thread(target=create_task_from_file, args=(args['filename.path'], task_id))
+        t = threading.Thread(target=create_task_from_file, args=(args['file.path'], task_id))
         t.daemon = True
         t.start()
         return str(task_id), 201
@@ -75,15 +76,11 @@ REQ_MODELLING   = 4
 LOCK_MODELLING  = 5
 MODELLING_DONE  = 6
 
-WEBSERVICES_SERVER_NAME = "http://localhost:8080/webservices"
-WEBSERVICES = {"molconvertws": WEBSERVICES_SERVER_NAME+"/rest-v0/util/calculate/molExport"}
-
 
 def allowed_file(filename):
     """TODO: чек файла сделает мой парсер."""
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in app.config['ALLOWED_EXTENSIONS']
-
 
 parser = reqparse.RequestParser()
 parser.add_argument('reaction_structure', type=str)
@@ -93,7 +90,7 @@ parser.add_argument('task_status', type=int)
 parser.add_argument('model_id', type=int)
 parser.add_argument('param', type=str)
 parser.add_argument('value', type=float)
-
+parser.add_argument('models', type=str)
 
 class ReactionStructureAPI(Resource):
     def get(self, reaction_id):
@@ -122,11 +119,7 @@ class ReactionAPI(Resource):
         return pdb.get_reaction(reaction_id), 201
 
     def put(self, reaction_id):
-        _parser = reqparse.RequestParser()
-        _parser.add_argument('temperature', type=str)
-        _parser.add_argument('solvent', type=str)
-        _parser.add_argument('models', type=str)
-        args = _parser.parse_args()
+        args = parser.parse_args()
         m = args['models']
         if m:
             m = m.split(',')
@@ -233,9 +226,7 @@ class TaskModellingAPI(Resource):
                 _m = args[_m]
                 _s = args[_s]
                 _t = args[_t]
-                print('model='+_m)
-                print('solvent='+_s)
-                print('temp='+_t)
+
                 if _m:
                     _m = _m.split(',')
                 if _s:
@@ -256,23 +247,25 @@ class ModelAPI (Resource):
         return pdb.get_model(model_id)
 
 
-class ReactionImgAPI(Resource):
-    def get(self, reaction_id):
-        try:
-            url = WEBSERVICES['molconvertws']
-            structure = pdb.get_reaction_structure(reaction_id)
-            conversionOptions = {
-                "structure": structure,
-                "parameters": "png",
-                "width": 500,
-                "height": 150
-            }
-            headers = {'content-type': 'application/json'}
-            result = requests.post(url, data=json.dumps(conversionOptions), headers=headers)
-            return result.text, 201
-        except:
-            print('ReactionImgAPI->get->', sys.exc_info()[0])
-
+class DownloadResultsAPI(Resource):
+    def get(self, task_id):
+        parser.add_argument('format', type=str)
+        args = parser.parse_args()
+        format = args['format']
+        reactions = pdb.get_results_by_task(task_id)
+        arr = []
+        count = 0
+        for _reaction in reactions:
+            count += 1
+            _results = _reaction.get('results')
+            if _results:
+                for _result in _results:
+                    arr.append(dict(reaction_numer=count,
+                                    model=_result.get('model'),
+                                    parameter=_result.get('param'),
+                                    value=_result.get('value'))
+                    )
+        return excel.make_response_from_records(arr, format)
 
 
 ##
@@ -283,7 +276,6 @@ api.add_resource(ReactionListAPI, '/reactions')
 api.add_resource(ReactionAPI, '/reaction/<reaction_id>')
 api.add_resource(ReactionStructureAPI, '/reaction_structure/<reaction_id>')
 api.add_resource(ReactionResultAPI, '/reaction_result/<reaction_id>')
-api.add_resource(ReactionImgAPI, '/reaction_img/<reaction_id>')
 
 # работа со статусами задач
 api.add_resource(TaskStatusAPI, '/task_status/<task_id>')
@@ -300,6 +292,8 @@ api.add_resource(ModelAPI, '/model/<model_id>')
 
 
 api.add_resource(SolventsAPI, '/solvents')
+
+api.add_resource(DownloadResultsAPI, '/download/<task_id>')
 
 
 api.add_resource(UploadFile, '/upload')
