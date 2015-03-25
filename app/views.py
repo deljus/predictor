@@ -124,15 +124,21 @@ class ReactionStructureAPI(Resource):
 
 
 class ReactionResultAPI(Resource):
-    def get(self, reaction_id):
+    def __init__(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('result', type=str)
+        parser.add_argument('params', type=str, action='append')
+        parser.add_argument('values', type=str, action='append')
+        self.parser = parser
+
+    def get(self, reaction_id): # что это тут делает то???
         return pdb.get_reaction_structure(reaction_id)
 
     def post(self, reaction_id):
-        args = parser.parse_args()
-        pdb.update_reaction_result(reaction_id=reaction_id, model_id=args['model_id'], param=args['param'], value=args['value'])
+        args = self.parser.parse_args()
+        for x, y in zip(args['params'], args['values']):
+            pdb.update_reaction_result(reaction_id=reaction_id, model_id=args['model_id'], param=x, value=y)
         return reaction_id, 201
-
-
 
 
 class ReactionAPI(Resource):

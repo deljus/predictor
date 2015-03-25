@@ -42,8 +42,11 @@ def gettask():
     return serverget('tasks', {'task_status': REQ_MAPPING})
 
 
+fear = CGR()
+
+
 def run():
-    fear = CGR()
+
     tasks = gettask()
 
     for i in tasks:

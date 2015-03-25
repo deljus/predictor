@@ -264,7 +264,7 @@ class PredictorDataBase:
     @db_session
     def update_reaction_result(self, reaction_id, model_id, param, value):
         '''
-        функция записывает в базу ввведенные пользователем данные для моделирования
+        функция записывает в базу данные моделирования
         :return:
         '''
         reaction = Chemicals.get(id=reaction_id)
