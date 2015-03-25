@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import threading
 import subprocess as sp
+import xml.etree.ElementTree as ET
 
 from flask import render_template, url_for, redirect
 from app import app
@@ -39,13 +40,33 @@ def download_file():
 
 
 def create_task_from_file(file_path, task_id):
-    #todo: надо добавить изменение статуса на готовое к маппингу
     tmp_file = '/tmp/tmp-%d.mrv' % task_id
+    temp = 298
     sp.call([molconvert, 'mrv', file_path, '-o', tmp_file])
     file = open(tmp_file, 'r')
     next(file)
     for mol in file:
-        pdb.insert_reaction(task_id=task_id, reaction_structure=mol.rstrip())
+        tree = ET.fromstring(mol)
+        prop = {x.get('title').lower(): x.find('scalar').text.lower() for x in tree.iter('property')}
+        solv = pdb.get_solvents()
+        solvlist = {}
+        for x, y in prop.items():
+            if 'solvent' in x:
+                name = x.split()[-1]
+                id = any(i['id'] for i in solv if i['name'] == name) # ебаный велосипед.
+                if id:
+                    try:
+                        y = float(y)
+                    except ValueError:
+                        y = 1
+                    solvlist[id] = y
+            elif 'temperature' == x:
+                try:
+                    temp = float(y)
+                except ValueError:
+                    temp = 298
+
+        pdb.insert_reaction(task_id=task_id, reaction_structure=mol.rstrip(), solvent=solvlist, temperature=temp)
     pdb.update_task_status(task_id, REQ_MAPPING)
 
 

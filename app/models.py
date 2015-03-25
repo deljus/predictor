@@ -72,7 +72,7 @@ class Solvents(db.Entity):
 
 
 class Solventsets(db.Entity):
-    amount = Required(float, default=0)
+    amount = Required(float, default=1)
     solvent = Required(Solvents)
     chemical = Required(Chemicals)
 
@@ -333,7 +333,7 @@ class PredictorDataBase:
         функция возвращает список растворителей из базы
         :return: список растворителей
         '''
-        query = select((x.id,x.name) for x in Solvents)
+        query = select((x.id, x.name) for x in Solvents)
         return [{'id': x, 'name': y} for x, y in query]
 
     @db_session
