@@ -66,7 +66,7 @@ class Models(db.Entity):
 
 class Solvents(db.Entity):
     id = PrimaryKey(int, auto=True)
-    smiles = Required(str, unique=True)
+    smiles = Optional(str)
     name = Required(str, unique=True)
     solventsets = Set("Solventsets")
 
@@ -306,17 +306,6 @@ class PredictorDataBase:
         :return: Результаты моделирования
         '''
 
-########################
-
-        t = Tasks.get(id=task_id)
-        if t:
-            for reaction in t.chemicals:
-                for _m in select(m for m in Models):
-                    pass
-                    result = Results(chemical=reaction, model=_m, attrib='logC', value=111)
-
-###########################
-
         out = []
         t = Tasks.get(id=task_id)
         if t:
@@ -329,6 +318,24 @@ class PredictorDataBase:
                                            value=res.value))
                 out.append(dict(reaction_id=r.id, results=result_arr))
         return out
+
+    @db_session
+    def get_reaction_results(self, reaction_id):
+        '''
+        функция возвращает результаты моделирования для заданной реакции
+        :param reaction_id(str): ID реакции
+        :return: Результаты моделирования
+        '''
+
+        result_arr = []
+        r = Chemicals.get(id=reaction_id)
+        if r:
+            for res in r.results:
+                result_arr.append(dict(reaction_id=r.id,
+                                       model=res.model.name,
+                                       param=res.attrib,
+                                       value=res.value))
+        return result_arr
 
 
     @db_session
@@ -400,36 +407,10 @@ def import_solvents():
     file = open(os.path.join(os.path.dirname(__file__), "import_data/solvents.txt"), "r")
     for _line in file.readlines():
         try:
-            arr = _line.split("\t")
-            sm = arr[0]
-            n = arr[1].strip(' \t\n\r')
-            s = Solvents.get(smiles=sm)
+            solvent_name = _line.strip(' \t\n\r')
+            s = Solvents.get(name=solvent_name)
             if not s:
-                  Solvents(smiles=sm, name=n)
-        except:
-            print('import_solvents->', sys.exc_info()[0])
-            pass
-    file.close()
-
-
-@db_session
-def import_models():
-    file = open(os.path.join(os.path.dirname(__file__), "import_data/models.txt"), "r")
-    for _line in file.readlines():
-        try:
-            arr = _line.split("\t")
-            _name = arr[0]
-            _hash = arr[1].strip(' \t\n\r')
-            _flag = arr[2].strip(' \t\n\r')
-            model = Models.get(name=_name)
-            hash = AppDomains.get(hash=_hash)
-            if not model and not hash:
-                hash = AppDomains(hash=_hash)
-                model = Models(name=_name)
-                if _flag == '1':
-                    model.is_reaction = True
-                hash.model = model
-
+                  Solvents(name=solvent_name)
         except:
             print('import_solvents->', sys.exc_info()[0])
             pass
@@ -437,6 +418,6 @@ def import_models():
 
 
 import_solvents()
-import_models()
+
 
 

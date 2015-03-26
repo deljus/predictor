@@ -453,7 +453,7 @@ function display_task_reactions(reactions)
         str+='</select>';
         str+='</td>';
 
-        str+='<td><select  multiple="multiple" class="solvent" name="solvent_'+_r_id+'" solvent="'+_solvent_id+'" ></select></td>';
+        str+='<td><select    class="solvent" name="solvent_'+_r_id+'" solvent="'+_solvent_id+'" ></select></td>';
         str+='<td><input  class="temperature" name="temperature_'+_r_id+'" type="text" value="'+_temperature+'" /></td>';
         str+='</tr>';
 

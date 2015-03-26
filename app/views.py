@@ -82,10 +82,12 @@ class UploadFile(Resource):
         task_id = pdb.insert_task()
         if not args['file.path']: # костыль. если не найдет этого в аргументах, то мы без NGINX сидим тащемта.
             f = request.files['file']
-            args['file.path'] = UPLOAD_PATH + secure_filename(f.filename)
-            f.save(args['file.path'])
+            reaction_file = UPLOAD_PATH + secure_filename(f.filename)
+            f.save(reaction_file)
+        else:
+            reaction_file = args['file.path']
 
-        t = threading.Thread(target=create_task_from_file, args=(args['file.path'], task_id))
+        t = threading.Thread(target=create_task_from_file, args=(reaction_file, task_id))
         t.start()
         return str(task_id), 201
 
@@ -133,7 +135,7 @@ class ReactionResultAPI(Resource):
         self.parser = parser
 
     def get(self, reaction_id): # что это тут делает то???
-        return pdb.get_reaction_structure(reaction_id)
+        return pdb.get_reaction_results(reaction_id)
 
     def post(self, reaction_id):
         args = self.parser.parse_args()

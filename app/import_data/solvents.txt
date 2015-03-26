@@ -1,0 +1,68 @@
+Pentane
+Petroleum ether
+Hexane
+Heptane
+Diethyl amine
+Diethyl ether
+Triethyl amine
+Tert-butyl methyl ether
+Cyclohexane
+Tert-butyl alcohol
+Isopropanol
+Acetonitrile
+Ethanol
+Acetone
+Methanol
+Methyl isobutyl ketone
+Isobutyl alcohol
+1-Propanol
+Methyl ethyl ketone
+2-Butanol
+Isoamyl alcohol
+1-Butanol
+Diethyl ketone
+1-Octanol
+p-Xylene
+m-Xylene
+Toluene
+Dimethoxyethane
+Benzene
+Butyl acetate
+1-Chlorobutane
+Tetrahydrofuran
+Ethyl acetate
+o-Xylene
+Hexamethylphosphorus triamide
+2-Ethoxyethyl ether
+N,N-Dimethylacetamide
+Diethylene glycol dimethyl ether
+N,N-Dimethylformamide
+2-Methoxyethanol
+Pyridine
+Propanoic acid
+Water
+2-Methoxyethyl acetate
+Benzonitrile
+1-Methyl-2-pyrrolidinone
+Hexamethylphosphoramide
+1,4-Dioxane
+Acetic acid
+Acetic anhydride
+Dimethyl sulfoxide
+Chlorobenzene
+Deuterium oxide
+Ethylene glycol
+Diethylene glycol
+Propylene carbonate
+Formic acid
+1,2-Dichloroethane
+Glycerin
+Carbon disulfide
+1,2-Dichlorobenzene
+Methylene chloride
+Nitromethane
+2,2,2-Trifluoroethanol
+Chloroform
+1,1,2-Trichlorotrifluoroethane
+Carbon tetrachloride
+Tetrachloroethylene
