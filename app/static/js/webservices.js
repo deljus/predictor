@@ -1,7 +1,7 @@
 // Define the default location of webservices
 
 function getDefaultServicesPrefix() {
-	var servername = document.domain;
+	var servername = '';//document.domain;
 	var webapp = "/webservices";
 	return servername + webapp;
 }
