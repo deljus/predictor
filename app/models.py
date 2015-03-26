@@ -370,7 +370,7 @@ class PredictorDataBase:
                     reaction_hash = AppDomains.get(hash=x)
                     if not reaction_hash:
                         reaction_hash = AppDomains(hash=x)
-                    model.app_domains.ipyth (reaction_hash)
+                    model.app_domains.add(reaction_hash)
 
         return model.id
 

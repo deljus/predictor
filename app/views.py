@@ -2,6 +2,7 @@
 import threading
 import subprocess as sp
 import xml.etree.ElementTree as ET
+from werkzeug import secure_filename
 
 from flask import render_template, url_for, redirect
 from app import app
@@ -20,7 +21,7 @@ import requests
 import json
 from xml.dom.minidom import parse, parseString
 
-
+UPLOAD_PATH = '/home/server/uploads/'
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 molconvert = '/home/stsouko/.ChemAxon/JChem/bin/molconvert'
@@ -79,8 +80,12 @@ class UploadFile(Resource):
     def post(self):
         args = self.parser.parse_args()
         task_id = pdb.insert_task()
+        if not args['file.path']: # костыль. если не найдет этого в аргументах, то мы без NGINX сидим тащемта.
+            f = request.files['file']
+            args['file.path'] = UPLOAD_PATH + secure_filename(f.filename)
+            f.save(args['file.path'])
+
         t = threading.Thread(target=create_task_from_file, args=(args['file.path'], task_id))
-        t.daemon = True
         t.start()
         return str(task_id), 201
 
@@ -97,11 +102,6 @@ REQ_MODELLING   = 4
 LOCK_MODELLING  = 5
 MODELLING_DONE  = 6
 
-
-def allowed_file(filename):
-    """TODO: чек файла сделает мой парсер."""
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1] in app.config['ALLOWED_EXTENSIONS']
 
 parser = reqparse.RequestParser()
 parser.add_argument('reaction_structure', type=str)
@@ -126,7 +126,7 @@ class ReactionStructureAPI(Resource):
 class ReactionResultAPI(Resource):
     def __init__(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('result', type=str)
+        parser.add_argument('modelid', type=str)
         parser.add_argument('params', type=str, action='append')
         parser.add_argument('values', type=str, action='append')
         self.parser = parser
@@ -137,7 +137,7 @@ class ReactionResultAPI(Resource):
     def post(self, reaction_id):
         args = self.parser.parse_args()
         for x, y in zip(args['params'], args['values']):
-            pdb.update_reaction_result(reaction_id=reaction_id, model_id=args['model_id'], param=x, value=y)
+            pdb.update_reaction_result(reaction_id=reaction_id, model_id=args['modelid'], param=x, value=y)
         return reaction_id, 201
 
 
@@ -178,7 +178,7 @@ class TaskStatusAPI (Resource):
     def get(self, task_id):
         return pdb.get_task_status(task_id)
 
-    def put(self,task_id):
+    def put(self, task_id):
         args = parser.parse_args()
         task_status = args['task_status']
         pdb.update_task_status(task_id, task_status)
@@ -211,7 +211,6 @@ class ModelListAPI(Resource):
         model_hash = args['hash']
         models = pdb.get_models(model_hash=model_hash)
         return models, 201
-
 
     def delete(self):
         """TODO:
