@@ -16,6 +16,36 @@ $(document).ready(function handleDocumentReady (e) {
 
 });
 
+/*** debug fuctions ***/
+function set_task(task_id)
+{
+	$('#task_id').val(task_id);	
+}
+function get_task()
+{
+	return 	$('#task_id').val();
+}
+function load_reactions()
+{
+	hide_all();
+	load_task_reactions(get_task());		
+}
+
+function load_results()
+{
+	hide_all();
+	load_modelling_results(get_task());		
+}
+
+function map_done()
+{
+	set_task_status(get_task(),MAPPING_DONE)	
+}
+
+function model_done()
+{
+	set_task_status(get_task(),MODELLING_DONE)	
+}
 
 
 var Progress = {}
@@ -68,19 +98,20 @@ function download_results(format)
 
 function select_mode(mode)
 {
+	hide_all();
     switch(mode)
     {
         case 'file':
-			$('#file-upload-div').show(1000);	
+			hide_editor();
+			show_file_upload();	
 			
             break;
         case 'editor':
+			hide_file_upload();
             show_editor(true);
             break;
 
     }
-    $('#select-mode-div').hide(1000);
-
 }
 
 function upload_file(data)
@@ -158,6 +189,7 @@ function set_task_status(task_id, status)
 
 function get_task_status(task_id)
 {
+	console.log('get_task_status->'+task_id);
     return $.get("/task_status/"+task_id);
 }
 
@@ -220,6 +252,29 @@ function initControl ()
 	});
 }
 
+function hide_all()
+{
+	hide_select_mode();
+	hide_editor();
+	hide_reactions();
+	hide_file_upload();
+	hide_modelling_results();
+	
+}
+
+function hide_modelling_results()
+{
+	$('#results-div').hide();	
+}
+
+function hide_select_mode()
+{
+    $('#select-mode-div').hide(1000);
+}
+function hide_upload_sketcher_data_btn()
+{
+	$('#btn-upload-sketcher-data-div').hide();	
+}
 
 function hide_editor()
 {
@@ -243,14 +298,21 @@ function hide_file_upload()
 	$('#file-upload-div').hide();	
 }
 
+function show_file_upload()
+{
+	$('#file-upload-div').show(1000);	
+}
+
 function upload_sketcher_data()
 {
+	    Progress.start();
 		marvinSketcherInstance.exportStructure(MOL_FORMAT).then(function(source) {
 
 
             if (isMolEmpty(source))
             {
                 alert('You need enter a reaction');
+				Progress.done();
                 return false;
             }
             else
@@ -261,12 +323,12 @@ function upload_sketcher_data()
 		});
 }
 
- 
 
 function upload_task_draw_data(draw_data)
 {
-    Progress.start();
     console.log('upload_task_draw_data->');
+	hide_upload_sketcher_data_btn();
+
     var data = JSON.stringify({"reaction_structure": draw_data});
 
     $.ajax({
@@ -277,6 +339,7 @@ function upload_task_draw_data(draw_data)
             ,"data": data
     }).done(function (data, textStatus, jqXHR) {
 
+		console.log('TASK_ID = '+data);
         $("#task_id").val(data);
         start_task_mapping(data);
 
@@ -319,15 +382,23 @@ function check_task_mapping_status(task_id)
 
 }
 
+
 function load_task_reactions(task_id)
 {
     console.log('load_task_reactions->');
+	if (!task_id)
+		task_id = get_task();
+		
+	if (isNaN(task_id))
+	{
+		alert('Session task not defined');
+		return false;	
+	}
 	
     get_reactions_by_task(task_id).done(function (data, textStatus, jqXHR){
 
         Progress.done();
-		
-        console.log(data);
+
         try {
             display_task_reactions(data);
         }
@@ -369,7 +440,7 @@ function display_task_reactions(reactions)
         str+='<tr>';
         str+='<td class="reaction_id" reaction_id="'+_r_id+'">'+(i+1)+'</td>';
         str+='<td>';
-        str+='<select class="model" name="model_'+_r_id+'">';
+        str+='<select  multiple="multiple" class="model" name="model_'+_r_id+'">';
         str+='<option value=""></option>';
         try {
             for (var j=0; j < _reaction.models.length; j++)
@@ -382,7 +453,7 @@ function display_task_reactions(reactions)
         str+='</select>';
         str+='</td>';
 
-        str+='<td><select class="solvent" name="solvent_'+_r_id+'" solvent="'+_solvent_id+'" ></select></td>';
+        str+='<td><select  multiple="multiple" class="solvent" name="solvent_'+_r_id+'" solvent="'+_solvent_id+'" ></select></td>';
         str+='<td><input  class="temperature" name="temperature_'+_r_id+'" type="text" value="'+_temperature+'" /></td>';
         str+='</tr>';
 
@@ -543,11 +614,19 @@ function upload_reaction_form()
     if (isEmpty(task_id))
     {
         alert('Session task not defined');
+		Progress.done();
         return false;
     }
     var data = {};
-    $("#reactions-form").serializeArray().map(function(x){data[x.name] = x.value;});
-    data = JSON.stringify(data);
+	 $("#reactions-form").serializeArray().map(function(x){
+		if (data[x.name])
+			data[x.name] = data[x.name] +','+ x.value;
+		else
+			data[x.name] = x.value;
+	});
+	data = JSON.stringify(data);
+	console.log(data);
+	
     return $.ajax({
         "url": "/task_modelling/"+task_id
         ,"type": "PUT"
@@ -584,7 +663,7 @@ function start_modelling()
 
 function check_modelling_status(task_id)
 {
-    console.log('check_modelling_status->');
+    console.log('check_modelling_status->'+task_id);
 
     get_task_status(task_id).done(function (data, textStatus, jqXHR){
 
@@ -605,6 +684,14 @@ function check_modelling_status(task_id)
 function load_modelling_results(task_id)
 {
     console.log('load_modelling_results->');
+	if (!task_id)
+		task_id = get_task();
+		
+	if (isNaN(task_id))
+	{
+		alert('Session task not defined');
+		return false;	
+	}	
 	
     $.get("/task_modelling/"+task_id).done(function (data, textStatus, jqXHR){
 

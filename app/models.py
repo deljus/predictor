@@ -6,7 +6,7 @@ import time
 import os
 import sys
 
-db = Database("sqlite", "/tmp/database.sqlite", create_db=True)
+db = Database("sqlite", "database.sqlite", create_db=True)
 
 
 class Users(db.Entity):
@@ -77,7 +77,7 @@ class Solventsets(db.Entity):
     chemical = Required(Chemicals)
 
 
-sql_debug(True)
+#sql_debug(True)
 db.generate_mapping(create_tables=True)
 
 class PredictorDataBase:
@@ -251,10 +251,14 @@ class PredictorDataBase:
                         if db_solvent:
                             Solventsets(solvent=db_solvent, chemical=c)
                 if models:
+                    c.models.clear()
                     for k in models:
                         m = Models.get(id=int(k))
                         if m:
                             c.models.add(m)
+                            print(' добавили модель ')
+                        else:
+                            print(' не нашли модель '+str(k))
                 return True
         except:
             print('update_reaction_conditions->', sys.exc_info()[0])
@@ -432,7 +436,7 @@ def import_models():
     file.close()
 
 
-#import_solvents()
-#import_models()
+import_solvents()
+import_models()
 
 

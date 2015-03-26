@@ -3,6 +3,8 @@
   <head>
     <title>Chem portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="favicon.ico"></link>
+  
     <link href="css/styles.css" rel="stylesheet">
 	<link href="http://fonts.googleapis.com/css?family=Oswald:400,300" rel="stylesheet">
     <!--[if lt IE 9]>
@@ -57,10 +59,10 @@
 		<div class="row">
 			<aside class="col-md-4">
 				<ul class="list-group submenu">
-					<li class="list-group-item active">Lorem ipsum</li>
-					<li class="list-group-item"><a href="#" onclick="set_task_status($('#task_id').val(),MAPPING_DONE);return false;">mapping done</a></li>
-					<li class="list-group-item"><a href="#" onclick="set_task_status($('#task_id').val(),MODELLING_DONE);return false;">Modelling done</a></li>
-					<li class="list-group-item"><a href="/download/50">Etiam pharetra</a></li>
+					<li class="list-group-item"><a href="#" onClick="select_mode('file')">upload file</a></li>
+					<li class="list-group-item"><a href="#" onClick="select_mode('editor')">open editor</a></li>                  
+					<li class="list-group-item"><a href="#" onclick="load_reactions()">mapping results</a></li>
+					<li class="list-group-item"><a href="#" onclick="load_results()">modelling results</a></li>                    
 
 				</ul>
 			</aside>
@@ -107,7 +109,7 @@
                                         
                                      </div>
                                      <div style="margin-bottom:4px;margin-top:4px;">
-                                        <button id="upload-file-btn" type="button" class="btn btn-primary">Upload file</button>
+                                        <button id="upload-file-btn" type="button" class="btn btn-primary">Submit file</button>
                                      </div>
                                  </form>   
                             </div>                                                  	
@@ -117,9 +119,9 @@
                             <div id="reactions-div" style="display:none">
 
                                 <h3>Reactions</h3>
-                                <form id="reactions-form">
-                                    <input id="task_id" type="hidden" value=""/>
-                                    <input id="reaction_id" type="hidden" value=""/>
+                                <form id="reactions-form" name="reactions-form" enctype="multipart/form-data">
+                                    <input id="task_id" name="task_id" type="hidden" value=""/>
+                                    <input id="reaction_id" name="reaction_id" type="hidden" value=""/>
                                     <table id="reactions-tbl" class="table table-hover table-bordered">
                                         <thead>
                                         <tr>
@@ -143,7 +145,7 @@
                     
                     <div class="row">                    
                         <div id="results-div" style="display:none">
-                            <h3>Modelling results</h3>
+                            <h3>Modeling results</h3>
                             <table class="table table-striped table-bordered" id="results-tbl">
                                 <thead>
                                     <tr>

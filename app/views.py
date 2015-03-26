@@ -103,6 +103,7 @@ LOCK_MODELLING  = 5
 MODELLING_DONE  = 6
 
 
+
 parser = reqparse.RequestParser()
 parser.add_argument('reaction_structure', type=str)
 parser.add_argument('temperature', type=str)
@@ -178,7 +179,7 @@ class TaskStatusAPI (Resource):
     def get(self, task_id):
         return pdb.get_task_status(task_id)
 
-    def put(self, task_id):
+    def put(self,task_id):
         args = parser.parse_args()
         task_status = args['task_status']
         pdb.update_task_status(task_id, task_status)
@@ -211,6 +212,7 @@ class ModelListAPI(Resource):
         model_hash = args['hash']
         models = pdb.get_models(model_hash=model_hash)
         return models, 201
+
 
     def delete(self):
         """TODO:
