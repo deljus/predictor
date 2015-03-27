@@ -46,23 +46,24 @@ def create_task_from_file(file_path, task_id):
     temp = 298
     sp.call([molconvert, 'mrv', file_path, '-o', tmp_file])
     file = open(tmp_file, 'r')
+    solv = {x['name'].lower(): x['id'] for x in pdb.get_solvents()}
 
     for mol in file:
         if '<MDocument>' in mol:
             tree = ET.fromstring(mol)
             prop = {x.get('title').lower(): x.find('scalar').text.lower().strip() for x in tree.iter('property')}
-            solv = pdb.get_solvents()
+
             solvlist = {}
             for i, j in prop.items():
                 if 'solvent.amount.' in i:
-                    k, v = re.split('[:=]', j)
-                    id = any(x['id'] for x in solv if x['name'].lower() == k.strip()) # ебаный велосипед.
+                    k = re.split('[:=]', j)
+                    id = solv.get(k[0].strip()) # ебаный велосипед.
                     if id:
-                        if '%' in v:
-                            v = v.replace('%', '')
+                        if '%' in k[-1]:
+                            v = k[-1].replace('%', '')
                             grader = 100
                         else:
-                            v = v
+                            v = k[-1]
                             grader = 1
                         try:
                             v = float(v) / grader
