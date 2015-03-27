@@ -183,6 +183,7 @@ class TaskListAPI(Resource):
         task_id = pdb.insert_task()
         args = parser.parse_args()
         pdb.insert_reaction(task_id, args['reaction_structure'])
+        pdb.update_task_status(task_id, REQ_MAPPING)
         return task_id, 201
 
 
