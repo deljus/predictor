@@ -118,7 +118,7 @@ function upload_file(data)
 {
        return  $.ajax({
             type: 'POST',
-            url: '/uploadajax',
+            url: '/upload',
             data: data,
             contentType: false,
             cache: false,
