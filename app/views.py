@@ -53,25 +53,25 @@ def create_task_from_file(file_path, task_id):
             prop = {x.get('title').lower(): x.find('scalar').text.lower().strip() for x in tree.iter('property')}
             solv = pdb.get_solvents()
             solvlist = {}
-            for x, y in prop.items():
-                if 'solvent.amount' == x:
-                    y = re.split('[:=]', y)
-                    id = any(i['id'] for i in solv if i['name'].lower() == y[0].strip()) # ебаный велосипед.
-                    if id:
-                        if '%' in y[-1]:
-                            y = y[-1].replace('%', '')
-                            grader = 100
-                        else:
-                            y = y[-1]
-                            grader = 1
-                        try:
-                            y = float(y) / grader
-                        except ValueError:
-                            y = 1
-                        solvlist[id] = y
-                elif 'temperature' == x:
+            for i, j in prop.items():
+                if 'solvent.amount' == i:
+                    for k, v in (re.split('[:=]', x.strip()) for x in re.split('[;,]', j)):
+                        id = any(i['id'] for i in solv if i['name'].lower() == k.strip()) # ебаный велосипед.
+                        if id:
+                            if '%' in v:
+                                v = v.replace('%', '')
+                                grader = 100
+                            else:
+                                v = v
+                                grader = 1
+                            try:
+                                v = float(v) / grader
+                            except ValueError:
+                                v = 1
+                            solvlist[id] = v
+                elif 'temperature' == i:
                     try:
-                        temp = float(y)
+                        temp = float(j)
                     except ValueError:
                         temp = 298
 
