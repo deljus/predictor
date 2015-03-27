@@ -56,7 +56,7 @@ def create_task_from_file(file_path, task_id):
             for i, j in prop.items():
                 if 'solvent.amount.' in i:
                     k, v = re.split('[:=]', j)
-                    id = any(i['id'] for i in solv if i['name'].lower() == k.strip()) # ебаный велосипед.
+                    id = any(x['id'] for x in solv if x['name'].lower() == k.strip()) # ебаный велосипед.
                     if id:
                         if '%' in v:
                             v = v.replace('%', '')
