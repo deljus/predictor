@@ -349,7 +349,7 @@ function upload_task_draw_data(draw_data)
 function start_task_mapping(task_id)
 {
     console.log('start_task_mapping->');
-	
+	/***
     set_task_status(task_id, REQ_MAPPING).done(function (data, textStatus, jqXHR){
 
         TAMER_ID = setInterval(function(){check_task_mapping_status(task_id)}, TIMER_INTERVAL);
@@ -358,6 +358,8 @@ function start_task_mapping(task_id)
 		console.log('start_task_mapping->set_task_status->' + textStatus+ ' ' + errorThrown);
 		handleRequestError();
 	});
+	***/
+	TAMER_ID = setInterval(function(){check_task_mapping_status(task_id)}, TIMER_INTERVAL);
 
 }
 
