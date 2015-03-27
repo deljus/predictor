@@ -129,7 +129,7 @@ class ReactionStructureAPI(Resource):
     def get(self, reaction_id):
         return pdb.get_reaction_structure(reaction_id)
 
-    def put(self, reaction_id):
+    def post(self, reaction_id):
         args = parser.parse_args()
         pdb.update_reaction_structure(reaction_id, args['reaction_structure'])
         return reaction_id, 201
@@ -157,7 +157,7 @@ class ReactionAPI(Resource):
     def get(self, reaction_id):
         return pdb.get_reaction(reaction_id), 201
 
-    def put(self, reaction_id):
+    def post(self, reaction_id):
         args = parser.parse_args()
         m = args['models']
         if m:

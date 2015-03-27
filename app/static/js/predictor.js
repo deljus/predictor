@@ -1,5 +1,5 @@
 var marvinSketcherInstance;
-
+var isSaveMrvBtnExists=false;
 $(document).ready(function handleDocumentReady (e) {
 	initControl();
 	MarvinJSUtil.getEditor("#sketch").then(function (sketcherInstance) {
@@ -205,7 +205,7 @@ function put_reaction_structure(reaction_id, data)
 
     return $.ajax({
             "url": "/reaction_structure/"+reaction_id
-            ,"type": "PUT"
+            ,"type": "POST"
             ,"dataType": "json"
             ,"contentType": "application/json"
             ,"data": data
@@ -528,7 +528,12 @@ function display_task_reactions(reactions)
       "toolbar": "S" // JS String: "W" as West, "E" as East, "N" as North, "S" as South toolbar
      }
 
-    marvinSketcherInstance.addButton(jso, save_draw_reaction );
+	// проверим - не были ли уже добавлена кнопка
+	if (!isSaveMrvBtnExists)
+	{
+	    marvinSketcherInstance.addButton(jso, save_draw_reaction );
+		isSaveMrvBtnExists=true;
+	}
 
 }
 
