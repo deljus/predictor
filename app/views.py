@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 import threading
 import subprocess as sp
 import xml.etree.ElementTree as ET
@@ -45,29 +46,36 @@ def create_task_from_file(file_path, task_id):
     temp = 298
     sp.call([molconvert, 'mrv', file_path, '-o', tmp_file])
     file = open(tmp_file, 'r')
-    next(file)
-    for mol in file:
-        tree = ET.fromstring(mol)
-        prop = {x.get('title').lower(): x.find('scalar').text.lower() for x in tree.iter('property')}
-        solv = pdb.get_solvents()
-        solvlist = {}
-        for x, y in prop.items():
-            if 'solvent.' in x:
-                name = x.split()[-1]
-                id = any(i['id'] for i in solv if i['name'] == name) # ебаный велосипед.
-                if id:
-                    try:
-                        y = float(y)
-                    except ValueError:
-                        y = 1
-                    solvlist[id] = y
-            elif 'temperature' == x:
-                try:
-                    temp = float(y)
-                except ValueError:
-                    temp = 298
 
-        pdb.insert_reaction(task_id=task_id, reaction_structure=mol.rstrip(), solvent=solvlist, temperature=temp)
+    for mol in file:
+        if '<MDocument>' in mol:
+            tree = ET.fromstring(mol)
+            prop = {x.get('title').lower(): x.find('scalar').text.lower().strip() for x in tree.iter('property')}
+            solv = pdb.get_solvents()
+            solvlist = {}
+            for i, j in prop.items():
+                if 'solvent.amount.' in i:
+                    k, v = re.split('[:=]', j)
+                    id = any(x['id'] for x in solv if x['name'].lower() == k.strip()) # ебаный велосипед.
+                    if id:
+                        if '%' in v:
+                            v = v.replace('%', '')
+                            grader = 100
+                        else:
+                            v = v
+                            grader = 1
+                        try:
+                            v = float(v) / grader
+                        except ValueError:
+                            v = 1
+                        solvlist[id] = v
+                elif 'temperature' == i:
+                    try:
+                        temp = float(j)
+                    except ValueError:
+                        temp = 298
+
+            pdb.insert_reaction(task_id=task_id, reaction_structure=mol.rstrip(), solvent=solvlist, temperature=temp)
     pdb.update_task_status(task_id, REQ_MAPPING)
 
 
