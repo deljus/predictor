@@ -55,14 +55,14 @@ def create_task_from_file(file_path, task_id):
             solvlist = {}
             for i, j in prop.items():
                 if 'solvent.amount.' in i:
-                    k, v = re.split('[:=]', j)
-                    id = any(x['id'] for x in solv if x['name'].lower() == k.strip()) # ебаный велосипед.
+                    k = re.split('[:=]', j)
+                    id = any(x['id'] for x in solv if x['name'].lower() == k[0].strip()) # ебаный велосипед.
                     if id:
-                        if '%' in v:
-                            v = v.replace('%', '')
+                        if '%' in k[-1]:
+                            v = k[-1].replace('%', '')
                             grader = 100
                         else:
-                            v = v
+                            v = k[-1]
                             grader = 1
                         try:
                             v = float(v) / grader
