@@ -201,7 +201,7 @@ function get_reaction_structure(reaction_id)
 function put_reaction_structure(reaction_id, data)
 { 
     console.log('put_reaction_structure->');
-    var data = JSON.stringify({"reaction_structure": data});
+    var data = {"reaction_structure": data};
 
     return $.ajax({
             "url": "/reaction_structure/"+reaction_id
@@ -631,16 +631,9 @@ function upload_reaction_form()
 		else
 			data[x.name] = x.value;
 	});
-	data = JSON.stringify(data);
 	console.log(data);
 	
-    return $.ajax({
-        "url": "/task_modelling/"+task_id
-        ,"type": "PUT"
-        ,"dataType": "json"
-        ,"contentType": "application/json"
-        ,"data": data
-    }).done(function (data, textStatus, jqXHR){
+    return $.post("/task_modelling/"+task_id, data).done(function (data, textStatus, jqXHR){
 
         console.log('form upload '+data);
         start_modelling();
