@@ -440,7 +440,7 @@ function display_task_reactions(reactions)
         _s='';
 
         str+='<tr>';
-        str+='<td class="reaction_id" reaction_id="'+_r_id+'">'+(i+1)+'</td>';
+        str+='<td class="reaction_id" reaction_id="'+_r_id+'"><a href="#">'+(i+1)+'</a></td>';
         str+='<td>';
         str+='<select  multiple="multiple" class="model" name="model_'+_r_id+'">';
         str+='<option value=""></option>';
