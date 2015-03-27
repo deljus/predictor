@@ -21,7 +21,7 @@ import requests
 import json
 from xml.dom.minidom import parse, parseString
 
-UPLOAD_PATH = '/home/server/uploads/'
+UPLOAD_PATH = '/home/server/upload/'
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 molconvert = '/home/server/ChemAxon/JChem/bin/molconvert'
