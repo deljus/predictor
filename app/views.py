@@ -21,10 +21,10 @@ import requests
 import json
 from xml.dom.minidom import parse, parseString
 
-UPLOAD_PATH = '/home/server/uploads/'
+UPLOAD_PATH = '/home/server/upload/'
 
 basedir = os.path.abspath(os.path.dirname(__file__))
-molconvert = '/home/stsouko/.ChemAxon/JChem/bin/molconvert'
+molconvert = '/home/server/ChemAxon/JChem/bin/molconvert'
 
 @app.route('/')
 @app.route('/index')
@@ -41,7 +41,7 @@ def download_file():
 
 
 def create_task_from_file(file_path, task_id):
-    tmp_file = '/tmp/tmp-%d.mrv' % task_id
+    tmp_file = '%stmp-%d.mrv' % (UPLOAD_PATH, task_id)
     temp = 298
     sp.call([molconvert, 'mrv', file_path, '-o', tmp_file])
     file = open(tmp_file, 'r')
@@ -52,7 +52,7 @@ def create_task_from_file(file_path, task_id):
         solv = pdb.get_solvents()
         solvlist = {}
         for x, y in prop.items():
-            if 'solvent' in x:
+            if 'solvent.' in x:
                 name = x.split()[-1]
                 id = any(i['id'] for i in solv if i['name'] == name) # ебаный велосипед.
                 if id:
