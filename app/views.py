@@ -54,21 +54,21 @@ def create_task_from_file(file_path, task_id):
             solv = pdb.get_solvents()
             solvlist = {}
             for i, j in prop.items():
-                if 'solvent.amount' == i:
-                    for k, v in (re.split('[:=]', x.strip()) for x in re.split('[;,]', j)):
-                        id = any(i['id'] for i in solv if i['name'].lower() == k.strip()) # ебаный велосипед.
-                        if id:
-                            if '%' in v:
-                                v = v.replace('%', '')
-                                grader = 100
-                            else:
-                                v = v
-                                grader = 1
-                            try:
-                                v = float(v) / grader
-                            except ValueError:
-                                v = 1
-                            solvlist[id] = v
+                if 'solvent.amount.' in i:
+                    k, v = re.split('[:=]', j)
+                    id = any(i['id'] for i in solv if i['name'].lower() == k.strip()) # ебаный велосипед.
+                    if id:
+                        if '%' in v:
+                            v = v.replace('%', '')
+                            grader = 100
+                        else:
+                            v = v
+                            grader = 1
+                        try:
+                            v = float(v) / grader
+                        except ValueError:
+                            v = 1
+                        solvlist[id] = v
                 elif 'temperature' == i:
                     try:
                         temp = float(j)
