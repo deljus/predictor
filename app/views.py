@@ -46,12 +46,13 @@ def create_task_from_file(file_path, task_id):
     temp = 298
     sp.call([molconvert, 'mrv', file_path, '-o', tmp_file])
     file = open(tmp_file, 'r')
+    solv = {x['name'].lower(): x['id'] for x in pdb.get_solvents()}
 
     for mol in file:
         if '<MDocument>' in mol:
             tree = ET.fromstring(mol)
             prop = {x.get('title').lower(): x.find('scalar').text.lower().strip() for x in tree.iter('property')}
-            solv = {x['name'].lower(): x['id'] for x in pdb.get_solvents()}
+
             solvlist = {}
             for i, j in prop.items():
                 if 'solvent.amount.' in i:
