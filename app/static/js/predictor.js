@@ -201,7 +201,7 @@ function get_reaction_structure(reaction_id)
 function put_reaction_structure(reaction_id, data)
 { 
     console.log('put_reaction_structure->');
-    var data = JSON.stringify({"reaction_structure": data});
+    var data = {"reaction_structure": data};
 
     return $.ajax({
             "url": "/reaction_structure/"+reaction_id
@@ -237,7 +237,7 @@ REQ_MODELLING   = 4
 LOCK_MODELLING  = 5
 MODELLING_DONE  = 6
 
-var TIMER_INTERVAL = 7000;
+var TIMER_INTERVAL = 5000;
 var MOL_FORMAT = 'mrv';
 
 var TAMER_ID;
@@ -440,7 +440,7 @@ function display_task_reactions(reactions)
         _s='';
 
         str+='<tr>';
-        str+='<td class="reaction_id" reaction_id="'+_r_id+'">'+(i+1)+'</td>';
+        str+='<td class="reaction_id" reaction_id="'+_r_id+'"><a href="#">'+(i+1)+'</a></td>';
         str+='<td>';
         str+='<select  multiple="multiple" class="model" name="model_'+_r_id+'">';
         str+='<option value=""></option>';
@@ -631,16 +631,9 @@ function upload_reaction_form()
 		else
 			data[x.name] = x.value;
 	});
-	data = JSON.stringify(data);
 	console.log(data);
 	
-    return $.ajax({
-        "url": "/task_modelling/"+task_id
-        ,"type": "PUT"
-        ,"dataType": "json"
-        ,"contentType": "application/json"
-        ,"data": data
-    }).done(function (data, textStatus, jqXHR){
+    return $.post("/task_modelling/"+task_id, data).done(function (data, textStatus, jqXHR){
 
         console.log('form upload '+data);
         start_modelling();
