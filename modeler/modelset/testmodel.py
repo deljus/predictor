@@ -19,7 +19,7 @@ class Model():
         return 1
 
     def gethashes(self):
-        hashlist = ['1212.1212', '555.666']
+        hashlist = ['1006099,1017020,4007079', '1006099,1007079,1017020']
         return hashlist
 
     def getresult(self, chemical):

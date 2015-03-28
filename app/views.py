@@ -57,7 +57,7 @@ def create_task_from_file(file_path, task_id):
             for i, j in prop.items():
                 if 'solvent.amount.' in i:
                     k = re.split('[:=]', j)
-                    id = solv.get(k[0].strip()) # ебаный велосипед.
+                    id = solv.get(k[0].strip())
                     if id:
                         if '%' in k[-1]:
                             v = k[-1].replace('%', '')
@@ -337,3 +337,14 @@ api.add_resource(DownloadResultsAPI, '/download/<task_id>')
 
 
 api.add_resource(UploadFile, '/upload')
+
+
+class TestApi(Resource):
+    def post(self):
+        tparser = reqparse.RequestParser()
+        tparser.add_argument('file', type=str)
+        args = tparser.parse_args()
+        return args, 201
+
+
+api.add_resource(TestApi, '/testapi')

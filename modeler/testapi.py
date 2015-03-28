@@ -13,9 +13,7 @@ api = Api(app)
 class ModelListAPI(Resource):
     def __init__(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('result', type=str)
-        parser.add_argument('params', type=str, action='append')
-        parser.add_argument('values', type=str, action='append')
+        parser.add_argument('file', type=str)
         self.parser = parser
 
     def post(self, reaction_id):

@@ -54,11 +54,9 @@ def run():
     tasks = gettask()
 
     for i in tasks:
-        #serverput("task_status/%s" % (i['id']), {'task_status': LOCK_MAPPING})
-        print('@', i)
+        serverput("task_status/%s" % (i['id']), {'task_status': LOCK_MAPPING})
         chemicals = serverget("task_reactions/%s" % (i['id']), None)
         for j in chemicals:
-            print('$', j)
             structure = serverget("reaction_structure/%s" % (j['reaction_id']), None)
 
             data = {"structure": structure, "parameters": {"standardizerDefinition": STANDARD}}
@@ -80,28 +78,20 @@ def run():
                 res = fear.firstcgr(fearinput)
                 if not res:
                     models = []
-                    print('^^', fearinput['meta'])
                     for x, y in fearinput['meta'].items():
                         if '!reaction_center_hash' in x:
                             rhash = y.split("'")[0][5:]
                             mset = serverget("models", {'model_hash': rhash})
                             models.extend([str(z['id']) for z in mset])
-                    print(models)
                     #serverput("reaction/%s" % (i['id']), {'models': ','.join([str(x['id']) for x in models])})
             except:
                 pass
-            print('='*40)
+
             data = {"structure": r_structure, "parameters": {"method": "DEHYDROGENIZE"}}
             structure = chemaxpost('convert/hydrogenizer', data)
-
-            print(structure)
-            print("reaction_structure/%s" % (j['reaction_id']))
-
             serverpost("reaction_structure/%s" % (j['reaction_id']), {'reaction_structure': structure})
-            print("*"*40)
 
-
-        #serverput("task_status/%s" % (i['id']), {'task_status': MAPPING_DONE})
+        serverput("task_status/%s" % (i['id']), {'task_status': MAPPING_DONE})
 
 
 class PeriodicScheduler(object):

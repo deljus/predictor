@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import pkgutil
 import sched
+import threading
 import time
 import modelset as models
 import requests
@@ -9,11 +10,14 @@ __author__ = 'stsouko'
 SERVER = "http://130.79.41.97"
 #SERVER = "http://127.0.0.1"
 PORT = 5000
-INTERVAL = 2
+INTERVAL = 3
+THREAD_LIMIT = 3
 
 REQ_MODELLING = 4
 LOCK_MODELLING = 5
 MODELLING_DONE = 6
+
+TASKS = []
 
 
 def serverget(url, params):
@@ -38,23 +42,28 @@ def gettask():
     return serverget('tasks', {'task_status': REQ_MODELLING})
 
 
+def taskthread(task_id):
+    serverput("task_status/%s" % task_id, {'task_status': LOCK_MODELLING})
+    chemicals = serverget("task_reactions/%s" % task_id, None)
+    for j in chemicals:
+        structure = serverget("reaction/%s" % (j['reaction_id']), None)
+        for x, y in structure['models'].items():
+            result = dict(modelid=x, params=[], values=[])
+            for k, v in models.MODELS[y].getresult(structure).items():
+                result['params'].append(k)
+                result['values'].append(v)
+
+            serverpost("reaction_result/%s" % (j['reaction_id']), result)
+
+    serverput("task_status/%s" % task_id, {'task_status': MODELLING_DONE})
+
+
 def run():
-    tasks = gettask()
-
-    for i in tasks:
-        serverput("task_status/%s" % (i['id']), {'task_status': LOCK_MODELLING})
-        chemicals = serverget("task_reactions/%s" % (i['id']), None)
-        for j in chemicals:
-            structure = serverget("reaction/%s" % (j['reaction_id']), None)
-            for x, y in structure['models'].items():
-                result = dict(modelid=x, params=[], values=[])
-                for k, v in models.MODELS[y].getresult(structure).items():
-                    result['params'].append(k)
-                    result['values'].append(v)
-
-                serverpost("reaction_result/%s" % (j['reaction_id']), result)
-
-        serverput("task_status/%s" % (i['id']), {'task_status': MODELLING_DONE})
+    TASKS.extend(gettask())
+    while TASKS and threading.active_count() < THREAD_LIMIT:
+        i = TASKS.pop()
+        t = threading.Thread(target=taskthread, args=(i['id']))
+        t.start()
 
 
 class PeriodicScheduler(object):
