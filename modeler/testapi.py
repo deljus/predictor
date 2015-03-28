@@ -13,14 +13,14 @@ api = Api(app)
 class ModelListAPI(Resource):
     def __init__(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('file', type=str)
+        parser.add_argument('file.path', type=str)
         self.parser = parser
 
-    def post(self, reaction_id):
-        args = self.parser.parse_args()
-        print(args)
+    def post(self):
+        print(self.parser.parse_args())
+        print(request.form)
 
-api.add_resource(ModelListAPI, '/reaction_result/<reaction_id>')
+api.add_resource(ModelListAPI, '/upload')
 
 if __name__ == '__main__':
     app.run(debug=True)

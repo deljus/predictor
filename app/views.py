@@ -341,11 +341,7 @@ api.add_resource(UploadFile, '/upload')
 
 class TestApi(Resource):
     def post(self):
-        tparser = reqparse.RequestParser()
-        tparser.add_argument('file.path', type=str)
-        tparser.add_argument('file.name', type=str)
-        args = tparser.parse_args()
-        return args, 201
+        return request.form, 201
 
 
 api.add_resource(TestApi, '/testapi')
