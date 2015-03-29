@@ -45,7 +45,8 @@ class Results(db.Entity):
     id = PrimaryKey(int, auto=True)
     chemical = Required(Chemicals)
     attrib = Required(str)
-    value = Required(float)
+    value = Required(str)
+    type = Required(int)
     model = Required("Models")
 
 
@@ -266,7 +267,7 @@ class PredictorDataBase:
 
 
     @db_session
-    def update_reaction_result(self, reaction_id, model_id, param, value):
+    def update_reaction_result(self, reaction_id, model_id, param, value, ptype):
         '''
         функция записывает в базу данные моделирования
         :return:
@@ -274,7 +275,7 @@ class PredictorDataBase:
         reaction = Chemicals.get(id=reaction_id)
         model = Models.get(id=model_id)
         if reaction and model:
-            Results(chemical=reaction, model=model, attrib=param, value=value)
+            Results(chemical=reaction, model=model, attrib=param, value=value, type=ptype)
 
 
     @db_session
@@ -373,9 +374,10 @@ class PredictorDataBase:
         '''
         return Models.get(id=model_id)
 
-    def insert_model(self, name, is_reaction, reaction_hashes):
+    @staticmethod
+    def insert_model(name, desc, is_reaction, reaction_hashes):
         with db_session:
-            model = Models(name=name, is_reaction=is_reaction)
+            model = Models(name=name, description=desc, is_reaction=is_reaction)
             if reaction_hashes:
                 for x in reaction_hashes:
                     reaction_hash = AppDomains.get(hash=x)

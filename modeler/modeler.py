@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 import pkgutil
 import sched
 import threading
@@ -39,6 +40,7 @@ def serverpost(url, params):
 
 
 def gettask():
+    #todo: надо со временем сделать лок на стороне ядра. причем с таймаутом.
     return serverget('tasks', {'task_status': REQ_MODELLING})
 
 
@@ -48,20 +50,16 @@ def taskthread(task_id):
     for j in chemicals:
         structure = serverget("reaction/%s" % (j['reaction_id']), None)
         for x, y in structure['models'].items():
-            result = dict(modelid=x, params=[], values=[])
-            for k, v in models.MODELS[y].getresult(structure).items():
-                result['params'].append(k)
-                result['values'].append(v)
-
+            result = dict(modelid=x, result=json.dumps(models.MODELS[y].getresult(structure)))
             serverpost("reaction_result/%s" % (j['reaction_id']), result)
 
     serverput("task_status/%s" % task_id, {'task_status': MODELLING_DONE})
 
 
 def run():
-    TASKS.extend(gettask())
+    TASKS.extend(gettask()) #todo: надо запилить приоритеты. в начало совать важные в конец остальное
     while TASKS and threading.active_count() < THREAD_LIMIT:
-        i = TASKS.pop()
+        i = TASKS.pop(0)
         t = threading.Thread(target=taskthread, args=(i['id']))
         t.start()
 

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import random
+
 __author__ = 'stsouko'
 from modelset import register_model
 
@@ -25,7 +27,7 @@ class Model():
     def getresult(self, chemical):
         """do some operations on chemical"""
 
-        result = dict(key1='value1', key2='value2')
+        result = [dict(type='text', key='fictparam', value=random.randrange(0, 100))]
         return result
 
 

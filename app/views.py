@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-import re
 import threading
-import subprocess as sp
-import xml.etree.ElementTree as ET
+from .utils import create_task_from_file
+from .utils import UPLOAD_PATH
 from werkzeug import secure_filename
+
+from .config import REQ_MAPPING
+
 
 from flask import render_template, url_for, redirect
 from app import app
@@ -22,10 +24,10 @@ import requests
 import json
 from xml.dom.minidom import parse, parseString
 
-UPLOAD_PATH = '/home/server/upload/'
 
-basedir = os.path.abspath(os.path.dirname(__file__))
-molconvert = '/home/server/ChemAxon/JChem/bin/molconvert'
+api = Api(app)
+pdb = pdb()
+
 
 @app.route('/')
 @app.route('/index')
@@ -40,54 +42,16 @@ def index():
 def download_file():
     return excel.make_response_from_array([[1,2], [3, 4]], "xls")
 
-
-def create_task_from_file(file_path, task_id):
-    tmp_file = '%stmp-%d.mrv' % (UPLOAD_PATH, task_id)
-    temp = 298
-    sp.call([molconvert, 'mrv', file_path, '-o', tmp_file])
-    file = open(tmp_file, 'r')
-    solv = {x['name'].lower(): x['id'] for x in pdb.get_solvents()}
-
-    for mol in file:
-        if '<MDocument>' in mol:
-            tree = ET.fromstring(mol)
-            prop = {x.get('title').lower(): x.find('scalar').text.lower().strip() for x in tree.iter('property')}
-
-            solvlist = {}
-            for i, j in prop.items():
-                if 'solvent.amount.' in i:
-                    k = re.split('[:=]', j)
-                    id = solv.get(k[0].strip())
-                    if id:
-                        if '%' in k[-1]:
-                            v = k[-1].replace('%', '')
-                            grader = 100
-                        else:
-                            v = k[-1]
-                            grader = 1
-                        try:
-                            v = float(v) / grader
-                        except ValueError:
-                            v = 1
-                        solvlist[id] = v
-                elif 'temperature' == i:
-                    try:
-                        temp = float(j)
-                    except ValueError:
-                        temp = 298
-
-            pdb.insert_reaction(task_id=task_id, reaction_structure=mol.rstrip(), solvent=solvlist, temperature=temp)
-    pdb.update_task_status(task_id, REQ_MAPPING)
+"""
+file uploader
+"""
+UploadFileParser = reqparse.RequestParser()
+UploadFileParser.add_argument('file.path', type=str)
 
 
 class UploadFile(Resource):
-    def __init__(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('file.path', type=str)
-        self.parser = parser
-
     def post(self):
-        args = self.parser.parse_args()
+        args = UploadFileParser.parse_args()
         task_id = pdb.insert_task()
         if not args['file.path']: # костыль. если не найдет этого в аргументах, то мы без NGINX сидим тащемта.
             f = request.files['file']
@@ -96,23 +60,9 @@ class UploadFile(Resource):
         else:
             reaction_file = args['file.path']
 
-        t = threading.Thread(target=create_task_from_file, args=(reaction_file, task_id))
+        t = threading.Thread(target=create_task_from_file, args=(pdb, reaction_file, task_id))
         t.start()
         return str(task_id), 201
-
-
-api = Api(app)
-pdb = pdb()
-
-
-TASK_CREATED    = 0
-REQ_MAPPING     = 1
-LOCK_MAPPING    = 2
-MAPPING_DONE    = 3
-REQ_MODELLING   = 4
-LOCK_MODELLING  = 5
-MODELLING_DONE  = 6
-
 
 
 parser = reqparse.RequestParser()
@@ -125,6 +75,7 @@ parser.add_argument('param', type=str)
 parser.add_argument('value', type=float)
 parser.add_argument('models', type=str)
 
+
 class ReactionStructureAPI(Resource):
     def get(self, reaction_id):
         return pdb.get_reaction_structure(reaction_id)
@@ -134,22 +85,22 @@ class ReactionStructureAPI(Resource):
         pdb.update_reaction_structure(reaction_id, args['reaction_structure'])
         return reaction_id, 201
 
+"""
+modeling results updater
+"""
+ReactionResultparser = reqparse.RequestParser()
+ReactionResultparser.add_argument('modelid', type=int)
+ReactionResultparser.add_argument('result', type=lambda x: json.loads(x))
+ReactionResulttype = {'text': 0, 'structure': 1, 'link': 2}
+
 
 class ReactionResultAPI(Resource):
-    def __init__(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('modelid', type=str)
-        parser.add_argument('params', type=str, action='append')
-        parser.add_argument('values', type=str, action='append')
-        self.parser = parser
-
-    def get(self, reaction_id): # что это тут делает то???
-        return pdb.get_reaction_results(reaction_id)
-
     def post(self, reaction_id):
-        args = self.parser.parse_args()
-        for x, y in zip(args['params'], args['values']):
-            pdb.update_reaction_result(reaction_id=reaction_id, model_id=args['modelid'], param=x, value=y)
+        args = ReactionResultparser.parse_args()
+        for x in args['result']:
+            pdb.update_reaction_result(reaction_id=reaction_id, model_id=args['modelid'],
+                                       param=x['key'], value=x['value'],
+                                       type=ReactionResulttype.get(x.get('type', 0), 0))
         return reaction_id, 201
 
 
@@ -191,7 +142,7 @@ class TaskStatusAPI (Resource):
     def get(self, task_id):
         return pdb.get_task_status(task_id)
 
-    def put(self,task_id):
+    def put(self, task_id):
         args = parser.parse_args()
         task_status = args['task_status']
         pdb.update_task_status(task_id, task_status)
@@ -202,40 +153,37 @@ class TaskReactionsAPI (Resource):
     def get(self, task_id):
         return pdb.get_reactions_by_task(task_id)
 
+"""
+api  для добавления и удаления моделей. а также поиск подходящих моделей по ключам.
+"""
+ModelListparserget = reqparse.RequestParser()
+ModelListparserget.add_argument('hash', type=str)
+
+ModelListparserdel = reqparse.RequestParser()
+ModelListparserdel.add_argument('id', type=int)
+
+ModelListparserpost = reqparse.RequestParser()
+ModelListparserpost.add_argument('name', type=str)
+ModelListparserpost.add_argument('desc', type=str)
+ModelListparserpost.add_argument('hashes', type=str, action='append')
+ModelListparserpost.add_argument('is_reaction', type=bool)
+
 
 class ModelListAPI(Resource):
-    def __init__(self):
-        parserget = reqparse.RequestParser()
-        parserget.add_argument('hash', type=str)
-
-        parserdel = reqparse.RequestParser()
-        parserdel.add_argument('id', type=int)
-
-        parserpost = reqparse.RequestParser()
-        parserpost.add_argument('name', type=str)
-        parserpost.add_argument('desc', type=str)
-        parserpost.add_argument('hashes', type=str, action='append')
-        parserpost.add_argument('is_reaction', type=bool)
-
-        self.parser = dict(get=parserget, post=parserpost, delete=parserdel)
-
     def get(self):
-        args = self.parser['get'].parse_args()
+        args = ModelListparserget.parse_args()
         model_hash = args['hash']
         models = pdb.get_models(model_hash=model_hash)
         return models, 201
 
-
     def delete(self):
-        """TODO:
-        удалить модель по ее id."""
-        args = self.parser['delete'].parse_args()
+        args = ModelListparserdel.parse_args()
         model_id = args['id']
         pdb.delete_model(model_id)
 
     def post(self):
-        args = self.parser['post'].parse_args()
-        model_id = pdb.insert_model(name=args['name'], is_reaction=args['is_reaction'], reaction_hashes=args['hashes'])
+        args = ModelListparserpost.parse_args()
+        model_id = pdb.insert_model(args['name'], args['desc'], args['is_reaction'], args['hashes'])
         return model_id, 201
 
 
@@ -337,11 +285,3 @@ api.add_resource(DownloadResultsAPI, '/download/<task_id>')
 
 
 api.add_resource(UploadFile, '/upload')
-
-
-class TestApi(Resource):
-    def post(self):
-        return request.form, 201
-
-
-api.add_resource(TestApi, '/testapi')

@@ -1,3 +1,4 @@
+import json
 import sys
 
 __author__ = 'stsouko'
@@ -13,12 +14,12 @@ api = Api(app)
 class ModelListAPI(Resource):
     def __init__(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('file.path', type=str)
+        parser.add_argument('result', type=lambda x: json.loads(x))
+        parser.add_argument('modelid', type=int)
         self.parser = parser
 
     def post(self):
         print(self.parser.parse_args())
-        print(request.form)
 
 api.add_resource(ModelListAPI, '/upload')
 
