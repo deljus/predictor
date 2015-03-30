@@ -63,7 +63,7 @@ def run():
     TASKS.extend(gettask()) #todo: надо запилить приоритеты. в начало совать важные в конец остальное
     while TASKS and threading.active_count() < THREAD_LIMIT:
         i = TASKS.pop(0)
-        t = threading.Thread(target=taskthread, args=(i['id']))
+        t = threading.Thread(target=taskthread, args=([i['id']]))
         t.start()
 
 

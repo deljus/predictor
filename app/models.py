@@ -220,7 +220,7 @@ class PredictorDataBase:
 
 
     @db_session
-    def update_reaction_structure(self, reaction_id, structure):
+    def update_reaction_structure(self, reaction_id, structure, status=None):
         '''
         функция возвращает структуру реакции по заданному ID
         :param id(str): ID реакции
@@ -230,6 +230,8 @@ class PredictorDataBase:
         c = Chemicals.get(id=reaction_id)
         if c:
             c.structure.structure = structure
+            if status:
+                c.status = status
             return True
         else:
             return False

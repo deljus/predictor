@@ -71,21 +71,25 @@ def run():
             with open('/tmp/tmp_standard.rxn', 'w') as tmp:
                 tmp.write(structure)
 
-            fearinput = RDFread('/tmp/tmp_standard.rxn')
-
-            try:
-                fearinput = next(fearinput.readdata())
-                res = fear.firstcgr(fearinput)
-                if not res:
-                    models = []
-                    for x, y in fearinput['meta'].items():
-                        if '!reaction_center_hash' in x:
-                            rhash = y.split("'")[0][5:]
-                            mset = serverget("models", {'model_hash': rhash})
-                            models.extend([str(z['id']) for z in mset])
-                    #serverput("reaction/%s" % (i['id']), {'models': ','.join([str(x['id']) for x in models])})
-            except:
+            if '$RXN' in structure:
+                fearinput = RDFread('/tmp/tmp_standard.rxn')
+                try:
+                    fearinput = next(fearinput.readdata())
+                    res = fear.firstcgr(fearinput)
+                    if not res:
+                        models = set()
+                        for x, y in fearinput['meta'].items():
+                            if '!reaction_center_hash' in x:
+                                rhash = y.split("'")[0][5:]
+                                mset = serverget("models", {'model_hash': rhash})
+                                models.update([str(z['id']) for z in mset])
+                        #todo: переписать вьюшку на нормальные грабли.
+                        serverput("reaction/%s" % (i['id']), {'models': ','.join([str(x['id']) for x in models])})
+                except:
+                    pass
+            else:
                 pass
+                #todo: тут надо для молекул заморочиться.
 
             data = {"structure": r_structure, "parameters": {"method": "DEHYDROGENIZE"}}
             structure = chemaxpost('convert/hydrogenizer', data)
