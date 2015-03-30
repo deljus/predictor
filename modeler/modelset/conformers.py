@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import subprocess
 import time
 
@@ -27,12 +28,15 @@ class Model():
 
     def getresult(self, chemical):
         # chemical['structure']
-        with open('/home/server/conf/temp.mrv', 'w') as f:
+        file_name = int(time.time())
+        if not os.path.exists('/home/server/conf/%d' % file_name):
+            os.makedirs('/home/server/conf/%d' % file_name)
+        with open('/home/server/conf/%d/temp.mrv' % file_name, 'w') as f:
             f.write(chemical['structure'])
         #todo: эта штука может затереть предыдущие файлы
-        file_name = int(time.time())
-        subprocess.call("ssh timur@130.79.41.90 -t /home/timur/server/start", shell=True)
-        subprocess.call("mv /home/server/conf/result.zip /home/server/download/%d.zip" % file_name, shell=True)
+
+        subprocess.call("ssh timur@130.79.41.90 /home/timur/server/start %d" % file_name, shell=True)
+        subprocess.call("mv /home/server/conf/%d/result.zip /home/server/download/%d.zip" % (file_name, file_name), shell=True)
 
         result = [dict(type='link', attrib='file with archive', value='download/%d.zip' % file_name)]
         return result
