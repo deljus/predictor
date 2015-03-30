@@ -11,8 +11,8 @@ from flask import render_template, url_for, redirect
 from app import app
 from flask.ext.restful import reqparse, abort, Api, Resource, fields, marshal
 from flask.ext import excel
-#import pyexcel.ext.xls
-#import pyexcel.ext.xlsx
+import pyexcel.ext.xls
+import pyexcel.ext.xlsx
 
 
 import sys
