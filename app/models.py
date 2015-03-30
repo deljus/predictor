@@ -58,7 +58,8 @@ class AppDomains(db.Entity):
 
 class Models(db.Entity):
     id = PrimaryKey(int, auto=True)
-    name = Required(unicode)
+    name = Required(str)
+    description = Required(str)
     chemicals = Set(Chemicals)
     results = Set(Results)
     is_reaction = Required(bool, default=False)
