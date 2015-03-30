@@ -760,26 +760,6 @@ function display_modelling_results(results)
         }
     }
 
-    var settings = {
-            'carbonLabelVisible' : false,
-            'cpkColoring' : true,
-            'implicitHydrogen' : false,
-            'width' : 200,
-            'height' : 100
-    };
-    jTbl.find('img.result-structure').each(function(){
-        try {
-            var  jImg = $(this);
-            var data = result_structures[this.id];
-            var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",settings);
-            jImg.attr('src',dataUrl);
-        }
-        catch(err){
-            console.log(err);
-        }
-    });
-
-
     jTbl.append(str);
     $("#results-div").show("normal");
     jTbl.find('.reaction_img').each(function(){
@@ -818,6 +798,25 @@ function display_modelling_results(results)
 
     });
 
+    var settings = {
+            'carbonLabelVisible' : false,
+            'cpkColoring' : true,
+            'implicitHydrogen' : false,
+            'width' : 200,
+            'height' : 100
+    };
+    jTbl.find('img.result-structure').each(function(){
+        try {
+            var  jImg = $(this);
+            var data = result_structures[this.id];
+            var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",settings);
+            jImg.attr('src',dataUrl);
+        }
+        catch(err){
+            console.log(err);
+        }
+    });
+
 }
 
 /*
@@ -832,6 +831,4 @@ function display_modelling_results(results)
 				$("#image").attr("src", dataUrl);
 */
 
-//curl http://127.0.0.1:5000/tasks   -d "reaction_structure=<xml></xml>" -X POST
-//curl http://127.0.0.1:5000/task/ce99375015b1ee7ac4d87bfee941296b   -d "task_status=0" -X GET
-//curl http://127.0.0.1:5000/reaction/2   -d "model=1,2" -X PUT
+
