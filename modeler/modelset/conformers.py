@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import subprocess
 import time
 
@@ -28,6 +29,8 @@ class Model():
     def getresult(self, chemical):
         # chemical['structure']
         file_name = int(time.time())
+        if not os.path.exists('/home/server/conf/%d' % file_name):
+            os.makedirs('/home/server/conf/%d' % file_name)
         with open('/home/server/conf/%d/temp.mrv' % file_name, 'w') as f:
             f.write(chemical['structure'])
         #todo: эта штука может затереть предыдущие файлы
