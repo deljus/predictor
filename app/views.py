@@ -10,7 +10,7 @@ from .config import REQ_MAPPING
 from flask import render_template, url_for, redirect
 from app import app
 from flask.ext.restful import reqparse, abort, Api, Resource, fields, marshal
-#from flask.ext import excel
+from flask.ext import excel
 #import pyexcel.ext.xls
 #import pyexcel.ext.xlsx
 
@@ -100,7 +100,7 @@ class ReactionResultAPI(Resource):
         for x in args['result']:
             pdb.update_reaction_result(reaction_id=reaction_id, model_id=args['modelid'],
                                        param=x['attrib'], value=str(x['value']),
-                                       ptype=ReactionResulttype.get(x['type'], 0))
+                                       ptype=ReactionResulttype.get(x.get('type'), 0))
         return reaction_id, 201
 
 
@@ -119,6 +119,7 @@ class ReactionAPI(Resource):
             s = s.split(',')
         pdb.update_reaction_conditions(reaction_id, temperature=t, solvent=s, models=m)
         return reaction_id, 201
+
 
 class ReactionListAPI(Resource):
     def get(self):

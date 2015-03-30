@@ -79,8 +79,9 @@ class Solventsets(db.Entity):
     chemical = Required(Chemicals)
 
 
-sql_debug(True)
+#sql_debug(True)
 db.generate_mapping(create_tables=True)
+
 
 class PredictorDataBase:
     @db_session
@@ -278,7 +279,6 @@ class PredictorDataBase:
         reaction = Chemicals.get(id=reaction_id)
         model = Models.get(id=model_id)
         if reaction and model:
-            print(reaction_id, model_id, param, value, ptype)
             Results(chemical=reaction, model=model, attrib=param, value=value, type=ptype)
 
 
