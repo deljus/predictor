@@ -184,7 +184,7 @@ class ModelListAPI(Resource):
     def post(self):
         args = ModelListparserpost.parse_args()
         model_id = pdb.insert_model(args['name'], args['desc'], args['is_reaction'], args['hashes'])
-        return model_id, 201
+        return args, 201
 
 
 class SolventsAPI(Resource):

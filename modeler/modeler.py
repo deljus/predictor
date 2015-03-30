@@ -8,9 +8,8 @@ import modelset as models
 import requests
 
 __author__ = 'stsouko'
-SERVER = "http://130.79.41.97"
-#SERVER = "http://127.0.0.1"
-PORT = 5000
+SERVER = "http://arsole.u-strasbg.fr"
+PORT = 80
 INTERVAL = 3
 THREAD_LIMIT = 3
 
@@ -36,7 +35,7 @@ def serverput(url, params):
 
 def serverpost(url, params):
     q = requests.post("%s:%d/%s" % (SERVER, PORT, url), data=params)
-    return q.json()
+    return q.text
 
 
 def gettask():
@@ -82,10 +81,14 @@ def main():
     todelete = set(registeredmodels).difference(models.MODELS)
     toattach = set(models.MODELS).difference(registeredmodels)
 
+    print('removed models %s' % todelete)
+    print('new models %s' % toattach)
+
     for x in toattach:
         model = models.MODELS[x]
-        serverpost("models", {'name': x, 'desc': model.getdesc(),
-                              'is_reaction': model.is_reation(), 'hashes': model.gethashes()})
+        print(x, model.getdesc(), model.is_reation(), model.gethashes())
+        print(serverpost("models", {'name': x, 'desc': model.getdesc(),
+                                    'is_reaction': model.is_reation(), 'hashes': model.gethashes()}))
 
     for x in todelete:
         serverdel("models", {'id': registeredmodels[x]})
