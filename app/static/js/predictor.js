@@ -738,17 +738,17 @@ function display_modelling_results(results)
             str+='<td>'+_res.model+'</td>';
             str+='<td>'+_res.param+'</td>';
             var value = '';
-            switch(_res.type)
+            switch(String(_res.type))
             {
-                case 0: // текст
+                case '0': // текст
                     value = _res.value;
                     break;
-                case 1: // структура
+                case '1': // структура
                     var img_id = 'result_structure_img_'+i+'_'+j;
-                    result_structures {img_id} = _res.value;
+                    result_structures[img_id] = _res.value;
                     value = '<img id="'+img_id+'" src="" alt="bla-bla" class="result-structure" />';
                     break;
-                case 2: // ссылка
+                case '2': // ссылка
                     value = '<a href="'+_res.value+'">Link</a>';
                     break;
                 default:
@@ -770,7 +770,7 @@ function display_modelling_results(results)
     jTbl.find('img.result-structure').each(function(){
         try {
             var  jImg = $(this);
-            var data = result_structures{this.id};
+            var data = result_structures[this.id];
             var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",settings);
             jImg.attr('src',dataUrl);
         }
