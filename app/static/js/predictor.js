@@ -711,6 +711,8 @@ function load_reaction_img(reaction_id)
     return $.get("/reaction_img/"+reaction_id);
 
 }
+// данные для структур в результатах моделирования
+var result_structures = {};
 function display_modelling_results(results)
 {
 	// скроем редактор
@@ -721,6 +723,7 @@ function display_modelling_results(results)
     var jTbl = $("#results-tbody");
     jTbl.empty();
     var str = '';
+
     for (var i=0;i<results.length; i++)
     {
         var result = results[i];
@@ -738,8 +741,12 @@ function display_modelling_results(results)
             switch(_res.type)
             {
                 case 0: // текст
-                case 1: // структура
                     value = _res.value;
+                    break;
+                case 1: // структура
+                    var img_id = 'result_structure_img_'+i+'_'+j;
+                    result_structures {img_id} = _res.value;
+                    value = '<img id="'+img_id+'" src="" alt="bla-bla" class="result-structure" />';
                     break;
                 case 2: // ссылка
                     value = '<a href="'+_res.value+'">Link</a>';
@@ -752,6 +759,26 @@ function display_modelling_results(results)
             str+='</tr>';
         }
     }
+
+    var settings = {
+            'carbonLabelVisible' : false,
+            'cpkColoring' : true,
+            'implicitHydrogen' : false,
+            'width' : 200,
+            'height' : 100
+    };
+    jTbl.find('img.result-structure').each(function(){
+        try {
+            var  jImg = $(this);
+            var data = result_structures{this.id};
+            var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",settings);
+            jImg.attr('src',dataUrl);
+        }
+        catch(err){
+            console.log(err);
+        }
+    });
+
 
     jTbl.append(str);
     $("#results-div").show("normal");
