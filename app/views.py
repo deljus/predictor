@@ -166,7 +166,7 @@ ModelListparserpost = reqparse.RequestParser()
 ModelListparserpost.add_argument('name', type=str)
 ModelListparserpost.add_argument('desc', type=str)
 ModelListparserpost.add_argument('hashes', type=str, action='append')
-ModelListparserpost.add_argument('is_reaction', type=bool)
+ModelListparserpost.add_argument('is_reaction', type=int)
 
 
 class ModelListAPI(Resource):
@@ -184,7 +184,7 @@ class ModelListAPI(Resource):
     def post(self):
         args = ModelListparserpost.parse_args()
         model_id = pdb.insert_model(args['name'], args['desc'], args['is_reaction'], args['hashes'])
-        return args, 201
+        return model_id, 201
 
 
 class SolventsAPI(Resource):
