@@ -734,7 +734,21 @@ function display_modelling_results(results)
             _res = reaction_results[j];
             str+='<td>'+_res.model+'</td>';
             str+='<td>'+_res.param+'</td>';
-            str+='<td>'+_res.value+'</td>';
+            var value = '';
+            switch(_res.type)
+            {
+                case 0: // текст
+                case 1: // структура
+                    value = _res.value;
+                    break;
+                case 2: // ссылка
+                    value = '<a href="'+_res.value+'">Link</a>';
+                    break;
+                default:
+                    value = _res.value;
+                    break;
+            }
+            str+='<td>'+value+'</td>';
             str+='</tr>';
         }
     }

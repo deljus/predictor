@@ -320,7 +320,8 @@ class PredictorDataBase:
                     result_arr.append(dict(reaction_id=r.id,
                                            model=res.model.name,
                                            param=res.attrib,
-                                           value=res.value))
+                                           value=res.value,
+                                           type=res.type))
                 out.append(dict(reaction_id=r.id, results=result_arr))
         return out
 
