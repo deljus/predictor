@@ -760,26 +760,6 @@ function display_modelling_results(results)
         }
     }
 
-    var settings = {
-            'carbonLabelVisible' : false,
-            'cpkColoring' : true,
-            'implicitHydrogen' : false,
-            'width' : 200,
-            'height' : 100
-    };
-    jTbl.find('img.result-structure').each(function(){
-        try {
-            var  jImg = $(this);
-            var data = result_structures[this.id];
-            var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",settings);
-            jImg.attr('src',dataUrl);
-        }
-        catch(err){
-            console.log(err);
-        }
-    });
-
-
     jTbl.append(str);
     $("#results-div").show("normal");
     jTbl.find('.reaction_img').each(function(){
@@ -816,6 +796,25 @@ function display_modelling_results(results)
 		});
 
 
+    });
+
+    var settings = {
+            'carbonLabelVisible' : false,
+            'cpkColoring' : true,
+            'implicitHydrogen' : false,
+            'width' : 200,
+            'height' : 100
+    };
+    jTbl.find('img.result-structure').each(function(){
+        try {
+            var  jImg = $(this);
+            var data = result_structures[this.id];
+            var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",settings);
+            jImg.attr('src',dataUrl);
+        }
+        catch(err){
+            console.log(err);
+        }
     });
 
 }
