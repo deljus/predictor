@@ -27,7 +27,7 @@ class Model():
     def getresult(self, chemical):
         """do some operations on chemical"""
 
-        result = [dict(type='text', key='fictparam', value=random.randrange(0, 100))]
+        result = [dict(type='text', attrib='fictparam', value=random.randrange(0, 100))]
         return result
 
 

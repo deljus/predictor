@@ -99,8 +99,8 @@ class ReactionResultAPI(Resource):
         args = ReactionResultparser.parse_args()
         for x in args['result']:
             pdb.update_reaction_result(reaction_id=reaction_id, model_id=args['modelid'],
-                                       param=x['key'], value=x['value'],
-                                       type=ReactionResulttype.get(x.get('type', 0), 0))
+                                       param=x['attrib'], value=str(x['value']),
+                                       ptype=ReactionResulttype.get(x['type'], 0))
         return reaction_id, 201
 
 

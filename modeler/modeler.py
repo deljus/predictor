@@ -11,8 +11,8 @@ __author__ = 'stsouko'
 SERVER = "http://arsole.u-strasbg.fr"
 PORT = 80
 
-#SERVER = "http://localhost"
-#PORT = 5000
+SERVER = "http://localhost"
+PORT = 5000
 
 INTERVAL = 3
 THREAD_LIMIT = 3
@@ -50,11 +50,13 @@ def gettask():
 def taskthread(task_id):
     serverput("task_status/%s" % task_id, {'task_status': LOCK_MODELLING})
     chemicals = serverget("task_reactions/%s" % task_id, None)
-    for j in chemicals:
-        structure = serverget("reaction/%s" % (j['reaction_id']), None)
-        for x, y in structure['models'].items():
-            result = dict(modelid=x, result=json.dumps(models.MODELS[y].getresult(structure)))
-            serverpost("reaction_result/%s" % (j['reaction_id']), result)
+    for r in chemicals:
+        reaction_id = r['reaction_id']
+        reaction = serverget("reaction/%s" % reaction_id, None)
+        for model_id, model_name in reaction['models'].items():
+            model_result = models.MODELS[model_name].getresult(reaction)
+            reaction_result = dict(modelid=model_id, result=json.dumps(model_result))
+            serverpost("reaction_result/%s" % reaction_id, reaction_result)
 
     serverput("task_status/%s" % task_id, {'task_status': MODELLING_DONE})
 
