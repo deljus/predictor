@@ -11,8 +11,8 @@ __author__ = 'stsouko'
 SERVER = "http://arsole.u-strasbg.fr"
 PORT = 80
 
-SERVER = "http://localhost"
-PORT = 5000
+#SERVER = "http://localhost"
+#PORT = 5000
 
 INTERVAL = 3
 THREAD_LIMIT = 3
