@@ -749,7 +749,7 @@ function display_modelling_results(results)
                     value = '<img id="'+img_id+'" src="" alt="bla-bla" class="result-structure" />';
                     break;
                 case '2': // ссылка
-                    value = '<a href="'+_res.value+'">Link</a>';
+                    value = '<a href="'+_res.value+'">Open</a>';
                     break;
                 default:
                     value = _res.value;
