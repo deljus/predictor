@@ -6,7 +6,7 @@ import time
 import os
 import sys
 
-db = Database('postgres', user='postgres', password='nginxpony', host='localhost', database='predictor', create_db=True)
+db = Database('postgres', user='postgres', password='nginxpony', host='localhost', database='predictor')
 
 
 class Users(db.Entity):
