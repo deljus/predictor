@@ -24,8 +24,8 @@ MAPPING_DONE = 3
 def serverget(url, params):
     for i in range(10):
         try:
-            q = requests.get("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=3)
-        except ConnectionError:
+            q = requests.get("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
+        except:
             time.sleep(3)
             continue
         else:
@@ -37,8 +37,8 @@ def serverget(url, params):
 def serverput(url, params):
     for i in range(10):
         try:
-            requests.put("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=3)
-        except ConnectionError:
+            requests.put("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
+        except:
             time.sleep(3)
             continue
         else:
@@ -50,8 +50,8 @@ def serverput(url, params):
 def serverpost(url, params):
     for i in range(10):
         try:
-            q = requests.post("%s:%d/%s" % (SERVER, PORT, url), data=params, timeout=3)
-        except ConnectionError:
+            q = requests.post("%s:%d/%s" % (SERVER, PORT, url), data=params, timeout=20)
+        except:
             time.sleep(3)
             continue
         else:
@@ -65,7 +65,7 @@ def chemaxpost(url, data):
         try:
             q = requests.post("%s/rest-v0/util/%s" % (CHEMAXON, url), data=json.dumps(data),
                               headers={'content-type': 'application/json'})
-        except ConnectionError:
+        except:
             time.sleep(3)
             continue
         else:

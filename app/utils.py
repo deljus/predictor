@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import time
+
 __author__ = 'stsouko'
 from .config import UPLOAD_PATH, REQ_MAPPING, MOLCONVERT
 import subprocess as sp
@@ -12,8 +14,9 @@ def create_task_from_file(pdb, file_path, task_id):
     sp.call([MOLCONVERT, 'mrv', file_path, '-o', tmp_file])
     file = open(tmp_file, 'r')
     solv = {x['name'].lower(): x['id'] for x in pdb.get_solvents()}
-
+    t1 = time.time()
     for mol in file:
+        t2 = time.time()
         if '<MDocument>' in mol:
             tree = ET.fromstring(mol)
             prop = {x.get('title').lower(): x.find('scalar').text.lower().strip() for x in tree.iter('property')}
@@ -40,6 +43,10 @@ def create_task_from_file(pdb, file_path, task_id):
                         temp = float(j)
                     except ValueError:
                         temp = 298
-
+            #time.sleep(.1)
+            print('==============>parsing time', time.time() - t2)
+            t3 = time.time()
             pdb.insert_reaction(task_id=task_id, reaction_structure=mol.rstrip(), solvent=solvlist, temperature=temp)
+            print('==============>update db time', time.time() - t3)
     pdb.update_task_status(task_id, REQ_MAPPING)
+    print('==============>total parsing time', time.time() - t1)

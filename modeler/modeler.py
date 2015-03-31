@@ -28,8 +28,8 @@ LOSE = []
 def serverget(url, params):
     for i in range(1000):
         try:
-            q = requests.get("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=3)
-        except ConnectionError:
+            q = requests.get("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
+        except:
             time.sleep(3)
             continue
         else:
@@ -41,8 +41,8 @@ def serverget(url, params):
 def serverdel(url, params):
     for i in range(1000):
         try:
-            requests.delete("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=3)
-        except ConnectionError:
+            requests.delete("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
+        except:
             time.sleep(3)
             continue
         else:
@@ -54,8 +54,8 @@ def serverdel(url, params):
 def serverput(url, params):
     for i in range(1000):
         try:
-            requests.put("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=3)
-        except ConnectionError:
+            requests.put("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
+        except:
             time.sleep(3)
             continue
         else:
@@ -67,8 +67,8 @@ def serverput(url, params):
 def serverpost(url, params):
     for i in range(1000):
         try:
-            q = requests.post("%s:%d/%s" % (SERVER, PORT, url), data=params, timeout=3)
-        except ConnectionError:
+            q = requests.post("%s:%d/%s" % (SERVER, PORT, url), data=params, timeout=20)
+        except:
             time.sleep(3)
             continue
         else:
