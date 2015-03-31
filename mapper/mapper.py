@@ -22,24 +22,56 @@ MAPPING_DONE = 3
 
 
 def serverget(url, params):
-    q = requests.get("%s:%d/%s" % (SERVER, PORT, url), params=params)
-    return q.json()
+    for i in range(10):
+        try:
+            q = requests.get("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=3)
+        except ConnectionError:
+            time.sleep(3)
+            continue
+        else:
+            return q.json()
+    else:
+        return []
 
 
 def serverput(url, params):
-    requests.put("%s:%d/%s" % (SERVER, PORT, url), params=params)
+    for i in range(10):
+        try:
+            requests.put("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=3)
+        except ConnectionError:
+            time.sleep(3)
+            continue
+        else:
+            return True
+    else:
+        return False
 
 
 def serverpost(url, params):
-    q = requests.post("%s:%d/%s" % (SERVER, PORT, url), data=params)
-    return q.status_code
+    for i in range(10):
+        try:
+            q = requests.post("%s:%d/%s" % (SERVER, PORT, url), data=params, timeout=3)
+        except ConnectionError:
+            time.sleep(3)
+            continue
+        else:
+            return q.text
+    else:
+        return False
 
 
 def chemaxpost(url, data):
-    q = requests.post("%s/rest-v0/util/%s" % (CHEMAXON, url),
-                      data=json.dumps(data),
-                      headers={'content-type': 'application/json'})
-    return q.text
+    for i in range(10):
+        try:
+            q = requests.post("%s/rest-v0/util/%s" % (CHEMAXON, url), data=json.dumps(data),
+                              headers={'content-type': 'application/json'})
+        except ConnectionError:
+            time.sleep(3)
+            continue
+        else:
+            return q.text
+    else:
+        return False
 
 
 def gettask():
@@ -50,50 +82,49 @@ fear = CGR()
 
 
 def run():
-
     tasks = gettask()
-
     for i in tasks:
-        serverput("task_status/%s" % (i['id']), {'task_status': LOCK_MAPPING})
-        chemicals = serverget("task_reactions/%s" % (i['id']), None)
-        for j in chemicals:
-            structure = serverget("reaction_structure/%s" % (j['reaction_id']), None)
+        if serverput("task_status/%s" % (i['id']), {'task_status': LOCK_MAPPING}):
+            chemicals = serverget("task_reactions/%s" % (i['id']), None)
+            for j in chemicals:
+                structure = serverget("reaction_structure/%s" % (j['reaction_id']), None)
 
-            data = {"structure": structure, "parameters": {"standardizerDefinition": STANDARD}}
-            standardised = chemaxpost('convert/standardizer', data)
+                data = {"structure": structure, "parameters": {"standardizerDefinition": STANDARD}}
+                standardised = chemaxpost('convert/standardizer', data)
 
-            data = {"structure": standardised, "parameters": {"autoMappingStyle": "OFF"}}
-            r_structure = chemaxpost('convert/reactionConverter', data)
+                data = {"structure": standardised, "parameters": {"autoMappingStyle": "OFF"}}
+                r_structure = chemaxpost('convert/reactionConverter', data)
 
-            data = {"structure": r_structure, "parameters": "rxn"}
-            structure = chemaxpost('calculate/stringMolExport', data)
+                data = {"structure": r_structure, "parameters": "rxn"}
+                structure = chemaxpost('calculate/stringMolExport', data)
 
-            with open('/tmp/tmp_standard.rxn', 'w') as tmp:
-                tmp.write(structure)
+                with open('/tmp/tmp_standard.rxn', 'w') as tmp:
+                    tmp.write(structure)
 
-            if '$RXN' in structure:
-                fearinput = RDFread('/tmp/tmp_standard.rxn')
-                try:
-                    fearinput = next(fearinput.readdata())
-                    res = fear.firstcgr(fearinput)
-                    if not res:
-                        models = set()
-                        for x, y in fearinput['meta'].items():
-                            if '!reaction_center_hash' in x:
-                                rhash = y.split("'")[0][5:]
-                                mset = serverget("models", {'model_hash': rhash})
-                                models.update([str(z['id']) for z in mset])
-                        #todo: переписать вьюшку на нормальные грабли.
-                        serverput("reaction/%s" % (i['id']), {'models': ','.join([str(x['id']) for x in models])})
-                except:
+                if '$RXN' in structure:
+                    fearinput = RDFread('/tmp/tmp_standard.rxn')
+                    try:
+                        fearinput = next(fearinput.readdata())
+                        res = fear.firstcgr(fearinput)
+                        if not res:
+                            models = set()
+                            for x, y in fearinput['meta'].items():
+                                if '!reaction_center_hash' in x:
+                                    rhash = y.split("'")[0][5:]
+                                    mset = serverget("models", {'model_hash': rhash})
+                                    models.update([str(z['id']) for z in mset])
+                            #todo: переписать вьюшку на нормальные грабли.
+                            serverput("reaction/%s" % (i['id']), {'models': ','.join(models)})
+                    except:
+                        pass
+                else:
                     pass
-            else:
-                pass
-                #todo: тут надо для молекул заморочиться.
+                    #todo: тут надо для молекул заморочиться.
 
-            data = {"structure": r_structure, "parameters": {"method": "DEHYDROGENIZE"}}
-            structure = chemaxpost('convert/hydrogenizer', data)
-            serverpost("reaction_structure/%s" % (j['reaction_id']), {'reaction_structure': structure})
+                data = {"structure": r_structure, "parameters": {"method": "DEHYDROGENIZE"}}
+                structure = chemaxpost('convert/hydrogenizer', data)
+                if structure:
+                    serverpost("reaction_structure/%s" % (j['reaction_id']), {'reaction_structure': structure})
 
         serverput("task_status/%s" % (i['id']), {'task_status': MAPPING_DONE})
 

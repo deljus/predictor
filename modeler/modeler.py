@@ -22,24 +22,59 @@ LOCK_MODELLING = 5
 MODELLING_DONE = 6
 
 TASKS = []
+LOSE = []
 
 
 def serverget(url, params):
-    q = requests.get("%s:%d/%s" % (SERVER, PORT, url), params=params)
-    return q.json()
+    for i in range(1000):
+        try:
+            q = requests.get("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=3)
+        except ConnectionError:
+            time.sleep(3)
+            continue
+        else:
+            return q.json()
+    else:
+        return []
 
 
 def serverdel(url, params):
-    requests.delete("%s:%d/%s" % (SERVER, PORT, url), params=params)
+    for i in range(1000):
+        try:
+            requests.delete("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=3)
+        except ConnectionError:
+            time.sleep(3)
+            continue
+        else:
+            return True
+    else:
+        return False
 
 
 def serverput(url, params):
-    requests.put("%s:%d/%s" % (SERVER, PORT, url), params=params)
+    for i in range(1000):
+        try:
+            requests.put("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=3)
+        except ConnectionError:
+            time.sleep(3)
+            continue
+        else:
+            return True
+    else:
+        return False
 
 
 def serverpost(url, params):
-    q = requests.post("%s:%d/%s" % (SERVER, PORT, url), data=params)
-    return q.text
+    for i in range(1000):
+        try:
+            q = requests.post("%s:%d/%s" % (SERVER, PORT, url), data=params, timeout=3)
+        except ConnectionError:
+            time.sleep(3)
+            continue
+        else:
+            return q.text
+    else:
+        return False
 
 
 def gettask():
@@ -48,17 +83,21 @@ def gettask():
 
 
 def taskthread(task_id):
-    serverput("task_status/%s" % task_id, {'task_status': LOCK_MODELLING})
-    chemicals = serverget("task_reactions/%s" % task_id, None)
-    for r in chemicals:
-        reaction_id = r['reaction_id']
-        reaction = serverget("reaction/%s" % reaction_id, None)
-        for model_id, model_name in reaction['models'].items():
-            model_result = models.MODELS[model_name].getresult(reaction)
-            reaction_result = dict(modelid=model_id, result=json.dumps(model_result))
-            serverpost("reaction_result/%s" % reaction_id, reaction_result)
+    if serverput("task_status/%s" % task_id, {'task_status': LOCK_MODELLING}):
+        chemicals = serverget("task_reactions/%s" % task_id, None)
+        for r in chemicals:
+            reaction_id = r['reaction_id']
+            reaction = serverget("reaction/%s" % reaction_id, None)
+            if reaction:
+                for model_id, model_name in reaction['models'].items():
+                    model_result = models.MODELS[model_name].getresult(reaction)
+                    reaction_result = dict(modelid=model_id, result=json.dumps(model_result))
+                    if not serverpost("reaction_result/%s" % reaction_id, reaction_result):
+                        # если не удалось записать результаты моделирования, то схороним их на повторную отправку.
+                        LOSE.append(('post', "reaction_result/%s" % reaction_id, reaction_result))
 
-    serverput("task_status/%s" % task_id, {'task_status': MODELLING_DONE})
+    if not serverput("task_status/%s" % task_id, {'task_status': MODELLING_DONE}):
+        LOSE.append(("put", "task_status/%s" % task_id, {'task_status': MODELLING_DONE}))
 
 
 def run():
@@ -92,7 +131,6 @@ def main():
 
     for x in toattach:
         model = models.MODELS[x]
-        print(x, model.getdesc(), model.is_reation(), model.gethashes())
         print(serverpost("models", {'name': x, 'desc': model.getdesc(),
                                     'is_reaction': model.is_reation(), 'hashes': model.gethashes()}))
 
