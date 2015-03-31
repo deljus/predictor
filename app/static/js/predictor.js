@@ -730,7 +730,7 @@ function display_modelling_results(results)
         r_id = result.reaction_id;
         var reaction_results = result.results;
         str+='<tr>';
-        str+='<td rowspan="'+reaction_results.length+'"><img class="reaction_img" reaction_id="'+r_id+'" src=""  alt="bla-bla"/></td>';
+        str+='<td rowspan="'+reaction_results.length+'"><img class="reaction_img" reaction_id="'+r_id+'" src=""  alt="Image unavailable"/></td>';
 
         for (var j=0;j<reaction_results.length;j++)
         {
@@ -746,7 +746,7 @@ function display_modelling_results(results)
                 case '1': // структура
                     var img_id = 'result_structure_img_'+i+'_'+j;
                     result_structures[img_id] = _res.value;
-                    value = '<img id="'+img_id+'" src="" alt="bla-bla" class="result-structure" />';
+                    value = '<img id="'+img_id+'" src="" alt="Image unavailable" class="result-structure" />';
                     break;
                 case '2': // ссылка
                     value = '<a href="'+_res.value+'">Open</a>';
