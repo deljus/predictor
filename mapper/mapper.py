@@ -22,11 +22,10 @@ MAPPING_DONE = 3
 
 
 def serverget(url, params):
-    for i in range(10):
+    for _ in range(10):
         try:
             q = requests.get("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
         except:
-            time.sleep(3)
             continue
         else:
             return q.json()
@@ -35,11 +34,10 @@ def serverget(url, params):
 
 
 def serverput(url, params):
-    for i in range(10):
+    for _ in range(10):
         try:
             requests.put("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
         except:
-            time.sleep(3)
             continue
         else:
             return True
@@ -48,11 +46,10 @@ def serverput(url, params):
 
 
 def serverpost(url, params):
-    for i in range(10):
+    for _ in range(10):
         try:
             q = requests.post("%s:%d/%s" % (SERVER, PORT, url), data=params, timeout=20)
         except:
-            time.sleep(3)
             continue
         else:
             return q.text
@@ -61,12 +58,11 @@ def serverpost(url, params):
 
 
 def chemaxpost(url, data):
-    for i in range(10):
+    for _ in range(10):
         try:
             q = requests.post("%s/rest-v0/util/%s" % (CHEMAXON, url), data=json.dumps(data),
-                              headers={'content-type': 'application/json'})
+                              headers={'content-type': 'application/json'}, timeout=20)
         except:
-            time.sleep(3)
             continue
         else:
             return q.text
@@ -84,6 +80,7 @@ fear = CGR()
 def run():
     tasks = gettask()
     for i in tasks:
+        print(i)
         if serverput("task_status/%s" % (i['id']), {'task_status': LOCK_MAPPING}):
             chemicals = serverget("task_reactions/%s" % (i['id']), None)
             for j in chemicals:

@@ -25,25 +25,11 @@ TASKS = []
 LOSE = []
 
 
-def serverget(url, params):
-    for i in range(1000):
-        try:
-            q = requests.get("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
-        except:
-            time.sleep(3)
-            continue
-        else:
-            return q.json()
-    else:
-        return []
-
-
 def serverdel(url, params):
-    for i in range(1000):
+    for _ in range(1000):
         try:
             requests.delete("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
         except:
-            time.sleep(3)
             continue
         else:
             return True
@@ -51,12 +37,23 @@ def serverdel(url, params):
         return False
 
 
+def serverget(url, params):
+    for _ in range(10):
+        try:
+            q = requests.get("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
+        except:
+            continue
+        else:
+            return q.json()
+    else:
+        return []
+
+
 def serverput(url, params):
-    for i in range(1000):
+    for _ in range(10):
         try:
             requests.put("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
         except:
-            time.sleep(3)
             continue
         else:
             return True
@@ -65,11 +62,10 @@ def serverput(url, params):
 
 
 def serverpost(url, params):
-    for i in range(1000):
+    for _ in range(10):
         try:
             q = requests.post("%s:%d/%s" % (SERVER, PORT, url), data=params, timeout=20)
         except:
-            time.sleep(3)
             continue
         else:
             return q.text
@@ -102,6 +98,8 @@ def taskthread(task_id):
 
 def run():
     TASKS.extend(gettask()) #todo: надо запилить приоритеты. в начало совать важные в конец остальное
+    if LOSE:
+        pass # запилить заливку повторную данных.
     while TASKS and threading.active_count() < THREAD_LIMIT:
         i = TASKS.pop(0)
         t = threading.Thread(target=taskthread, args=([i['id']]))
