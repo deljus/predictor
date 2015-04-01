@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import time
 
-from .config import LOCK_MAPPING, STANDARD, MAPPING_DONE, UPLOAD_PATH, REQ_MAPPING, MOLCONVERT, CHEMAXON, SERVER, PORT, \
+from config import LOCK_MAPPING, STANDARD, MAPPING_DONE, UPLOAD_PATH, REQ_MAPPING, MOLCONVERT, CHEMAXON, SERVER, PORT, \
     STANDARDIZER
 import subprocess as sp
 import xml.etree.ElementTree as ET

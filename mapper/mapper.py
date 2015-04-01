@@ -5,8 +5,8 @@ import sched
 import threading
 import time
 
-from .config import INTERVAL, THREAD_LIMIT
-from .utils import gettask, getfiletask, mapper, create_task_from_file
+from config import INTERVAL, THREAD_LIMIT
+from utils import gettask, getfiletask, mapper, create_task_from_file
 
 
 TASKS = []
@@ -14,10 +14,14 @@ TASKS = []
 
 def run():
     TASKS.extend(gettask())
-    TASKS.append(getfiletask())
+    ft = getfiletask()
+    TASKS.append(ft)
+
+    print(TASKS)
 
     while TASKS and threading.active_count() < THREAD_LIMIT:
         i = TASKS.pop(0)
+        print(i)
         taskthread = create_task_from_file if "file" in i else mapper
         t = threading.Thread(target=taskthread, args=([i]))
         t.start()

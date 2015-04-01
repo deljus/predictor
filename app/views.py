@@ -46,13 +46,6 @@ FILEList = {}
 
 
 class UploadFile(Resource):
-    def get(self):
-        if FILEList:
-            task_id, file = FILEList.popitem()
-            return dict(id=task_id, file=file), 201
-        else:
-            return None, 201
-
     def post(self):
         args = UploadFileParser.parse_args()
 
@@ -65,6 +58,34 @@ class UploadFile(Resource):
         task_id = pdb.insert_task()
         FILEList[task_id] = reaction_file
         return str(task_id), 201
+
+
+"""
+метод добавляет новые реакции в существующий таск и отдает файлы на парсер.
+"""
+ReactionParserparser = reqparse.RequestParser()
+ReactionParserparser.add_argument('task_id', type=int)
+ReactionParserparser.add_argument('structure', type=str)
+ReactionParserparser.add_argument('temperature', type=float)
+ReactionParserparser.add_argument('solvents', type=lambda x: json.loads(x))
+
+
+class ParserAPI(Resource):
+    def get(self):
+        if FILEList:
+            task_id, file = FILEList.popitem()
+            return dict(id=task_id, file=file), 201
+        else:
+            return None, 201
+
+    def post(self):
+        args = ReactionParserparser.parse_args()
+        reaction_id = pdb.insert_reaction(task_id=args['task_id'], reaction_structure=args['structure'],
+                                          solvent=args['solvents'], temperature=args['temperature'])
+        if reaction_id:
+            return reaction_id, 201
+        else:
+            return None, 201
 
 
 parser = reqparse.RequestParser()
@@ -122,28 +143,10 @@ class ReactionAPI(Resource):
         pdb.update_reaction_conditions(reaction_id, temperature=t, solvent=s, models=m)
         return reaction_id, 201
 
-"""
-метод добавляет новые реакции в существующий таск.
-"""
-ReactionListparser = reqparse.RequestParser()
-ReactionListparser.add_argument('task_id', type=int)
-ReactionListparser.add_argument('structure', type=str)
-ReactionListparser.add_argument('temperature', type=float)
-ReactionListparser.add_argument('solvents', type=lambda x: json.loads(x))
-
 
 class ReactionListAPI(Resource):
     def get(self):
         return pdb.get_reactions(), 201
-
-    def post(self):
-        args = ReactionListparser.parse_args()
-        reaction_id = pdb.insert_reaction(task_id=args['task_id'], reaction_structure=args['structure'],
-                                          solvent=args['solvents'], temperature=args['temperature'])
-        if reaction_id:
-            return reaction_id, 201
-        else:
-            return None, 201
 
 
 class TaskListAPI(Resource):
@@ -306,3 +309,4 @@ api.add_resource(DownloadResultsAPI, '/download/<task_id>')
 
 
 api.add_resource(UploadFile, '/upload')
+api.add_resource(ParserAPI, '/parser')
