@@ -18,8 +18,6 @@ def run():
     if ft:
         TASKS.append(ft)
 
-    print(TASKS)
-
     while TASKS and threading.active_count() < THREAD_LIMIT:
         i = TASKS.pop(0)
         taskthread = create_task_from_file if "file" in i else mapper
