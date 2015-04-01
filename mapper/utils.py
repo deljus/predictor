@@ -82,7 +82,7 @@ def gettask():
 
 
 def getfiletask():
-    return serverget('upload', None)
+    return serverget('parser', None)
 
 
 def getsolvents():
@@ -127,18 +127,21 @@ def create_task_from_file(task):
                     except ValueError:
                         temp = 298
 
-            data = dict(task_id=task_id, structure=mol.rstrip(), solvent=json.dumps(solvlist), temperature=temp)
-            q = serverpost('reactions', data)
-            if q.isdigit(): # проверка на корректный ответ. по сути не нужна. но да пох.
-                data = {"structure": mol, "parameters": "rxn"}
-                structure = chemaxpost('calculate/stringMolExport', data)
-                if '$RXN' in structure:
-                    with open(tmp_fear_file, 'w') as tmp:
-                        tmp.write(structure)
-                    FEAR(tmp_fear_file, int(q))
-                else:
-                    pass
-                    # todo: тут надо для молекул заморочиться.
+            data = {"structure": mol.rstrip(), "parameters": {"method": "DEHYDROGENIZE"}}
+            structure = chemaxpost('convert/hydrogenizer', data)
+            if structure:
+                data = dict(task_id=task_id, structure=structure, solvent=json.dumps(solvlist), temperature=temp)
+                q = serverpost('parser', data)
+                if q.isdigit(): # проверка на корректный ответ. по сути не нужна. но да пох.
+                    data = {"structure": mol, "parameters": "rxn"}
+                    structure = chemaxpost('calculate/stringMolExport', data)
+                    if '$RXN' in structure:
+                        with open(tmp_fear_file, 'w') as tmp:
+                            tmp.write(structure)
+                        FEAR(tmp_fear_file, int(q))
+                    else:
+                        pass
+                        # todo: тут надо для молекул заморочиться.
 
     serverput("task_status/%s" % task_id, {'task_status': MAPPING_DONE})
 

@@ -15,13 +15,13 @@ TASKS = []
 def run():
     TASKS.extend(gettask())
     ft = getfiletask()
-    TASKS.append(ft)
+    if ft:
+        TASKS.append(ft)
 
     print(TASKS)
 
     while TASKS and threading.active_count() < THREAD_LIMIT:
         i = TASKS.pop(0)
-        print(i)
         taskthread = create_task_from_file if "file" in i else mapper
         t = threading.Thread(target=taskthread, args=([i]))
         t.start()
