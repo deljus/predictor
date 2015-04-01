@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-import threading
-from .utils import create_task_from_file
-from .utils import UPLOAD_PATH
+from .config import UPLOAD_PATH
 from werkzeug import secure_filename
 
 from .config import REQ_MAPPING
@@ -12,7 +10,6 @@ from app import app
 from flask.ext.restful import reqparse, abort, Api, Resource, fields, marshal
 from flask.ext import excel
 import pyexcel.ext.xls
-#import pyexcel.ext.xlsx
 
 
 import sys
@@ -20,9 +17,7 @@ import os
 from app.models import PredictorDataBase as pdb
 from flask import (request, render_template, jsonify)
 
-import requests
 import json
-from xml.dom.minidom import parse, parseString
 
 
 api = Api(app)
@@ -40,28 +35,35 @@ def index():
 
 @app.route("/download", methods=['GET'])
 def download_file():
-    return excel.make_response_from_array([[1,2], [3, 4]], "xls")
+    return excel.make_response_from_array([[1, 2], [3, 4]], "xls")
 
 """
 file uploader
 """
 UploadFileParser = reqparse.RequestParser()
 UploadFileParser.add_argument('file.path', type=str)
+FILEList = {}
 
 
 class UploadFile(Resource):
+    def get(self):
+        if FILEList:
+            task_id, file = FILEList.popitem()
+            return dict(id=task_id, file=file), 201
+        else:
+            return None, 201
+
     def post(self):
         args = UploadFileParser.parse_args()
-        task_id = pdb.insert_task()
+
         if not args['file.path']: # костыль. если не найдет этого в аргументах, то мы без NGINX сидим тащемта.
             f = request.files['file']
             reaction_file = UPLOAD_PATH + secure_filename(f.filename)
             f.save(reaction_file)
         else:
             reaction_file = args['file.path']
-
-        t = threading.Thread(target=create_task_from_file, args=(pdb, reaction_file, task_id))
-        t.start()
+        task_id = pdb.insert_task()
+        FILEList[task_id] = reaction_file
         return str(task_id), 201
 
 
@@ -78,7 +80,7 @@ parser.add_argument('models', type=str)
 
 class ReactionStructureAPI(Resource):
     def get(self, reaction_id):
-        return pdb.get_reaction_structure(reaction_id)
+        return pdb.get_reaction_structure(reaction_id), 201
 
     def post(self, reaction_id):
         args = parser.parse_args()
@@ -120,16 +122,34 @@ class ReactionAPI(Resource):
         pdb.update_reaction_conditions(reaction_id, temperature=t, solvent=s, models=m)
         return reaction_id, 201
 
+"""
+метод добавляет новые реакции в существующий таск.
+"""
+ReactionListparser = reqparse.RequestParser()
+ReactionListparser.add_argument('task_id', type=int)
+ReactionListparser.add_argument('structure', type=str)
+ReactionListparser.add_argument('temperature', type=float)
+ReactionListparser.add_argument('solvents', type=lambda x: json.loads(x))
+
 
 class ReactionListAPI(Resource):
     def get(self):
-        return pdb.get_reactions()
+        return pdb.get_reactions(), 201
+
+    def post(self):
+        args = ReactionListparser.parse_args()
+        reaction_id = pdb.insert_reaction(task_id=args['task_id'], reaction_structure=args['structure'],
+                                          solvent=args['solvents'], temperature=args['temperature'])
+        if reaction_id:
+            return reaction_id, 201
+        else:
+            return None, 201
 
 
 class TaskListAPI(Resource):
     def get(self):
         args = parser.parse_args()
-        return pdb.get_tasks(status=args['task_status'])
+        return pdb.get_tasks(status=args['task_status']), 201
 
     def post(self):
         task_id = pdb.insert_task()
@@ -141,7 +161,7 @@ class TaskListAPI(Resource):
 
 class TaskStatusAPI (Resource):
     def get(self, task_id):
-        return pdb.get_task_status(task_id)
+        return pdb.get_task_status(task_id), 201
 
     def put(self, task_id):
         args = parser.parse_args()
@@ -152,7 +172,7 @@ class TaskStatusAPI (Resource):
 
 class TaskReactionsAPI (Resource):
     def get(self, task_id):
-        return pdb.get_reactions_by_task(task_id)
+        return pdb.get_reactions_by_task(task_id), 201
 
 """
 api  для добавления и удаления моделей. а также поиск подходящих моделей по ключам.
@@ -180,7 +200,7 @@ class ModelListAPI(Resource):
     def delete(self):
         args = ModelListparserdel.parse_args()
         model_id = args['id']
-        pdb.delete_model(model_id)
+        pdb.delete_model(model_id), 201
 
     def post(self):
         args = ModelListparserpost.parse_args()
@@ -190,12 +210,12 @@ class ModelListAPI(Resource):
 
 class SolventsAPI(Resource):
     def get(self):
-        return pdb.get_solvents()
+        return pdb.get_solvents(), 201
 
 
 class TaskModellingAPI(Resource):
     def get(self, task_id):
-        return pdb.get_results_by_task(task_id)
+        return pdb.get_results_by_task(task_id), 201
 
 
     def post(self, task_id):
@@ -228,12 +248,12 @@ class TaskModellingAPI(Resource):
             except:
                 print('TaskModellingAPI->PUT->', sys.exc_info()[0])
                 pass
-        return 'OK'
+        return 'OK', 201
 
 
 class ModelAPI (Resource):
     def get(self, model_id):
-        return pdb.get_model(model_id)
+        return pdb.get_model(model_id), 201
 
 
 class DownloadResultsAPI(Resource):
@@ -254,7 +274,7 @@ class DownloadResultsAPI(Resource):
                                     parameter=_result.get('param'),
                                     value=_result.get('value'))
                     )
-        return excel.make_response_from_records(arr, format)
+        return excel.make_response_from_records(arr, format), 201
 
 
 ##

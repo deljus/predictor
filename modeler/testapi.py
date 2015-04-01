@@ -20,6 +20,10 @@ class ModelListAPI(Resource):
 
     def post(self):
         print(self.parser.parse_args())
+        return None
+
+    def get(self):
+        return None
 
 api.add_resource(ModelListAPI, '/upload')
 

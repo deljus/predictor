@@ -10,4 +10,3 @@ LOCK_MODELLING = 5
 MODELLING_DONE = 6
 
 UPLOAD_PATH = '/home/server/upload/'
-MOLCONVERT = '/home/server/ChemAxon/JChem/bin/molconvert'
