@@ -412,21 +412,32 @@ function load_task_reactions(task_id)
     return true;
 }
 
+function clear_editor()
+{
+		marvinSketcherInstance.clear();
+}
+
 function display_task_reactions(reactions)
 {
     console.log('display_task_reactions->');
 	
 	// если скрыт редактор - покажем его
 	show_editor();
-	
+
+	// очистим редактор
+	clear_editor();
+
     var jTbl = $("#reactions-tbd");
     jTbl.empty();
     var str = '';
     var reaction_ids = '';
+    var first_reaction_id = '';
     for (var i=0;i<reactions.length;i++)
     {
         var _reaction = reactions[i];
         var _r_id = _reaction.reaction_id;
+        if (i==0)
+            first_reaction_id = _r_id;
         try {
             _temperature = _reaction.temperature;
             if (isEmpty(_temperature))
@@ -534,6 +545,9 @@ function display_task_reactions(reactions)
 	    marvinSketcherInstance.addButton(jso, save_draw_reaction );
 		isSaveMrvBtnExists=true;
 	}
+
+	if(first_reaction_id!='')
+	    load_reaction(first_reaction_id);
 
 }
 
