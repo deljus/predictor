@@ -198,7 +198,7 @@ class PredictorDataBase:
             return dict(structure=c.structure.structure,
                         temperature=c.temperature,
                         models={y.id: y.name for y in c.models},
-                        solvents={y.solvent.id: y.amount for y in c.solvents})
+                        solvents=[dict(id=y.solvent.id, name=y.solvent.name, amount=y.amount) for y in c.solvents])
         else:
             return None
 
@@ -216,7 +216,7 @@ class PredictorDataBase:
                             structure=r.structure.structure,
                             temperature=r.temperature,
                             models={m.id: m.name for m in r.models},
-                            solvents={s.id: s.amount for s in r.solvents}))
+                            solvents={s.solvent.id: s.amount for s in r.solvents}))
         return arr
 
 

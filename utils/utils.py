@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
-import time
 
-from config import LOCK_MAPPING, STANDARD, MAPPING_DONE, UPLOAD_PATH, REQ_MAPPING, MOLCONVERT, CHEMAXON, SERVER, PORT, \
-    STANDARDIZER
+from .config import LOCK_MAPPING, STANDARD, MAPPING_DONE, UPLOAD_PATH, REQ_MAPPING, CHEMAXON, SERVER, PORT, STANDARDIZER
 import subprocess as sp
 import xml.etree.ElementTree as ET
 import re
@@ -10,8 +8,8 @@ import re
 import requests
 import json
 
-from FEAR.RDFread import RDFread
-from FEAR.CGR import CGR
+from .FEAR.RDFread import RDFread
+from .FEAR.CGR import CGR
 
 fear = CGR()
 
@@ -161,6 +159,7 @@ def mapper(task):
             data = {"structure": r_structure, "parameters": "rxn"}
             structure = chemaxpost('calculate/stringMolExport', data)
 
+            UPLOAD_PATH = '/tmp/'
             file_path = '%stmp-%d.rxn' % (UPLOAD_PATH, task['id'])
 
             if '$RXN' in structure:

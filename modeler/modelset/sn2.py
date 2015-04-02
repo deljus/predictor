@@ -1,20 +1,27 @@
 # -*- coding: utf-8 -*-
+import os
+import pickle
 import random
 
 __author__ = 'stsouko'
-from modelset import register_model
+from modelset import register_model, chemaxpost
+
+from sklearn import svm
 
 
 class Model():
     def __init__(self):
-        print("started")
+        self.fragmentor = os.path.join(os.path.dirname(__file__), 'sn2', "Fragmentor")
+        self.condenser = os.path.join(os.path.dirname(__file__), 'sn2', "condenser")
+        model = os.path.join(os.path.dirname(__file__), 'sn2', "model.svm")
+        self.model = pickle.load(open(model, 'rb'))
 
     def getdesc(self):
-        desc = 'this model nothing do, but return something'
+        desc = 'sn2 reaction constants prediction'
         return desc
 
     def getname(self):
-        name = 'tesmodelname'
+        name = 'sn2'
         return name
 
     def is_reation(self):
@@ -26,6 +33,17 @@ class Model():
 
     def getresult(self, chemical):
         """do some operations on chemical"""
+        structure = chemical['structure']
+        #temperature = chemical['temperature']
+        #solvent = chemical['solvents'][0]['name']
+        print(chemical)
+        data = {"structure": structure, "parameters": "rxn"}
+        structure = chemaxpost('calculate/stringMolExport', data)
+        print(structure)
+
+        'Fragmentor -i condensed.sdf -o output -h header -t 3 -l 3 -u 6 --UseFormalCharge --DoAllWays'
+
+        self.model.predict([])
 
         result = [dict(type='text', attrib='fictparam', value=random.randrange(0, 100)),
                   dict(type='link', attrib='fictlink', value='download/1427724576.zip'),

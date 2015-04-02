@@ -220,7 +220,6 @@ class TaskModellingAPI(Resource):
     def get(self, task_id):
         return pdb.get_results_by_task(task_id), 201
 
-
     def post(self, task_id):
         _parser = reqparse.RequestParser()
         _parser.add_argument('task_reaction_ids', type=str)

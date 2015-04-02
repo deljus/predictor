@@ -24,15 +24,20 @@ MODELLING_DONE = 6
 TASKS = []
 LOSE = []
 
+SOLVENTS = {}
+
 
 def serverdel(url, params):
     for _ in range(1000):
         try:
-            requests.delete("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
+            q = requests.delete("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
         except:
             continue
         else:
-            return True
+            if q.status_code in (201, 200):
+                return True
+            else:
+                return False
     else:
         return False
 
@@ -44,7 +49,10 @@ def serverget(url, params):
         except:
             continue
         else:
-            return q.json()
+            if q.status_code in (201, 200):
+                return q.json()
+            else:
+                continue
     else:
         return []
 
@@ -52,11 +60,14 @@ def serverget(url, params):
 def serverput(url, params):
     for _ in range(10):
         try:
-            requests.put("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
+            q = requests.put("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
         except:
             continue
         else:
-            return True
+            if q.status_code in (201, 200):
+                return True
+            else:
+                continue
     else:
         return False
 
@@ -68,7 +79,10 @@ def serverpost(url, params):
         except:
             continue
         else:
-            return q.text
+            if q.status_code in (201, 200):
+                return q.text
+            else:
+                continue
     else:
         return False
 

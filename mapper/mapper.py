@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-import os
 
 import sched
 import threading
 import time
 
-from config import INTERVAL, THREAD_LIMIT
-from utils import gettask, getfiletask, mapper, create_task_from_file
+from utils.config import INTERVAL, THREAD_LIMIT
+from utils.utils import gettask, getfiletask, mapper, create_task_from_file
 
 
 TASKS = []
