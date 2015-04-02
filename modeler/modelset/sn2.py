@@ -41,6 +41,7 @@ class Model():
         structure = chemaxpost('calculate/stringMolExport', data)
         print(structure)
 
+
         'Fragmentor -i condensed.sdf -o output -h header -t 3 -l 3 -u 6 --UseFormalCharge --DoAllWays'
 
         self.model.predict([])
