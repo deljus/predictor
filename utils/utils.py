@@ -59,6 +59,21 @@ def serverpost(url, params):
         return False
 
 
+def serverdel(url, params):
+    for _ in range(1000):
+        try:
+            q = requests.delete("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
+        except:
+            continue
+        else:
+            if q.status_code in (201, 200):
+                return True
+            else:
+                return False
+    else:
+        return False
+
+
 def chemaxpost(url, data):
     for _ in range(10):
         try:
@@ -159,7 +174,6 @@ def mapper(task):
             data = {"structure": r_structure, "parameters": "rxn"}
             structure = chemaxpost('calculate/stringMolExport', data)
 
-            UPLOAD_PATH = '/tmp/'
             file_path = '%stmp-%d.rxn' % (UPLOAD_PATH, task['id'])
 
             if '$RXN' in structure:
@@ -180,17 +194,19 @@ def mapper(task):
 
 def FEAR(file_path, reaction_id):
     fearinput = RDFread(file_path)
-    try:
-        fearinput = next(fearinput.readdata())
-        res = fear.firstcgr(fearinput)
-        if not res:
-            models = set()
-            for x, y in fearinput['meta'].items():
-                if '!reaction_center_hash' in x:
-                    rhash = y.split("'")[0][5:]
-                    mset = serverget("models", {'model_hash': rhash})
-                    models.update([str(z['id']) for z in mset])
-            # todo: переписать вьюшку на нормальные грабли.
-            serverput("reaction/%s" % reaction_id, {'models': ','.join(models)})
-    except:
-        pass
+    #try:
+    fearinput = next(fearinput.readdata())
+    res = fear.firstcgr(fearinput)
+    print(res, fearinput)
+    if not res:
+        models = set()
+        for x, y in fearinput['meta'].items():
+            if '!reaction_center_hash' in x:
+                rhash = y.split("'")[0][5:]
+                mset = serverget("models", {'model_hash': rhash})
+                print(rhash, mset)
+                models.update([str(z['id']) for z in mset])
+        # todo: переписать вьюшку на нормальные грабли.
+        serverput("reaction/%s" % reaction_id, {'models': ','.join(models)})
+    #except:
+    #    pass

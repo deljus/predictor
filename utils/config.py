@@ -13,13 +13,16 @@ INTERVAL = 3
 REQ_MAPPING = 1
 LOCK_MAPPING = 2
 MAPPING_DONE = 3
+REQ_MODELLING = 4
+LOCK_MODELLING = 5
+MODELLING_DONE = 6
 
 MOLCONVERT = '/home/server/ChemAxon/JChem/bin/molconvert'
 STANDARDIZER = '/home/server/ChemAxon/JChem/bin/standardize'
 
 UPLOAD_PATH = '/home/server/upload/'
 
-#UPLOAD_PATH = '/tmp/'
+UPLOAD_PATH = '/tmp/'
 #MOLCONVERT = '/home/stsouko/.ChemAxon/JChem/bin/molconvert'
 #STANDARDIZER = '/home/stsouko/.ChemAxon/JChem/bin/standardize'
 
