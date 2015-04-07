@@ -22,7 +22,7 @@ import sched
 import threading
 import time
 
-from utils.config import INTERVAL, THREAD_LIMIT
+from utils.config import INTERVAL, THREAD_LIMIT, REQ_MAPPING
 from utils.utils import gettask, getfiletask, mapper, create_task_from_file
 
 
@@ -30,7 +30,7 @@ TASKS = []
 
 
 def run():
-    TASKS.extend(gettask())
+    TASKS.extend(gettask(REQ_MAPPING))
     ft = getfiletask()
     if ft:
         TASKS.append(ft)

@@ -23,18 +23,13 @@ import sched
 import threading
 import time
 import modelset as models
-from utils.utils import serverget, serverput, serverpost, serverdel
+from utils.utils import serverget, serverput, serverpost, serverdel, gettask
 from utils.config import INTERVAL, THREAD_LIMIT, REQ_MODELLING, LOCK_MODELLING, MODELLING_DONE
 
 TASKS = []
 LOSE = []
 
 SOLVENTS = {}
-
-
-def gettask():
-    #todo: надо со временем сделать лок на стороне ядра. причем с таймаутом.
-    return serverget('tasks', {'task_status': REQ_MODELLING})
 
 
 def taskthread(task_id):
@@ -57,7 +52,7 @@ def taskthread(task_id):
 
 
 def run():
-    TASKS.extend(gettask()) #todo: надо запилить приоритеты. в начало совать важные в конец остальное
+    TASKS.extend(gettask(REQ_MODELLING)) #todo: надо запилить приоритеты. в начало совать важные в конец остальное
     if LOSE:
         pass #todo: запилить заливку повторную данных.
     while TASKS and threading.active_count() < THREAD_LIMIT:
