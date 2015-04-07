@@ -7151,7 +7151,7 @@ body {
   border-top: 5px solid #7e7e7e;
 }
 body .wrapper {
-  padding: 0 0 50px 0;
+  padding: 0 50px 0px 50px;
   min-height: 800px;
 }
 body .wrapper header {
@@ -7233,6 +7233,16 @@ body .wrapper .sketcher-frame {
   height: 100%;
   width: 100%;
   overflow: hidden;
+}
+body .wrapper .hidden-sketcher-frame {
+  width: 0;
+  height: 0;
+  display: initial;
+  position: absolute;
+  left: -1000px;
+  top: -1000px;
+  margin: -1000px;
+  padding: 0;
 }
 body .wrapper .resizable {
   border: none;

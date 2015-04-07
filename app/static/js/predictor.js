@@ -278,12 +278,15 @@ function hide_upload_sketcher_data_btn()
 
 function hide_editor()
 {
-	$('#editor-div').hide();	
+	//$('#editor-div').hide();
+	$('#sketch').removeClass('sketcher-frame').addClass('hidden-sketcher-frame');
+	$('#btn-upload-sketcher-data-div').hide();
 }
 
 function show_editor(show_upload_reaction_button)
 {
-	$('#editor-div').show(1000);
+	//$('#editor-div').show(1000);
+	$('#sketch').removeClass('hidden-sketcher-frame').addClass('sketcher-frame');
 	if (show_upload_reaction_button)
 		$('#btn-upload-sketcher-data-div').show();
 }
@@ -738,18 +741,33 @@ function display_modelling_results(results)
     jTbl.empty();
     var str = '';
 
+
     for (var i=0;i<results.length; i++)
     {
         var result = results[i];
         r_id = result.reaction_id;
         var reaction_results = result.results;
+        //reaction_results = [{reaction_id:12, model:'model1', param:'ttt', value:111},{reaction_id:12, model:'model1', param:'www', value:222}];
         str+='<tr>';
         str+='<td rowspan="'+reaction_results.length+'"><img class="reaction_img" reaction_id="'+r_id+'" src=""  alt="Image unavailable"/></td>';
 
+
+        var prev_model = '';
+        var rowspan = 0;
         for (var j=0;j<reaction_results.length;j++)
         {
             _res = reaction_results[j];
-            str+='<td>'+_res.model+'</td>';
+            if (prev_model!=_res.model)
+            {
+                str = str.replace('#ROWSPAN#',rowspan);
+                str+='<td rowspan=#ROWSPAN#>'+_res.model+'</td>';
+                prev_model = _res.model;
+                rowspan=0;
+            }
+            rowspan++;
+
+
+
             str+='<td>'+_res.param+'</td>';
             var value = '';
             switch(String(_res.type))
@@ -772,7 +790,10 @@ function display_modelling_results(results)
             str+='<td>'+value+'</td>';
             str+='</tr>';
         }
+        str = str.replace('#ROWSPAN#',rowspan);
+        console.log('ооо='+j);
     }
+
 
     jTbl.append(str);
     $("#results-div").show("normal");

@@ -23,7 +23,7 @@
  
   </head>
   <body>
-	<div class="wrapper container">
+	<div class="wrapper conteiner-fluid">
 		<header>
 			<a href="/"><img src="images/logo.png" height="70" alt="KSU logo"></a>
 
@@ -59,7 +59,7 @@
 		</div>
 
 		<div class="row">
-			<aside class="col-md-4">
+			<aside class="col-md-3">
 				<ul class="list-group submenu">
 					<li class="list-group-item"><a href="#" onClick="select_mode('file')">upload file</a></li>
 					<li class="list-group-item"><a href="#" onClick="select_mode('editor')">open editor</a></li>                  
@@ -68,7 +68,7 @@
 
 				</ul>
 			</aside>
-			<section class="col-md-20">
+			<section class="col-md-21">
 
                     <div id="select-mode-div">
 	                    <div style="text-align:center">
@@ -79,11 +79,11 @@
 
                     <div class="row">
                     
-                        <div class="col-md-14">
+                        <div class="col-md-12">
 
-                            <div class="resizable"  id="editor-div" style="display:none">
+                            <div class="resizable"  id="editor-div">
 
-                                <iframe src="/static/editorws.html" id="sketch" data-toolbars="reaction" class="sketcher-frame"></iframe>
+                                <iframe src="/static/editorws.html" id="sketch" data-toolbars="reaction" class="hidden-sketcher-frame"></iframe>
 
                             
                                 <div style="text-align:center;display:none" id="btn-upload-sketcher-data-div">
@@ -117,7 +117,7 @@
                             </div>                                                  	
                         </div>
                         
-                        <div class="col-md-10">
+                        <div class="col-md-12">
                             <div id="reactions-div" style="display:none">
 
                                 <h3>Reactions</h3>
