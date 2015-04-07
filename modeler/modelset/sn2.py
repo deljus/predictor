@@ -100,10 +100,11 @@ class Model():
                 constant = self.model.predict(vector)[0]
                 result.append(dict(type='text', attrib='tabulated constant', value='%.2f' % constant))
             finally:
-                os.remove(temp_file_rdf)
-                os.remove(temp_file_sdf)
-                os.remove(temp_file_csv)
-                os.remove(temp_file_hdr)
+                pass
+                #os.remove(temp_file_rdf)
+                #os.remove(temp_file_sdf)
+                #os.remove(temp_file_csv)
+                #os.remove(temp_file_hdr)
 
             return result
         else:
