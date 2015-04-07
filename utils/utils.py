@@ -19,7 +19,7 @@
 #  MA 02110-1301, USA.
 #
 
-from .config import LOCK_MAPPING, STANDARD, MAPPING_DONE, UPLOAD_PATH, REQ_MAPPING, CHEMAXON, SERVER, PORT, STANDARDIZER
+from .config import LOCK_MAPPING, STANDARD, MAPPING_DONE, UPLOAD_PATH, CHEMAXON, SERVER, PORT, STANDARDIZER
 import subprocess as sp
 import xml.etree.ElementTree as ET
 import re
@@ -109,8 +109,8 @@ def chemaxpost(url, data):
         return False
 
 
-def gettask():
-    return serverget('tasks', {'task_status': REQ_MAPPING})
+def gettask(status):
+    return serverget('tasks', {'task_status': status})
 
 
 def getfiletask():
@@ -213,19 +213,20 @@ def mapper(task):
 
 def FEAR(file_path, reaction_id):
     fearinput = RDFread(file_path)
-    #try:
-    fearinput = next(fearinput.readdata())
-    res = fear.firstcgr(fearinput)
-    print(res, fearinput)
-    if not res:
-        models = set()
-        for x, y in fearinput['meta'].items():
-            if '!reaction_center_hash' in x:
-                rhash = y.split("'")[0][5:]
-                mset = serverget("models", {'model_hash': rhash})
-                print(rhash, mset)
-                models.update([str(z['id']) for z in mset])
-        # todo: переписать вьюшку на нормальные грабли.
-        serverput("reaction/%s" % reaction_id, {'models': ','.join(models)})
-    #except:
-    #    pass
+    try:
+        fearinput = next(fearinput.readdata())
+        res = fear.firstcgr(fearinput)
+        #print(reaction_id, res, fearinput)
+        if not res:
+            models = set()
+            for x, y in fearinput['meta'].items():
+                if '!reaction_center_hash' in x:
+                    rhash = y.split("'")[0][5:]
+                    mset = serverget("models", {'hash': rhash})
+                    #print(rhash, mset)
+                    models.update([str(z['id']) for z in mset])
+            # todo: переписать вьюшку на нормальные грабли.
+            #print(models, ','.join(models))
+            serverpost("reaction/%s" % reaction_id, {'models': ','.join(models)})
+    except:
+        pass

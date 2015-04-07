@@ -39,7 +39,7 @@ STANDARDIZER = '/home/server/ChemAxon/JChem/bin/standardize'
 
 UPLOAD_PATH = '/home/server/upload/'
 
-UPLOAD_PATH = '/tmp/'
+#UPLOAD_PATH = '/tmp/'
 #MOLCONVERT = '/home/stsouko/.ChemAxon/JChem/bin/molconvert'
 #STANDARDIZER = '/home/stsouko/.ChemAxon/JChem/bin/standardize'
 
