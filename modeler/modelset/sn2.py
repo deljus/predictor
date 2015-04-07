@@ -62,7 +62,7 @@ class Model():
         return hashlist
 
     def getresult(self, chemical):
-        data = {"structure": chemical['structure'], "parameters": "rxn"}
+        data = {"structure": chemical['structure'], "parameters": "rdf"}
         structure = chemaxpost('calculate/stringMolExport', data)
         temperature = chemical['temperature'] if chemical['temperature'] else 298
         solvent = chemical['solvents'][0]['name'] if chemical['solvents'][0] else 'Undefined'
@@ -100,11 +100,10 @@ class Model():
                 constant = self.model.predict(vector)[0]
                 result.append(dict(type='text', attrib='tabulated constant', value='%.2f' % constant))
             finally:
-                pass
-                #os.remove(temp_file_rdf)
-                #os.remove(temp_file_sdf)
-                #os.remove(temp_file_csv)
-                #os.remove(temp_file_hdr)
+                os.remove(temp_file_rdf)
+                os.remove(temp_file_sdf)
+                os.remove(temp_file_csv)
+                os.remove(temp_file_hdr)
 
             return result
         else:
