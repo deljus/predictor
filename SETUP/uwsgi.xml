@@ -1,0 +1,9 @@
+<uwsgi>
+    <socket>127.0.0.1:5001</socket>
+    <socket>/home/server/uwsgi.sock</socket>
+    <pythonpath>/home/server/predictor/</pythonpath>
+    <module>run:app</module>
+    <plugins>python3</plugins>
+    <enable-threads />
+    <threads>10</threads>
+</uwsgi>
