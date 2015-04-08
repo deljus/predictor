@@ -32,9 +32,7 @@ function find(arr, what, where)
     catch(err){
         console.log('find->'+err);
     }
-
     return -1;
-
 }
 
 /*** debug fuctions ***/
