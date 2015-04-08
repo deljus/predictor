@@ -313,7 +313,7 @@ class PredictorDataBase:
         arr = []
         t = Tasks.get(id=task_id)
         if t:
-            for x in t.chemicals:
+            for x in t.chemicals.order_by(Chemicals.id):
                 arr.append(dict(reaction_id=x.id,
                                 temperature=x.temperature,
                                 models=[dict(id=x.id, name=x.name) for x in x.models],
