@@ -313,7 +313,7 @@ class PredictorDataBase:
         arr = []
         t = Tasks.get(id=task_id)
         if t:
-            for x in t.chemicals:
+            for x in t.chemicals.order_by(Chemicals.id):
                 arr.append(dict(reaction_id=x.id,
                                 temperature=x.temperature,
                                 models=[dict(id=x.id, name=x.name) for x in x.models],
@@ -330,14 +330,15 @@ class PredictorDataBase:
         функция возвращает результаты моделирования для заданной задачи
         :param task_id(str): ID задачи
         :return: Результаты моделирования
+        .order_by(Results.id)
         '''
 
         out = []
         t = Tasks.get(id=task_id)
         if t:
-            for r in t.chemicals:
+            for r in t.chemicals.order_by(Chemicals.id):
                 result_arr = []
-                for res in r.results:
+                for res in r.results.order_by(Results.id):
                     result_arr.append(dict(reaction_id=r.id,
                                            model=res.model.name,
                                            param=res.attrib,
