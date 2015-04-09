@@ -95,14 +95,16 @@ class Model():
                 nin = 'not enought models include structure in their applicability domain<br>'
                 TRUST -= 1
 
-            result.append(dict(type='text', attrib='predicted value ± sigma', value='%.2f ± %.2f' % (Pavg, sigma)))
-
-            if len(INlist) > 0 and PavgIN - PavgALL < self.TOL:
-                TRUST -= int(sigma/self.TOL)
-            else:
-                nin += 'prediction within and outside applicability domain differ more then TOL'
+            if not(len(INlist) > 0 and PavgIN - PavgALL < self.TOL):
+                nin += 'prediction within and outside applicability domain differ more then TOL<br>'
                 TRUST -= 1
 
+            proportion = int(sigma/self.TOL)
+            if proportion:
+                TRUST -= proportion
+                nin += 'proportionally to the ratio of sigma/tol'
+
+            result.append(dict(type='text', attrib='predicted value ± sigma', value='%.2f ± %.2f' % (Pavg, sigma)))
             result.append(dict(type='text', attrib='prediction trust', value=self.trustdesc.get(TRUST, 'None')))
             if nin:
                 result.append(dict(type='text', attrib='reason', value=nin))
