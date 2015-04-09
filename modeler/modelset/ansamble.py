@@ -19,7 +19,9 @@
 #  MA 02110-1301, USA.
 #
 import os
-import pickle
+from math import sqrt
+import numpy as np
+import xmltodict as x2d
 import time
 from modelset import register_model, chemaxpost
 import subprocess as sp
@@ -27,22 +29,11 @@ import subprocess as sp
 
 class Model():
     def __init__(self):
-        self.modelpath = os.path.dirname(__file__)
-        self.fragmentor = os.path.join(self.modelpath, 'sn2', "Fragmentor")
-        self.condenser = os.path.join(self.modelpath, 'sn2', "condenser")
-        self.header = os.path.join(self.modelpath, 'sn2', "model.hdr")
-        self.solvent_file = os.path.join(self.modelpath, 'sn2', "solvents.csv")
-        model = os.path.join(self.modelpath, 'sn2', "model.svm")
-        self.model = pickle.load(open(model, 'rb'))
-        self.solvents = self.load_solvents()
-
-    def load_solvents(self):
-        solvents = {}
-        with open(self.solvent_file, 'r') as f:
-            for line in f:
-                key, *value = line.split(';')
-                solvents[key] = [float(x) for x in value]
-        return solvents
+        self.modelpath = os.path.join(os.path.dirname(__file__), 'ansamble')
+        self.Nlim = .8 # NLIM fraction
+        self.TOL = 1
+        self.models = self.getmodelset()
+        self.trustdesc = {5: 'Optimal', 4: 'Good', 3: 'Medium', 2: 'Low'}
 
     def getdesc(self):
         desc = 'sn2 reactions of azides salts with halogen alkanes constants prediction'
@@ -53,61 +44,79 @@ class Model():
         return name
 
     def is_reation(self):
-        return 1
+        return 0
 
     def gethashes(self):
-        hashlist = ['1006099,1017020,2007079', '1006099,1035020,2007079', '1006099,1053020,2007079', # balanced fp
-                    '1006099,1017018,2007079', '1006099,1035018,2007079', '1006099,1053018,2007079', #unbal leaving gr
-                    '1006099,1017018,2007081', '1006099,1035018,2007081', '1006099,1053018,2007081'] #unbal leav and nuc
+        hashlist = []
         return hashlist
 
     def getresult(self, chemical):
-        data = {"structure": chemical['structure'], "parameters": "rdf"}
+        TRUST = 5
+        nin = ''
+        data = {"structure": chemical['structure'], "parameters": "mol"}
         structure = chemaxpost('calculate/stringMolExport', data)
-        temperature = chemical['temperature'] if chemical['temperature'] else 298
-        solvent = chemical['solvents'][0]['name'] if chemical['solvents'][0] else 'Undefined'
-
-        fixtime = int(time.time())
-        temp_file_rdf = os.path.join(self.modelpath, 'sn2', "structure-%d.rdf" % fixtime)
-        temp_file_sdf = os.path.join(self.modelpath, 'sn2', "structure-%d.sdf" % fixtime)
-        temp_file_frag = os.path.join(self.modelpath, 'sn2', "structure-%d" % fixtime)
-        temp_file_hdr = temp_file_frag + '.hdr'
-        temp_file_csv = temp_file_frag + '.csv'
 
         if structure:
-            with open(temp_file_rdf, 'w') as f:
+            result = []
+            INlist = []
+            ALLlist = []
+            fixtime = int(time.time())
+            temp_file_mol = os.path.join(self.modelpath, "structure-%d.mol" % fixtime)
+            temp_file_res = os.path.join(self.modelpath, "structure-%d.res" % fixtime)
+            with open(temp_file_mol, 'w') as f:
                 f.write(structure)
-            try:
-                sp.call([self.condenser, '-i', temp_file_rdf, '-o', temp_file_sdf])
-                sp.call([self.fragmentor, '-i', temp_file_sdf, '-o', temp_file_frag, '-h', self.header, '-t', '3', '-l',
-                         '3', '-u', '6', '-f', 'CSV', '--UseFormalCharge', '--DoAllWays'])
-            except:
-                print('YOU DO IT WRONG')
-                result = False
-            else:
-                with open(temp_file_csv, 'r') as f:
-                    fragments = [int(x) for x in f.readline().split(';')[1:165]]
 
-                vector = [temperature] + self.solvents.get(solvent, [0]*13) + fragments
-
-                if os.path.getsize(self.header) != os.path.getsize(temp_file_hdr):
-                    result = [dict(type='text', attrib='applicability domain ',
-                                   value='pure. molecule consist untrained fragments')]
+            for model in self.models:
+                try:
+                    sp.call([model['exec'], temp_file_mol, temp_file_res])
+                except:
+                    print('YOU DO IT WRONG')
                 else:
-                    result = [dict(type='text', attrib='applicability domain ',
-                                   value='good')]
+                    with open(temp_file_res, 'r') as f:
+                        P, AD = f.readline().strip().split(' ')
 
-                constant = self.model.predict(vector)[0]
-                result.append(dict(type='text', attrib='tabulated constant', value='%.2f' % constant))
-            finally:
-                os.remove(temp_file_rdf)
-                os.remove(temp_file_sdf)
-                os.remove(temp_file_csv)
-                os.remove(temp_file_hdr)
+                    if AD == 1:
+                        INlist.append(P)
+
+                    ALLlist.append(P)
+
+            INarr = np.array(INlist)
+            ALLarr = np.array(ALLlist)
+
+            PavgIN = INarr.mean()
+            PavgALL = ALLarr.mean()
+
+            if len(INlist) > self.Nlim * len(ALLlist):
+                sigma = sqrt((INarr**2).mean() - PavgIN**2)
+                Pavg = PavgIN
+            else:
+                sigma = sqrt((ALLarr**2).mean() - PavgALL**2)
+                Pavg = PavgALL
+                nin = 'not enought models include structure in their applicability domain<br>'
+                TRUST -= 1
+
+            result.append(dict(type='text', attrib='predicted value ± sigma', value='%.2f ± %.2f' % (Pavg, sigma)))
+
+            if len(INlist) > 0 and PavgIN - PavgALL < self.TOL:
+                TRUST -= int(sigma/self.TOL)
+            else:
+                nin += 'prediction within and outside applicability domain differ more then TOL'
+                TRUST -= 1
+
+            result.append(dict(type='text', attrib='prediction trust', value=self.trustdesc.get(TRUST, 'None')))
+            if nin:
+                result.append(dict(type='text', attrib='reason', value=nin))
+            os.remove(temp_file_mol)
+            os.remove(temp_file_res)
 
             return result
         else:
             return False
+
+    def getmodelset(self):
+        conffile = os.path.join(self.modelpath, "conf.xml")
+        conf = x2d.parse(open(conffile, 'r').read())
+        return {x: y for x in conf['models']}
 """
 result - list with data returned by model.
 result show on page in same order. [1,2,3] show as:
