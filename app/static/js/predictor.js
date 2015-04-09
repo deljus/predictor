@@ -16,6 +16,25 @@ $(document).ready(function handleDocumentReady (e) {
 
 });
 
+function find(arr, what, where)
+{
+    var elem = undefined;
+    try {
+        for (var i=0; i<arr.length;i++)
+        {
+            elem = arr[i];
+            if (where)
+                elem = elem[where];
+            if (elem==what)
+                return i;
+        }
+    }
+    catch(err){
+        console.log('find->'+err);
+    }
+    return -1;
+}
+
 /*** debug fuctions ***/
 function set_task(task_id)
 {
@@ -435,6 +454,9 @@ function display_task_reactions(reactions)
     var str = '';
     var reaction_ids = '';
     var first_reaction_id = '';
+    var _temperature = '';
+    var _solvent_id = '';
+    var models = [];
     for (var i=0;i<reactions.length;i++)
     {
         var _reaction = reactions[i];
@@ -445,31 +467,41 @@ function display_task_reactions(reactions)
             _temperature = _reaction.temperature;
             if (isEmpty(_temperature))
                 _temperature = '';
-        }catch(err){_temperature='';}
+        }catch(err){}
 
         try {
             _solvent_id = _reaction.solvents[0].id;
-        }catch(err){_solvent_id='';}
+        }catch(err){}
 
-        _s='';
+        try {
+            models = _reaction.models;
+        }
+        catch(err){}
 
-        str+='<tr>';
+        if (models.length==0)
+            str+='<tr class="info">';   // если нет моделей - выделим строку
+        else
+            str+='<tr>';
         str+='<td class="reaction_id" reaction_id="'+_r_id+'"><a href="#">'+(i+1)+'</a></td>';
         str+='<td>';
-        str+='<select  multiple="multiple" class="model" name="model_'+_r_id+'">';
-        str+='<option value=""></option>';
+        str+='<select multiple="multiple" role="model" name="model_'+_r_id+'" id="model_'+_r_id+'">';
+        //str+='<option value=""></option>';
         try {
             for (var j=0; j < _reaction.models.length; j++)
             {
                 _m = _reaction.models[j];
-                str+='<option value="'+_m.id+'">'+_m.name+'</option>';
+                var  _s = '';
+                if (find(models,_m.id,'id')>=0)
+                    _s = 'selected';
+
+                str+='<option '+_s+' value="'+_m.id+'">'+_m.name+'</option>';
             }
         }
         catch(err){console.log(err)}
         str+='</select>';
         str+='</td>';
 
-        str+='<td><select    class="solvent" name="solvent_'+_r_id+'" solvent="'+_solvent_id+'" ></select></td>';
+        str+='<td><select role="solvent" name="solvent_'+_r_id+'" solvent="'+_solvent_id+'" ></select></td>';
         str+='<td><input  class="temperature" name="temperature_'+_r_id+'" type="text" value="'+_temperature+'" /></td>';
         str+='</tr>';
 
@@ -499,12 +531,14 @@ function display_task_reactions(reactions)
                 str+='<option value="'+_id+'">'+_name+'</option>';
             }
 
-            jTbl.find('.model').each(function(){
+            jTbl.find('select[role=model]').each(function(){
                 var jSelect = $(this);
                 // если модели еще не были загружены
-                if (jSelect.find('option').length==1)
+                if (jSelect.find('option').length==0)
                     jSelect.append(str);
-                //jSelect.find('option[value='+jSelect.attr('model')+']').attr('selected','selected');
+
+                jSelect.find('option[value='+jSelect.attr('model')+']').attr('selected','selected');
+                jSelect.multiselect();
             })
          })
     }
@@ -523,10 +557,14 @@ function display_task_reactions(reactions)
                 str+='<option value="'+_id+'">'+_name+'</option>';
             }
 
-            jTbl.find('.solvent').each(function(){
+            jTbl.find('select[role=solvent]').each(function(){
                 var jSelect = $(this);
                 jSelect.append(str);
-                jSelect.find('option[value='+jSelect.attr('solvent')+']').attr('selected','selected');
+                    if (jSelect.attr('solvent'))
+                        jSelect.find('option[value='+jSelect.attr('solvent')+']').attr('selected','selected');
+
+                jSelect.selectpicker();
+
             })
          })
     }
@@ -765,8 +803,6 @@ function display_modelling_results(results)
                 rowspan=0;
             }
             rowspan++;
-
-
 
             str+='<td>'+_res.param+'</td>';
             var value = '';
