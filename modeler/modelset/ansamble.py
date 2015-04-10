@@ -40,7 +40,7 @@ class Model():
         return desc
 
     def getname(self):
-        name = 'sn2 halogens-azides'
+        name = 'ansamble'
         return name
 
     def is_reation(self):
