@@ -1,12 +1,132 @@
 <?xml version="1.0" encoding="utf-8"?>
 <models>
     <model>
-		<name>Simple model</name>
+		<name>Simple model 1</name>
 		<script>
 			<exec_path>ansamble.sh</exec_path>
 			<params>
-                params positions transfer to script in same sequence.
-                example: exec_path input_file solvent temperature output_file
+                params positions transfer to script in same order.
+                example: exec_path input_file output_file solvent temperature
+                user can use more params. but only required and optional will be replaced by value from db
+				<param>
+					<name>input_file</name>
+					<comment>Path to file that contains mol data. input_file - is a required field name</comment>
+				</param>
+                <param>
+					<name>output_file</name>
+					<comment>Path to file which contains result data. Result data should be in JSON format.
+                        Example: {"predicted_value":"777","applicability_domain":"true"}
+                        output_file - is a required field name
+                    </comment>
+				</param>
+				<param>
+					<name>solvent</name>
+					<comment>Solvent name, is a optional field.</comment>
+				</param>
+				<param>
+					<name>temperature</name>
+					<comment>temperature (Celsius), is a optional field</comment>
+				</param>
+			</params>
+		</script>
+	</model>
+    <model>
+		<name>Simple model 1</name>
+		<script>
+			<exec_path>ansamble.sh</exec_path>
+			<params>
+                params positions transfer to script in same order.
+                example: exec_path input_file output_file solvent temperature
+                user can use more params. but only required and optional will be replaced by value from db
+				<param>
+					<name>input_file</name>
+					<comment>Path to file that contains mol data. input_file - is a required field name</comment>
+				</param>
+                <param>
+					<name>output_file</name>
+					<comment>Path to file which contains result data. Result data should be in JSON format.
+                        Example: {"predicted_value":"777","applicability_domain":"true"}
+                        output_file - is a required field name
+                    </comment>
+				</param>
+				<param>
+					<name>solvent</name>
+					<comment>Solvent name, is a optional field.</comment>
+				</param>
+				<param>
+					<name>temperature</name>
+					<comment>temperature (Celsius), is a optional field</comment>
+				</param>
+			</params>
+		</script>
+	</model>
+    <model>
+		<name>Simple model 1</name>
+		<script>
+			<exec_path>ansamble.sh</exec_path>
+			<params>
+                params positions transfer to script in same order.
+                example: exec_path input_file output_file solvent temperature
+                user can use more params. but only required and optional will be replaced by value from db
+				<param>
+					<name>input_file</name>
+					<comment>Path to file that contains mol data. input_file - is a required field name</comment>
+				</param>
+                <param>
+					<name>output_file</name>
+					<comment>Path to file which contains result data. Result data should be in JSON format.
+                        Example: {"predicted_value":"777","applicability_domain":"true"}
+                        output_file - is a required field name
+                    </comment>
+				</param>
+				<param>
+					<name>solvent</name>
+					<comment>Solvent name, is a optional field.</comment>
+				</param>
+				<param>
+					<name>temperature</name>
+					<comment>temperature (Celsius), is a optional field</comment>
+				</param>
+			</params>
+		</script>
+	</model>
+    <model>
+		<name>Simple model 1</name>
+		<script>
+			<exec_path>ansamble.sh</exec_path>
+			<params>
+                params positions transfer to script in same order.
+                example: exec_path input_file output_file solvent temperature
+                user can use more params. but only required and optional will be replaced by value from db
+				<param>
+					<name>input_file</name>
+					<comment>Path to file that contains mol data. input_file - is a required field name</comment>
+				</param>
+                <param>
+					<name>output_file</name>
+					<comment>Path to file which contains result data. Result data should be in JSON format.
+                        Example: {"predicted_value":"777","applicability_domain":"true"}
+                        output_file - is a required field name
+                    </comment>
+				</param>
+				<param>
+					<name>solvent</name>
+					<comment>Solvent name, is a optional field.</comment>
+				</param>
+				<param>
+					<name>temperature</name>
+					<comment>temperature (Celsius), is a optional field</comment>
+				</param>
+			</params>
+		</script>
+	</model>
+    <model>
+		<name>Simple model 1</name>
+		<script>
+			<exec_path>ansamble.sh</exec_path>
+			<params>
+                params positions transfer to script in same order.
+                example: exec_path input_file output_file solvent temperature
                 user can use more params. but only required and optional will be replaced by value from db
 				<param>
 					<name>input_file</name>
