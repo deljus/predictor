@@ -40,7 +40,7 @@ class Model():
         return desc
 
     def getname(self):
-        name = 'azide-halogen substitution. t1'
+        name = 'azide-halogen substitution'
         return name
 
     def is_reation(self):
@@ -57,7 +57,7 @@ class Model():
         TRUST = 5
         nin = ''
         data = {"structure": chemical['structure'], "parameters": "mol"}
-        structure = chemical['structure']  # chemaxpost('calculate/stringMolExport', data)
+        structure = chemaxpost('calculate/stringMolExport', data)
         temperature = str(chemical['temperature']) if chemical['temperature'] else '298'
         solvent = chemical['solvents'][0]['name'] if chemical['solvents'] else 'Undefined'
 
