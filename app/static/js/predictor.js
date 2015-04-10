@@ -1,5 +1,26 @@
+/******************************************************/
+TASK_CREATED    = 0
+REQ_MAPPING     = 1
+LOCK_MAPPING    = 2
+MAPPING_DONE    = 3
+REQ_MODELLING   = 4
+LOCK_MODELLING  = 5
+MODELLING_DONE  = 6
+
+var TIMER_INTERVAL = 5000;
+var MOL_FORMAT = 'mrv';
+
+var TAMER_ID;
+
 var marvinSketcherInstance;
 var isSaveMrvBtnExists=false;
+/******************************************************/
+
+function reset_timer()
+{
+    clearInterval(TAMER_ID);
+}
+
 $(document).ready(function handleDocumentReady (e) {
 	initControl();
 	MarvinJSUtil.getEditor("#sketch").then(function (sketcherInstance) {
@@ -241,21 +262,7 @@ function get_reactions_by_task(task_id)
     return $.get("/task_reactions/"+task_id)
 }
 
-/******************************************************/
-TASK_CREATED    = 0
-REQ_MAPPING     = 1
-LOCK_MAPPING    = 2
-MAPPING_DONE    = 3
-REQ_MODELLING   = 4
-LOCK_MODELLING  = 5
-MODELLING_DONE  = 6
 
-var TIMER_INTERVAL = 5000;
-var MOL_FORMAT = 'mrv';
-
-var TAMER_ID;
-
-/******************************************************/
 
 function initControl ()
 {
@@ -388,12 +395,12 @@ function check_task_mapping_status(task_id)
         console.log('status='+data)
 		if (data==MAPPING_DONE)
 		{
-			clearInterval(TAMER_ID);
+			reset_timer();
 			load_task_reactions(task_id);
 		} 
 
     }).fail(function(jqXHR, textStatus, errorThrown){
-        clearInterval(TAMER_ID);
+        reset_timer();
         console.log('ERROR:check_task_mapping_status->get_task_status->' + textStatus+ ' ' + errorThrown);
         handleRequestError();
     });
@@ -403,6 +410,8 @@ function check_task_mapping_status(task_id)
 
 function load_task_reactions(task_id)
 {
+    // сбросим таймер - если функцию вызвали из левого меню
+    reset_timer();
     console.log('load_task_reactions->');
 	if (!task_id)
 		task_id = get_task();
@@ -718,12 +727,12 @@ function check_modelling_status(task_id)
 
     	if (data==MODELLING_DONE)
 		{
-			clearInterval(TAMER_ID);
+			reset_timer();
 			load_modelling_results(task_id);
 		}
 
     }).fail(function(jqXHR, textStatus, errorThrown){
-        clearInterval(TAMER_ID);
+        reset_timer();
         console.log('ERROR:check_modelling_status->get_task_status->' + textStatus+ ' ' + errorThrown);
         handleRequestError();
     });
@@ -732,6 +741,8 @@ function check_modelling_status(task_id)
 
 function load_modelling_results(task_id)
 {
+    // сбросим таймер - если функцию вызвали из левого меню
+    reset_timer();
     console.log('load_modelling_results->');
 	if (!task_id)
 		task_id = get_task();
