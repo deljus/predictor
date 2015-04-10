@@ -56,7 +56,7 @@ class Model():
     def getresult(self, chemical):
         TRUST = 5
         nin = ''
-        data = {"structure": chemical['structure'], "parameters": "mol"}
+        data = {"structure": chemical['structure'], "parameters": "rdf"}
         structure = chemaxpost('calculate/stringMolExport', data)
         temperature = str(chemical['temperature']) if chemical['temperature'] else '298'
         solvent = chemical['solvents'][0]['name'] if chemical['solvents'] else 'Undefined'
