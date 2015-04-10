@@ -31,7 +31,7 @@
 		</script>
 	</model>
     <model>
-		<name>Simple model 1</name>
+		<name>Simple model 2</name>
 		<script>
 			<exec_path>ansamble.sh</exec_path>
 			<params>
@@ -61,7 +61,7 @@
 		</script>
 	</model>
     <model>
-		<name>Simple model 1</name>
+		<name>Simple model 3</name>
 		<script>
 			<exec_path>ansamble.sh</exec_path>
 			<params>
@@ -91,7 +91,7 @@
 		</script>
 	</model>
     <model>
-		<name>Simple model 1</name>
+		<name>Simple model 4</name>
 		<script>
 			<exec_path>ansamble.sh</exec_path>
 			<params>
@@ -121,7 +121,7 @@
 		</script>
 	</model>
     <model>
-		<name>Simple model 1</name>
+		<name>Simple model 5</name>
 		<script>
 			<exec_path>ansamble.sh</exec_path>
 			<params>
