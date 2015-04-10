@@ -222,13 +222,7 @@ function put_reaction_structure(reaction_id, data)
     console.log('put_reaction_structure->');
     var data = {"reaction_structure": data};
 
-    return $.ajax({
-            "url": "/reaction_structure/"+reaction_id
-            ,"type": "POST"
-            ,"dataType": "json"
-            ,"contentType": "application/json"
-            ,"data": data
-    }); 	
+    return $.post("/reaction_structure/"+reaction_id, data);
 }
 
 function get_models(model_hash)
