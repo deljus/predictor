@@ -20,20 +20,17 @@
 #
 import json
 import os
-from math import sqrt
-import numpy as np
-import xmltodict as x2d
 import time
 import subprocess as sp
+from .mutils.concensus import concensus_dragos, getmodelset
 
 
-class Model():
+class Model(concensus_dragos):
     def __init__(self):
         self.modelpath = os.path.join(os.path.dirname(__file__), 'azide')
-        self.Nlim = .6  # NLIM fraction
+        self.models = getmodelset(os.path.join(self.modelpath, "conf.xml"))
+        self.Nlim = .6
         self.TOL = .8
-        self.models = self.getmodelset()
-        self.trustdesc = {5: 'Optimal', 4: 'Good', 3: 'Medium', 2: 'Low'}
 
     def getdesc(self):
         desc = 'sn2 reactions of azides salts with halogen alkanes constants prediction'
@@ -54,90 +51,47 @@ class Model():
         return hashlist
 
     def getresult(self, chemical):
-        TRUST = 5
-        nin = ''
         data = {"structure": chemical['structure'], "parameters": "rdf"}
-        structure = chemaxpost('calculate/stringMolExport', data)
+        structure = chemaxpost('calculate/stringMolExport', data) if __name__ != '__main__' else chemical['structure']#
         temperature = str(chemical['temperature']) if chemical['temperature'] else '298'
         solvent = chemical['solvents'][0]['name'] if chemical['solvents'] else 'Undefined'
 
         if structure:
-            result = []
-            INlist = []
-            ALLlist = []
             fixtime = int(time.time())
             temp_file_mol = os.path.join(self.modelpath, "structure-%d.mol" % fixtime)
             temp_file_res = os.path.join(self.modelpath, "structure-%d.res" % fixtime)
 
             replace = {'input_file': temp_file_mol, 'output_file': temp_file_res,
                        'temperature': temperature, 'solvent': solvent}
+
             with open(temp_file_mol, 'w') as f:
                 f.write(structure)
+
             for model, params in self.models.items():
                 try:
                     params = [replace.get(x, x) for x in params]
                     params[0] = os.path.join(self.modelpath, params[0])
                     sp.call(params)
                 except:
-                    print('YOU DO IT WRONG')
+                    print('model execution failed')
                 else:
                     with open(temp_file_res, 'r') as f:
                         res = json.load(f)
                         AD = True if res['applicability_domain'].lower() == 'true' else False
                         P = float(res['predicted_value'])
+                        self.cumulate(P, AD)
 
-                    if AD:
-                        INlist.append(P)
-
-                    ALLlist.append(P)
-
-            INarr = np.array(INlist)
-            ALLarr = np.array(ALLlist)
-
-            PavgIN = INarr.mean()
-            PavgALL = ALLarr.mean()
-
-            if len(INlist) > self.Nlim * len(ALLlist):
-                sigma = sqrt((INarr ** 2).mean() - PavgIN ** 2)
-                Pavg = PavgIN
-            else:
-                sigma = sqrt((ALLarr ** 2).mean() - PavgALL ** 2)
-                Pavg = PavgALL
-                nin = 'not enought models include structure in their applicability domain<br>'
-                TRUST -= 1
-
-            if not (len(INlist) > 0 and PavgIN - PavgALL < self.TOL):
-                nin += 'prediction within and outside applicability domain differ more then TOL<br>'
-                TRUST -= 1
-
-            proportion = int(sigma / self.TOL)
-            if proportion:
-                TRUST -= proportion
-                nin += 'proportionally to the ratio of sigma/tol'
-
-            result.append(dict(type='text', attrib='predicted value ± sigma', value='%.2f ± %.2f' % (Pavg, sigma)))
-            result.append(dict(type='text', attrib='prediction trust', value=self.trustdesc.get(TRUST, 'None')))
-            if nin:
-                result.append(dict(type='text', attrib='reason', value=nin))
             os.remove(temp_file_mol)
             os.remove(temp_file_res)
 
-            return result
+            return self.report()
         else:
             return False
-
-    def getmodelset(self):
-        conffile = os.path.join(self.modelpath, "conf.xml")
-        conf = x2d.parse(open(conffile, 'r').read())['models']['model']
-        if not isinstance(conf, list):
-            conf = [conf]
-        return {x['name']: [x['script']['exec_path']] + [y['name'] for y in x['script']['params']['param']] for x in
-                conf}
-
 
 model = Model()
 
 if __name__ == '__main__':
+
     print(model.getresult({'temperature': '300', 'solvents': [{'name': 'water'}],
                            'structure': '''$RDFILE 1
 $DATM    04/10/15 16:36
@@ -175,5 +129,4 @@ M  END
 
 else:
     from modelset import register_model, chemaxpost
-
-    register_model(model.getname(), model)
+    register_model(model.getname(), Model)

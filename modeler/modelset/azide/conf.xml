@@ -30,6 +30,10 @@
 					<name>135</name>
 					<comment>fragments count. e.g. AD</comment>
 				</param>
+                <param>
+					<name>-g 0</name>
+					<comment>condenser params</comment>
+				</param>
 			</params>
 		</script>
 	</model>
@@ -62,6 +66,10 @@
                 <param>
 					<name>265</name>
 					<comment>fragments count. e.g. AD</comment>
+				</param>
+                <param>
+					<name>-g 0</name>
+					<comment>condenser params</comment>
 				</param>
 			</params>
 		</script>
@@ -96,6 +104,10 @@
 					<name>265</name>
 					<comment>fragments count. e.g. AD</comment>
 				</param>
+                <param>
+					<name>-g 0</name>
+					<comment>condenser params</comment>
+				</param>
 			</params>
 		</script>
 	</model>
@@ -128,6 +140,10 @@
                 <param>
 					<name>135</name>
 					<comment>fragments count. e.g. AD</comment>
+				</param>
+                <param>
+					<name>-g 0</name>
+					<comment>condenser params</comment>
 				</param>
 			</params>
 		</script>
@@ -162,6 +178,10 @@
 					<name>136</name>
 					<comment>fragments count. e.g. AD</comment>
 				</param>
+                <param>
+					<name>-g 1</name>
+					<comment>condenser params</comment>
+				</param>
 			</params>
 		</script>
 	</model>
@@ -194,6 +214,10 @@
                 <param>
 					<name>265</name>
 					<comment>fragments count. e.g. AD</comment>
+				</param>
+                <param>
+					<name>-g 1</name>
+					<comment>condenser params</comment>
 				</param>
 			</params>
 		</script>
@@ -228,6 +252,10 @@
 					<name>58</name>
 					<comment>fragments count. e.g. AD</comment>
 				</param>
+                <param>
+					<name>-g 1</name>
+					<comment>condenser params</comment>
+				</param>
 			</params>
 		</script>
 	</model>
@@ -260,6 +288,10 @@
                 <param>
 					<name>133</name>
 					<comment>fragments count. e.g. AD</comment>
+				</param>
+                <param>
+					<name>-g 1</name>
+					<comment>condenser params</comment>
 				</param>
 			</params>
 		</script>
@@ -294,6 +326,10 @@
 					<name>133</name>
 					<comment>fragments count. e.g. AD</comment>
 				</param>
+                <param>
+					<name>-g 1</name>
+					<comment>condenser params</comment>
+				</param>
 			</params>
 		</script>
 	</model>
@@ -326,6 +362,10 @@
                 <param>
 					<name>58</name>
 					<comment>fragments count. e.g. AD</comment>
+				</param>
+                <param>
+					<name>-g 1</name>
+					<comment>condenser params</comment>
 				</param>
 			</params>
 		</script>

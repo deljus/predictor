@@ -31,4 +31,5 @@ def register_model(name, model):
 
 
 for mloader, pname, ispkg in pkgutil.iter_modules(models.__path__):
-    __import__('modelset.%s' % pname)
+    if pname != 'mutils':
+        __import__('modelset.%s' % pname)

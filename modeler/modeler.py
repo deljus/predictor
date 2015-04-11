@@ -40,7 +40,8 @@ def taskthread(task_id):
             reaction = serverget("reaction/%s" % reaction_id, None)
             if reaction:
                 for model_id, model_name in reaction['models'].items():
-                    model_result = models.MODELS[model_name].getresult(reaction)
+                    model = models.MODELS[model_name]()
+                    model_result = model.getresult(reaction)
                     if model_result:
                         reaction_result = dict(modelid=model_id, result=json.dumps(model_result))
                         if not serverpost("reaction_result/%s" % reaction_id, reaction_result):
@@ -83,9 +84,10 @@ def main():
     print('new models %s' % toattach)
 
     for x in toattach:
-        model = models.MODELS[x]
+        model = models.MODELS[x]()
         print(serverpost("models", {'name': x, 'desc': model.getdesc(),
                                     'is_reaction': model.is_reation(), 'hashes': model.gethashes()}))
+        del model
 
     for x in todelete:
         serverdel("models", {'id': registeredmodels[x]})

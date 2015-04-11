@@ -37,6 +37,7 @@ solvent_name = sys.argv[4]
 temperature = float(sys.argv[5])
 fragopts = sys.argv[6].split(' ')
 fragcount = int(sys.argv[7])
+condensparams = sys.argv[8].split(' ')
 temp_file_sdf = input_file + '.sdf'
 temp_file_frag = input_file + '.fra'
 
@@ -53,7 +54,7 @@ def load_solvents():
 solvents = load_solvents()
 
 try:
-    sp.call([condenser, '-i', input_file, '-o', temp_file_sdf])
+    sp.call([condenser, '-i', input_file, '-o', temp_file_sdf] + condensparams)
     sp.call([fragmentor, '-i', temp_file_sdf, '-o', temp_file_frag] + fragopts)
     with open(temp_file_frag + '.csv', 'r') as f:
         fragments = [int(x) for x in f.readline().split(';')[1:]]
