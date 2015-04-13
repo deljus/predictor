@@ -56,6 +56,7 @@ solvents = load_solvents()
 try:
     sp.call([condenser, '-i', input_file, '-o', temp_file_sdf] + condensparams)
     sp.call([fragmentor, '-i', temp_file_sdf, '-o', temp_file_frag] + fragopts)
+
     with open(temp_file_frag + '.csv', 'r') as f:
         fragments = [int(x) for x in f.readline().split(';')[1:]]
         vector = solvents.get(solvent_name.lower(), [0]*13) + [temperature] + fragments[:fragcount]

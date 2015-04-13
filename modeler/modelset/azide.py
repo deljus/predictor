@@ -30,7 +30,7 @@ else:
 
 class Model(concensus_dragos):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.modelpath = os.path.join(os.path.dirname(__file__), 'azide')
         self.models = getmodelset(os.path.join(self.modelpath, "conf.xml"))
         self.Nlim = .6
@@ -85,11 +85,13 @@ class Model(concensus_dragos):
                             AD = True if res['applicability_domain'].lower() == 'true' else False
                             P = float(res['predicted_value'])
                             self.cumulate(P, AD)
-                    except FileNotFoundError:
-                        print('model result file don\'t exist')
                     except:
-                        print('model result file broken')
-                        os.remove(temp_file_res)
+                        print('model result file broken or don\'t exist')
+                    finally:
+                        try:
+                            os.remove(temp_file_res)
+                        except:
+                            pass
 
             os.remove(temp_file_mol)
 
@@ -101,27 +103,39 @@ model = Model()
 
 if __name__ == '__main__':
 
-    print(model.getresult({'temperature': '300', 'solvents': [{'name': 'water'}],
+    print(model.getresult({'temperature': '30', 'solvents': [{'name': 'water'}],
                            'structure': '''$RDFILE 1
-$DATM    04/10/15 16:36
+$DATM    04/13/15 15:31
 $RFMT
 $RXN
 
-  Marvin       041001151636
+  Marvin       041301151531
 
-  1  1
+  2  2
 $MOL
 
-Mrv1532 04101516362D
+  Mrv0541 04131515312D
+
+  3  2  0  0  0  0            999 V2000
+   -4.9623    0.4615    0.0000 N   0  5  0  0  0  0  0  0  0  5  0  0
+   -4.2478    0.0491    0.0000 N   0  3  0  0  0  0  0  0  0  4  0  0
+   -4.2478   -0.7759    0.0000 N   0  5  0  0  0  0  0  0  0  3  0  0
+  2  1  2  0  0  0  0
+  3  2  2  0  0  0  0
+M  CHG  3   1  -1   2   1   3  -1
+M  END
+$MOL
+
+  Mrv0541 04131515312D
 
   2  1  0  0  0  0            999 V2000
-   -0.9708   -0.5920    0.0000 Br  0  0  0  0  0  0  0  0  0  1  0  0
-   -1.6853   -1.0045    0.0000 C   0  0  0  0  0  0  0  0  0  2  0  0
+   -0.9708   -0.2384    0.0000 Cl  0  0  0  0  0  0  0  0  0  1  0  0
+   -1.6853   -0.6509    0.0000 C   0  0  0  0  0  0  0  0  0  2  0  0
   2  1  1  0  0  0  0
 M  END
 $MOL
 
-Mrv1532 04101516362D
+  Mrv0541 04131515312D
 
   4  3  0  0  0  0            999 V2000
     4.6319   -0.6812    0.0000 N   0  0  0  0  0  0  0  0  0  3  0  0
@@ -133,7 +147,14 @@ Mrv1532 04101516362D
   3  4  2  0  0  0  0
 M  CHG  2   3   1   4  -1
 M  END
+$MOL
 
+  Mrv0541 04131515312D
+
+  1  0  0  0  0  0            999 V2000
+    6.1875   -0.3315    0.0000 Cl  0  5  0  0  0  0  0  0  0  1  0  0
+M  CHG  1   1  -1
+M  END
 '''}))
 
 else:

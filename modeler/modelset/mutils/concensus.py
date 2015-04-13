@@ -45,6 +45,7 @@ class concensus_dragos():
     def report(self):
         if not self.ALLlist:
             return False #break if all models fails to predict
+
         reason = []
         result = []
         INarr = np.array(self.INlist)
