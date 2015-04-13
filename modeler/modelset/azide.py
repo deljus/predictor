@@ -81,9 +81,10 @@ class Model(concensus_dragos):
                             AD = True if res['applicability_domain'].lower() == 'true' else False
                             P = float(res['predicted_value'])
                             self.cumulate(P, AD)
+                    except FileNotFoundError:
+                        print('model result file don\'t exist')
                     except:
-                        print('model result file don\'t exist or broken')
-                    finally:
+                        print('model result file broken')
                         os.remove(temp_file_res)
 
             os.remove(temp_file_mol)
