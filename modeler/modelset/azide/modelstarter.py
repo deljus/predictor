@@ -61,7 +61,6 @@ try:
         vector = solvents.get(solvent_name.lower(), [0]*13) + [temperature] + fragments[:fragcount]
 except:
     print('YOU DO IT WRONG')
-    result = False
 else:
     model = pickle.load(open(model_file, 'rb'))
     result = model.predict(vector)[0]
@@ -73,6 +72,15 @@ else:
     with open(result_file, 'w') as f:
         f.write('{"predicted_value":"%s","applicability_domain":"%s"}' % (result, ad))
 finally:
-    os.remove(temp_file_sdf)
-    os.remove(temp_file_frag + '.csv')
-    os.remove(temp_file_frag + '.hdr')
+    try:
+        os.remove(temp_file_sdf)
+    except:
+        pass
+    try:
+        os.remove(temp_file_frag + '.csv')
+    except:
+        pass
+    try:
+        os.remove(temp_file_frag + '.hdr')
+    except:
+        pass

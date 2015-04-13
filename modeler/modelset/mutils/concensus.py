@@ -32,9 +32,10 @@ def getmodelset(conffile):
 
 
 class concensus_dragos():
-    TRUST = 5
-    INlist = []
-    ALLlist = []
+    def __init__(self):
+        self.TRUST = 5
+        self.INlist = []
+        self.ALLlist = []
 
     def cumulate(self, P, AD):
         if AD:
@@ -42,6 +43,8 @@ class concensus_dragos():
         self.ALLlist.append(P)
 
     def report(self):
+        if not self.ALLlist:
+            return False #break if all models fails to predict
         reason = []
         result = []
         INarr = np.array(self.INlist)

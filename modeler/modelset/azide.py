@@ -52,7 +52,7 @@ class Model(concensus_dragos):
 
     def getresult(self, chemical):
         data = {"structure": chemical['structure'], "parameters": "rdf"}
-        structure = chemaxpost('calculate/stringMolExport', data) if __name__ != '__main__' else chemical['structure']#
+        structure = chemaxpost('calculate/stringMolExport', data) if __name__ != '__main__' else chemical['structure']
         temperature = str(chemical['temperature']) if chemical['temperature'] else '298'
         solvent = chemical['solvents'][0]['name'] if chemical['solvents'] else 'Undefined'
 
@@ -75,14 +75,18 @@ class Model(concensus_dragos):
                 except:
                     print('model execution failed')
                 else:
-                    with open(temp_file_res, 'r') as f:
-                        res = json.load(f)
-                        AD = True if res['applicability_domain'].lower() == 'true' else False
-                        P = float(res['predicted_value'])
-                        self.cumulate(P, AD)
+                    try:
+                        with open(temp_file_res, 'r') as f:
+                            res = json.load(f)
+                            AD = True if res['applicability_domain'].lower() == 'true' else False
+                            P = float(res['predicted_value'])
+                            self.cumulate(P, AD)
+                    except:
+                        print('model result file don\'t exist or broken')
+                    finally:
+                        os.remove(temp_file_res)
 
             os.remove(temp_file_mol)
-            os.remove(temp_file_res)
 
             return self.report()
         else:
