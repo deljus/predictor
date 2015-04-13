@@ -22,11 +22,15 @@ import json
 import os
 import time
 import subprocess as sp
-from .mutils.concensus import concensus_dragos, getmodelset
+if __name__ == '__main__':
+    from mutils.concensus import concensus_dragos, getmodelset
+else:
+    from .mutils.concensus import concensus_dragos, getmodelset
 
 
 class Model(concensus_dragos):
     def __init__(self):
+        super(Model, self).__init__()
         self.modelpath = os.path.join(os.path.dirname(__file__), 'azide')
         self.models = getmodelset(os.path.join(self.modelpath, "conf.xml"))
         self.Nlim = .6
