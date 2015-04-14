@@ -61,6 +61,9 @@ class concensus_dragos():
             if pavgdiff > self.TOL:
                 reason.append(self.errors.get('diff', '%.2f') % pavgdiff)
                 self.TRUST -= 1
+        else:
+            self.TRUST -= 1
+            reason.append(self.errors.get('zad', ''))
 
         proportion = len(self.INlist) / len(self.ALLlist)
         if proportion > self.Nlim:
@@ -70,11 +73,8 @@ class concensus_dragos():
             sigma = sigmaALL
             Pavg = PavgALL
             self.TRUST -= 1
-
             if self.INlist:
                 reason.append(self.errors.get('lad', '%d') % ceil(100 * proportion))
-            else:
-                reason.append(self.errors.get('zad', ''))
 
         proportion = sigma / self.TOL
         if proportion >= 1:
