@@ -51,14 +51,19 @@ class concensus_dragos():
         INarr = np.array(self.INlist)
         ALLarr = np.array(self.ALLlist)
 
-        PavgIN = INarr.mean()
         PavgALL = ALLarr.mean()
-
-        sigmaIN = sqrt((INarr ** 2).mean() - PavgIN ** 2)
         sigmaALL = sqrt((ALLarr ** 2).mean() - PavgALL ** 2)
 
-        nprop = len(self.INlist) / len(self.ALLlist)
-        if nprop > self.Nlim:
+        if self.INlist:
+            PavgIN = INarr.mean()
+            sigmaIN = sqrt((INarr ** 2).mean() - PavgIN ** 2)
+            pavgdiff = PavgIN - PavgALL
+            if pavgdiff > self.TOL:
+                reason.append(self.errors.get('diff', '%.2f') % pavgdiff)
+                self.TRUST -= 1
+
+        proportion = len(self.INlist) / len(self.ALLlist)
+        if proportion > self.Nlim:
             sigma = sigmaIN
             Pavg = PavgIN
         else:
@@ -67,14 +72,9 @@ class concensus_dragos():
             self.TRUST -= 1
 
             if self.INlist:
-                reason.append(self.errors.get('lad', '%d') % ceil(100 * nprop))
+                reason.append(self.errors.get('lad', '%d') % ceil(100 * proportion))
             else:
                 reason.append(self.errors.get('zad', ''))
-
-        pavgdiff = PavgIN - PavgALL
-        if not (len(self.INlist) > 0 and pavgdiff < self.TOL):
-            reason.append(self.errors.get('diff', '%.2f') % pavgdiff)
-            self.TRUST -= 1
 
         proportion = sigma / self.TOL
         if proportion >= 1:
@@ -96,3 +96,8 @@ class concensus_dragos():
                   zad='None of the local models have applicability domains covering this structure')
 
     trustdesc = {5: 'Optimal', 4: 'Good', 3: 'Medium', 2: 'Low'}
+
+
+class standardize_dragos():
+    def __init__(self):
+        pass
