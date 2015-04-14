@@ -8,9 +8,6 @@ from modelset import register_model
 
 
 class Model():
-    def __init__(self):
-        print("started")
-
     def getdesc(self):
         desc = 'model generate sorted conformers'
         return desc
@@ -27,7 +24,6 @@ class Model():
         return hashlist
 
     def getresult(self, chemical):
-        # chemical['structure']
         file_name = int(time.time())
         try:
             if not os.path.exists('/home/server/conf/%d' % file_name):

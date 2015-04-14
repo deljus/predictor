@@ -96,8 +96,3 @@ class concensus_dragos():
                   zad='None of the local models have applicability domains covering this structure')
 
     trustdesc = {5: 'Optimal', 4: 'Good', 3: 'Medium', 2: 'Low'}
-
-
-class standardize_dragos():
-    def __init__(self):
-        pass

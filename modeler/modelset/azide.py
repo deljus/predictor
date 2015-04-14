@@ -22,10 +22,7 @@ import json
 import os
 import time
 import subprocess as sp
-if __name__ == '__main__':
-    from mutils.concensus import concensus_dragos, getmodelset
-else:
-    from .mutils.concensus import concensus_dragos, getmodelset
+from modelset import concensus_dragos, getmodelset, register_model, chemaxpost
 
 
 class Model(concensus_dragos):
@@ -56,7 +53,7 @@ class Model(concensus_dragos):
 
     def getresult(self, chemical):
         data = {"structure": chemical['structure'], "parameters": "rdf"}
-        structure = chemaxpost('calculate/stringMolExport', data) if __name__ != '__main__' else chemical['structure']
+        structure = chemaxpost('calculate/stringMolExport', data)
         temperature = str(chemical['temperature']) if chemical['temperature'] else '298'
         solvent = chemical['solvents'][0]['name'] if chemical['solvents'] else 'Undefined'
 
@@ -100,63 +97,4 @@ class Model(concensus_dragos):
             return False
 
 model = Model()
-
-if __name__ == '__main__':
-
-    print(model.getresult({'temperature': '30', 'solvents': [{'name': 'water'}],
-                           'structure': '''$RDFILE 1
-$DATM    04/13/15 15:31
-$RFMT
-$RXN
-
-  Marvin       041301151531
-
-  2  2
-$MOL
-
-  Mrv0541 04131515312D
-
-  3  2  0  0  0  0            999 V2000
-   -4.9623    0.4615    0.0000 N   0  5  0  0  0  0  0  0  0  5  0  0
-   -4.2478    0.0491    0.0000 N   0  3  0  0  0  0  0  0  0  4  0  0
-   -4.2478   -0.7759    0.0000 N   0  5  0  0  0  0  0  0  0  3  0  0
-  2  1  2  0  0  0  0
-  3  2  2  0  0  0  0
-M  CHG  3   1  -1   2   1   3  -1
-M  END
-$MOL
-
-  Mrv0541 04131515312D
-
-  2  1  0  0  0  0            999 V2000
-   -0.9708   -0.2384    0.0000 Cl  0  0  0  0  0  0  0  0  0  1  0  0
-   -1.6853   -0.6509    0.0000 C   0  0  0  0  0  0  0  0  0  2  0  0
-  2  1  1  0  0  0  0
-M  END
-$MOL
-
-  Mrv0541 04131515312D
-
-  4  3  0  0  0  0            999 V2000
-    4.6319   -0.6812    0.0000 N   0  0  0  0  0  0  0  0  0  3  0  0
-    3.9174   -1.0937    0.0000 C   0  0  0  0  0  0  0  0  0  2  0  0
-    4.6319    0.1438    0.0000 N   0  3  0  0  0  0  0  0  0  4  0  0
-    3.9174    0.5562    0.0000 N   0  5  0  0  0  0  0  0  0  5  0  0
-  2  1  1  0  0  0  0
-  1  3  2  0  0  0  0
-  3  4  2  0  0  0  0
-M  CHG  2   3   1   4  -1
-M  END
-$MOL
-
-  Mrv0541 04131515312D
-
-  1  0  0  0  0  0            999 V2000
-    6.1875   -0.3315    0.0000 Cl  0  5  0  0  0  0  0  0  0  1  0  0
-M  CHG  1   1  -1
-M  END
-'''}))
-
-else:
-    from modelset import register_model, chemaxpost
-    register_model(model.getname(), Model)
+register_model(model.getname(), Model)

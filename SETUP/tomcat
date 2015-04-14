@@ -1,0 +1,20 @@
+sudo nano /usr/share/tomcat7-admin/manager/WEB-INF/web.xml
+sudo nano /etc/tomcat7/server.xml
+sudo nano /etc/default/tomcat7
+sudo nano /etc/init.d/tomcat7
+
+ll /var/log/tomcat7
+sudo chown server:server /var/log/tomcat7/*
+ll /var/log/tomcat7
+sudo chown server /var/log/tomcat7
+ll /var/log/tomcat7
+ll /var/lib/tomcat7/webapps
+sudo chown server:server /var/lib/tomcat7/webapps
+ll /var/lib/tomcat7/webapps
+ll /var/cache/tomcat7/
+sudo chown server:server /var/cache/tomcat7/
+ll /var/cache/tomcat7/
+sudo chown -R server:server /var/cache/tomcat7/Catalina/
+sudo chown server:adm /var/cache/tomcat7/
+ll /var/cache/tomcat7/
+sudo sudo usermod -a -G tomcat7 server
