@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<models>
+    <model>
+        <name>first model</name>
+		<script>
+			<exec_path>modelstarter.sh</exec_path>
+			<params>
+				<param>
+					<name>input_file</name>
+				</param>
+                <param>
+					<name>output_file</name>
+				</param>
+			</params>
+		</script>
+	</model>
+</models>

@@ -31,7 +31,7 @@ def getmodelset(conffile):
                 conf}
 
 
-class concensus_dragos():
+class consensus_dragos():
     def __init__(self):
         self.TRUST = 5
         self.INlist = []

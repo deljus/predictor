@@ -99,23 +99,27 @@ def mapper(task):
 
             data = {"structure": structure, "parameters": "rxn",
                     "filterChain": [{"filter": "standardizer", "parameters": {"standardizerDefinition": STANDARD}}]}
-            structure = json.loads(chemaxpost('calculate/molExport', data))
+            structure = chemaxpost('calculate/molExport', data)
 
-            file_path = '%stmp-%d.rxn' % (UPLOAD_PATH, task['id'])
-
-            if 'isReaction' in structure:
-                with open(file_path, 'w') as tmp:
-                    tmp.write(structure['structure'])
-                FEAR(file_path, j['reaction_id'])
-                os.remove(file_path)
-            else:
-                pass
-                    # todo: тут надо для молекул заморочиться.
-
-            data = {"structure": structure['structure'], "parameters": {"method": "DEHYDROGENIZE"}}
-            structure = chemaxpost('convert/hydrogenizer', data)
             if structure:
-                serverpost("reaction_structure/%s" % (j['reaction_id']), {'reaction_structure': structure})
+                structure = json.loads(structure)
+                file_path = '%stmp-%d.rxn' % (UPLOAD_PATH, task['id'])
+
+                if 'isReaction' in structure:
+                    with open(file_path, 'w') as tmp:
+                        tmp.write(structure['structure'])
+                    FEAR(file_path, j['reaction_id'])
+                    os.remove(file_path)
+                else:
+                    pass
+                        # todo: тут надо для молекул заморочиться.
+
+                data = {"structure": structure['structure'], "parameters": {"method": "DEHYDROGENIZE"}}
+                structure = chemaxpost('convert/hydrogenizer', data)
+                if structure:
+                    serverpost("reaction_structure/%s" % (j['reaction_id']), {'reaction_structure': structure})
+            else:
+                serverpost("reaction_structure/%s" % (j['reaction_id']), {'reaction_structure': ' '})
 
     serverput("task_status/%s" % (task['id']), {'task_status': MAPPING_DONE})
 

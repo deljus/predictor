@@ -36,6 +36,7 @@ MODELLING_DONE = 6
 
 MOLCONVERT = '/home/server/ChemAxon/JChem/bin/molconvert'
 STANDARDIZER = '/home/server/ChemAxon/JChem/bin/standardize'
+CXCALC = '/home/server/ChemAxon/JChem/bin/cxcalc'
 
 UPLOAD_PATH = '/home/server/upload/'
 

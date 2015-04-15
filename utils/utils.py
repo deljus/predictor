@@ -26,7 +26,7 @@ import json
 
 
 def serverget(url, params):
-    for _ in range(10):
+    for _ in range(2):
         try:
             q = requests.get("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
         except:
@@ -41,7 +41,7 @@ def serverget(url, params):
 
 
 def serverput(url, params):
-    for _ in range(10):
+    for _ in range(2):
         try:
             q = requests.put("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
         except:
@@ -56,7 +56,7 @@ def serverput(url, params):
 
 
 def serverpost(url, params):
-    for _ in range(10):
+    for _ in range(2):
         try:
             q = requests.post("%s:%d/%s" % (SERVER, PORT, url), data=params, timeout=20)
         except:
@@ -71,7 +71,7 @@ def serverpost(url, params):
 
 
 def serverdel(url, params):
-    for _ in range(1000):
+    for _ in range(2):
         try:
             q = requests.delete("%s:%d/%s" % (SERVER, PORT, url), params=params, timeout=20)
         except:
@@ -86,7 +86,7 @@ def serverdel(url, params):
 
 
 def chemaxpost(url, data):
-    for _ in range(10):
+    for _ in range(2):
         try:
             q = requests.post("%s/rest-v0/util/%s" % (CHEMAXON, url), data=json.dumps(data),
                               headers={'content-type': 'application/json'}, timeout=20)

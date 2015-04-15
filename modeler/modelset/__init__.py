@@ -21,7 +21,7 @@
 import pkgutil
 import modelset as models
 from utils.utils import chemaxpost
-from mutils.concensus import concensus_dragos, getmodelset
+from mutils.consensus import consensus_dragos, getmodelset
 from mutils.structprepare import standardize_dragos
 
 MODELS = {}
