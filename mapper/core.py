@@ -18,6 +18,7 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+import os
 from utils.config import LOCK_MAPPING, STANDARD, MAPPING_DONE, UPLOAD_PATH, STANDARDIZER
 from utils.utils import getsolvents, chemaxpost, serverpost, serverput, serverget
 import subprocess as sp
@@ -39,52 +40,54 @@ def create_task_from_file(task):
     temp = 298
     sp.call([STANDARDIZER, file_path, '-c', STANDARD, '-f', 'mrv', '-o', tmp_file])
 
-    file = open(tmp_file, 'r')
     solv = {x['name'].lower(): x['id'] for x in getsolvents()}
 
-    for mol in file:
-        if '<MDocument>' in mol:
-            tree = ET.fromstring(mol)
-            prop = {x.get('title').lower(): x.find('scalar').text.lower().strip() for x in tree.iter('property')}
-            solvlist = {}
-            for i, j in prop.items():
-                if 'solvent.amount.' in i:
-                    k = re.split('[:=]', j)
-                    id = solv.get(k[0].strip())
-                    if id:
-                        if '%' in k[-1]:
-                            v = k[-1].replace('%', '')
-                            grader = 100
-                        else:
-                            v = k[-1]
-                            grader = 1
+    with open(tmp_file, 'r') as file:
+        for mol in file:
+            if '<MDocument>' in mol:
+                tree = ET.fromstring(mol)
+                prop = {x.get('title').lower(): x.find('scalar').text.lower().strip() for x in tree.iter('property')}
+                solvlist = {}
+                for i, j in prop.items():
+                    if 'solvent.amount.' in i:
+                        k = re.split('[:=]', j)
+                        id = solv.get(k[0].strip())
+                        if id:
+                            if '%' in k[-1]:
+                                v = k[-1].replace('%', '')
+                                grader = 100
+                            else:
+                                v = k[-1]
+                                grader = 1
+                            try:
+                                v = float(v) / grader
+                            except ValueError:
+                                v = 1
+                            solvlist[id] = v
+                    elif 'temperature' == i:
                         try:
-                            v = float(v) / grader
+                            temp = float(j)
                         except ValueError:
-                            v = 1
-                        solvlist[id] = v
-                elif 'temperature' == i:
-                    try:
-                        temp = float(j)
-                    except ValueError:
-                        temp = 298
+                            temp = 298
 
-            data = {"structure": mol.rstrip(), "parameters": {"method": "DEHYDROGENIZE"}}
-            structure = chemaxpost('convert/hydrogenizer', data)
-            if structure:
-                data = dict(task_id=task_id, structure=structure, solvent=json.dumps(solvlist), temperature=temp)
-                q = serverpost('parser', data)
-                if q.isdigit(): # проверка на корректный ответ. по сути не нужна. но да пох.
-                    data = {"structure": mol, "parameters": "rxn"}
-                    structure = chemaxpost('calculate/stringMolExport', data)
-                    if '$RXN' in structure:
-                        with open(tmp_fear_file, 'w') as tmp:
-                            tmp.write(structure)
-                        FEAR(tmp_fear_file, int(q))
-                    else:
-                        pass
-                        # todo: тут надо для молекул заморочиться.
+                data = {"structure": mol.rstrip(), "parameters": {"method": "DEHYDROGENIZE"}}
+                structure = chemaxpost('convert/hydrogenizer', data)
+                if structure:
+                    data = dict(task_id=task_id, structure=structure, solvent=json.dumps(solvlist), temperature=temp)
+                    q = serverpost('parser', data)
+                    if q.isdigit(): # проверка на корректный ответ. по сути не нужна. но да пох.
+                        data = {"structure": mol, "parameters": "rxn"}
+                        structure = chemaxpost('calculate/stringMolExport', data)
+                        if '$RXN' in structure:
+                            with open(tmp_fear_file, 'w') as tmp:
+                                tmp.write(structure)
+                            FEAR(tmp_fear_file, int(q))
+                            os.remove(tmp_fear_file)
+                        else:
+                            pass
+                            # todo: тут надо для молекул заморочиться.
 
+    os.remove(tmp_file)
     serverput("task_status/%s" % task_id, {'task_status': MAPPING_DONE})
 
 
@@ -94,26 +97,22 @@ def mapper(task):
         for j in chemicals:
             structure = serverget("reaction_structure/%s" % (j['reaction_id']), None)
 
-            data = {"structure": structure, "parameters": {"standardizerDefinition": STANDARD}}
-            standardised = chemaxpost('convert/standardizer', data)
-
-            data = {"structure": standardised, "parameters": {"autoMappingStyle": "OFF"}}
-            r_structure = chemaxpost('convert/reactionConverter', data)
-
-            data = {"structure": r_structure, "parameters": "rxn"}
-            structure = chemaxpost('calculate/stringMolExport', data)
+            data = {"structure": structure, "parameters": "rxn",
+                    "filterChain": [{"filter": "standardizer", "parameters": {"standardizerDefinition": STANDARD}}]}
+            structure = json.loads(chemaxpost('calculate/molExport', data))
 
             file_path = '%stmp-%d.rxn' % (UPLOAD_PATH, task['id'])
 
-            if '$RXN' in structure:
+            if 'isReaction' in structure:
                 with open(file_path, 'w') as tmp:
-                    tmp.write(structure)
+                    tmp.write(structure['structure'])
                 FEAR(file_path, j['reaction_id'])
+                os.remove(file_path)
             else:
                 pass
                     # todo: тут надо для молекул заморочиться.
 
-            data = {"structure": r_structure, "parameters": {"method": "DEHYDROGENIZE"}}
+            data = {"structure": structure['structure'], "parameters": {"method": "DEHYDROGENIZE"}}
             structure = chemaxpost('convert/hydrogenizer', data)
             if structure:
                 serverpost("reaction_structure/%s" % (j['reaction_id']), {'reaction_structure': structure})
@@ -126,17 +125,14 @@ def FEAR(file_path, reaction_id):
     try:
         fearinput = next(fearinput.readdata())
         res = fear.firstcgr(fearinput)
-        #print(reaction_id, res, fearinput)
         if not res:
             models = set()
             for x, y in fearinput['meta'].items():
                 if '!reaction_center_hash' in x:
                     rhash = y.split("'")[0][5:]
                     mset = serverget("models", {'hash': rhash})
-                    #print(rhash, mset)
                     models.update([str(z['id']) for z in mset])
             # todo: переписать вьюшку на нормальные грабли.
-            #print(models, ','.join(models))
             serverpost("reaction/%s" % reaction_id, {'models': ','.join(models)})
     except:
         pass
