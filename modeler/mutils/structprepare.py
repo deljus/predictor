@@ -35,7 +35,7 @@ class standardize_dragos():
 
     def __loadrules(self):
         with open(os.path.join(os.path.dirname(__file__), "standardrules_dragos.smarts")) as f:
-            rules = '..'.join(f.read().split())
+            rules = '..'.join([x.split()[0] for x in f])
         return rules
 
     def __loadunwanted(self):
@@ -62,7 +62,11 @@ class standardize_dragos():
         if re.search(self.__unwanted, biggest):
             return False
 
+        #save aromatized form
+        tmp_file = file_path + '.smiles'
         with open(file_path) as f:
             f.write(biggest)
 
+        sp.call([STANDARDIZER, tmp_file, '-c', 'aromatize:b', '-f', 'sdf', '-o', file_path])
+        os.remove(tmp_file)
         return True

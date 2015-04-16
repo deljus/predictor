@@ -22,10 +22,10 @@ import json
 import os
 import time
 import subprocess as sp
-from modelset import concensus_dragos, getmodelset, register_model, chemaxpost
+from modelset import consensus_dragos, getmodelset, register_model, chemaxpost
 
 
-class Model(concensus_dragos):
+class Model(consensus_dragos):
     def __init__(self):
         super().__init__()
         self.modelpath = os.path.join(os.path.dirname(__file__), 'azide')
