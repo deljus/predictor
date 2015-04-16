@@ -28,7 +28,7 @@ from modelset import consensus_dragos, getmodelset, register_model, chemaxpost, 
 class Model(consensus_dragos, standardize_dragos):
     def __init__(self):
         super().__init__()
-        self.modelpath = os.path.join(os.path.dirname(__file__), 'moltest')
+        self.modelpath = os.path.join(os.path.dirname(__file__), 'martas')
         self.models = getmodelset(os.path.join(self.modelpath, "conf.xml"))
         self.Nlim = .6
         self.TOL = .8
