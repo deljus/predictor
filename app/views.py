@@ -49,13 +49,19 @@ pdb = pdb()
 @app.route('/home/')
 @app.route('/predictor/')
 def index():
-    #return render_template("index.html")
-    return redirect(url_for('static', filename='index.html'))
+    return render_template("index.html")
+    #return redirect(url_for('static', filename='index.html'))
 
 
 @app.route("/download", methods=['GET'])
 def download_file():
     return excel.make_response_from_array([[1, 2], [3, 4]], "xls")
+
+
+@app.route("/solvents", methods=['GET'])
+def solvents():
+    solvents = pdb.get_solvents()
+    return render_template("solvents.html", solvents=solvents)
 
 """
 file uploader
@@ -302,30 +308,30 @@ class DownloadResultsAPI(Resource):
 ##
 ## Actually setup the Api resource routing here
 ##
-api.add_resource(ReactionListAPI, '/reactions')
+api.add_resource(ReactionListAPI, '/api/reactions')
 
-api.add_resource(ReactionAPI, '/reaction/<reaction_id>')
-api.add_resource(ReactionStructureAPI, '/reaction_structure/<reaction_id>')
-api.add_resource(ReactionResultAPI, '/reaction_result/<reaction_id>')
+api.add_resource(ReactionAPI, '/api/reaction/<reaction_id>')
+api.add_resource(ReactionStructureAPI, '/api/reaction_structure/<reaction_id>')
+api.add_resource(ReactionResultAPI, '/api/reaction_result/<reaction_id>')
 
 # работа со статусами задач
-api.add_resource(TaskStatusAPI, '/task_status/<task_id>')
+api.add_resource(TaskStatusAPI, '/api/task_status/<task_id>')
 
 # получение задач
-api.add_resource(TaskListAPI, '/tasks')
+api.add_resource(TaskListAPI, '/api/tasks')
 
-api.add_resource(TaskReactionsAPI, '/task_reactions/<task_id>')
+api.add_resource(TaskReactionsAPI, '/api/task_reactions/<task_id>')
 
-api.add_resource(TaskModellingAPI, '/task_modelling/<task_id>')
+api.add_resource(TaskModellingAPI, '/api/task_modelling/<task_id>')
 
-api.add_resource(ModelListAPI, '/models')
-api.add_resource(ModelAPI, '/model/<model_id>')
-
-
-api.add_resource(SolventsAPI, '/solvents')
-
-api.add_resource(DownloadResultsAPI, '/download/<task_id>')
+api.add_resource(ModelListAPI, '/api/models')
+api.add_resource(ModelAPI, '/api/model/<model_id>')
 
 
-api.add_resource(UploadFile, '/upload')
-api.add_resource(ParserAPI, '/parser')
+api.add_resource(SolventsAPI, '/api/solvents')
+
+api.add_resource(DownloadResultsAPI, '/api/download/<task_id>')
+
+
+api.add_resource(UploadFile, '/api/upload')
+api.add_resource(ParserAPI, '/api/parser')

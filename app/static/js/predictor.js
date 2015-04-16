@@ -14,6 +14,8 @@ var TAMER_ID;
 
 var marvinSketcherInstance;
 var isSaveMrvBtnExists=false;
+
+var API_BASE = '/api';
 /******************************************************/
 
 function reset_timer()
@@ -133,7 +135,7 @@ function handleRequestError()
 function download_results(format)
 {
 	var task_id = $('#task_id').val();
-	window.open('/download/'+task_id+'?format='+format);	
+	window.open(API_BASE+'/download/'+task_id+'?format='+format);	
 }
 
 function select_mode(mode)
@@ -158,7 +160,7 @@ function upload_file(data)
 {
        return  $.ajax({
             type: 'POST',
-            url: '/upload',
+            url: API_BASE+'/upload',
             data: data,
             contentType: false,
             cache: false,
@@ -206,6 +208,17 @@ function isEmpty(val)
 }
 
 
+function reactionToMrv(mol)
+{
+    var services = getDefaultServices();
+    var data = JSON.stringify({"structure": mol});
+	return $.ajax({type:'POST',
+	        url: services['automapperws'],
+	        contentType: 'application/json',
+	        data: data
+	        });
+}
+
 function isMolEmpty(data)
 {
     if ( String(data).indexOf('MChemicalStruct')>=0 || String(data).indexOf('$RXN')>=0)
@@ -219,7 +232,7 @@ function set_task_status(task_id, status)
     console.log('set_task_status->'+status);
     var data =  JSON.stringify({"task_status": status});
     return $.ajax({
-        "url": "/task_status/"+task_id
+        "url": API_BASE+"/task_status/"+task_id
         ,"type": "PUT"
         ,"dataType": "json"
         ,"contentType": "application/json"
@@ -230,12 +243,12 @@ function set_task_status(task_id, status)
 function get_task_status(task_id)
 {
 	console.log('get_task_status->'+task_id);
-    return $.get("/task_status/"+task_id);
+    return $.get(API_BASE+"/task_status/"+task_id);
 }
 
 function get_reaction_structure(reaction_id)
 {
-    return $.get("/reaction_structure/"+reaction_id);
+    return $.get(API_BASE+"/reaction_structure/"+reaction_id);
 }
 
 function put_reaction_structure(reaction_id, data)
@@ -243,23 +256,23 @@ function put_reaction_structure(reaction_id, data)
     console.log('put_reaction_structure->');
     var data = {"reaction_structure": data};
 
-    return $.post("/reaction_structure/"+reaction_id, data);
+    return $.post(API_BASE+"/reaction_structure/"+reaction_id, data);
 }
 
 function get_models(model_hash)
 {
     data = {"hash": model_hash};
-    return $.get("/models", data);
+    return $.get(API_BASE+"/models", data);
 }
 
 function get_solvents()
 {
-    return $.get("/solvents");
+    return $.get(API_BASE+"/solvents");
 }
 
 function get_reactions_by_task(task_id)
 {
-    return $.get("/task_reactions/"+task_id)
+    return $.get(API_BASE+"/task_reactions/"+task_id)
 }
 
 
@@ -326,6 +339,8 @@ function show_file_upload()
 	$('#file-upload-div').show(1000);	
 }
 
+
+
 function upload_sketcher_data()
 {
 	    Progress.start();
@@ -355,7 +370,7 @@ function upload_task_draw_data(draw_data)
     var data = JSON.stringify({"reaction_structure": draw_data});
 
     $.ajax({
-            "url": "/tasks"
+            "url": API_BASE+"/tasks"
             ,"type": "POST"
             ,"dataType": "json"
             ,"contentType": "application/json"
@@ -691,7 +706,7 @@ function upload_reaction_form()
 	});
 	console.log(data);
 	
-    return $.post("/task_modelling/"+task_id, data).done(function (data, textStatus, jqXHR){
+    return $.post(API_BASE+"/task_modelling/"+task_id, data).done(function (data, textStatus, jqXHR){
 
         console.log('form upload '+data);
         start_modelling();
@@ -753,7 +768,7 @@ function load_modelling_results(task_id)
 		return false;	
 	}	
 	
-    $.get("/task_modelling/"+task_id).done(function (data, textStatus, jqXHR){
+    $.get(API_BASE+"/task_modelling/"+task_id).done(function (data, textStatus, jqXHR){
 
         Progress.done();
         try {
@@ -768,7 +783,7 @@ function load_modelling_results(task_id)
 
 function load_reaction_img(reaction_id)
 {
-    return $.get("/reaction_img/"+reaction_id);
+    return $.get(API_BASE+"/reaction_img/"+reaction_id);
 
 }
 // данные для структур в результатах моделирования
@@ -790,6 +805,8 @@ function display_modelling_results(results)
         var result = results[i];
         r_id = result.reaction_id;
         var reaction_results = result.results;
+        if (reaction_results.length==0)
+            reaction_results = [{reaction_id:0, model:'unmodeling data', param:'', value:'', type:0}];
         //reaction_results = [{reaction_id:12, model:'model1', param:'ttt', value:111},{reaction_id:12, model:'model1', param:'www', value:222}];
         str+='<tr>';
         str+='<td rowspan="'+reaction_results.length+'"><img class="reaction_img" reaction_id="'+r_id+'" src=""  alt="Image unavailable"/></td>';
@@ -853,23 +870,26 @@ function display_modelling_results(results)
 
         })
 		*/
-		get_reaction_structure( jImg.attr('reaction_id') ).done(function(data, textStatus, jqXHR){
-			
-			var settings = {
-					'carbonLabelVisible' : false,
-					'cpkColoring' : true,
-					'implicitHydrogen' : false,
-					'width' : 300,
-					'height' : 100
-			};		
-			try {	
-				var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",settings);
-				jImg.attr('src',dataUrl);						
-			}
-			catch(err){
-				console.log(err);
-			}
-		});
+		if (jImg.attr('reaction_id'))
+		{
+            get_reaction_structure( jImg.attr('reaction_id') ).done(function(data, textStatus, jqXHR){
+
+                var settings = {
+                        'carbonLabelVisible' : false,
+                        'cpkColoring' : true,
+                        'implicitHydrogen' : false,
+                        'width' : 300,
+                        'height' : 100
+                };
+                try {
+                    var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",settings);
+                    jImg.attr('src',dataUrl);
+                }
+                catch(err){
+                    console.log(err);
+                }
+            });
+		}
 
 
     });
@@ -885,8 +905,14 @@ function display_modelling_results(results)
         try {
             var  jImg = $(this);
             var data = result_structures[this.id];
-            var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",settings);
-            jImg.attr('src',dataUrl);
+            reactionToMrv(data).done(function(result, textStatus, jqXHR){
+                console.log(result);
+                var dataUrl = marvin.ImageExporter.mrvToDataUrl(result,"image/png",settings);
+                jImg.attr('src',dataUrl);
+            });
+
+            //var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",settings);
+            //jImg.attr('src',dataUrl);
         }
         catch(err){
             console.log(err);

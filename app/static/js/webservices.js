@@ -2,7 +2,7 @@
 
 function getDefaultServicesPrefix() {
 	
-	// при отладке сервисы висят на 8080 порту, в продакшене - на 80
+	// пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 8080 пїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅ 80
 	if (String(document.domain).indexOf('127.0.0.1')!=-1)
 		var servername = 'http://127.0.0.1:8080';
 	else
@@ -26,3 +26,4 @@ function getDefaultServices() {
 	};
 	return services;
 }
+
