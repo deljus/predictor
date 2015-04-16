@@ -22,42 +22,38 @@ import json
 import os
 import time
 import subprocess as sp
-from modelset import consensus_dragos, getmodelset, register_model, chemaxpost
+from modelset import consensus_dragos, getmodelset, register_model, chemaxpost, standardize_dragos
 
 
-class Model(consensus_dragos):
+class Model(consensus_dragos, standardize_dragos):
     def __init__(self):
         super().__init__()
-        self.modelpath = os.path.join(os.path.dirname(__file__), 'azide')
+        self.modelpath = os.path.join(os.path.dirname(__file__), 'martas')
         self.models = getmodelset(os.path.join(self.modelpath, "conf.xml"))
         self.Nlim = .6
         self.TOL = .8
 
     def getdesc(self):
-        desc = 'sn2 reactions of azides salts with halogen alkanes constants prediction'
+        desc = 'example model with Dragos like consensus and structure prepare'
         return desc
 
     def getname(self):
-        name = 'azide-halogen substitution'
+        name = 'example mol'
         return name
 
     def is_reation(self):
-        return 1
+        return 0
 
     def gethashes(self):
-        hashlist = ['1006099,1017020,2007079', '1006099,1035020,2007079', '1006099,1053020,2007079',  # balanced fp
-                    '1006099,1017018,2007079', '1006099,1035018,2007079', '1006099,1053018,2007079',  #unbal leaving gr
-                    '1006099,1017018,2007081', '1006099,1035018,2007081',
-                    '1006099,1053018,2007081']  #unbal leav and nuc
+        hashlist = []
         return hashlist
 
     def getresult(self, chemical):
-        data = {"structure": chemical['structure'], "parameters": "rdf"}
-        structure = chemaxpost('calculate/stringMolExport', data)
+        structure = chemical['structure']
         temperature = str(chemical['temperature']) if chemical['temperature'] else '298'
         solvent = chemical['solvents'][0]['name'] if chemical['solvents'] else 'Undefined'
 
-        if structure:
+        if structure != ' ':
             fixtime = int(time.time())
             temp_file_mol = os.path.join(self.modelpath, "structure-%d.mol" % fixtime)
             temp_file_res = os.path.join(self.modelpath, "structure-%d.res" % fixtime)
@@ -68,27 +64,31 @@ class Model(consensus_dragos):
             with open(temp_file_mol, 'w') as f:
                 f.write(structure)
 
-            for model, params in self.models.items():
-                try:
-                    params = [replace.get(x, x) for x in params]
-                    params[0] = os.path.join(self.modelpath, params[0])
-                    sp.call(params)
-                except:
-                    print('model execution failed')
-                else:
+            """
+            self.standardize() method prepares structure for modeling and return True if OK else False
+            """
+            if self.standardize(temp_file_mol):
+                for model, params in self.models.items():
                     try:
-                        with open(temp_file_res, 'r') as f:
-                            res = json.load(f)
-                            AD = True if res['applicability_domain'].lower() == 'true' else False
-                            P = float(res['predicted_value'])
-                            self.cumulate(P, AD)
+                        params = [replace.get(x, x) for x in params]
+                        params[0] = os.path.join(self.modelpath, params[0])
+                        sp.call(params)
                     except:
-                        print('model result file broken or don\'t exist')
-                    finally:
+                        print('model execution failed')
+                    else:
                         try:
-                            os.remove(temp_file_res)
+                            with open(temp_file_res, 'r') as f:
+                                res = json.load(f)
+                                AD = True if res['applicability_domain'].lower() == 'true' else False
+                                P = float(res['predicted_value'])
+                                self.cumulate(P, AD)
                         except:
-                            pass
+                            print('model result file broken or don\'t exist')
+                        finally:
+                            try:
+                                os.remove(temp_file_res)
+                            except:
+                                pass
 
             os.remove(temp_file_mol)
 

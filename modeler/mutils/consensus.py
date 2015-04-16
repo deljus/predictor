@@ -31,7 +31,7 @@ def getmodelset(conffile):
                 conf}
 
 
-class concensus_dragos():
+class consensus_dragos():
     def __init__(self):
         self.TRUST = 5
         self.INlist = []
@@ -51,30 +51,30 @@ class concensus_dragos():
         INarr = np.array(self.INlist)
         ALLarr = np.array(self.ALLlist)
 
-        PavgIN = INarr.mean()
         PavgALL = ALLarr.mean()
-
-        sigmaIN = sqrt((INarr ** 2).mean() - PavgIN ** 2)
         sigmaALL = sqrt((ALLarr ** 2).mean() - PavgALL ** 2)
 
-        nprop = len(self.INlist) / len(self.ALLlist)
-        if nprop > self.Nlim:
+        if self.INlist:
+            PavgIN = INarr.mean()
+            sigmaIN = sqrt((INarr ** 2).mean() - PavgIN ** 2)
+            pavgdiff = PavgIN - PavgALL
+            if pavgdiff > self.TOL:
+                reason.append(self.errors.get('diff', '%.2f') % pavgdiff)
+                self.TRUST -= 1
+        else:
+            self.TRUST -= 1
+            reason.append(self.errors.get('zad', ''))
+
+        proportion = len(self.INlist) / len(self.ALLlist)
+        if proportion > self.Nlim:
             sigma = sigmaIN
             Pavg = PavgIN
         else:
             sigma = sigmaALL
             Pavg = PavgALL
             self.TRUST -= 1
-
             if self.INlist:
-                reason.append(self.errors.get('lad', '%d') % ceil(100 * nprop))
-            else:
-                reason.append(self.errors.get('zad', ''))
-
-        pavgdiff = PavgIN - PavgALL
-        if not (len(self.INlist) > 0 and pavgdiff < self.TOL):
-            reason.append(self.errors.get('diff', '%.2f') % pavgdiff)
-            self.TRUST -= 1
+                reason.append(self.errors.get('lad', '%d') % ceil(100 * proportion))
 
         proportion = sigma / self.TOL
         if proportion >= 1:
