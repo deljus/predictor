@@ -18,20 +18,22 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+import json
 import os
 import re
 import subprocess as sp
-from mutils import STANDARDIZER
+from mutils import STANDARDIZER, chemaxpost, PMAPPER, chemaxpost
 
 
 class standardize_dragos():
     def __init__(self):
-        self.__rules = self.__loadrules()
+        self.__stdrules = self.__loadrules()
         self.__unwanted = self.__loadunwanted()
         self.__minratio = 2
         self.__maxionsize = 5
         self.__minmainsize = 6
         self.__maxmainsize = 101
+        super().__init__()
 
     def __loadrules(self):
         with open(os.path.join(os.path.dirname(__file__), "standardrules_dragos.smarts")) as f:
@@ -39,20 +41,35 @@ class standardize_dragos():
         return rules
 
     def __loadunwanted(self):
-        return '(%s)' % '|'.join(open(os.path.join(os.path.dirname(__file__), "unwanted.elem")).read().strip().split())
+        return '(%s)' % '|'.join(open(os.path.join(os.path.dirname(__file__), "unwanted.elem")).read().split())
 
-    def standardize(self, file_path):
-        #step 1. canonical smiles, dearomatized & dealkalinized
-        #neutralize all species, except for FOUR-LEGGED NITROGEN, which has to be positive for else chemically incorrect
-        # Automatically represent N-oxides, incl. nitros, as N+-O-.
-        #generate major tautomer..
-        smiles = sp.check_output([STANDARDIZER, file_path, '-c', self.__rules, '-f', 'smiles']).decode().strip()
-        if not smiles or '>' in smiles:
+    def standardize(self, structure, file_path, mformat="sdf"):
+        """
+        step 1. canonical smiles, dearomatized & dealkalinized
+        neutralize all species, except for FOUR-LEGGED NITROGEN, which has to be positive for else chemically incorrect
+        Automatically represent N-oxides, incl. nitros, as N+-O-.
+        generate major tautomer & aromatize
+        """
+
+        data = {"structure": structure, "parameters": "smiles",
+                "filterChain": [{"filter": "standardizer", "parameters": {"standardizerDefinition": self.__stdrules}}]}
+        res = chemaxpost('calculate/molExport', data)
+
+        if res:
+            res = json.loads(res)
+            if 'isReaction' in res:
+                return False
+            smiles = res['structure']
+        else:
             return False
 
-        #step 2. check for bizzare salts or mixtures
-        #strip mixtures
-        species = sorted([(len(re.findall('[A-G,I-Z]', x)), x) for x in smiles.split('.')], key=lambda x: x[0])
+        """
+        step 2. check for bizzare salts or mixtures
+        strip mixtures
+        regex search any atom in aromatic and aliphatic forms exclude H
+        """
+        regex = re.compile('(\[[A-Z][a-z]?!H|\[as|\[se|C|c|N|n|P|p|O|o|S|s|F|Br|I)')
+        species = sorted([(len(regex.findall(x)), x) for x in smiles.split('.')], key=lambda x: x[0])
         if (len(species) == 1 or len(species) > 1 and species[-1][0] / species[-2][0] > self.__minratio and species[-2][0] <= self.__maxionsize and species[-1][0] > self.__minmainsize) and species[-1][0] < self.__maxmainsize:
             biggest = species[-1][1]
         else:
@@ -62,11 +79,42 @@ class standardize_dragos():
         if re.search(self.__unwanted, biggest):
             return False
 
-        #save aromatized form
-        tmp_file = file_path + '.smiles'
+        if mformat != 'smiles':
+            data = {"structure": biggest, "parameters": mformat,
+                    "filterChain": [{"filter": "clean", "parameters": {"dim": 2}}]}
+            res = chemaxpost('calculate/molExport', data)
+            if res:
+                res = json.loads(res)
+                biggest = res['structure']
+            else:
+                return False
+
         with open(file_path) as f:
             f.write(biggest)
 
-        sp.call([STANDARDIZER, tmp_file, '-c', 'aromatize:b', '-f', 'sdf', '-o', file_path])
-        os.remove(tmp_file)
         return True
+
+
+class ISIDAatommarker():
+    def markatoms(self, file_path):
+        marks = []
+        flag = 0
+        buffer = []
+        for x in sp.check_output([PMAPPER, '-c', self.markerrule, file_path]).decode().split():
+            marks.extend(x.split(';'))
+
+        marksg = (n for n in marks)
+
+        with open(file_path, 'r') as f:
+            for line in f:
+                if '999 V2000' in line:
+                    flag = int(line[:3])
+                elif flag:
+                    if 'A' in next(marksg):
+                        line = line[:51] + '  1' + line[54:]
+                    flag -= 1
+
+                buffer.append(line)
+
+        with open(file_path, 'w') as f:
+            f.write(''.join(buffer))

@@ -27,11 +27,11 @@ from modelset import consensus_dragos, getmodelset, register_model, chemaxpost, 
 
 class Model(consensus_dragos, standardize_dragos):
     def __init__(self):
-        super().__init__()
         self.modelpath = os.path.join(os.path.dirname(__file__), 'martas')
         self.models = getmodelset(os.path.join(self.modelpath, "conf.xml"))
         self.Nlim = .6
         self.TOL = .8
+        self.markerrule = os.path.join(self.modelpath, 'HalbondPharmFlags.xml')
 
     def getdesc(self):
         desc = 'example model with Dragos like consensus and structure prepare'
@@ -50,24 +50,18 @@ class Model(consensus_dragos, standardize_dragos):
 
     def getresult(self, chemical):
         structure = chemical['structure']
-        temperature = str(chemical['temperature']) if chemical['temperature'] else '298'
-        solvent = chemical['solvents'][0]['name'] if chemical['solvents'] else 'Undefined'
 
         if structure != ' ':
             fixtime = int(time.time())
-            temp_file_mol = os.path.join(self.modelpath, "structure-%d.mol" % fixtime)
+            temp_file_mol = os.path.join(self.modelpath, "structure-%d.sdf" % fixtime)
             temp_file_res = os.path.join(self.modelpath, "structure-%d.res" % fixtime)
 
-            replace = {'input_file': temp_file_mol, 'output_file': temp_file_res,
-                       'temperature': temperature, 'solvent': solvent}
-
-            with open(temp_file_mol, 'w') as f:
-                f.write(structure)
+            replace = {'input_file': temp_file_mol, 'output_file': temp_file_res}
 
             """
             self.standardize() method prepares structure for modeling and return True if OK else False
             """
-            if self.standardize(temp_file_mol):
+            if self.standardize(structure, temp_file_mol, mformat="smiles"):
                 for model, params in self.models.items():
                     try:
                         params = [replace.get(x, x) for x in params]
@@ -78,19 +72,21 @@ class Model(consensus_dragos, standardize_dragos):
                     else:
                         try:
                             with open(temp_file_res, 'r') as f:
-                                res = json.load(f)
-                                AD = True if res['applicability_domain'].lower() == 'true' else False
-                                P = float(res['predicted_value'])
-                                self.cumulate(P, AD)
+                                for line in f:
+                                    res = json.loads(line)
+                                    AD = True if res['applicability_domain'].lower() == 'true' else False
+                                    P = float(res['predicted_value'])
+                                    self.cumulate(P, AD)
                         except:
                             print('model result file broken or don\'t exist')
                         finally:
                             try:
-                                os.remove(temp_file_res)
+                                #os.remove(temp_file_res)
+                                pass
                             except:
                                 pass
 
-            os.remove(temp_file_mol)
+            #os.remove(temp_file_mol)
 
             return self.report()
         else:

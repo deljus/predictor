@@ -22,7 +22,7 @@ import pkgutil
 import modelset as models
 from utils.utils import chemaxpost
 from mutils.consensus import consensus_dragos, getmodelset
-from mutils.structprepare import standardize_dragos
+from mutils.structprepare import standardize_dragos, ISIDAatommarker
 from utils.config import REACTOR, CXCALC, MOLCONVERT, STANDARDIZER, JCSEARCH
 
 MODELS = {}

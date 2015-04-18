@@ -39,6 +39,7 @@ STANDARDIZER = '/home/server/ChemAxon/JChem/bin/standardize'
 CXCALC = '/home/server/ChemAxon/JChem/bin/cxcalc'
 REACTOR = '/home/server/ChemAxon/JChem/bin/react'
 JCSEARCH = '/home/server/ChemAxon/JChem/bin/jcsearch'
+PMAPPER = '/home/server/ChemAxon/JChem/bin/pmapper'
 
 UPLOAD_PATH = '/home/server/upload/'
 
