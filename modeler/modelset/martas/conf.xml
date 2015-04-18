@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <models>
     <model>
-        <name>first model</name>
+        <name>IAB2-3_-FC-MA3</name>
 		<script>
 			<exec_path>modelstarter.sh</exec_path>
 			<params>
@@ -10,6 +10,12 @@
 				</param>
                 <param>
 					<name>output_file</name>
+				</param>
+                <param>
+					<name>IAB2-3_-FC-MA3</name>
+				</param>
+                <param>
+					<name>-t 3 -l 2 -u 3 -c Default --UseFormalCharge -m 3 -t 0</name>
 				</param>
 			</params>
 		</script>

@@ -22,10 +22,10 @@ import json
 import os
 import time
 import subprocess as sp
-from modelset import consensus_dragos, getmodelset, register_model, chemaxpost, standardize_dragos
+from modelset import consensus_dragos, getmodelset, register_model, chemaxpost, standardize_dragos, ISIDAatommarker
 
 
-class Model(consensus_dragos, standardize_dragos):
+class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
     def __init__(self):
         self.modelpath = os.path.join(os.path.dirname(__file__), 'martas')
         self.models = getmodelset(os.path.join(self.modelpath, "conf.xml"))
@@ -62,6 +62,13 @@ class Model(consensus_dragos, standardize_dragos):
             self.standardize() method prepares structure for modeling and return True if OK else False
             """
             if self.standardize(structure, temp_file_mol, mformat="smiles"):
+                """
+                self.markatoms() create atom marking 7th column in SDF based on pmapper.
+                need self.markerrule var with path to config.xml
+                work like Utils/HBMap + map2markedatom.pl
+                """
+                self.markatoms(temp_file_mol)
+
                 for model, params in self.models.items():
                     try:
                         params = [replace.get(x, x) for x in params]
