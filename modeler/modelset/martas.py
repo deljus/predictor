@@ -22,7 +22,7 @@ import json
 import os
 import time
 import subprocess as sp
-from modelset import consensus_dragos, getmodelset, register_model, chemaxpost, standardize_dragos, ISIDAatommarker
+from modelset import consensus_dragos, getmodelset, register_model, chemaxpost, standardize_dragos, ISIDAatommarker, bondbox
 
 
 class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
@@ -56,8 +56,6 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
             temp_file_mol = os.path.join(self.modelpath, "structure-%d.sdf" % fixtime)
             temp_file_res = os.path.join(self.modelpath, "structure-%d.res" % fixtime)
 
-            replace = {'input_file': temp_file_mol, 'output_file': temp_file_res}
-
             """
             self.standardize() method prepares structure for modeling and return True if OK else False
             """
@@ -71,17 +69,27 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
 
                 for model, params in self.models.items():
                     try:
-                        params = [replace.get(x, x) for x in params]
-                        params[0] = os.path.join(self.modelpath, params[0])
-                        sp.call(params)
+                        for execparams in params:
+                            tmp = []
+                            for x in execparams:
+                                if 'input_file' in x:
+                                    x.replace('input_file', temp_file_mol)
+                                elif 'output_file' in x:
+                                    x.replace('output_file', temp_file_res)
+                                tmp.append(x)
+                            execparams = tmp
+                            execparams[0] = os.path.join(self.modelpath, execparams[0])
+                            #call fragmentor, smv prepare, svm-predict
+                            sp.call(execparams)
                     except:
                         print('model execution failed')
                     else:
                         try:
+                            boxfile = os.path.join(self.modelpath, 'models', 'brute%s.range' % model)
+                            AD = bondbox(boxfile, temp_file_res + '.svm', 'svm')
                             with open(temp_file_res, 'r') as f:
                                 for line in f:
                                     res = json.loads(line)
-                                    AD = True if res['applicability_domain'].lower() == 'true' else False
                                     P = float(res['predicted_value'])
                                     self.cumulate(P, AD)
                         except:

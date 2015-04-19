@@ -69,7 +69,7 @@ class Model(consensus_dragos):
 
             for model, params in self.models.items():
                 try:
-                    params = [replace.get(x, x) for x in params]
+                    params = [replace.get(x, x) for x in params[0]]
                     params[0] = os.path.join(self.modelpath, params[0])
                     sp.call(params)
                 except:

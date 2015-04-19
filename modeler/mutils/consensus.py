@@ -8,7 +8,7 @@
 # the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 #
-#  This program is distributed in the hope that it will be useful,
+# This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU Affero General Public License for more details.
@@ -24,11 +24,30 @@ import xmltodict as x2d
 
 
 def getmodelset(conffile):
-        conf = x2d.parse(open(conffile, 'r').read())['models']['model']
-        if not isinstance(conf, list):
-            conf = [conf]
-        return {x['name']: [x['script']['exec_path']] + [y['name'] for y in x['script']['params']['param']] for x in
-                conf}
+    conf = x2d.parse(open(conffile, 'r').read())['models']['model']
+    if not isinstance(conf, list):
+        conf = [conf]
+    res = {}
+    for x in conf:
+        name = x['name']
+        execlist = []
+        scripts = x['scripts']['script']
+        if not isinstance(scripts, list):
+            scripts = [scripts]
+
+        for y in scripts:
+            params = y['params']['param']
+            if not isinstance(params, list):
+                params = [params]
+            plist = []
+            for z in params:
+                plist.extend(z['name'].split() if z['type'] == 'list' else [z['name']])
+
+            execlist.append([y['exec_path']] + plist)
+
+        res[name] = execlist
+
+    return res
 
 
 class consensus_dragos():
@@ -45,7 +64,7 @@ class consensus_dragos():
 
     def report(self):
         if not self.__ALLlist:
-            return False #break if all models fails to predict
+            return False  #break if all models fails to predict
 
         reason = []
         result = []
@@ -97,3 +116,31 @@ class consensus_dragos():
                     zad='None of the local models have applicability domains covering this structure')
 
     __trustdesc = {5: 'Optimal', 4: 'Good', 3: 'Medium', 2: 'Low'}
+
+
+def bondbox(boxfile, descfile, dftype):
+    box = {}
+    AD = True
+    with open(boxfile) as f:
+        for line in f:
+            fragment, *vrange = line.split()
+            box[int(fragment)] = [int(x) for x in vrange]
+
+    with open(descfile) as f:
+        if dftype == 'svm':
+            for fragment in f.read().split()[1:]:
+                pos, count = fragment.split(':')
+                m, M = box.get(int(pos), [0, 0])
+                if not (m <= int(count) <= M):
+                    AD = False
+                    break
+        elif dftype == 'csv':
+            for pos, count in enumerate(f.read().split(';')[1:]):
+                m, M = box.get(pos + 1, [0, 0])
+                if not (m <= int(count) <= M):
+                    AD = False
+                    break
+        else:
+            AD = False
+    return AD
+
