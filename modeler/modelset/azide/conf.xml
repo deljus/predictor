@@ -2,7 +2,7 @@
 <models>
     <model>
         <name>t3 l2 u5 UseFormalCharge</name>
-		<script>
+		<scripts><script>
 			<exec_path>modelstarter.py</exec_path>
 			<params>
                 <param>
@@ -35,11 +35,11 @@
 					<comment>condenser params</comment>
 				</param>
 			</params>
-		</script>
+		</script></scripts>
 	</model>
     <model>
         <name>t3 l3 u8 UseFormalCharge</name>
-		<script>
+		<scripts><script>
 			<exec_path>modelstarter.py</exec_path>
 			<params>
                 <param>
@@ -72,11 +72,11 @@
 					<comment>condenser params</comment>
 				</param>
 			</params>
-		</script>
+		</script></scripts>
 	</model>
     <model>
         <name>t3 l3 u8</name>
-		<script>
+		<scripts><script>
 			<exec_path>modelstarter.py</exec_path>
 			<params>
                 <param>
@@ -109,11 +109,11 @@
 					<comment>condenser params</comment>
 				</param>
 			</params>
-		</script>
+		</script></scripts>
 	</model>
     <model>
         <name>t3 l2 u5</name>
-		<script>
+		<scripts><script>
 			<exec_path>modelstarter.py</exec_path>
 			<params>
                 <param>
@@ -146,11 +146,11 @@
 					<comment>condenser params</comment>
 				</param>
 			</params>
-		</script>
+		</script></scripts>
 	</model>
     <model>
         <name>t3 l2 u5 UseFormalCharge g1</name>
-		<script>
+		<scripts><script>
 			<exec_path>modelstarter.py</exec_path>
 			<params>
                 <param>
@@ -183,11 +183,11 @@
 					<comment>condenser params</comment>
 				</param>
 			</params>
-		</script>
+		</script></scripts>
 	</model>
     <model>
         <name>t3 l3 u8 UseFormalCharge g1</name>
-		<script>
+		<scripts><script>
 			<exec_path>modelstarter.py</exec_path>
 			<params>
                 <param>
@@ -220,11 +220,11 @@
 					<comment>condenser params</comment>
 				</param>
 			</params>
-		</script>
+		</script></scripts>
 	</model>
     <model>
         <name>t3 l2 u5 UseFormalCharge g1 d1</name>
-		<script>
+		<scripts><script>
 			<exec_path>modelstarter.py</exec_path>
 			<params>
                 <param>
@@ -257,11 +257,11 @@
 					<comment>condenser params</comment>
 				</param>
 			</params>
-		</script>
+		</script></scripts>
 	</model>
     <model>
         <name>t3 l3 u8 UseFormalCharge g1 d1</name>
-		<script>
+		<scripts><script>
 			<exec_path>modelstarter.py</exec_path>
 			<params>
                 <param>
@@ -294,11 +294,11 @@
 					<comment>condenser params</comment>
 				</param>
 			</params>
-		</script>
+		</script></scripts>
 	</model>
     <model>
         <name>t3 l3 u8 g1 d1</name>
-		<script>
+		<scripts><script>
 			<exec_path>modelstarter.py</exec_path>
 			<params>
                 <param>
@@ -331,11 +331,11 @@
 					<comment>condenser params</comment>
 				</param>
 			</params>
-		</script>
+		</script></scripts>
 	</model>
     <model>
         <name>t3 l2 u5 g1 d1</name>
-		<script>
+		<scripts><script>
 			<exec_path>modelstarter.py</exec_path>
 			<params>
                 <param>
@@ -368,6 +368,6 @@
 					<comment>condenser params</comment>
 				</param>
 			</params>
-		</script>
+		</script></scripts>
 	</model>
 </models>

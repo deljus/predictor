@@ -2,35 +2,40 @@
 <models>
     <model>
         <name>modelset 1</name>
-		<script>
-			<exec_path>fragmentor</exec_path>
-			<params>
-                <param>
-					<name>-i input_file</name>
-                    <type>list</type> # parser automatically split string by space
-				</param>
-                <param>
-					<name>-o input_file.frag</name> #pattern input_file or output_file will be replaced to actual file path
-                    <type>list</type>
-				</param>
-                <param>
-					<name>-t 3 -l 2 -u 3 -c Default --UseFormalCharge -m 3 -t 0</name>
-                    <type>list</type>
-				</param>
-			</params>
-		</script>
-        <script>
-			<exec_path>svm_predict</exec_path>
-			<params>
-                <param>
-					<name>input_file</name>
-                    <type>string</type>
-				</param>
-                <param>
-					<name>output_file</name>
-                    <type>string</type>
-				</param>
-			</params>
-		</script>
+        <scripts>
+            <script>
+                <exec_path>fragmentor</exec_path>
+                <params>
+                    <param>
+                        <name>-i input_file</name>
+                        <type>list</type>
+                        <comment>if type "list" parser automatically split string by space</comment>
+                    </param>
+                    <param>
+                        <name>-o input_file.frag</name>
+                        <type>list</type>
+                        <comment>pattern "input_file" or "output_file" will be replaced to actual file path</comment>
+                    </param>
+                    <param>
+                        <name>-t 3 -l 2 -u 3 -c Default --UseFormalCharge -m 3 -t 0</name>
+                        <type>list</type>
+                    </param>
+                </params>
+            </script>
+            <script>
+                <exec_path>svm_predict</exec_path>
+                <params>
+                    <param>
+                        <name>input_file</name>
+                        <type>string</type>
+                        <comment>if type "string" parameters set as is. its like "quoted" param in shell. "string" default type and may be skipped</comment>
+                    </param>
+                    <param>
+                        <name>output_file</name>
+                        <type>string</type>
+                    </param>
+                </params>
+            </script>
+        </scripts>
 	</model>
 </models>

@@ -41,7 +41,7 @@ def getmodelset(conffile):
                 params = [params]
             plist = []
             for z in params:
-                plist.extend(z['name'].split() if z['type'] == 'list' else [z['name']])
+                plist.extend(z['name'].split() if 'type' in z and z['type'] == 'list' else [z['name']])
 
             execlist.append([y['exec_path']] + plist)
 
