@@ -6,9 +6,9 @@
 # PREDICTOR is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
-#  (at your option) any later version.
+# (at your option) any later version.
 #
-#  This program is distributed in the hope that it will be useful,
+# This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU Affero General Public License for more details.
@@ -22,7 +22,8 @@ import json
 import os
 import time
 import subprocess as sp
-from modelset import consensus_dragos, getmodelset, register_model, chemaxpost, standardize_dragos, ISIDAatommarker, bondbox
+from modelset import consensus_dragos, getmodelset, register_model, chemaxpost, standardize_dragos, ISIDAatommarker, \
+    bondbox
 
 
 class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
@@ -32,13 +33,14 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
         self.Nlim = .6
         self.TOL = .8
         self.markerrule = os.path.join(self.modelpath, 'HalbondPharmFlags.xml')
+        super().__init__()
 
     def getdesc(self):
         desc = 'example model with Dragos like consensus and structure prepare'
         return desc
 
     def getname(self):
-        name = 'example mol'
+        name = 'hb'
         return name
 
     def is_reation(self):
@@ -53,19 +55,21 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
 
         if structure != ' ':
             fixtime = int(time.time())
-            temp_file_mol = os.path.join(self.modelpath, "structure-%d.sdf" % fixtime)
-            temp_file_res = os.path.join(self.modelpath, "structure-%d.res" % fixtime)
+            temp_file_mol = "structure-%d.sdf" % fixtime
+            temp_file_mol_path = os.path.join(self.modelpath, temp_file_mol)
+            temp_file_res = "structure-%d.res" % fixtime
+            temp_file_res_path = os.path.join(self.modelpath, temp_file_res)
 
             """
             self.standardize() method prepares structure for modeling and return True if OK else False
             """
-            if self.standardize(structure, temp_file_mol, mformat="smiles"):
+            if self.standardize(structure, temp_file_mol_path, mformat="sdf"):
                 """
                 self.markatoms() create atom marking 7th column in SDF based on pmapper.
                 need self.markerrule var with path to config.xml
                 work like Utils/HBMap + map2markedatom.pl
                 """
-                self.markatoms(temp_file_mol)
+                self.markatoms(temp_file_mol_path)
 
                 for model, params in self.models.items():
                     try:
@@ -73,39 +77,42 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
                             tmp = []
                             for x in execparams:
                                 if 'input_file' in x:
-                                    x.replace('input_file', temp_file_mol)
+                                    x = x.replace('input_file', temp_file_mol)
                                 elif 'output_file' in x:
-                                    x.replace('output_file', temp_file_res)
+                                    x = x.replace('output_file', temp_file_res)
                                 tmp.append(x)
                             execparams = tmp
-                            execparams[0] = os.path.join(self.modelpath, execparams[0])
-                            #call fragmentor, smv prepare, svm-predict
-                            sp.call(execparams)
+                            print(execparams)
+                            # call fragmentor, smv prepare, svm-predict
+                            sp.call(execparams, cwd=self.modelpath)
                     except:
                         print('model execution failed')
                     else:
                         try:
                             boxfile = os.path.join(self.modelpath, 'models', 'brute%s.range' % model)
-                            AD = bondbox(boxfile, temp_file_res + '.svm', 'svm')
-                            with open(temp_file_res, 'r') as f:
+                            fragments = os.path.join(self.modelpath, '%s.frag.svm' % temp_file_mol)
+                            AD = bondbox(boxfile, fragments, 'svm')
+                            with open(temp_file_res_path, 'r') as f:
                                 for line in f:
-                                    res = json.loads(line)
-                                    P = float(res['predicted_value'])
+                                    P = float(line)
                                     self.cumulate(P, AD)
                         except:
-                            print('model result file broken or don\'t exist')
-                        finally:
-                            try:
-                                #os.remove(temp_file_res)
-                                pass
-                            except:
-                                pass
+                            print('modeling results files broken or don\'t exist. skipped')
 
-            #os.remove(temp_file_mol)
+                files = os.listdir(self.modelpath)
+                for x in files:
+                    if 'structure-%d' % fixtime in x:
+                        try:
+                            os.remove(os.path.join(self.modelpath, x))
+                        except:
+                            print('something is very bad. file %s undeletable' % x)
 
-            return self.report()
+                return self.report()
+            else:
+                return False
         else:
             return False
+
 
 model = Model()
 register_model(model.getname(), Model)

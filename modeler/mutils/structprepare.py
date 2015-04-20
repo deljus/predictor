@@ -89,7 +89,7 @@ class standardize_dragos():
             else:
                 return False
 
-        with open(file_path) as f:
+        with open(file_path, 'w') as f:
             f.write(biggest)
 
         return True

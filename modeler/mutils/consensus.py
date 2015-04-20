@@ -64,7 +64,7 @@ class consensus_dragos():
 
     def report(self):
         if not self.__ALLlist:
-            return False  #break if all models fails to predict
+            return False  # break if all models fails to predict
 
         reason = []
         result = []
