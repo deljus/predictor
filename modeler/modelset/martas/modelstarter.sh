@@ -1,4 +1,14 @@
-#!/usr/bin/env bash
-#this script start model (fragmentor|condenser|svm) and then write JSON string to result_file
+#! /bin/tcsh
 
-echo "{\"predicted_value\":$RANDOM,\"applicability_domain\":\"true\"}" > $2
+if (!(-e $2) || (-z $2)) then
+    exit
+endif
+
+if ((-e $3) && !(-z $3)) then
+    rm $3
+endif
+
+foreach f ($1/*.model)
+    ./libsvm/svm-predict $2 $f $2.tmp_pred
+    cat $2.tmp_pred >> $3
+end

@@ -27,11 +27,11 @@ from modelset import consensus_dragos, getmodelset, register_model, chemaxpost
 
 class Model(consensus_dragos):
     def __init__(self):
-        super().__init__()
         self.modelpath = os.path.join(os.path.dirname(__file__), 'azide')
         self.models = getmodelset(os.path.join(self.modelpath, "conf.xml"))
         self.Nlim = .6
         self.TOL = .8
+        super().__init__()
 
     def getdesc(self):
         desc = 'sn2 reactions of azides salts with halogen alkanes constants prediction'
@@ -70,7 +70,7 @@ class Model(consensus_dragos):
 
             for model, params in self.models.items():
                 try:
-                    params = [replace.get(x, x) for x in params]
+                    params = [replace.get(x, x) for x in params[0]]
                     params[0] = os.path.join(self.modelpath, params[0])
                     sp.call(params)
                 except:

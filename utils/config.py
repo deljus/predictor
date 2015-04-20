@@ -39,11 +39,12 @@ STANDARDIZER = '/home/server/ChemAxon/JChem/bin/standardize'
 CXCALC = '/home/server/ChemAxon/JChem/bin/cxcalc'
 REACTOR = '/home/server/ChemAxon/JChem/bin/react'
 JCSEARCH = '/home/server/ChemAxon/JChem/bin/jcsearch'
+PMAPPER = '/home/server/ChemAxon/JChem/bin/pmapper'
 
 UPLOAD_PATH = '/home/server/upload/'
 
 #UPLOAD_PATH = '/tmp/'
 #MOLCONVERT = '/home/stsouko/.ChemAxon/JChem/bin/molconvert'
 #STANDARDIZER = '/home/stsouko/.ChemAxon/JChem/bin/standardize'
-
+#PMAPPER = '/home/stsouko/.ChemAxon/JChem/bin/pmapper'
 THREAD_LIMIT = 3

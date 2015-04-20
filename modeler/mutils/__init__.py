@@ -18,4 +18,5 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from utils.config import STANDARDIZER
+from utils.config import STANDARDIZER, PMAPPER
+from utils.utils import chemaxpost

@@ -98,7 +98,8 @@ def mapper(task):
             structure = serverget("reaction_structure/%s" % (j['reaction_id']), None)
 
             data = {"structure": structure, "parameters": "rxn",
-                    "filterChain": [{"filter": "standardizer", "parameters": {"standardizerDefinition": STANDARD}}]}
+                    "filterChain": [{"filter": "clean", "parameters": {"dim": 2}},
+                                    {"filter": "standardizer", "parameters": {"standardizerDefinition": STANDARD}}]}
             structure = chemaxpost('calculate/molExport', data)
 
             if structure:
