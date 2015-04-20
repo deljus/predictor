@@ -103,8 +103,7 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
                 for x in files:
                     if 'structure-%d' % fixtime in x:
                         try:
-                            pass
-                            #os.remove(os.path.join(self.modelpath, x))
+                            os.remove(os.path.join(self.modelpath, x))
                         except:
                             print('something is very bad. file %s undeletable' % x)
 
