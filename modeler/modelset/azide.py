@@ -31,6 +31,7 @@ class Model(consensus_dragos):
         self.models = getmodelset(os.path.join(self.modelpath, "conf.xml"))
         self.Nlim = .6
         self.TOL = .8
+        super().__init__()
 
     def getdesc(self):
         desc = 'sn2 reactions of azides salts with halogen alkanes constants prediction'
