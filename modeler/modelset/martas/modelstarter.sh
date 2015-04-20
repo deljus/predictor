@@ -12,6 +12,3 @@ foreach f ($1/*.model)
     ./libsvm/svm-predict $2 $f $2.tmp_pred
     cat $2.tmp_pred >> $3
 end
-
-
-echo "{\"predicted_value\":$RANDOM,\"applicability_domain\":\"true\"}" > $2
