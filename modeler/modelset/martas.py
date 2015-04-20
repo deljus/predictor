@@ -107,7 +107,7 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
                         except:
                             print('something is very bad. file %s undeletable' % x)
 
-                return self.report()
+                return self.report('pK(I<sub>2</sub>)')
             else:
                 return False
         else:
