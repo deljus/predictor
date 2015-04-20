@@ -24,9 +24,6 @@
     <link rel="stylesheet" href="static/css/bootstrap-select.css" type="text/css">
     <script type="text/javascript" src="static/js/bootstrap/bootstrap-select.js"></script>
 
-
-
-
   </head>
   <body>
 	<div class="wrapper conteiner-fluid">
@@ -40,18 +37,10 @@
                 </div>
                 <div class="col-md-8">
                     <a href="/"><img src="static/images/chemaxon-logo.png"   alt="Chemaxon logo" height="70"></a>
-                    <form name="search" action="#" method="get" class="form-inline form-search pull-right" style="display:none;">
-                        <div class="input-group">
-                            <label class="sr-only" for="searchInput">Search</label>
-                            <input class="form-control" id="searchInput" type="text" name="search" placeholder="Search">
-                            <div class="input-group-btn">
-                                <button type="submit" class="btn btn-primary">GO</button>
-                            </div>
-                        </div>
-                    </form>
+
                 </div>
 
-            </div>
+             </div>
 		</header>
 		<nav class="navbar navbar-default">
 			<ul class="nav navbar-nav">
@@ -64,29 +53,11 @@
 				<li><a href="/contact/">Contact</a></li>
 			</ul>
 		</nav>
+
         {% block heading %}{% endblock %}
 
         {% block body %}{% endblock %}
 	</div>
-<!--
-	<footer>
-		<div class="container">
-			<div class="row">
-				<div class="col-md-4 social">
-					<h3>Social networks</h3>
-					<a href="http://twitter.com/" class="social-icon twitter"></a>
-					<a href="http://facebook.com/" class="social-icon facebook"></a>
-					<a href="http://plus.google.com/" class="social-icon google-plus"></a>
-				</div>
-				<div class="col-md-8 footer-logo">
-					<p>
-						Copyright &copy; 2015 ChemPortal. A
-						<a href="http://kpfu.ru/ramil.nugmanov">chemlab</a> creation
-					</p>
-				</div>
-			</div>
-		</div>
-	</footer>
--->
+
   </body>
 </html>
