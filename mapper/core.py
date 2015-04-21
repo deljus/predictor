@@ -37,9 +37,7 @@ def create_task_from_file(task):
     task_id = task['id']
     tmp_file = '%stmp-%d.mrv' % (UPLOAD_PATH, task_id)
     tmp_fear_file = '%stmp-%d.rxn' % (UPLOAD_PATH, task_id)
-    temp = 298
     sp.call([STANDARDIZER, file_path, '-c', STANDARD, '-f', 'mrv', '-o', tmp_file])
-
     solv = {x['name'].lower(): x['id'] for x in getsolvents()}
 
     with open(tmp_file, 'r') as file:
