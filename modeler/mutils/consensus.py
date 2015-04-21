@@ -24,11 +24,14 @@ import xmltodict as x2d
 
 
 def getmodelset(conffile):
-    conf = x2d.parse(open(conffile, 'r').read())['models']['model']
-    if not isinstance(conf, list):
-        conf = [conf]
-    res = {}
-    for x in conf:
+    xml = x2d.parse(open(conffile, 'r').read())['models']
+    batch = xml['model']
+    conf = xml.get('conf', {})
+    models = {}
+
+    if not isinstance(batch, list):
+        batch = [batch]
+    for x in batch:
         name = x['name']
         execlist = []
         scripts = x['scripts']['script']
@@ -45,9 +48,9 @@ def getmodelset(conffile):
 
             execlist.append([y['exec_path']] + plist)
 
-        res[name] = execlist
+        models[name] = execlist
 
-    return res
+    return models, conf
 
 
 class consensus_dragos():

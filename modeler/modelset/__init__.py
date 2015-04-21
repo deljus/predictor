@@ -28,8 +28,8 @@ from utils.config import REACTOR, CXCALC, MOLCONVERT, STANDARDIZER, JCSEARCH
 MODELS = {}
 
 
-def register_model(name, model):
-    MODELS[name] = model
+def register_model(name, model, init=None):
+    MODELS[name] = (model, init)
 
 
 for mloader, pname, ispkg in pkgutil.iter_modules(models.__path__):

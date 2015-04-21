@@ -18,36 +18,45 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import json
 import os
 import time
 import subprocess as sp
 from modelset import consensus_dragos, getmodelset, register_model, chemaxpost, standardize_dragos, ISIDAatommarker, \
     bondbox
+script_path = os.path.dirname(__file__)
 
 
 class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
-    def __init__(self):
-        self.modelpath = os.path.join(os.path.dirname(__file__), 'martas')
-        self.models = getmodelset(os.path.join(self.modelpath, "conf.xml"))
-        self.Nlim = .6
-        self.TOL = .8
-        self.markerrule = os.path.join(self.modelpath, 'HalbondPharmFlags.xml')
+    def __init__(self, conffile):
+        self.__models, self.__conf = getmodelset(os.path.join(script_path, conffile))
+        self.__modelpath = os.path.join(script_path, self.__conf.get('path'))
+
+        cons = self.__conf.get('consensus', dict(nlim=0, tol=1000000))
+        self.Nlim = float(cons.get('nlim', 0))
+        self.TOL = float(cons.get('tol', 1000000))
+
+        self.__std_out = self.__conf.get('standardize_out', 'sdf')
+        if 'markerrule' in self.__conf:
+            self.markerrule = os.path.join(self.__modelpath, self.__conf.get('markerrule'))
+            self.__markatoms = self.markatoms
+        else:
+            self.__markatoms = lambda x: None
         super().__init__()
 
     def getdesc(self):
-        desc = 'example model with Dragos like consensus and structure prepare'
+        desc = self.__conf.get('desc', 'no description')
         return desc
 
     def getname(self):
-        name = 'hb'
+        name = self.__conf.get('name', 'no name')
         return name
 
     def is_reation(self):
-        return 0
+        is_reaction = self.__conf.get('is_reaction', 'false').lower()
+        return 1 if is_reaction == 'true' else 0
 
     def gethashes(self):
-        hashlist = []
+        hashlist = self.__conf.get('hashes', '').split()
         return hashlist
 
     def getresult(self, chemical):
@@ -56,22 +65,22 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
         if structure != ' ':
             fixtime = int(time.time())
             temp_file_mol = "structure-%d.sdf" % fixtime
-            temp_file_mol_path = os.path.join(self.modelpath, temp_file_mol)
+            temp_file_mol_path = os.path.join(self.__modelpath, temp_file_mol)
             temp_file_res = "structure-%d.res" % fixtime
-            temp_file_res_path = os.path.join(self.modelpath, temp_file_res)
+            temp_file_res_path = os.path.join(self.__modelpath, temp_file_res)
 
             """
             self.standardize() method prepares structure for modeling and return True if OK else False
             """
-            if self.standardize(structure, temp_file_mol_path, mformat="sdf"):
+            if self.standardize(structure, temp_file_mol_path, mformat=self.__std_out):
                 """
                 self.markatoms() create atom marking 7th column in SDF based on pmapper.
                 need self.markerrule var with path to config.xml
                 work like Utils/HBMap + map2markedatom.pl
                 """
-                self.markatoms(temp_file_mol_path)
+                self.__markatoms(temp_file_mol_path)
 
-                for model, params in self.models.items():
+                for model, params in self.__models.items():
                     try:
                         for execparams in params:
                             tmp = []
@@ -84,13 +93,13 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
                             execparams = tmp
                             print(execparams)
                             # call fragmentor, smv prepare, svm-predict
-                            sp.call(execparams, cwd=self.modelpath)
+                            sp.call(execparams, cwd=self.__modelpath)
                     except:
                         print('model execution failed')
                     else:
                         try:
-                            boxfile = os.path.join(self.modelpath, 'models', 'brute%s.range' % model)
-                            fragments = os.path.join(self.modelpath, '%s.frag.svm' % temp_file_mol)
+                            boxfile = os.path.join(self.__modelpath, 'models', 'brute%s.range' % model)
+                            fragments = os.path.join(self.__modelpath, '%s.frag.svm' % temp_file_mol)
                             AD = bondbox(boxfile, fragments, 'svm')
                             with open(temp_file_res_path, 'r') as f:
                                 for line in f:
@@ -99,11 +108,11 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
                         except:
                             print('modeling results files broken or don\'t exist. skipped')
 
-                files = os.listdir(self.modelpath)
+                files = os.listdir(self.__modelpath)
                 for x in files:
                     if 'structure-%d' % fixtime in x:
                         try:
-                            os.remove(os.path.join(self.modelpath, x))
+                            os.remove(os.path.join(self.__modelpath, x))
                         except:
                             print('something is very bad. file %s undeletable' % x)
 
@@ -113,6 +122,8 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
         else:
             return False
 
-
-model = Model()
-register_model(model.getname(), Model)
+files = os.listdir(script_path)
+for i in files:
+    if os.path.splitext(i)[1] == '.xml':
+        model = Model(i)
+        register_model(model.getname(), Model, init=i)

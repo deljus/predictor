@@ -32,6 +32,15 @@ LOSE = []
 SOLVENTS = {}
 
 
+def getmodel(model_name):
+    Model, init = models.MODELS[model_name]
+    if init:
+        model = Model(init)
+    else:
+        model = Model()
+    return model
+
+
 def taskthread(task_id):
     if serverput("task_status/%s" % task_id, {'task_status': LOCK_MODELLING}):
         chemicals = serverget("task_reactions/%s" % task_id, None)
@@ -40,8 +49,7 @@ def taskthread(task_id):
             reaction = serverget("reaction/%s" % reaction_id, None)
             if reaction:
                 for model_id, model_name in reaction['models'].items():
-                    model = models.MODELS[model_name]()
-                    model_result = model.getresult(reaction)
+                    model_result = getmodel(model_name).getresult(reaction)
                     if model_result:
                         reaction_result = dict(modelid=model_id, result=json.dumps(model_result))
                         if not serverpost("reaction_result/%s" % reaction_id, reaction_result):
@@ -84,7 +92,8 @@ def main():
     print('new models %s' % toattach)
 
     for x in toattach:
-        model = models.MODELS[x]()
+        model = getmodel(x)
+        print({'name': x, 'desc': model.getdesc(), 'is_reaction': model.is_reation(), 'hashes': model.gethashes()})
         print(serverpost("models", {'name': x, 'desc': model.getdesc(),
                                     'is_reaction': model.is_reation(), 'hashes': model.gethashes()}))
         del model
