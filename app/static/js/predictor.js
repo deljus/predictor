@@ -785,6 +785,7 @@ function load_reaction_img(reaction_id)
 // данные для структур в результатах моделирования
 var result_structures = {};
 var mrv_result_structures = {};
+var reaction_structures = {}
 function display_modelling_results(results)
 {
 	// скроем редактор
@@ -796,8 +797,8 @@ function display_modelling_results(results)
     jTbl.empty();
     var str = '';
 
-//reaction1 = "$RXN\n\n  Marvin       041401151653\n\n  1  1\n$MOL\n\n  Mrv0541 04141516532D          \nC12 H16 O3\n 15 15  0  0  0  0            999 V2000\n    5.4141    3.8995    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    4.6994    4.3119    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    6.1286    4.3119    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    5.4141    3.0744    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    3.9851    3.8995    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n    6.8430    3.8995    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    6.1286    2.6618    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    3.2705    4.3119    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    6.8430    3.0744    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    2.5559    3.8995    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.8415    4.3119    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    2.5559    3.0744    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.1270    3.8995    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n    1.8415    5.1370    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n    0.4123    4.3119    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n  1  2  1  0  0  0  0\n  1  3  4  0  0  0  0\n  1  4  4  0  0  0  0\n  2  5  1  0  0  0  0\n  3  6  4  0  0  0  0\n  4  7  4  0  0  0  0\n  5  8  1  0  0  0  0\n  6  9  4  0  0  0  0\n  7  9  4  0  0  0  0\n  8 10  1  0  0  0  0\n 10 11  1  0  0  0  0\n 10 12  1  0  0  0  0\n 11 13  1  0  0  0  0\n 11 14  2  0  0  0  0\n 13 15  1  0  0  0  0\nM  END\n$MOL\n\n  Mrv0541 04141516532D          \nC5 H10 O3\n  8  7  0  0  0  0            999 V2000\n    9.9221    3.6932    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n   10.6365    4.1055    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    9.2076    4.1055    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    9.9221    2.8680    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n   11.3512    3.6932    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n   10.6365    4.9307    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n    8.4930    3.6932    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n   12.0657    4.1055    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n  1  2  1  0  0  0  0\n  1  3  1  0  0  0  0\n  1  4  1  0  0  0  0\n  2  5  1  0  0  0  0\n  2  6  2  0  0  0  0\n  3  7  1  0  0  0  0\n  5  8  1  0  0  0  0\nM  END"
-//reaction2 = "$RXN\n\n  Marvin       041401151700\n\n  1  1\n$MOL\n\n  Mrv0541 04141517002D          \nC14 H22 O2\n 17 17  0  0  1  0            999 V2000\n    1.1870    3.2864    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.9015    3.6988    0.0000 C   0  0  1  0  0  0  0  0  0  0  0  0\n    1.4008    2.4895    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    0.4125    3.0035    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    0.8389    4.0338    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    2.6160    3.2864    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n    1.9015    4.5238    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    0.8175    1.9053    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n    2.1977    2.2751    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    3.2478    3.8160    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    3.9623    3.4035    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    4.6767    3.8160    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    3.9623    2.5785    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    5.3912    3.4035    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    4.6767    2.1661    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    5.3912    2.5785    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.9015    2.8738    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0\n  1  2  1  0  0  0  0\n  1  3  1  0  0  0  0\n  1  4  1  0  0  0  0\n  1  5  1  0  0  0  0\n  2  6  1  6  0  0  0\n  2  7  1  0  0  0  0\n  3  8  1  0  0  0  0\n  3  9  1  0  0  0  0\n  6 10  1  0  0  0  0\n 10 11  1  0  0  0  0\n 11 12  4  0  0  0  0\n 11 13  4  0  0  0  0\n 12 14  4  0  0  0  0\n 13 15  4  0  0  0  0\n 14 16  4  0  0  0  0\n 15 16  4  0  0  0  0\n  2 17  1  1  0  0  0\nM  END\n$MOL\n\n  Mrv0541 04141517002D          \nC7 H16 O2\n 10  9  0  0  1  0            999 V2000\n    8.4570    3.5708    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    7.8028    3.0681    0.0000 C   0  0  1  0  0  0  0  0  0  0  0  0\n    9.1122    3.0681    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    9.0148    4.1788    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    7.9001    4.1788    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    7.0412    3.3842    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n    7.9108    2.2505    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    9.8745    3.3842    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n    9.0049    2.2505    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    7.6951    3.8861    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0\n  1  2  1  0  0  0  0\n  1  3  1  0  0  0  0\n  1  4  1  0  0  0  0\n  1  5  1  0  0  0  0\n  2  6  1  6  0  0  0\n  2  7  1  0  0  0  0\n  3  8  1  0  0  0  0\n  3  9  1  0  0  0  0\n  2 10  1  1  0  0  0\nM  END";
+reaction1 = "$RXN\n\n  Marvin       041401151653\n\n  1  1\n$MOL\n\n  Mrv0541 04141516532D          \nC12 H16 O3\n 15 15  0  0  0  0            999 V2000\n    5.4141    3.8995    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    4.6994    4.3119    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    6.1286    4.3119    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    5.4141    3.0744    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    3.9851    3.8995    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n    6.8430    3.8995    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    6.1286    2.6618    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    3.2705    4.3119    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    6.8430    3.0744    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    2.5559    3.8995    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.8415    4.3119    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    2.5559    3.0744    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.1270    3.8995    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n    1.8415    5.1370    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n    0.4123    4.3119    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n  1  2  1  0  0  0  0\n  1  3  4  0  0  0  0\n  1  4  4  0  0  0  0\n  2  5  1  0  0  0  0\n  3  6  4  0  0  0  0\n  4  7  4  0  0  0  0\n  5  8  1  0  0  0  0\n  6  9  4  0  0  0  0\n  7  9  4  0  0  0  0\n  8 10  1  0  0  0  0\n 10 11  1  0  0  0  0\n 10 12  1  0  0  0  0\n 11 13  1  0  0  0  0\n 11 14  2  0  0  0  0\n 13 15  1  0  0  0  0\nM  END\n$MOL\n\n  Mrv0541 04141516532D          \nC5 H10 O3\n  8  7  0  0  0  0            999 V2000\n    9.9221    3.6932    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n   10.6365    4.1055    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    9.2076    4.1055    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    9.9221    2.8680    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n   11.3512    3.6932    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n   10.6365    4.9307    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n    8.4930    3.6932    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n   12.0657    4.1055    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n  1  2  1  0  0  0  0\n  1  3  1  0  0  0  0\n  1  4  1  0  0  0  0\n  2  5  1  0  0  0  0\n  2  6  2  0  0  0  0\n  3  7  1  0  0  0  0\n  5  8  1  0  0  0  0\nM  END"
+reaction2 = "$RXN\n\n  Marvin       041401151700\n\n  1  1\n$MOL\n\n  Mrv0541 04141517002D          \nC14 H22 O2\n 17 17  0  0  1  0            999 V2000\n    1.1870    3.2864    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.9015    3.6988    0.0000 C   0  0  1  0  0  0  0  0  0  0  0  0\n    1.4008    2.4895    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    0.4125    3.0035    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    0.8389    4.0338    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    2.6160    3.2864    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n    1.9015    4.5238    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    0.8175    1.9053    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n    2.1977    2.2751    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    3.2478    3.8160    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    3.9623    3.4035    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    4.6767    3.8160    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    3.9623    2.5785    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    5.3912    3.4035    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    4.6767    2.1661    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    5.3912    2.5785    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.9015    2.8738    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0\n  1  2  1  0  0  0  0\n  1  3  1  0  0  0  0\n  1  4  1  0  0  0  0\n  1  5  1  0  0  0  0\n  2  6  1  6  0  0  0\n  2  7  1  0  0  0  0\n  3  8  1  0  0  0  0\n  3  9  1  0  0  0  0\n  6 10  1  0  0  0  0\n 10 11  1  0  0  0  0\n 11 12  4  0  0  0  0\n 11 13  4  0  0  0  0\n 12 14  4  0  0  0  0\n 13 15  4  0  0  0  0\n 14 16  4  0  0  0  0\n 15 16  4  0  0  0  0\n  2 17  1  1  0  0  0\nM  END\n$MOL\n\n  Mrv0541 04141517002D          \nC7 H16 O2\n 10  9  0  0  1  0            999 V2000\n    8.4570    3.5708    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    7.8028    3.0681    0.0000 C   0  0  1  0  0  0  0  0  0  0  0  0\n    9.1122    3.0681    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    9.0148    4.1788    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    7.9001    4.1788    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    7.0412    3.3842    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n    7.9108    2.2505    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    9.8745    3.3842    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n    9.0049    2.2505    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    7.6951    3.8861    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0\n  1  2  1  0  0  0  0\n  1  3  1  0  0  0  0\n  1  4  1  0  0  0  0\n  1  5  1  0  0  0  0\n  2  6  1  6  0  0  0\n  2  7  1  0  0  0  0\n  3  8  1  0  0  0  0\n  3  9  1  0  0  0  0\n  2 10  1  1  0  0  0\nM  END";
 
     for (var i=0;i<results.length; i++)
     {
@@ -806,12 +807,12 @@ function display_modelling_results(results)
         var reaction_results = result.results;
         if (reaction_results.length==0)
         {
-            //reaction_results = [{reaction_id:0, model:'unmodeling data', param:'1', value:reaction1, type:1},{reaction_id:0, model:'unmodeling data', param:'2', value:reaction2, type:1}];
-            reaction_results = [{reaction_id:0, model:'unmodeling data', param:'', value:'', type:0}];
+            reaction_results = [{reaction_id:0, model:'unmodeling data', param:'1', value:reaction1, type:1},{reaction_id:0, model:'unmodeling data', param:'2', value:reaction2, type:1}];
+            //reaction_results = [{reaction_id:0, model:'unmodeling data', param:'', value:'', type:0}];
 
         }
         str+='<tr>';
-        str+='<td rowspan="'+reaction_results.length+'"><img class="reaction_img" reaction_id="'+r_id+'" src=""  alt="Image unavailable"/></td>';
+        str+='<td rowspan="'+reaction_results.length+'"><img width="300" class="reaction_img" reaction_id="'+r_id+'" src="static/images/ajax-loader-big.gif"  alt="Image unavailable"/></td>';
 
 
         var prev_model = '';
@@ -838,7 +839,7 @@ function display_modelling_results(results)
                 case '1': // структура
                     var img_id = 'result_structure_img_'+i+'_'+j;
                     result_structures[img_id] = _res.value;
-                    value = '<img id="'+img_id+'" src="" alt="Image unavailable" class="result-structure" />';
+                    value = '<img  id="'+img_id+'" src="static/images/ajax-loader-tiny.gif" alt="Image unavailable" class="result-structure" />';
                     break;
                 case '2': // ссылка
                     value = '<a href="'+_res.value+'">Open</a>';
@@ -853,6 +854,13 @@ function display_modelling_results(results)
         str = str.replace('#ROWSPAN#',rowspan);
     }
 
+    var large_settings = {
+            'carbonLabelVisible' : false,
+            'cpkColoring' : true,
+            'implicitHydrogen' : false,
+            'width' : 600,
+            'height' : 300
+    };
 
     jTbl.append(str);
     $("#results-div").show("normal");
@@ -861,7 +869,8 @@ function display_modelling_results(results)
         var jImg = $(this);
 		if (jImg.attr('reaction_id'))
 		{
-            get_reaction_structure( jImg.attr('reaction_id') ).done(function(data, textStatus, jqXHR){
+		    var reaction_id = jImg.attr('reaction_id');
+            get_reaction_structure( reaction_id ).done(function(data, textStatus, jqXHR){
 
                 var settings = {
                         'carbonLabelVisible' : false,
@@ -871,8 +880,17 @@ function display_modelling_results(results)
                         'height' : 100
                 };
                 try {
+                    reaction_structures[reaction_id] = data;
                     var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",settings);
                     jImg.attr('src',dataUrl);
+                    jImg.click(function(){
+                        var reaction_id = $(this).attr('reaction_id');
+                        var data = reaction_structures[reaction_id];
+                        var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",large_settings);
+                        $('#modal-img').attr('src',dataUrl);
+                        $('#openModal').show();
+
+                    });
                 }
                 catch(err){
                     console.log(err);
@@ -890,13 +908,7 @@ function display_modelling_results(results)
             'width' : 200,
             'height' : 100
     };
-    var large_settings = {
-            'carbonLabelVisible' : false,
-            'cpkColoring' : true,
-            'implicitHydrogen' : false,
-            'width' : 600,
-            'height' : 300
-    };
+
     // сначала загрузим маленькие картинки и сохраним конвертированные в mrv данные
 
     jTbl.find('img.result-structure').each(function(){
