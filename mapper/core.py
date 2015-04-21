@@ -37,9 +37,7 @@ def create_task_from_file(task):
     task_id = task['id']
     tmp_file = '%stmp-%d.mrv' % (UPLOAD_PATH, task_id)
     tmp_fear_file = '%stmp-%d.rxn' % (UPLOAD_PATH, task_id)
-    temp = 298
     sp.call([STANDARDIZER, file_path, '-c', STANDARD, '-f', 'mrv', '-o', tmp_file])
-
     solv = {x['name'].lower(): x['id'] for x in getsolvents()}
 
     with open(tmp_file, 'r') as file:
@@ -48,6 +46,7 @@ def create_task_from_file(task):
                 tree = ET.fromstring(mol)
                 prop = {x.get('title').lower(): x.find('scalar').text.lower().strip() for x in tree.iter('property')}
                 solvlist = {}
+                temp = 298
                 for i, j in prop.items():
                     if 'solvent.amount.' in i:
                         k = re.split('[:=]', j)
@@ -73,7 +72,7 @@ def create_task_from_file(task):
                 data = {"structure": mol.rstrip(), "parameters": {"method": "DEHYDROGENIZE"}}
                 structure = chemaxpost('convert/hydrogenizer', data)
                 if structure:
-                    data = dict(task_id=task_id, structure=structure, solvent=json.dumps(solvlist), temperature=temp)
+                    data = dict(task_id=task_id, structure=structure, solvents=json.dumps(solvlist), temperature=temp)
                     q = serverpost('parser', data)
                     if q.isdigit(): # проверка на корректный ответ. по сути не нужна. но да пох.
                         data = {"structure": mol, "parameters": "rxn"}

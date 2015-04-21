@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<models>
+    <conf>
+        <path>martas</path>
+        <name>Halogen bond</name>
+        <desc>hal bond bla bla</desc>
+        <consensus>
+            <tol>0.8</tol>
+            <nlim>0.6</nlim>
+        </consensus>
+        <markerrule>HalbondPharmFlags.xml</markerrule>
+        <standardize_out>sdf</standardize_out>
+        <report_units>pK</report_units>
+    </conf>
+    <model>
+        <name>IAB2-3_-FC-MA3</name>
+        <scripts>
+            <script>
+                <exec_path>./fragmentor</exec_path>
+                <params>
+                    <param>
+                        <name>-i input_file</name>
+                        <type>list</type>
+                        <comment>if type "list" parser automatically split string by space</comment>
+                    </param>
+                    <param>
+                        <name>-o input_file.frag</name>
+                        <type>list</type>
+                        <comment>pattern "input_file" or "output_file" will be replaced to actual file path</comment>
+                    </param>
+                    <param>
+                        <name>-h models/IAB2-3_-FC-MA3.hdr -t 3 -l 2 -u 3 -c Default --UseFormalCharge -m 3 -t 0</name>
+                        <type>list</type>
+                    </param>
+                </params>
+            </script>
+            <script>
+                <exec_path>./svmPreProc.pl</exec_path>
+                <params>
+                    <param>
+                        <name>input_file.frag.svm</name>
+                        <type>string</type>
+                        <comment>if type "string" parameters set as is. its like "quoted" param in shell. "string" default type and may be skipped</comment>
+                    </param>
+                    <param>
+                        <name>output=input_file.frag.pp.svm</name>
+                        <type>string</type>
+                    </param>
+                    <param>
+                        <name>scale=yes numfld=yes selfile=models/IAB2-3_-FC-MA3.pri explicit=yes</name>
+                        <type>list</type>
+                    </param>
+                </params>
+            </script>
+            <script>
+                <exec_path>./modelstarter.sh</exec_path>
+                <params>
+                    <param>
+                        <name>models/IAB2-3_-FC-MA3</name>
+                        <type>string</type>
+                    </param>
+                    <param>
+                        <name>input_file.frag.pp.svm</name>
+                        <type>string</type>
+                    </param>
+                    <param>
+                        <name>output_file</name>
+                        <type>string</type>
+                    </param>
+                </params>
+            </script>
+        </scripts>
+	</model>
+</models>

@@ -28,7 +28,7 @@ from modelset import consensus_dragos, getmodelset, register_model, chemaxpost
 class Model(consensus_dragos):
     def __init__(self):
         self.modelpath = os.path.join(os.path.dirname(__file__), 'azide')
-        self.models = getmodelset(os.path.join(self.modelpath, "conf.xml"))
+        self.models = getmodelset(os.path.join(self.modelpath, "conf.xml"))[0]
         self.Nlim = .6
         self.TOL = .8
         super().__init__()
