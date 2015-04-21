@@ -63,6 +63,11 @@ def solvents():
     solvents = pdb.get_solvents()
     return render_template("solvents.html", solvents=solvents)
 
+@app.route("/models", methods=['GET'])
+def models():
+    models = pdb.get_models()
+    return render_template("models.html", models=models)
+
 """
 file uploader
 """

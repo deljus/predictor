@@ -3,7 +3,7 @@
     {% block heading %}
 
 		<div class="heading">
-			<h1>Solvents</h1>
+			<h1>Models</h1>
 			<div class="progress" style="display:none">
                 <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100" style="width:10%">10%
                 </div>
@@ -19,7 +19,6 @@
 					<li class="list-group-item"><a href="#" onClick="select_mode('editor')">open editor</a></li>
 					<li class="list-group-item"><a href="#" onclick="load_reactions()">mapping results</a></li>
 					<li class="list-group-item"><a href="#" onclick="load_results()">modelling results</a></li>
-
 				</ul>
 			</aside>
 			<section class="col-md-21">
@@ -33,13 +32,15 @@
                         <tr>
                             <th>№</th>
                             <th>Name</th>
+                            <th>Description</th>
                         </tr>
                         </thead>
                         <tbody>
-                            {% for solvent in solvents %}
+                            {% for model in models %}
                             <tr>
-                                <td>{{solvent.id}}</td>
-                                <td>{{solvent.name}}</td>
+                                <td>{{model.id}}</td>
+                                <td>{{model.name}}</td>
+                                <td>{{model.description}}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
