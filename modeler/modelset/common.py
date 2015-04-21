@@ -41,6 +41,8 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
             self.__markatoms = self.markatoms
         else:
             self.__markatoms = lambda x: None
+
+        self.__unit = self.__conf.get('report_units', None)
         super().__init__()
 
     def getdesc(self):
@@ -116,7 +118,7 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
                         except:
                             print('something is very bad. file %s undeletable' % x)
 
-                return self.report('pK(I<sub>2</sub>)')
+                return self.report(units=self.__unit)
             else:
                 return False
         else:
