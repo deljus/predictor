@@ -384,11 +384,11 @@ class PredictorDataBase:
         try:
             if model_hash:
                 models = select(x.models for x in AppDomains if x.hash == model_hash)
-                models = [(x.id, x.name, x.is_reaction) for x in models]
+                models = [(x.id, x.name, x.is_reaction, x.description) for x in models]
             else:
-                models = select((x.id, x.name, x.is_reaction) for x in Models)
+                models = select((x.id, x.name, x.is_reaction, x.description) for x in Models)
 
-            return [{'id': x, 'name': y, 'is_reaction': z} for x, y, z in models]
+            return [{'id': x, 'name': y, 'is_reaction': z, 'description': w} for x, y, z, w in models]
         except:
             print('get_models->', sys.exc_info()[0])
         return None
