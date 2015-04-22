@@ -963,7 +963,7 @@ function display_modelling_results(results)
         $('.block-body-'+i).hide();
     }
     // добавим кнопку сворачивания - разворачивания
-    for (var i=0; i<block_count; i++)
+    for (var i=0; i<=block_count; i++)
     {
         $('.block-head-'+i).css('cursor','pointer').click(function(){return fold_block(this)});
     }
