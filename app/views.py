@@ -315,7 +315,7 @@ class DownloadResultsAPI(Resource):
                 reactionres = [dict(reaction_numer=count + 1, model=result.get('model'), parameter=result.get('param'),
                                value=result.get('value')) for result in results if result.get('type') == 0]
                 arr.extend(reactionres)
-        return excel.make_response_from_records(arr, format), 201
+        return excel.make_response_from_records(arr, format)
 
 
 ##
