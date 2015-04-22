@@ -1056,7 +1056,7 @@ function display_modelling_results(results)
 function fold_block(src)
 {
     var block_body_class = String(src.className).replace('head','body');
-    console.log('block_body_class='+block_body_class+' is_block_hide='+$(this).attr('is_block_hide'))
+
     if ($(src).attr('is_block_hide')=='1')
     {
         $('.'+block_body_class).show();
