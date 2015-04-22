@@ -19,6 +19,7 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+import re
 from .config import UPLOAD_PATH, REQ_MAPPING
 from werkzeug import secure_filename
 
@@ -312,8 +313,9 @@ class DownloadResultsAPI(Resource):
         for count, reaction in enumerate(reactions):
             results = reaction.get('results')
             if results:
-                reactionres = [dict(reaction_numer=count + 1, model=result.get('model'), parameter=result.get('param'),
-                               value=result.get('value')) for result in results if result.get('type') == 0]
+                reactionres = [dict(reaction_numer=count + 1, model=result.get('model'),
+                                    parameter=re.sub('<[^>]*>', '', result.get('param')),
+                                    value=re.sub('<[^>]*>', '', result.get('value'))) for result in results if result.get('type') == 0]
                 arr.extend(reactionres)
         return excel.make_response_from_records(arr, format)
 
