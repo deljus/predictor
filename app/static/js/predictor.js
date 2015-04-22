@@ -958,7 +958,7 @@ function display_modelling_results(results)
     jTbl.append(str);
 
     // скроем блоки
-    for (var i=0; i<block_count; i++)
+    for (var i=0; i<=block_count; i++)
     {
         $('.block-body-'+i).hide();
     }
