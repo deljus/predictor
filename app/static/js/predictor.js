@@ -882,7 +882,7 @@ function display_modelling_results(results)
 
         if (reaction_results.length==0)
         {
-            reaction_results = [{reaction_id:0, model:'unmodeling data', param:'1', value:reaction1, type:1},{reaction_id:0, model:'unmodeling data', param:'2', value:reaction2, type:1}];
+            reaction_results = [{reaction_id:0, model:'unmodelable structure', param:'1', value:reaction1, type:1},{reaction_id:0, model:'unmodelable structure', param:'2', value:reaction2, type:1}];
             //reaction_results = [{reaction_id:0, model:'unmodeling data', param:'', value:'', type:0}];
         }
 
