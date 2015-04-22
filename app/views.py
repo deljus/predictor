@@ -5,7 +5,7 @@
 # This file is part of PREDICTOR.
 #
 # PREDICTOR is free software; you can redistribute it and/or modify
-#  it under the terms of the GNU Affero General Public License as published by
+# it under the terms of the GNU Affero General Public License as published by
 #  the Free Software Foundation; either version 3 of the License, or
 #  (at your option) any later version.
 #
@@ -19,23 +19,17 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from .config import UPLOAD_PATH
+from .config import UPLOAD_PATH, REQ_MAPPING
 from werkzeug import secure_filename
 
-from .config import REQ_MAPPING
-
-
-from flask import render_template, url_for, redirect
 from app import app
-from flask.ext.restful import reqparse, abort, Api, Resource, fields, marshal
+from flask.ext.restful import reqparse, Api, Resource
 from flask.ext import excel
 import pyexcel.ext.xls
 
-
 import sys
-import os
 from app.models import PredictorDataBase as pdb
-from flask import (request, render_template, jsonify)
+from flask import request, render_template
 
 import json
 
@@ -63,10 +57,12 @@ def solvents():
     solvents = pdb.get_solvents()
     return render_template("solvents.html", solvents=solvents)
 
+
 @app.route("/models", methods=['GET'])
 def models():
     models = pdb.get_models()
     return render_template("models.html", models=models)
+
 
 """
 file uploader
@@ -80,7 +76,7 @@ class UploadFile(Resource):
     def post(self):
         args = UploadFileParser.parse_args()
 
-        if not args['file.path']: # костыль. если не найдет этого в аргументах, то мы без NGINX сидим тащемта.
+        if not args['file.path']:  # костыль. если не найдет этого в аргументах, то мы без NGINX сидим тащемта.
             f = request.files['file']
             reaction_file = UPLOAD_PATH + secure_filename(f.filename)
             f.save(reaction_file)
@@ -139,6 +135,7 @@ class ReactionStructureAPI(Resource):
         pdb.update_reaction_structure(reaction_id, args['reaction_structure'])
         return reaction_id, 201
 
+
 """
 modeling results updater
 """
@@ -193,7 +190,7 @@ class TaskListAPI(Resource):
         return task_id, 201
 
 
-class TaskStatusAPI (Resource):
+class TaskStatusAPI(Resource):
     def get(self, task_id):
         return pdb.get_task_status(task_id), 201
 
@@ -204,9 +201,10 @@ class TaskStatusAPI (Resource):
         return task_id, 201
 
 
-class TaskReactionsAPI (Resource):
+class TaskReactionsAPI(Resource):
     def get(self, task_id):
         return pdb.get_reactions_by_task(task_id), 201
+
 
 """
 api  для добавления и удаления моделей. а также поиск подходящих моделей по ключам.
@@ -258,9 +256,9 @@ class TaskModellingAPI(Resource):
         reaction_ids = args['task_reaction_ids']
         for r_id in reaction_ids.split(','):
             try:
-                _m = 'model_'+r_id
-                _s = 'solvent_'+r_id
-                _t = 'temperature_'+r_id
+                _m = 'model_' + r_id
+                _s = 'solvent_' + r_id
+                _t = 'temperature_' + r_id
                 _parser.add_argument(_m, type=str)
                 _parser.add_argument(_s, type=str)
                 _parser.add_argument(_t, type=str)
@@ -284,29 +282,30 @@ class TaskModellingAPI(Resource):
         return 'OK', 201
 
 
-class ModelAPI (Resource):
+class ModelAPI(Resource):
     def get(self, model_id):
         return pdb.get_model(model_id), 201
 
 
+"""
+api для скачивания результатов
+"""
+DownloadResultsparser = reqparse.RequestParser()
+DownloadResultsparser.add_argument('format', type=str)
+
+
 class DownloadResultsAPI(Resource):
     def get(self, task_id):
-        parser.add_argument('format', type=str)
-        args = parser.parse_args()
+        args = DownloadResultsparser.parse_args()
         format = args['format']
         reactions = pdb.get_results_by_task(task_id)
         arr = []
-        count = 0
-        for _reaction in reactions:
-            count += 1
-            _results = _reaction.get('results')
-            if _results:
-                for _result in _results:
-                    arr.append(dict(reaction_numer=count,
-                                    model=_result.get('model'),
-                                    parameter=_result.get('param'),
-                                    value=_result.get('value'))
-                    )
+        for count, reaction in enumerate(reactions):
+            results = reaction.get('results')
+            if results:
+                reactionres = [dict(reaction_numer=count + 1, model=result.get('model'), parameter=result.get('param'),
+                               value=result.get('value')) for result in results if result.get('type') == 0]
+                arr.extend(reactionres)
         return excel.make_response_from_records(arr, format), 201
 
 
@@ -332,11 +331,9 @@ api.add_resource(TaskModellingAPI, '/api/task_modelling/<task_id>')
 api.add_resource(ModelListAPI, '/api/models')
 api.add_resource(ModelAPI, '/api/model/<model_id>')
 
-
 api.add_resource(SolventsAPI, '/api/solvents')
 
 api.add_resource(DownloadResultsAPI, '/api/download/<task_id>')
-
 
 api.add_resource(UploadFile, '/api/upload')
 api.add_resource(ParserAPI, '/api/parser')
