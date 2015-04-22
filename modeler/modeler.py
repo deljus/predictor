@@ -34,10 +34,13 @@ SOLVENTS = {}
 
 def getmodel(model_name):
     Model, init = models.MODELS[model_name]
-    if init:
-        model = Model(init)
-    else:
-        model = Model()
+    try:
+        if init:
+            model = Model(init)
+        else:
+            model = Model()
+    except:
+        model = None
     return model
 
 
@@ -49,7 +52,10 @@ def taskthread(task_id):
             reaction = serverget("reaction/%s" % reaction_id, None)
             if reaction:
                 for model_id, model_name in reaction['models'].items():
-                    model_result = getmodel(model_name).getresult(reaction)
+                    try:
+                        model_result = getmodel(model_name).getresult(reaction)
+                    except:
+                        model_result = None
                     if model_result:
                         reaction_result = dict(modelid=model_id, result=json.dumps(model_result))
                         if not serverpost("reaction_result/%s" % reaction_id, reaction_result):
@@ -93,9 +99,13 @@ def main():
 
     for x in toattach:
         model = getmodel(x)
-        print({'name': x, 'desc': model.getdesc(), 'is_reaction': model.is_reation(), 'hashes': model.gethashes()})
-        print(serverpost("models", {'name': x, 'desc': model.getdesc(),
-                                    'is_reaction': model.is_reation(), 'hashes': model.gethashes()}))
+        if model:
+            try:
+                data = {'name': x, 'desc': model.getdesc(),
+                        'is_reaction': model.is_reation(), 'hashes': model.gethashes()}
+                print(serverpost("models", data))
+            except:
+                pass
         del model
 
     for x in todelete:

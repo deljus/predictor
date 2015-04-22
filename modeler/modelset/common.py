@@ -43,6 +43,10 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
             self.__markatoms = lambda x: None
 
         self.__unit = self.__conf.get('report_units', None)
+
+        self.__boxpath = self.__conf.get('boxrange', 'brute')
+        self.__fragtype = self.__conf.get('fragtype', 'svm')
+        self.__fragext = self.__conf.get('fragext', self.__fragtype)
         super().__init__()
 
     def getdesc(self):
@@ -93,16 +97,14 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
                                     x = x.replace('output_file', temp_file_res)
                                 tmp.append(x)
                             execparams = tmp
-                            print(execparams)
-                            # call fragmentor, smv prepare, svm-predict
                             sp.call(execparams, cwd=self.__modelpath)
                     except:
                         print('model execution failed')
                     else:
                         try:
-                            boxfile = os.path.join(self.__modelpath, 'models', 'brute%s.range' % model)
-                            fragments = os.path.join(self.__modelpath, '%s.frag.svm' % temp_file_mol)
-                            AD = bondbox(boxfile, fragments, 'svm')
+                            boxfile = os.path.join(self.__modelpath, '%s%s.range' % (self.__boxpath, model))
+                            fragments = os.path.join(self.__modelpath, '%s.%s' % (temp_file_mol, self.__fragext))
+                            AD = bondbox(boxfile, fragments, self.__fragtype)
                             with open(temp_file_res_path, 'r') as f:
                                 for line in f:
                                     P = float(line)
@@ -127,5 +129,8 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
 files = os.listdir(script_path)
 for i in files:
     if os.path.splitext(i)[1] == '.xml':
-        model = Model(i)
-        register_model(model.getname(), Model, init=i)
+        try:
+            model = Model(i)
+            register_model(model.getname(), Model, init=i)
+        except:
+            pass

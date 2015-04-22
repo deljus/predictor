@@ -11,6 +11,9 @@
         <markerrule>HalbondPharmFlags.xml</markerrule>
         <standardize_out>sdf</standardize_out>
         <report_units>pK</report_units>
+        <boxrange>models/brute</boxrange>
+        <fragtype>svm</fragtype>
+        <fragext>frag.svm</fragext>
     </conf>
     <model>
         <name>IAB2-3_-FC-MA3</name>
