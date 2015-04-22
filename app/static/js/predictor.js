@@ -903,8 +903,10 @@ function display_modelling_results(results)
             {
                 block_count++;
                 block_class = "block-head-"+block_count;
-
-
+            }
+            else if (String(_res.param).indexOf('Group name')>-1)
+            {
+                 block_class="";
             }
             else if (block_count>0)
                 block_class = "block-body-"+block_count;
@@ -1054,7 +1056,7 @@ function display_modelling_results(results)
 function fold_block(src)
 {
     var block_body_class = String(src.className).replace('head','body');
-    console.log('block_body_class='+block_body_class+' is_block_hide='+$(this).attr('is_block_hide'))
+
     if ($(src).attr('is_block_hide')=='1')
     {
         $('.'+block_body_class).show();
