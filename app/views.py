@@ -33,6 +33,9 @@ from flask import request, render_template
 
 import json
 
+#-------
+import requests
+#-------
 
 api = Api(app)
 pdb = pdb()
@@ -247,7 +250,13 @@ class SolventsAPI(Resource):
 
 class TaskModellingAPI(Resource):
     def get(self, task_id):
-        return pdb.get_results_by_task(task_id), 201
+        req = requests.get("http://arsole.u-strasbg.fr/api/task_modelling/"+task_id)
+        print(req)
+        print(req.text)
+        print(req.json())
+        return req.json(),201
+        #return pdb.get_results_by_task(task_id), 201
+
 
     def post(self, task_id):
         _parser = reqparse.RequestParser()
