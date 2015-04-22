@@ -958,14 +958,14 @@ function display_modelling_results(results)
     jTbl.append(str);
 
     // скроем блоки
-    for (var i=0; i<=block_count; i++)
+    for (var b=0; b<=block_count; b++)
     {
-        $('.block-body-'+i).hide();
+        $('.block-body-'+b).hide();
     }
     // добавим кнопку сворачивания - разворачивания
-    for (var i=0; i<=block_count; i++)
+    for (var b=0; b<=block_count; b++)
     {
-        $('.block-head-'+i).css('cursor','pointer').click(function(){return fold_block(this)});
+        $('.block-head-'+b).css('cursor','pointer').click(function(){return fold_block(this)});
     }
 
     $("#results-div").show("normal");
@@ -1054,16 +1054,16 @@ function display_modelling_results(results)
 function fold_block(src)
 {
     var block_body_class = String(src.className).replace('head','body');
-    console.log('block_body_class='+block_body_class)
-    if ($(this).attr('is_block_hide')=='1')
+    console.log('block_body_class='+block_body_class+' is_block_hide='+$(this).attr('is_block_hide'))
+    if ($(src).attr('is_block_hide')=='1')
     {
         $('.'+block_body_class).show();
-        $(this).attr('is_block_hide','0');
+        $(src).attr('is_block_hide','0');
     }
     else
     {
         $('.'+block_body_class).hide();
-        $(this).attr('is_block_hide','1')
+        $(src).attr('is_block_hide','1')
     }
 
 
