@@ -130,12 +130,15 @@ def bondbox(boxfile, descfile, dftype):
             fragment, *vrange = line.split()
             box[int(fragment)] = [int(x) for x in vrange]
 
+    print(box)
+
     with open(descfile) as f:
         if dftype == 'svm':
             for fragment in f.read().split()[1:]:
                 pos, count = fragment.split(':')
                 m, M = box.get(int(pos), [0, 0])
                 if not (m <= int(count) <= M):
+                    print(m, M, count, pos, box.get(int(pos)))
                     AD = False
                     break
         elif dftype == 'csv':
