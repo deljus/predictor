@@ -134,14 +134,14 @@ def bondbox(boxfile, descfile, dftype):
         if dftype == 'svm':
             for fragment in f.read().split()[1:]:
                 pos, count = fragment.split(':')
-                m, M = box.get(int(pos), [0, 0])
-                if not (m <= int(count) <= M):
+                min, max = box.get(int(pos), [0, 0])
+                if not (min <= int(count) <= max):
                     AD = False
                     break
         elif dftype == 'csv':
             for pos, count in enumerate(f.read().split(';')[1:]):
-                m, M = box.get(pos + 1, [0, 0])
-                if not (m <= int(count) <= M):
+                min, max = box.get(pos + 1, [0, 0])
+                if not (min <= int(count) <= max):
                     AD = False
                     break
         else:
