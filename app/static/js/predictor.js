@@ -903,8 +903,10 @@ function display_modelling_results(results)
             {
                 block_count++;
                 block_class = "block-head-"+block_count;
-
-
+            }
+            else if (String(_res.param).indexOf('Group name')>-1 || String(_res.param).indexOf('hr')>-1)
+            {
+                 block_class="";
             }
             else if (block_count>0)
                 block_class = "block-body-"+block_count;
