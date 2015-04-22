@@ -104,9 +104,7 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
                         try:
                             boxfile = os.path.join(self.__modelpath, '%s%s.range' % (self.__boxpath, model))
                             fragments = os.path.join(self.__modelpath, '%s.%s' % (temp_file_mol, self.__fragext))
-
                             AD = bondbox(boxfile, fragments, self.__fragtype)
-                            print(boxfile, fragments, self.__fragtype, AD)
                             with open(temp_file_res_path, 'r') as f:
                                 for line in f:
                                     P = float(line)

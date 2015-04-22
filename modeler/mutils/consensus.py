@@ -135,7 +135,6 @@ def bondbox(boxfile, descfile, dftype):
             for fragment in f.read().split()[1:]:
                 pos, count = fragment.split(':')
                 m, M = box.get(int(pos), [0, 0])
-                print(m, M, int(count), int(pos))
                 if not (m <= int(count) <= M):
                     AD = False
                     break
