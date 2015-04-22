@@ -6,7 +6,7 @@
 #
 # PREDICTOR is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
-#  the Free Software Foundation; either version 3 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 #  (at your option) any later version.
 #
 #  This program is distributed in the hope that it will be useful,
@@ -251,11 +251,11 @@ class SolventsAPI(Resource):
 
 class TaskModellingAPI(Resource):
     def get(self, task_id):
-        req = requests.get("http://arsole.u-strasbg.fr/api/task_modelling/"+task_id)
+        req = requests.get("http://arsole.u-strasbg.fr/api/task_modelling/" + task_id)
         print(req)
         print(req.text)
         print(req.json())
-        return req.json(),201
+        return req.json(), 201
         #return pdb.get_results_by_task(task_id), 201
 
 
@@ -315,7 +315,8 @@ class DownloadResultsAPI(Resource):
             if results:
                 reactionres = [dict(reaction_numer=count + 1, model=result.get('model'),
                                     parameter=re.sub('<[^>]*>', '', result.get('param')),
-                                    value=re.sub('<[^>]*>', '', result.get('value'))) for result in results if result.get('type') == 0]
+                                    value=re.sub('<[^>]*>', '', result.get('value'))) for result in results if
+                               result.get('type') == 0]
                 arr.extend(reactionres)
         return excel.make_response_from_records(arr, format)
 
