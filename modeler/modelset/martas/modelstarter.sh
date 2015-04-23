@@ -7,6 +7,6 @@ endif
 rm $3
 
 foreach f ($1/*.model)
-    ./libsvm/svm-predict $2 $f $2.tmp_pred
+    ./libsvm/svm-predict -q $2 $f $2.tmp_pred
     cat $2.tmp_pred >> $3
 end
