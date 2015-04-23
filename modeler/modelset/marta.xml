@@ -209,7 +209,7 @@
                         <comment>pattern "input_file" or "output_file" will be replaced to actual file path</comment>
                     </param>
                     <param>
-                        <name>-h models/IAB2-5_-AP-FC-MA3.hdr -t 3 -l 2 -u 5 -c Default --AllPaths --UseFormalCharge -m 3 -t 0</name>
+                        <name>-h models/IAB2-5_-AP-FC-MA3.hdr -t 3 -l 2 -u 5 -c Default --DoAllWays --UseFormalCharge -m 3 -t 0</name>
                         <type>list</type>
                     </param>
                 </params>
@@ -445,7 +445,7 @@
                         <comment>pattern "input_file" or "output_file" will be replaced to actual file path</comment>
                     </param>
                     <param>
-                        <name>-h models/IAB2-6_-AP-MA3.hdr -t 3 -l 2 -u 6 -c Default --AllPaths -m 3 -t 0</name>
+                        <name>-h models/IAB2-6_-AP-MA3.hdr -t 3 -l 2 -u 6 -c Default --DoAllWays -m 3 -t 0</name>
                         <type>list</type>
                     </param>
                 </params>

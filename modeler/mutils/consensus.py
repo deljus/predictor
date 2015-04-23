@@ -100,7 +100,7 @@ class consensus_dragos():
                 reason.append(self.__errors.get('lad', '%d') % ceil(100 * proportion))
 
         proportion = sigma / self.TOL
-        if proportion >= 1:
+        if proportion > 1:
             self.__TRUST -= int(proportion)
             reason.append(self.__errors.get('stp', '%d') % (proportion * 100 - 100))
 
@@ -115,7 +115,7 @@ class consensus_dragos():
     __errors = dict(lad='Too few (less than %d %%) local models have applicability domains covering this structure',
                     diff='The other local models disagree (prediction value difference = %.2f) with the prediction of '
                          'the minority containing structure inside their applicability domain',
-                    stp='Individual models failed to reach unanimity - prediction variance exceeds %d %%'
+                    stp='Individual models failed to reach unanimity - prediction variance exceeds %d %% '
                         'of the property range width',
                     zad='None of the local models have applicability domains covering this structure')
 
