@@ -44,7 +44,7 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
 
         self.__unit = self.__conf.get('report_units', None)
 
-        self.__boxpath = self.__conf.get('boxrange', 'brute')
+        self.__boxpath = self.__conf.get('boxrange', None)
         self.__fragtype = self.__conf.get('fragtype', 'svm')
         self.__fragext = self.__conf.get('fragext', self.__fragtype)
         super().__init__()
@@ -86,6 +86,9 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
                 """
                 self.__markatoms(temp_file_mol_path)
 
+                with open(temp_file_mol_path) as f:
+                    structure = dict(type='structure', attrib='used structure', value=f.read())
+
                 for model, params in self.__models.items():
                     try:
                         for execparams in params:
@@ -102,9 +105,13 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
                         print('model execution failed')
                     else:
                         try:
-                            boxfile = os.path.join(self.__modelpath, '%s%s.range' % (self.__boxpath, model))
-                            fragments = os.path.join(self.__modelpath, '%s.%s' % (temp_file_mol, self.__fragext))
-                            AD = bondbox(boxfile, fragments, self.__fragtype)
+                            if self.__boxpath:
+                                boxfile = os.path.join(self.__modelpath, '%s%s.range' % (self.__boxpath, model))
+                                fragments = os.path.join(self.__modelpath, '%s.%s' % (temp_file_mol, self.__fragext))
+                                AD = bondbox(boxfile, fragments, self.__fragtype)
+                            else:
+                                AD = True
+
                             with open(temp_file_res_path, 'r') as f:
                                 for line in f:
                                     P = float(line)
@@ -120,7 +127,7 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
                         except:
                             print('something is very bad. file %s undeletable' % x)
 
-                return self.report(units=self.__unit)
+                return [structure] + self.report(units=self.__unit)
             else:
                 return False
         else:

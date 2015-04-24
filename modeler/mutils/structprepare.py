@@ -97,9 +97,15 @@ class standardize_dragos():
 
 class ISIDAatommarker():
     def markatoms(self, file_path):
+        '''
+        marks atoms in 7th col of sdf.
+        if molecule has atom mapping - will be used mapping.
+        '''
         marks = []
         flag = 0
+        manual = False
         buffer = []
+
         for x in sp.check_output([PMAPPER, '-c', self.markerrule, file_path]).decode().split():
             marks.extend(x.split(';'))
 
@@ -109,12 +115,21 @@ class ISIDAatommarker():
             for line in f:
                 if '999 V2000' in line:
                     flag = int(line[:3])
+                    b1 = {}
                 elif flag:
-                    if 'A' in next(marksg):
+                    if line[60:63] != '  0':
+                        manual = True
                         line = line[:51] + '  1' + line[54:]
+                    elif 'A' in next(marksg):
+                        b1[flag] = line
+                        line = line[:51] + '  1' + line[54:60] + '  1' + line[63:]
                     flag -= 1
 
                 buffer.append(line)
+                if manual and not flag:
+                    manual = False
+                    for k, v in b1.items():
+                        buffer[-k] = v
 
         with open(file_path, 'w') as f:
             f.write(''.join(buffer))
