@@ -86,6 +86,9 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
                 """
                 self.__markatoms(temp_file_mol_path)
 
+                with open(temp_file_mol_path) as f:
+                    structure = dict(type='structure', attrib='used structure', value=f.read())
+
                 for model, params in self.__models.items():
                     try:
                         for execparams in params:
@@ -124,7 +127,7 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
                         except:
                             print('something is very bad. file %s undeletable' % x)
 
-                return self.report(units=self.__unit)
+                return [structure] + self.report(units=self.__unit)
             else:
                 return False
         else:
