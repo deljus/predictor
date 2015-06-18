@@ -128,20 +128,20 @@ def bondbox(boxfile, descfile, dftype):
     with open(boxfile) as f:
         for line in f:
             fragment, *vrange = line.split()
-            box[int(fragment)] = [int(x) for x in vrange]
+            box[int(fragment)] = [float(x) for x in vrange]
 
     with open(descfile) as f:
         if dftype == 'svm':
             for fragment in f.read().split()[1:]:
                 pos, count = fragment.split(':')
                 min, max = box.get(int(pos), [0, 0])
-                if not (min <= int(count) <= max):
+                if not (min <= float(count) <= max):
                     AD = False
                     break
         elif dftype == 'csv':
             for pos, count in enumerate(f.read().split(';')[1:]):
                 min, max = box.get(pos + 1, [0, 0])
-                if not (min <= int(count) <= max):
+                if not (min <= float(count) <= max):
                     AD = False
                     break
         else:
