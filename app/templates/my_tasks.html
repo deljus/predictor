@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+    {% block heading %}
+
+    <script src="{{ url_for('static', filename='js/predictor.js') }}"></script>
+
+		<div class="heading">
+			<h1>My reactions</h1>
+		</div>
+    {% endblock %}
+    {% block body %}
+		<div class="row">
+			<aside class="col-md-3">
+
+			</aside>
+			<section class="col-md-21">
+
+
+
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>№</th>
+                            <th>Reaction</th>
+                            <th>Status</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% set count = 1 %}
+                        {% for _task in my_tasks %}
+                        <tr>
+                            <td>{{ count }}</td>
+                            <td><a href="{{ url_for('task', task=_task.id) }}"><img width="50px" id="task_img_{{_task.id}}" src="{{ url_for('static', filename='images/logo.png') }}" ></a></td>
+                            <td>{{ _task.status }}</td>
+                        </tr>
+                        {% set count = count + 1 %}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+
+
+
+
+			</section>
+		</div>
+	{% endblock %}

@@ -26,13 +26,22 @@ import time
 import os
 import sys
 
+#todo: вернуть базу на postgres перед заливкой в svn
 #db = Database("sqlite", "database.sqlite", create_db=True)
 db = Database('postgres', user='postgres', password='nginxpony', host='localhost', database='predictor')
 
-
+STATUS_ARRAY = ["Task created",
+                "Mapping required",
+                "Mapping processing",
+                "Mapping is done",
+                "Modelling required",
+                "Modelling processing",
+                "Modelling is done"]
 class Users(db.Entity):
     id = PrimaryKey(int, auto=True)
     email = Required(str, 128, unique=True)
+    password = Required(str)
+    active = Required(bool, default=True)
     tasks = Set("Tasks")
 
 
@@ -83,6 +92,7 @@ class Models(db.Entity):
     description = Required(str)
     chemicals = Set(Chemicals)
     results = Set(Results)
+    example = Optional(str)
     is_reaction = Required(bool, default=False)
     app_domains = Set("AppDomains")
 
@@ -105,6 +115,20 @@ db.generate_mapping(create_tables=True)
 
 
 class PredictorDataBase:
+
+    @db_session
+    def get_user(self, user_id=None, email=None):
+        user = None
+        if user_id:
+            user = Users.get(id=user_id)
+        else:
+            if email:
+                user = Users.get(email=email)
+        if user:
+            return dict(id=user.id, email=user.email, password=user.password, active=user.active)
+        return None
+
+
     @db_session
     def get_tasks(self, status=None):
         if status:
@@ -115,7 +139,24 @@ class PredictorDataBase:
         arr = []
         for t in tasks:
             arr.append(dict(id=t.id,
-                            status=t.status))
+                            status=t.status,
+                            email=t.user.email))
+        return arr
+
+    @db_session
+    def get_user_tasks(self, user_id=None, user_email=None, status=None):
+        arr = []
+        user = self.get_user(user_id = user_id,email = user_email)
+        if user:
+            if status:
+                tasks = select(x for x in Tasks if x.status == status).order_by(Tasks.create_date)
+            else:
+                tasks = select(x for x in Tasks).order_by(Tasks.create_date)    # удалить в продакшене
+
+        for t in tasks:
+            arr.append(dict(id=t.id,
+                            status=STATUS_ARRAY[t.status],
+                            create_date=time.ctime(t.create_date)))
         return arr
 
 
@@ -384,11 +425,11 @@ class PredictorDataBase:
         try:
             if model_hash:
                 models = select(x.models for x in AppDomains if x.hash == model_hash)
-                models = [(x.id, x.name, x.is_reaction, x.description) for x in models]
+                models = [(x.id, x.name, x.is_reaction, x.description, x.example) for x in models]
             else:
-                models = select((x.id, x.name, x.is_reaction, x.description) for x in Models)
+                models = select((x.id, x.name, x.is_reaction, x.description, x.example) for x in Models)
 
-            return [{'id': x, 'name': y, 'is_reaction': z, 'description': w} for x, y, z, w in models]
+            return [{'id': x, 'name': y, 'is_reaction': z, 'description': w, 'example': q} for x, y, z, w, q in models]
         except:
             print('get_models->', sys.exc_info()[0])
         return None
@@ -402,9 +443,9 @@ class PredictorDataBase:
         return Models.get(id=model_id)
 
     @staticmethod
-    def insert_model(name, desc, is_reaction, reaction_hashes):
+    def insert_model(name, desc, example, is_reaction, reaction_hashes):
         with db_session:
-            model = Models(name=name, description=desc, is_reaction=is_reaction)
+            model = Models(name=name, description=desc, example=example, is_reaction=is_reaction)
             if reaction_hashes:
                 for x in reaction_hashes:
                     reaction_hash = AppDomains.get(hash=x)
@@ -427,6 +468,32 @@ class PredictorDataBase:
 
         return True
 
+
+
+
+    @db_session
+    def add_user(self, email, password):
+        user = Users.get(email=email)
+        if not user:
+            return Users(email=email, password=password)
+        return None
+
+
+    @db_session
+    def check_password(self, user_id, password):
+        user = Users.get(id = user_id)
+        if user and user.password == password:
+            return True
+        return False
+
+    @db_session
+    def get_users (self):
+        query = select((x.id, x.email) for x in Users)
+        return [{'id': x, 'email': y} for x, y in query]
+
+
+
+
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 
@@ -447,6 +514,8 @@ def import_solvents():
 
 
 import_solvents()
+
+# загрузим модели
 
 
 

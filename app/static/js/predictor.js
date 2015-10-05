@@ -23,21 +23,7 @@ function reset_timer()
     clearInterval(TAMER_ID);
 }
 
-$(document).ready(function handleDocumentReady (e) {
-	initControl();
-	MarvinJSUtil.getEditor("#sketch").then(function (sketcherInstance) {
-		marvinSketcherInstance = sketcherInstance;
-	},function (error) {});
-	
-	MarvinJSUtil.getPackage("#sketch").then(function (marvinNameSpace) {
-		marvinNameSpace.onReady(function () {
-			marvin = marvinNameSpace;
-		});
-	}, function () {
-		alert("Cannot retrieve marvin instance from iframe");
-	});	
 
-});
 
 function find(arr, what, where)
 {
@@ -593,8 +579,9 @@ function display_task_reactions(reactions)
     /*********** Add reaction save button to the editor ***************/
     var jso =  {
       "name": "saveButton", // JS String
-      "image-url": "/static/images/save.png", // JS String
+      "image-url": "/static/images/save.png", // JS String */
       "toolbar": "S" // JS String: "W" as West, "E" as East, "N" as North, "S" as South toolbar
+
      }
 
 	// проверим - не были ли уже добавлена кнопка

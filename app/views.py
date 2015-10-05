@@ -20,32 +20,43 @@
 #  MA 02110-1301, USA.
 #
 import re
+import sys
+import json
+
 from .config import UPLOAD_PATH, REQ_MAPPING
 from werkzeug import secure_filename
 
 from app import app
+from app import pdb
 from flask.ext.restful import reqparse, Api, Resource
+from flask import redirect, url_for
 from flask.ext import excel
 import pyexcel.ext.xls
+from flask import request, render_template, flash
+from app.forms import Registration, Login
+from app.logins import User
+from flask_login import login_user, login_required, logout_user, current_user
 
-import sys
-from app.models import PredictorDataBase as pdb
-from flask import request, render_template
-
-import json
 
 
 api = Api(app)
-pdb = pdb()
+
+def get_cur_user():
+    user_data = None
+    if current_user.is_authenticated():
+        user_data = dict(id=current_user.get_id(), email=current_user.get_email())
+    return user_data
 
 
-@app.route('/')
-@app.route('/index')
-@app.route('/home/')
-@app.route('/predictor/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template("index.html")
-    #return redirect(url_for('static', filename='index.html'))
+    return render_template("index.html", user_data=get_cur_user())
+
+
+@app.route('/task/<int:task>', methods=['GET', 'POST'])
+@login_required
+def task(task=0):
+    return render_template("index.html", task=task, user_data=get_cur_user())
 
 
 @app.route("/download", methods=['GET'])
@@ -56,18 +67,58 @@ def download_file():
 @app.route("/solvents", methods=['GET'])
 def solvents():
     solvents = pdb.get_solvents()
-    return render_template("solvents.html", solvents=solvents)
-
+    return render_template("solvents.html", solvents=solvents, user_data=get_cur_user())
 
 @app.route("/models", methods=['GET'])
 def models():
     models = pdb.get_models()
-    return render_template("models.html", models=models)
+    return render_template("models.html", models=models, user_data=get_cur_user())
 
 
-"""
-file uploader
-"""
+@app.route('/user', methods=['GET'])
+@login_required
+def user():
+    return render_template('user.html',  user_data=get_cur_user())
+
+
+@app.route('/my_tasks', methods=['GET'])
+@login_required
+def my_tasks():
+    user_data = get_cur_user()
+    if user_data:
+        return render_template('my_tasks.html',  user_data=user_data, my_tasks=pdb.get_user_tasks(user_email=user_data['email']))
+    return render_template('login.html', form=Login())
+
+
+
+@app.route("/login", methods=['GET', 'POST'])
+def login():
+    form = Login()
+    if form.validate_on_submit():
+        user = pdb.get_user(email=form.email.data)
+        if user and pdb.check_password(user['id'], form.password.data):
+            login_user(User(**user), remember=True)
+            flash('Logged in successfully.');
+            return redirect(url_for('index'))
+    return render_template('login.html', form=form)
+
+
+@app.route('/logout', methods=['GET'])
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
+
+@app.route("/registration", methods=['GET', 'POST'])
+def registration():
+    form = Registration()
+    if form.validate_on_submit():
+        if pdb.add_user(form.email.data, form.password.data):
+            return redirect(url_for('index'))
+    return render_template('registration.html', form=form)
+
+
 UploadFileParser = reqparse.RequestParser()
 UploadFileParser.add_argument('file.path', type=str)
 FILEList = {}
@@ -184,7 +235,7 @@ class TaskListAPI(Resource):
         return pdb.get_tasks(status=args['task_status']), 201
 
     def post(self):
-        task_id = pdb.insert_task()
+        task_id = pdb.insert_task(email=current_user.get_email())
         args = parser.parse_args()
         pdb.insert_reaction(task_id, args['reaction_structure'])
         pdb.update_task_status(task_id, REQ_MAPPING)
@@ -221,7 +272,7 @@ ModelListparserpost.add_argument('name', type=str)
 ModelListparserpost.add_argument('desc', type=str)
 ModelListparserpost.add_argument('hashes', type=str, action='append')
 ModelListparserpost.add_argument('is_reaction', type=int)
-
+ModelListparserpost.add_argument('example', type=str)
 
 class ModelListAPI(Resource):
     def get(self):
@@ -237,13 +288,17 @@ class ModelListAPI(Resource):
 
     def post(self):
         args = ModelListparserpost.parse_args()
-        model_id = pdb.insert_model(args['name'], args['desc'], args['is_reaction'], args['hashes'])
+        model_id = pdb.insert_model(args['name'], args['desc'], args['is_reaction'], args['hashes'],  args['example'])
         return model_id, 201
 
 
 class SolventsAPI(Resource):
     def get(self):
         return pdb.get_solvents(), 201
+
+class UsersAPI(Resource):
+    def get(self):
+        return pdb.get_users(), 201
 
 
 class TaskModellingAPI(Resource):
@@ -340,3 +395,5 @@ api.add_resource(DownloadResultsAPI, '/api/download/<task_id>')
 
 api.add_resource(UploadFile, '/api/upload')
 api.add_resource(ParserAPI, '/api/parser')
+
+api.add_resource(UsersAPI, '/api/users')

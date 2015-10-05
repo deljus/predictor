@@ -2,17 +2,68 @@
 
     {% block heading %}
 
-	<script src="static/js/webservices.js"></script>
-    <script src="static/gui/lib/promise-1.0.0.min.js"></script>
-    <script src="static/js/marvinjslauncher.js"></script>
+	<script src="{{ url_for('static', filename='js/webservices.js') }}"></script>
+    <script src="{{ url_for('static', filename='gui/lib/promise-1.0.0.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/marvinjslauncher.js') }}"></script>
 
-    <script src="static/js/predictor.js"></script>
+    <script src="{{ url_for('static', filename='js/predictor.js') }}"></script>
+
+<script>
+    $(document).ready(function handleDocumentReady (e) {
+        initControl();
+        MarvinJSUtil.getEditor("#sketch").then(function (sketcherInstance) {
+            marvinSketcherInstance = sketcherInstance;
+        },function (error) {});
+
+        MarvinJSUtil.getPackage("#sketch").then(function (marvinNameSpace) {
+            marvinNameSpace.onReady(function () {
+                marvin = marvinNameSpace;
+            });
+        }, function () {
+            alert("Cannot retrieve marvin instance from iframe");
+        });
+
+        {% if task and task>0 %}
+            var task_id = {{task}};
+            // установим задачу
+            set_task(task_id);
+            // узнаем статус задачи
+            get_task_status(task_id).done(function (data, textStatus, jqXHR){
+
+                switch (data)
+                {
+                    case MAPPING_DONE:
+                        reset_timer();
+                        load_task_reactions(task_id);
+                        break;
+
+                    case MODELLING_DONE:
+		                reset_timer();
+			            load_modelling_results(task_id);
+			            break;
+                    default:
+                        load_reactions();
+                        break;
+
+                }
+
+            }).fail(function(jqXHR, textStatus, errorThrown){
+                reset_timer();
+                console.log('ERROR:check_task_mapping_status->get_task_status->' + textStatus+ ' ' + errorThrown);
+                handleRequestError();
+            });
+
+
+        {% endif %}
+
+    });
+</script>
 
 
         <div id="openModal" class="modalDialog">
             <div>
                 <a href="#" title="Close" class="close" onclick="$('#openModal').hide();return false;">X</a>
-                <img id="modal-img" src="static/images/ajax-loader-big.gif" alt="image not enabled" width="100%">
+                <img id="modal-img" src="{{ url_for('static', filename='images/ajax-loader-big.gif') }}" alt="image not enabled" width="100%">
             </div>
         </div>
 
@@ -36,6 +87,10 @@
 					<li class="list-group-item"><a href="#" onclick="load_reactions()">mapping results</a></li>
 					<li class="list-group-item"><a href="#" onclick="load_results()">modelling results</a></li>
 					<li class="list-group-item"><a href="/solvents">solvents</a></li>
+                    {% if user_data %}
+					<li class="list-group-item"><a href="{{ url_for('my_tasks') }}"><b>my tasks</b></a></li>
+                    {% endif %}
+
 				</ul>
 			</aside>
 			<section class="col-md-21">
@@ -53,7 +108,7 @@
 
                             <div class="resizable"  id="editor-div">
 
-                                <iframe src="/static/editorws.html" id="sketch" data-toolbars="reaction" class="hidden-sketcher-frame"></iframe>
+                                <iframe src="{{ url_for('static', filename='editorws.html') }}" id="sketch" data-toolbars="reaction" class="hidden-sketcher-frame"></iframe>
 
 
                                 <div style="text-align:center;display:none" id="btn-upload-sketcher-data-div">

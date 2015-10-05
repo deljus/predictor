@@ -2,19 +2,16 @@
 
 function getDefaultServicesPrefix() {
 	
-	// ��� ������� ������� ����� �� 8080 �����, � ���������� - �� 80
-	if (String(document.domain).indexOf('127.0.0.1')!=-1)
-		var servername = 'http://127.0.0.1:8080';
-	else
-		var servername = '';
-		
+    var servername = 'http://'+document.domain;
+    // если отлаживаем локально, то сервисы ищем на 8080 порту
+	if (String(document.domain).indexOf('127.0.0.1')!=-1 || String(document.domain).indexOf('192.168.')!=-1 )
+		servername += ':8080';
 	var webapp = "/webservices";
 	return servername + webapp;
 }
 
 function getDefaultServices() {
 	var base = getDefaultServicesPrefix();
-	console.log(base);
 	var services = {
 			"clean2dws" : base + "/rest-v0/util/convert/clean",
 			"clean3dws" : base + "/rest-v0/util/convert/clean",
