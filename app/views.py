@@ -43,7 +43,7 @@ api = Api(app)
 
 def get_cur_user():
     user_data = None
-    if current_user.is_authenticated():
+    if current_user.is_authenticated:
         user_data = dict(id=current_user.get_id(), email=current_user.get_email())
     return user_data
 
