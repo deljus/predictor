@@ -25,10 +25,15 @@ from collections import defaultdict
 import time
 import os
 import sys
+from app import app
 
 #todo: вернуть базу на postgres перед заливкой в svn
-#db = Database("sqlite", "database.sqlite", create_db=True)
-db = Database('postgres', user='postgres', password='nginxpony', host='localhost', database='predictor')
+if app.config.get("DEBUG"):
+    db = Database("sqlite", "database.sqlite", create_db=True)
+    sql_debug(True)
+else:
+    db = Database('postgres', user='postgres', password='nginxpony', host='localhost', database='predictor')
+    sql_debug(True)
 
 STATUS_ARRAY = ["Task created",
                 "Mapping required",
@@ -110,7 +115,7 @@ class Solventsets(db.Entity):
     chemical = Required(Chemicals)
 
 
-#sql_debug(True)
+
 db.generate_mapping(create_tables=True)
 
 
