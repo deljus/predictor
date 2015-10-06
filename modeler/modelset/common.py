@@ -49,6 +49,10 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
         self.__fragext = self.__conf.get('fragext', self.__fragtype)
         super().__init__()
 
+    def getexample(self):
+        desc = self.__conf.get('example', '')
+        return desc
+
     def getdesc(self):
         desc = self.__conf.get('desc', 'no description')
         return desc

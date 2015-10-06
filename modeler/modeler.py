@@ -101,7 +101,7 @@ def main():
         model = getmodel(x)
         if model:
             try:
-                data = {'name': x, 'desc': model.getdesc(),
+                data = {'name': x, 'desc': model.getdesc(), 'example': model.getexample(),
                         'is_reaction': model.is_reation(), 'hashes': model.gethashes()}
                 print(serverpost("models", data))
             except:

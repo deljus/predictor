@@ -69,6 +69,7 @@ def solvents():
     solvents = pdb.get_solvents()
     return render_template("solvents.html", solvents=solvents, user_data=get_cur_user())
 
+
 @app.route("/models", methods=['GET'])
 def models():
     models = pdb.get_models()
@@ -88,7 +89,6 @@ def my_tasks():
     if user_data:
         return render_template('my_tasks.html',  user_data=user_data, my_tasks=pdb.get_user_tasks(user_email=user_data['email']))
     return render_template('login.html', form=Login())
-
 
 
 @app.route("/login", methods=['GET', 'POST'])
@@ -274,6 +274,7 @@ ModelListparserpost.add_argument('hashes', type=str, action='append')
 ModelListparserpost.add_argument('is_reaction', type=int)
 ModelListparserpost.add_argument('example', type=str)
 
+
 class ModelListAPI(Resource):
     def get(self):
         args = ModelListparserget.parse_args()
@@ -288,7 +289,7 @@ class ModelListAPI(Resource):
 
     def post(self):
         args = ModelListparserpost.parse_args()
-        model_id = pdb.insert_model(args['name'], args['desc'], args['is_reaction'], args['hashes'],  args['example'])
+        model_id = pdb.insert_model(args['name'], args['desc'], args['example'], args['is_reaction'], args['hashes'])
         return model_id, 201
 
 

@@ -16,6 +16,9 @@ class Model():
         name = 'best conformers'
         return name
 
+    def getexample(self):
+        return ' '
+
     def is_reation(self):
         return 0
 

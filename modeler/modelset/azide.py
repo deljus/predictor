@@ -41,6 +41,9 @@ class Model(consensus_dragos):
         name = 'azide-halogen substitution'
         return name
 
+    def getexample(self):
+        return ' '
+
     def is_reation(self):
         return 1
 

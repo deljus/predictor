@@ -12,6 +12,7 @@
         <standardize_out>sdf</standardize_out>
         <report_units>pK</report_units>
         <boxrange>models/brute</boxrange>
+        <example> </example>
         <fragtype>svm</fragtype>
         <fragext>frag.svm</fragext>
     </conf>
@@ -68,6 +69,14 @@
                     </param>
                     <param>
                         <name>output_file</name>
+                        <type>string</type>
+                    </param>
+                    <param>
+                        <name>solvent_name</name>
+                        <type>string</type>
+                    </param>
+                    <param>
+                        <name>temperature</name>
                         <type>string</type>
                     </param>
                 </params>
