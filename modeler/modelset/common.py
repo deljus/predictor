@@ -50,7 +50,7 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
         super().__init__()
 
     def getexample(self):
-        desc = self.__conf.get('example', '')
+        desc = self.__conf.get('example', ' ')
         return desc
 
     def getdesc(self):

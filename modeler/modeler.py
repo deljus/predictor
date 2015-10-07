@@ -18,6 +18,7 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+import traceback
 import json
 import sched
 import threading
@@ -54,8 +55,9 @@ def taskthread(task_id):
                 for model_id, model_name in reaction['models'].items():
                     try:
                         model_result = getmodel(model_name).getresult(reaction)
-                    except:
+                    except Exception:
                         model_result = None
+                        print(traceback.format_exc())
                     if model_result:
                         reaction_result = dict(modelid=model_id, result=json.dumps(model_result))
                         if not serverpost("reaction_result/%s" % reaction_id, reaction_result):
@@ -104,7 +106,8 @@ def main():
                 data = {'name': x, 'desc': model.getdesc(), 'example': model.getexample(),
                         'is_reaction': model.is_reation(), 'hashes': model.gethashes()}
                 print(serverpost("models", data))
-            except:
+            except Exception:
+                print(traceback.format_exc())
                 pass
         del model
 

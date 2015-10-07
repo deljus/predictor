@@ -19,7 +19,6 @@ class User(UserMixin):
         self.__email = kwargs['email']
         self.__active = kwargs['active']
 
-
     def is_active(self):
         return self.__active
 

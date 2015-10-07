@@ -12,7 +12,7 @@
         <standardize_out>sdf</standardize_out>
         <report_units>pK</report_units>
         <boxrange>models/brute</boxrange>
-        <example> </example>
+        <example>no</example>
         <fragtype>svm</fragtype>
         <fragext>frag.svm</fragext>
     </conf>
