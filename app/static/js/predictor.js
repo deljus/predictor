@@ -15,6 +15,8 @@ var TAMER_ID;
 var marvinSketcherInstance;
 var isSaveMrvBtnExists=false;
 
+var isSketcherDataChanged = false;
+
 var API_BASE = '/api';
 /******************************************************/
 
@@ -23,6 +25,16 @@ function reset_timer()
     clearInterval(TAMER_ID);
 }
 
+function log_log(str)
+{
+	try {
+		if (str instanceof Error)
+			console.log(str.name + ":" + str.message);
+		else
+			console.log(str);
+	}
+	catch (err){}
+}
 
 
 function find(arr, what, where)
@@ -39,7 +51,7 @@ function find(arr, what, where)
         }
     }
     catch(err){
-        console.log('find->'+err);
+        log_log('find->'+err);
     }
     return -1;
 }
@@ -79,7 +91,7 @@ function model_done()
 var Progress = {}
 Progress.increase_progress = function(value){
 	
-	console.log('increase_progress->');
+	log_log('increase_progress->');
 	try {	
 		var jPrg= $('.progress div[role=progressbar]');
 		if (value)
@@ -98,7 +110,7 @@ Progress.increase_progress = function(value){
 		jPrg.width(prc+'%');//.text(prc+'%');
 	}
 	catch(err){
-		console.log(err);
+		log_log(err);
 	}
 }
 
@@ -158,7 +170,7 @@ function upload_file(data)
 
 function upload_task_file_data()
 {
-	console.log('upload_task_file_data->');
+	log_log('upload_task_file_data->');
 	Progress.start();
 			
 	var form_data = new FormData($('#upload-file-form')[0]);	
@@ -215,7 +227,7 @@ function isMolEmpty(data)
 
 function set_task_status(task_id, status)
 {
-    console.log('set_task_status->'+status);
+    log_log('set_task_status->'+status);
     var data =  JSON.stringify({"task_status": status});
     return $.ajax({
         "url": API_BASE+"/task_status/"+task_id
@@ -228,7 +240,7 @@ function set_task_status(task_id, status)
 
 function get_task_status(task_id)
 {
-	console.log('get_task_status->'+task_id);
+	log_log('get_task_status->'+task_id);
     return $.get(API_BASE+"/task_status/"+task_id);
 }
 
@@ -239,7 +251,7 @@ function get_reaction_structure(reaction_id)
 
 function put_reaction_structure(reaction_id, data)
 { 
-    console.log('put_reaction_structure->');
+    log_log('put_reaction_structure->');
     var data = {"reaction_structure": data};
 
     return $.post(API_BASE+"/reaction_structure/"+reaction_id, data);
@@ -261,7 +273,10 @@ function get_reactions_by_task(task_id)
     return $.get(API_BASE+"/task_reactions/"+task_id)
 }
 
-
+function get_model(model_id)
+{
+    return $.get(API_BASE+"/model/"+model_id)
+}
 
 function initControl ()
 {
@@ -299,7 +314,7 @@ function hide_editor()
 {
 	//$('#editor-div').hide();
 	$('#sketch').removeClass('sketcher-frame').addClass('hidden-sketcher-frame');
-	$('#btn-upload-sketcher-data-div').hide();
+	hide_upload_sketcher_data_btn()
 }
 
 function show_editor(show_upload_reaction_button)
@@ -350,7 +365,7 @@ function upload_sketcher_data()
 
 function upload_task_draw_data(draw_data)
 {
-    console.log('upload_task_draw_data->');
+    log_log('upload_task_draw_data->');
 	hide_upload_sketcher_data_btn();
 
     var data = JSON.stringify({"reaction_structure": draw_data});
@@ -363,7 +378,7 @@ function upload_task_draw_data(draw_data)
             ,"data": data
     }).done(function (data, textStatus, jqXHR) {
 
-		console.log('TASK_ID = '+data);
+		log_log('TASK_ID = '+data);
         $("#task_id").val(data);
         start_task_mapping(data);
 
@@ -372,14 +387,14 @@ function upload_task_draw_data(draw_data)
 
 function start_task_mapping(task_id)
 {
-    console.log('start_task_mapping->');
+    log_log('start_task_mapping->');
 	/***
     set_task_status(task_id, REQ_MAPPING).done(function (data, textStatus, jqXHR){
 
         TAMER_ID = setInterval(function(){check_task_mapping_status(task_id)}, TIMER_INTERVAL);
 
     }).fail(function(jqXHR, textStatus, errorThrown){
-		console.log('start_task_mapping->set_task_status->' + textStatus+ ' ' + errorThrown);
+		log_log('start_task_mapping->set_task_status->' + textStatus+ ' ' + errorThrown);
 		handleRequestError();
 	});
 	***/
@@ -389,7 +404,7 @@ function start_task_mapping(task_id)
 
 function check_task_mapping_status(task_id)
 {
-    console.log('check_task_mapping_status->');
+    log_log('check_task_mapping_status->');
 	
     get_task_status(task_id).done(function (data, textStatus, jqXHR){
 
@@ -401,7 +416,7 @@ function check_task_mapping_status(task_id)
 
     }).fail(function(jqXHR, textStatus, errorThrown){
         reset_timer();
-        console.log('ERROR:check_task_mapping_status->get_task_status->' + textStatus+ ' ' + errorThrown);
+        log_log('ERROR:check_task_mapping_status->get_task_status->' + textStatus+ ' ' + errorThrown);
         handleRequestError();
     });
 
@@ -412,7 +427,7 @@ function load_task_reactions(task_id)
 {
     // сбросим таймер - если функцию вызвали из левого меню
     reset_timer();
-    console.log('load_task_reactions->');
+    log_log('load_task_reactions->');
 	if (!task_id)
 		task_id = get_task();
 		
@@ -429,22 +444,25 @@ function load_task_reactions(task_id)
         try {
             display_task_reactions(data);
         }
-        catch (err){console.log(err)}
+        catch (err){log_log(err)}
 
     }).fail(function(jqXHR, textStatus, errorThrown){
-        console.log('load_task_reactions->' + textStatus+ ' ' + errorThrown)});
+        log_log('load_task_reactions->' + textStatus+ ' ' + errorThrown)});
         handleRequestError();
     return true;
 }
 
 function clear_editor()
 {
-		marvinSketcherInstance.clear();
+    try {
+		//marvinSketcherInstance.clear();
+	}
+	catch(err){alert('qqq');log_log(err)}
 }
 
 function display_task_reactions(reactions)
 {
-    console.log('display_task_reactions->');
+    log_log('display_task_reactions->');
 	
 	// если скрыт редактор - покажем его
 	show_editor();
@@ -500,7 +518,7 @@ function display_task_reactions(reactions)
                 str+='<option '+_s+' value="'+_m.id+'">'+_m.name+'</option>';
             }
         }
-        catch(err){console.log(err)}
+        catch(err){log_log(err)}
         str+='</select>';
         str+='</td>';
 
@@ -545,7 +563,7 @@ function display_task_reactions(reactions)
             })
          })
     }
-    catch (err){console.log('display_task_reactions->load models->'+err)}
+    catch (err){log_log('display_task_reactions->load models->'+err)}
 
     /*********** Loading solvents ***************/
     try {
@@ -571,7 +589,7 @@ function display_task_reactions(reactions)
             })
          })
     }
-    catch (err){console.log('display_task_reactions->load models->'+err)}
+    catch (err){log_log('display_task_reactions->load models->'+err)}
 
 
     $("#reactions-div").show("normal");
@@ -587,22 +605,26 @@ function display_task_reactions(reactions)
 	// проверим - не были ли уже добавлена кнопка
 	if (!isSaveMrvBtnExists)
 	{
-	    marvinSketcherInstance.addButton(jso, save_draw_reaction );
+	    // добавили кнопку под редактором
+	    //marvinSketcherInstance.addButton(jso, save_draw_reaction );
 		isSaveMrvBtnExists=true;
 	}
 
 	if(first_reaction_id!='')
 	    load_reaction(first_reaction_id);
 
+
+
 }
 
 function load_reaction(reaction_id)
 {
-    console.log('load_reaction->');
+    log_log('load_reaction->');
+
     if (isNaN(reaction_id))
     {
         alert('An error occurred when loading the reaction');
-        console.log('load_reaction-> reaction_id isNaN:'+reaction_id);
+        log_log('load_reaction-> reaction_id isNaN:'+reaction_id);
         return false;
     }
 	Progress.start();
@@ -615,9 +637,9 @@ function load_reaction(reaction_id)
         try {
             draw_moldata(data);
         }
-        catch (err){console.log(err)}
+        catch (err){log_log(err)}
 
-    }).fail(function(jqXHR, textStatus, errorThrown){console.log('ERROR:show_reaction->' + textStatus+ ' ' + errorThrown)});
+    }).fail(function(jqXHR, textStatus, errorThrown){log_log('ERROR:show_reaction->' + textStatus+ ' ' + errorThrown)});
     return true;
 
 }
@@ -626,9 +648,13 @@ function draw_moldata (data)
 {
     try {
         marvinSketcherInstance.importStructure(MOL_FORMAT, data);
+        // сбросим флаг изменений в редакторе и скроем кнопку - Сохранить
+        //isSketcherDataChanged = false;
+        //hide_upload_sketcher_data_btn();
+
     }
     catch(err){
-        console.log('draw_moldata->'+err)
+        log_log('draw_moldata->'+err);
     }
 }
 
@@ -652,7 +678,7 @@ function save_draw_reaction ()
 
 function upload_draw_reaction(data)
 {
-    console.log('upload_draw_reaction->');
+    log_log('upload_draw_reaction->');
 	
 	var reaction_id = $('#reaction_id').val();
 	if (reaction_id!='')
@@ -674,7 +700,7 @@ function upload_draw_reaction(data)
 function upload_reaction_form()
 {
     Progress.start();
-    console.log('upload_reaction_form->');
+    log_log('upload_reaction_form->');
     var task_id = $("#task_id").val();
     if (isEmpty(task_id))
     {
@@ -696,14 +722,14 @@ function upload_reaction_form()
 
     }).fail(function(jqXHR, textStatus, errorThrown){
         alert('Upload  reactions failure');
-		console.log('upload_reaction_forms->' + textStatus+ ' ' + errorThrown);
+		log_log('upload_reaction_forms->' + textStatus+ ' ' + errorThrown);
 		handleRequestError();
 	});
 }
 
 function start_modelling()
 {
-    console.log('start_modelling->');
+    log_log('start_modelling->');
 
     var task_id = $("#task_id").val();
     set_task_status(task_id, REQ_MODELLING).done(function (data, textStatus, jqXHR){
@@ -711,7 +737,7 @@ function start_modelling()
         TAMER_ID = setInterval(function(){check_modelling_status(task_id)}, TIMER_INTERVAL);
 
     }).fail(function(jqXHR, textStatus, errorThrown){
-		console.log('start_modelling->set_task_status->' + textStatus+ ' ' + errorThrown);
+		log_log('start_modelling->set_task_status->' + textStatus+ ' ' + errorThrown);
 		handleRequestError();
 	});
 }
@@ -719,7 +745,7 @@ function start_modelling()
 
 function check_modelling_status(task_id)
 {
-    console.log('check_modelling_status->'+task_id);
+    log_log('check_modelling_status->'+task_id);
 
     get_task_status(task_id).done(function (data, textStatus, jqXHR){
 
@@ -731,7 +757,7 @@ function check_modelling_status(task_id)
 
     }).fail(function(jqXHR, textStatus, errorThrown){
         reset_timer();
-        console.log('ERROR:check_modelling_status->get_task_status->' + textStatus+ ' ' + errorThrown);
+        log_log('ERROR:check_modelling_status->get_task_status->' + textStatus+ ' ' + errorThrown);
         handleRequestError();
     });
 
@@ -741,7 +767,7 @@ function load_modelling_results(task_id)
 {
     // сбросим таймер - если функцию вызвали из левого меню
     reset_timer();
-    console.log('load_modelling_results->');
+    log_log('load_modelling_results->');
 	if (!task_id)
 		task_id = get_task();
 		
@@ -757,9 +783,9 @@ function load_modelling_results(task_id)
         try {
             display_modelling_results(data);
         }
-        catch (err){console.log('load_modelling_results->'+err)}
+        catch (err){log_log('load_modelling_results->'+err)}
 
-    }).fail(function(jqXHR, textStatus, errorThrown){console.log('ERROR:load_modelling_results->' + textStatus+ ' ' + errorThrown)});
+    }).fail(function(jqXHR, textStatus, errorThrown){log_log('ERROR:load_modelling_results->' + textStatus+ ' ' + errorThrown)});
     return true;
 }
 
@@ -846,7 +872,7 @@ function display_modelling_results(results)
                 case '1': // структура
                     var img_id = 'result_structure_img_'+i+'_'+j;
                     result_structures[img_id] = _res.value;
-                    value = '<img  id="'+img_id+'" src="static/images/ajax-loader-tiny.gif" alt="Image unavailable" class="result-structure" />';
+                    value = '<img  id="'+img_id+'" src="{{ url_for("static", filename="images/ajax-loader-tiny.gif") }}" alt="Image unavailable" class="result-structure" />';
                     break;
                 case '2': // ссылка
                     value = '<a href="'+_res.value+'">Open</a>';
@@ -906,7 +932,7 @@ function display_modelling_results(results)
                     });
                 }
                 catch(err){
-                    console.log(err);
+                    log_log(err);
                 }
             });
 		}
@@ -936,7 +962,7 @@ function display_modelling_results(results)
             });
         }
         catch(err){
-            console.log(err);
+            log_log(err);
         }
     });
     // на клик по картинке посадим загрузку в модальное окно большой картинки
@@ -952,10 +978,57 @@ function display_modelling_results(results)
             });
         }
         catch(err){
-            console.log(err);
+            log_log(err);
         }
     });
 
 }
 
 
+function load_task(task_id)
+{
+            // установим задачу
+            set_task(task_id);
+
+            // узнаем статус задачи
+            get_task_status(task_id).done(function (data, textStatus, jqXHR){
+
+                switch (data)
+                {
+                    case MAPPING_DONE:
+                        reset_timer();
+                        load_task_reactions(task_id);
+                        break;
+
+                    case MODELLING_DONE:
+		                reset_timer();
+			            load_modelling_results(task_id);
+			            break;
+                    default:
+                        load_reactions();
+                        break;
+
+                }
+
+            }).fail(function(jqXHR, textStatus, errorThrown){
+                reset_timer();
+                log_log('ERROR:check_task_mapping_status->get_task_status->' + textStatus+ ' ' + errorThrown);
+                handleRequestError();
+            });
+}
+
+function load_model_example(model_id)
+{
+    get_model(model_id).done(function (model, textStatus, jqXHR){
+
+        Progress.done();
+        try {
+            log_log(model);
+            draw_moldata(model.example);
+            show_editor();
+        }
+        catch (err){log_log(err)}
+
+    }).fail(function(jqXHR, textStatus, errorThrown){log_log('ERROR:load_model_example->' + textStatus+ ' ' + errorThrown)});
+    return true;
+}

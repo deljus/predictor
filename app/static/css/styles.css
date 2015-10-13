@@ -1076,7 +1076,7 @@ body {
   font-size: 12px;
   line-height: 1.428571429;
   color: #8f8f8f;
-  background-color: #f8f8f8;
+  background-color: #ffffff;
 }
 input,
 button,
@@ -1121,7 +1121,7 @@ img {
 .img-thumbnail {
   padding: 1px;
   line-height: 1.428571429;
-  background-color: #f8f8f8;
+  background-color: #ffffff;
   border: 1px solid #c9c9c9;
   border-radius: 0;
   -webkit-transition: all 0.2s ease-in-out;
@@ -2847,7 +2847,7 @@ th {
   border-top: 2px solid #dddddd;
 }
 .table .table {
-  background-color: #f8f8f8;
+  background-color: #ffffff;
 }
 .table-condensed > thead > tr > th,
 .table-condensed > tbody > tr > th,
@@ -4493,7 +4493,7 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
 .nav-tabs > li.active > a:hover,
 .nav-tabs > li.active > a:focus {
   color: #555555;
-  background-color: #f8f8f8;
+  background-color: #ffffff;
   border: 1px solid #dddddd;
   border-bottom-color: transparent;
   cursor: default;
@@ -4539,7 +4539,7 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
   .nav-tabs.nav-justified > .active > a,
   .nav-tabs.nav-justified > .active > a:hover,
   .nav-tabs.nav-justified > .active > a:focus {
-    border-bottom-color: #f8f8f8;
+    border-bottom-color: #ffffff;
   }
 }
 .nav-pills > li {
@@ -4607,7 +4607,7 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
   .nav-tabs-justified > .active > a,
   .nav-tabs-justified > .active > a:hover,
   .nav-tabs-justified > .active > a:focus {
-    border-bottom-color: #f8f8f8;
+    border-bottom-color: #ffffff;
   }
 }
 .tab-content > .tab-pane {
@@ -5451,7 +5451,7 @@ a.badge:focus {
   padding: 1px;
   margin-bottom: 17px;
   line-height: 1.428571429;
-  background-color: #f8f8f8;
+  background-color: #ffffff;
   border: 1px solid #c9c9c9;
   border-radius: 0;
   -webkit-transition: border 0.2s ease-in-out;
@@ -7126,6 +7126,7 @@ button.close {
 /*Custom variables*/
 /*Bootstrap variables*/
 /*#29c5e6*/
+/*@body-bg: #f8f8f8;*/
 p {
   margin: 20px 0;
 }
@@ -7147,7 +7148,7 @@ p {
   padding: 10px;
 }
 body {
-  background-image: url(../images/bg.png);
+  /*background-image: url(../images/bg.png);*/
   border-top: 5px solid #7e7e7e;
 }
 body .wrapper {
@@ -7230,6 +7231,7 @@ body .wrapper .sketcher-frame {
   margin: -2px;
   min-width: 500px;
   min-height: 400px;
+  max-height: 600px;
   height: 100%;
   width: 100%;
   overflow: hidden;
@@ -7310,7 +7312,8 @@ body .wrapper .modalDialog > div {
   background: -o-linear-gradient(#ffffff, #999999);
 }
 body footer {
-  background: #7e7e7e;
+  /*background: #7e7e7e;*/
+  background: #f3f3f3;
   color: #dbdbdb;
   font-size: 11px;
   line-height: 13px;

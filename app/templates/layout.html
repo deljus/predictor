@@ -3,7 +3,7 @@
   <head>
     <title>Chem portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="shortcut icon" href="favicon.ico">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
 
     <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
 
@@ -29,27 +29,22 @@
 	<div class="wrapper conteiner-fluid">
 		<header>
             <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-8">
                     <a href="/"><img src="{{ url_for('static', filename='images/logo.png') }}" height="70" alt="LAB logo"></a>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-8">
                     <a href="http://infochim.u-strasbg.fr/"><img src="{{ url_for('static', filename='images/strass.png') }}" height="70" alt="STRASS logo"></a>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-8">
                     <a href="http://chemistry.kpfu.ru/"><img src="http://shelly.kpfu.ru/pdf/picture/mainpage_new/top_buttons_new/kfu_logo_en3.png" height="70" alt="KSU logo"></a>
                 </div>
-                <div class="col-md-6">
-                    <a href="/"><img src="{{ url_for('static', filename='images/chemaxon-logo.png') }}"   alt="Chemaxon logo" height="70"></a>
-
-                </div>
-
              </div>
 		</header>
 		<nav class="navbar navbar-default">
 			<ul class="nav navbar-nav">
 				<li><a href="/">Home</a></li>
 				<li  {% if request.path=="/" %} class="active" {% endif %}><a href="/">Predictor</a></li>
-				<li  {% if request.path=="/models" %} class="active" {% endif %}><a href="/models">Models</a></li>
+				<li  {% if request.path=="/models" %} class="active" {% endif %}><a href="{{ url_for('models') }}">Models</a></li>
                 <!--
 				<li><a href="/partners/">Partners</a></li>
 				<li><a href="/customers/">Customers</a></li>
@@ -86,5 +81,18 @@
         {% block body %}{% endblock %}
 	</div>
 
+<footer>
+	<div class="container">
+		<div class="row">
+			<div class="col-md-8 twitter"></div>
+			<div class="col-md-4 sitemap"></div>
+			<div class="col-md-6 social"></div>
+			<div class="col-md-6 footer-logo">
+              <a href="https://www.chemaxon.com"><img src="{{ url_for('static', filename='images/chemaxon.png') }}"></a>
+
+            </div>
+		</div>
+	</div>
+</footer>
   </body>
 </html>

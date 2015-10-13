@@ -1,10 +1,68 @@
 {% extends "layout.html" %}
     {% block heading %}
 
+	<script src="{{ url_for('static', filename='js/webservices.js') }}"></script>
+    <script src="{{ url_for('static', filename='gui/lib/promise-1.0.0.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/marvinjslauncher.js') }}"></script>
+
     <script src="{{ url_for('static', filename='js/predictor.js') }}"></script>
 
+<script>
+    $(document).ready(function handleDocumentReady (e) {
+        MarvinJSUtil.getEditor("#sketch").then(function (sketcherInstance) {
+            marvinSketcherInstance = sketcherInstance;
+
+
+
+        },function (error) {});
+
+        MarvinJSUtil.getPackage("#sketch").then(function (marvinNameSpace) {
+            marvinNameSpace.onReady(function () {
+                marvin = marvinNameSpace;
+
+                // загрузим картинки примеров моделей
+                load_example_imgs();
+
+            });
+        }, function () {
+            alert("Cannot retrieve marvin instance from iframe");
+        });
+
+    });
+
+    function load_example_imgs()
+    {
+        var small_settings = {
+                'carbonLabelVisible' : false,
+                'cpkColoring' : true,
+                'implicitHydrogen' : false,
+                'width' : 200,
+                'height' : 100
+        };
+        $('#my-tasks-table img.task-img').each(function(){
+            try {
+                var  jImg = $(this);
+                var task_id = jImg.attr('data-task');
+                var data = $('#first-reaction-structure'+task_id).val();
+                var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",small_settings);
+                jImg.attr('src',dataUrl);
+            }
+            catch(err){
+                jImg.attr('src','');
+                jImg.parent('a').attr('href','#');
+                log_log(err);
+            }
+        });
+
+    }
+
+</script>
+
+
+
+
 		<div class="heading">
-			<h1>My reactions</h1>
+			<h1>My tasks</h1>
 		</div>
     {% endblock %}
     {% block body %}
@@ -16,12 +74,19 @@
 
 
 
-                    <table class="table">
+                    <table class="table" id="my-tasks-table">
+                        <colgroup>
+                            <col width="10%">
+                            <col width="40%">
+                            <col width="25%">
+                            <col width="25%">
+                        </colgroup>
                         <thead>
                         <tr>
                             <th>№</th>
-                            <th>Reaction</th>
+                            <th>Task</th>
                             <th>Status</th>
+                            <th>Create date</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -29,8 +94,11 @@
                         {% for _task in my_tasks %}
                         <tr>
                             <td>{{ count }}</td>
-                            <td><a href="{{ url_for('task', task=_task.id) }}"><img width="50px" id="task_img_{{_task.id}}" src="{{ url_for('static', filename='images/logo.png') }}" ></a></td>
-                            <td>{{ _task.status }}</td>
+                            <td><a href="{{ url_for('task', task=_task.id) }}"><img data-task="{{_task.id}}" class="task-img" id="task_img{{_task.id}}" src="{{ url_for('static', filename='images/ajax-loader-tiny.gif') }}" ></a></td>
+                            <td><a href="{{ url_for('task', task=_task.id) }}">{{ _task.status }}</a></td>
+                            <td><a href="{{ url_for('task', task=_task.id) }}">{{ _task.create_date }}</a>
+                            <input type="hidden" id="first-reaction-structure{{ _task.id}}" value="{{ _task.first_reaction_structure }}">
+                            </td>
                         </tr>
                         {% set count = count + 1 %}
                         {% endfor %}
@@ -42,4 +110,6 @@
 
 			</section>
 		</div>
+       <iframe src="{{ url_for('static', filename='editorws.html') }}" id="sketch" data-toolbars="reaction" class="hidden-sketcher-frame"></iframe>
+
 	{% endblock %}

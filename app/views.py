@@ -58,6 +58,10 @@ def index():
 def task(task=0):
     return render_template("index.html", task=task, user_data=get_cur_user())
 
+@app.route("/model_example/<int:model>", methods=['GET', 'POST'])
+def model_example(model=0):
+    return render_template("index.html", model=model, user_data=get_cur_user())
+
 
 @app.route("/download", methods=['GET'])
 def download_file():
@@ -86,8 +90,9 @@ def user():
 @login_required
 def my_tasks():
     user_data = get_cur_user()
+    my_tasks = pdb.get_user_tasks(user_email=user_data['email'])
     if user_data:
-        return render_template('my_tasks.html',  user_data=user_data, my_tasks=pdb.get_user_tasks(user_email=user_data['email']))
+        return render_template('my_tasks.html',  user_data=user_data, my_tasks=my_tasks)
     return render_template('login.html', form=Login())
 
 
