@@ -189,6 +189,7 @@ class ReactionStructureAPI(Resource):
 
     def post(self, reaction_id):
         args = parser.parse_args()
+        print("reaction_structure="+args['reaction_structure'])
         pdb.update_reaction_structure(reaction_id, args['reaction_structure'])
         return reaction_id, 201
 
@@ -246,7 +247,7 @@ class TaskListAPI(Resource):
             email = None
         task_id = pdb.insert_task(email=email)
         args = parser.parse_args()
-        pdb.insert_reaction(task_id, args['reaction_structure'])
+        pdb.insert_reaction(task_id, reaction_structure=args['reaction_structure'])
         pdb.update_task_status(task_id, REQ_MAPPING)
         return task_id, 201
 

@@ -33,7 +33,7 @@ if app.config.get("DEBUG"):
     #sql_debug(True)
 else:
     db = Database('postgres', user='postgres', password='nginxpony', host='localhost', database='predictor')
-    #sql_debug(True)
+    sql_debug(True)
 
 STATUS_ARRAY = ["Task created",
                 "Mapping required",
