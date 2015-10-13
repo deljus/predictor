@@ -143,9 +143,13 @@ class PredictorDataBase:
 
         arr = []
         for t in tasks:
+            if t.user:
+                email = t.user.email
+            else:
+                email = None
             arr.append(dict(id=t.id,
                             status=t.status,
-                            email=t.user.email))
+                            email=email))
         return arr
 
     @db_session
