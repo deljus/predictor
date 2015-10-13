@@ -538,9 +538,9 @@ def import_models():
     example =  ""
     Models(name=name, description=desc, example=example)
 
-import_solvents()
+#import_solvents()
 
 # загрузим модели
-import_models()
+#import_models()
 
 
