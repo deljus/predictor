@@ -2,6 +2,71 @@
 
     {% block heading %}
 
+	<script src="{{ url_for('static', filename='js/webservices.js') }}"></script>
+    <script src="{{ url_for('static', filename='gui/lib/promise-1.0.0.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/marvinjslauncher.js') }}"></script>
+
+    <script src="{{ url_for('static', filename='js/predictor.js') }}"></script>
+
+<script>
+    $(document).ready(function handleDocumentReady (e) {
+        MarvinJSUtil.getEditor("#sketch").then(function (sketcherInstance) {
+            marvinSketcherInstance = sketcherInstance;
+
+
+
+        },function (error) {});
+
+        MarvinJSUtil.getPackage("#sketch").then(function (marvinNameSpace) {
+            marvinNameSpace.onReady(function () {
+                marvin = marvinNameSpace;
+
+                // загрузим картинки примеров моделей
+                load_example_imgs();
+
+            });
+        }, function () {
+            alert("Cannot retrieve marvin instance from iframe");
+        });
+
+    });
+
+    function load_example_imgs()
+    {
+        var small_settings = {
+                'carbonLabelVisible' : false,
+                'cpkColoring' : true,
+                'implicitHydrogen' : false,
+                'width' : 200,
+                'height' : 100
+        };
+        $('#models-table img.model-example-img').each(function(){
+            try {
+                var  jImg = $(this);
+                var model_id = jImg.attr('data-model');
+                var data = $('#model-example-structure'+model_id).val();
+                /*
+                reactionToMrv(data).done(function(result, textStatus, jqXHR){
+                    var dataUrl = marvin.ImageExporter.mrvToDataUrl(result,"image/png",small_settings);
+                    jImg.attr('src',dataUrl);
+                });
+                */
+                var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",small_settings);
+                jImg.attr('src',dataUrl);
+            }
+            catch(err){
+                jImg.attr('src','');
+                jImg.parent('a').attr('href','#');
+
+            }
+        });
+
+    }
+
+</script>
+
+
+
 		<div class="heading">
 			<h1>Models</h1>
 			<div class="progress" style="display:none">
@@ -13,34 +78,36 @@
     {% endblock %}
     {% block body %}
 		<div class="row">
-			<aside class="col-md-3">
-				<ul class="list-group submenu" style="display:none">
-					<li class="list-group-item"><a href="#" onClick="select_mode('file')">upload file</a></li>
-					<li class="list-group-item"><a href="#" onClick="select_mode('editor')">open editor</a></li>
-					<li class="list-group-item"><a href="#" onclick="load_reactions()">mapping results</a></li>
-					<li class="list-group-item"><a href="#" onclick="load_results()">modelling results</a></li>
+			<aside class="col-md-4">
+				<ul class="list-group submenu">
+                    <li class="list-group-item"><a href="#">models&nbsp;descriptions</a></li>
+                    <li class="list-group-item"><a href="{{ url_for('solvents') }}">solvents</a></li>
 				</ul>
 			</aside>
-			<section class="col-md-21">
+			<section class="col-md-20">
 
 
                 <div class="row">
 
 
-                    <table  class="table table-hover table-bordered">
+                    <table  class="table table-hover table-bordered" id="models-table">
                         <thead>
                         <tr>
 
                             <th>Name</th>
                             <th>Description</th>
+                            <th>Example</th>
                         </tr>
                         </thead>
                         <tbody>
-                            {% for model in models %}
+                            {% for _model in models %}
                             <tr>
 
-                                <td>{{model.name}}</td>
-                                <td>{{model.description}}</td>
+                                <td>{{_model.name}}</td>
+                                <td>{{_model.description}}</td>
+                                <td><a  href="{{ url_for('model_example', model=_model.id) }}"><img data-model="{{ _model.id}}" class="model-example-img" src="{{ url_for('static', filename='images/ajax-loader-tiny.gif') }}" alt="Example not exists"></a>
+                                    <input type="hidden" id="model-example-structure{{ _model.id}}" value="{{ _model.example }}">
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -50,4 +117,6 @@
 
 			</section>
 		</div>
+        <iframe src="{{ url_for('static', filename='editorws.html') }}" id="sketch" data-toolbars="reaction" class="hidden-sketcher-frame"></iframe>
+
 	{% endblock %}
