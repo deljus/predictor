@@ -240,7 +240,11 @@ class TaskListAPI(Resource):
         return pdb.get_tasks(status=args['task_status']), 201
 
     def post(self):
-        task_id = pdb.insert_task(email=current_user.get_email())
+        if current_user.is_authenticated:
+            email = current_user.get_email()
+        else:
+            email = None
+        task_id = pdb.insert_task(email=email)
         args = parser.parse_args()
         pdb.insert_reaction(task_id, args['reaction_structure'])
         pdb.update_task_status(task_id, REQ_MAPPING)
