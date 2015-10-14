@@ -18,20 +18,19 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import copy
 import os
 import subprocess as sp
 import time
 
 
 class Fragmentor(object):
-    def __init__(self, workpath, version, s_option=None, fragment_type=3, min_length=2, max_length=10,
-                 colorname=None, marked_atom=None, cgr_dynbonds=None, xml=None, doallways=None,
-                 useformalcharge=None, atompairs=None, fragmentstrict=None, getatomfragment=None,
+    def __init__(self, workpath='.', version='last', s_option=None, fragment_type=3, min_length=2, max_length=10,
+                 colorname=None, marked_atom=None, cgr_dynbonds=None, xml=None, doallways=False,
+                 useformalcharge=False, atompairs=False, fragmentstrict=False, getatomfragment=False,
                  overwrite=True, header=None):
         self.__header = None
         self.__workpath = workpath
-        self.__fragmentor = os.path.join(os.path.dirname(__file__), 'Fragmentor%s' % version)
+        self.__fragmentor = os.path.join(os.path.dirname(__file__), 'Fragmentor-%s' % version)
         tmp = ['-f', 'SVM']
         if s_option: tmp.extend(['-s', s_option])
         if header:
@@ -82,11 +81,11 @@ class Fragmentor(object):
     def __parser(self, file):
         prop, vector = [], []
         with open(file + '.svm') as f:
-            line = f.readline().split()
-            prop.append(float(vector[0]))
-            vector.append({int(x.split(':')[0]): float(x.split(':')[1]) for x in line[1:]})
+            key, *values = f.readline().split()
+            prop.append(float(key))
+            vector.append({int(x.split(':')[0]): float(x.split(':')[1]) for x in values})
 
-        ad = os.path.getsize(self.__header) != os.path.getsize(file + '.hdr') if self.__header else True
+        ad = os.path.getsize(self.__header) == os.path.getsize(file + '.hdr') if self.__header else True
         return prop, vector, ad
 
     def __extendvector(self, descfile, extention):
