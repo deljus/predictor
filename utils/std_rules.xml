@@ -5,7 +5,7 @@
     <RemoveExplicitH Bridgehead="true" Charged="true" Hconnected="false" ID="Remove Explicit Hydrogens" Isotopic="false" Lonely="true" Mapped="false" Polymerendgroup="true" Radical="true" Sgroup="true" Sgroupend="true" Valenceerror="true" Wedged="true"/>
     <Transformation Exact="false" ID="Transform Aromatic N-Oxide" SearchOptions="" Structure="[#7;a:1]=[O:2]&gt;&gt;[#7+:1]-[#8-:2]" format="cxsmarts"/>
     <Transformation Exact="false" ID="Transform Diazo" SearchOptions="" Structure="[#6;X3-:1][N;X2+:2]#[N;X1:3]&gt;&gt;[#6;A:1]=[N+:2]=[#7-:3]" format="cxsmarts"/>
-    <Transformation Exact="false" ID="Transform Diazonium" SearchOptions="" Structure="[#6]-[#7:1]=[#7+;D1:2]&gt;&gt;[#6][N+:1]#[N:2]" format="cxsmarts"/>
+    <Transformation Exact="false" ID="Transform Diazonium" SearchOptions="" Structure="[#6]-[#7:1]=[#7+:2]&gt;&gt;[#6][N+:1]#[N:2]" format="cxsmarts"/>
     <Transformation Exact="false" ID="Transform Iminium" SearchOptions="" Structure="[#6;X3+:1]-[#7;X3:2]&gt;&gt;[#6;A:1]=[#7+:2]" format="cxsmarts"/>
     <Transformation Exact="false" ID="Transform Isocyanate" SearchOptions="" Structure="[#7+:1][#6;A-:2]=[O:3]&gt;&gt;[#7:1]=[C:2]=[O:3]" format="cxsmarts"/>
     <Transformation Exact="false" ID="Transform Nitrilium" SearchOptions="" Structure="[#6;A;X2+:1]=[#7;X2:2]&gt;&gt;[C:1]#[N+:2]" format="cxsmarts"/>
