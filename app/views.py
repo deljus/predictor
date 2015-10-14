@@ -38,7 +38,6 @@ from app.logins import User
 from flask_login import login_user, login_required, logout_user, current_user
 
 
-
 api = Api(app)
 
 def get_cur_user():
