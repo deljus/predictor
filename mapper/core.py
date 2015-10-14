@@ -96,12 +96,12 @@ def mapper(task):
         chemicals = serverget("task_reactions/%s" % (task['id']), None)
         for j in chemicals:
             structure = serverget("reaction_structure/%s" % (j['reaction_id']), None)
-            print("1#structure==="+structure)
+            print("1#structure==="+str(structure))
             data = {"structure": structure, "parameters": "rxn",
                     "filterChain": [{"filter": "clean", "parameters": {"dim": 2}},
                                     {"filter": "standardizer", "parameters": {"standardizerDefinition": STANDARD}}]}
             structure = chemaxpost('calculate/molExport', data)
-            print("2#structure==="+structure)
+            print("2#structure==="+str(structure))
             if structure:
                 structure = json.loads(structure)
                 file_path = '%stmp-%d.rxn' % (UPLOAD_PATH, task['id'])
@@ -117,7 +117,7 @@ def mapper(task):
 
                 data = {"structure": structure['structure'], "parameters": {"method": "DEHYDROGENIZE"}}
                 structure = chemaxpost('convert/hydrogenizer', data)
-                print("3#structure==="+structure)
+                print("3#structure==="+str(structure))
                 if structure:
                     serverpost("reaction_structure/%s" % (j['reaction_id']), {'reaction_structure': structure})
             else:
