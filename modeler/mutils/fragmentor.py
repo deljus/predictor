@@ -24,18 +24,24 @@ import time
 
 
 class Fragmentor(object):
-    def __init__(self, workpath='.', version='last', s_option=None, fragment_type=3, min_length=2, max_length=10,
+    def __init__(self, workpath='/tmp', version='last', s_option=None, fragment_type=3, min_length=2, max_length=10,
                  colorname=None, marked_atom=None, cgr_dynbonds=None, xml=None, doallways=False,
                  useformalcharge=False, atompairs=False, fragmentstrict=False, getatomfragment=False,
-                 overwrite=True, header=None):
-        self.__header = None
+                 overwrite=True, header=None, extention=None):
+
+        self.__extention = extention
         self.__workpath = workpath
-        self.__fragmentor = os.path.join(os.path.dirname(__file__), 'Fragmentor-%s' % version)
+        self.__fragmentor = 'Fragmentor-%s' % version
         tmp = ['-f', 'SVM']
         if s_option: tmp.extend(['-s', s_option])
         if header:
-            self.__header = os.path.join(workpath, header)
-            tmp.extend(['-s', self.__header])
+            header = os.path.join(workpath, header)
+            with open(header) as f:
+                self.__headdump = f.read()
+            self.__headsize = os.path.getsize(header)
+            tmp.extend(['-h', header])
+        else:
+            self.__headsize = None
 
         tmp.extend(['-t', fragment_type, '-l', min_length, '-u', max_length])
 
@@ -52,7 +58,14 @@ class Fragmentor(object):
 
         self.__execparams = tmp
 
-    def getfragments(self, inputfile=None, outputfile=None, inputstring=None, extention=None):
+    def setpath(self, path):
+        self.__workpath = path
+        header = os.path.join(path, "model-%d.hdr" % int(time.time()))
+        with open(header, 'w') as f:
+            f.write(self.__headdump)
+        self.__execparams[self.__execparams.index('-h') + 1] = header
+
+    def getfragments(self, inputfile=None, outputfile=None, inputstring=None, temperature=None, solvent=None):
         parser = False
         timestamp = int(time.time())
         if inputstring:
@@ -69,10 +82,24 @@ class Fragmentor(object):
         execparams = [self.__fragmentor, '-i', os.path.join(self.__workpath, inputfile),
                       '-o', os.path.join(self.__workpath, outputfile)]
         execparams.extend(self.__execparams)
+
         sp.call(execparams, cwd=self.__workpath)
         if os.path.exists(outputfile + '.svm'):
+
+            extention = []
+            if solvent is not None:
+                if temperature is not None:
+                    for i, j in zip(solvent, temperature):
+                        tmp = {x + 1: y for x, y in self.__extention.get(i).items()}
+                        tmp.update({1: j})
+                        extention.append(tmp)
+                else:
+                    extention = [self.__extention.get(x) for x in solvent]
+            elif temperature is not None:
+                extention = [{1: x} for x in temperature]
             if extention:
                 self.__extendvector(outputfile + '.svm', extention)
+
             if parser:
                 return self.__parser(outputfile)
             return True
@@ -82,10 +109,11 @@ class Fragmentor(object):
         prop, vector = [], []
         with open(file + '.svm') as f:
             key, *values = f.readline().split()
-            prop.append(float(key))
+            prop.append(float(key) if key.strip() != '?' else 0)
             vector.append({int(x.split(':')[0]): float(x.split(':')[1]) for x in values})
-
-        ad = os.path.getsize(self.__header) == os.path.getsize(file + '.hdr') if self.__header else True
+        ad = self.__headsize == os.path.getsize(file + '.hdr') if self.__headsize else True
+        os.remove(file + '.svm')
+        os.remove(file + '.hdr')
         return prop, vector, ad
 
     def __extendvector(self, descfile, extention):

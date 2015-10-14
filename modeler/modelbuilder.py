@@ -18,19 +18,10 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from modeler.mutils.fragmentor import Fragmentor
+from mutils.fragmentor import Fragmentor
+from mutils.svrmodel import Model
 import argparse
-
-
-class Model(object):
-    def __init__(self, fragmentor):
-        self.__fragmentor = fragmentor
-
-    def fit(self,):
-        pass
-
-    def predict(self):
-        pass
+import pickle
 
 
 def main():
@@ -49,12 +40,13 @@ def main():
         tmp = {}
         for x in f:
             key, value = x.split('=')
-            tmp[key] = value
+            tmp[key] = value.strip()
         options['fragments'] = tmp
 
     if options['extention']:
         tmp = {}
         ext = []
+        heat = []
         with open(options['extention']) as f:
             for i in f:
                 key, *values = i.split()
@@ -64,18 +56,33 @@ def main():
             lines = f.readlines()
             for i, j in enumerate(lines, start=1):
                 if '>  <solvent>' in j:
-                    ext.append(tmp.get(lines[i].strip(), {}))
+                    ext.append(lines[i].strip())
+                if '>  <temperature>' in j:
+                    heat.append(float(lines[i].strip()))
 
-        options['extention'] = (tmp, ext)
+        options['extention'] = (tmp, ext, heat)
 
-    frag = Fragmentor(workpath='.', header=options['header'], **options['fragments'])
-    res = frag.getfragments(options['input'], options['output'], extention=options['extention'][1])
+    frag = Fragmentor(workpath='.', header=options['header'], extention=options['extention'][0], **options['fragments'])
+    res = frag.getfragments(inputfile=options['input'], outputfile=options['output'], solvent=options['extention'][1],
+                            temperature=options['extention'][2])
+
     if res and not options['output']:
         with open(options['svm']) as f:
-            f.readline()
-        model = Model(frag)
-        # todo: build model.
+            opts = f.readline().split()
+            repl = {'-t': ('kernel', lambda x: {'0': 'linear', '1': 'poly', '2': 'rbf', '3': 'sigmoid'}[x]),
+                    '-c': ('C', lambda x: float(x)),
+                    '-e': ('epsilon', lambda x: float(x)),
+                    '-g': ('gamma', lambda x: float(x)),
+                    '-r': ('coef0', lambda x: float(x))}
+            svm = {}
+            for x, y in zip(opts[::2], opts[1::2]):
+                z = repl.get(x)
+                if z:
+                    svm[z[0]] = z[1](y)
 
+        model = Model(frag, svm, res[1], res[0])
+        pickle.dump(model, open(options['model'], 'wb'))
+        # todo: build model.
 
 if __name__ == '__main__':
     main()
