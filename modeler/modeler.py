@@ -96,6 +96,7 @@ def main():
     todelete = set(registeredmodels).difference(models.MODELS)
     toattach = set(models.MODELS).difference(registeredmodels)
 
+    print('available models', models.MODELS)
     print('removed models %s' % todelete)
     print('new models %s' % toattach)
 
