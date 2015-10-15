@@ -34,6 +34,9 @@ def main():
     rawopts.add_argument("--extention", "-e", type=str, default=None, help="extention data file")
     rawopts.add_argument("--fragments", "-f", type=str, default='input.param', help="fragmentor keys file")
     rawopts.add_argument("--svm", "-s", type=str, default='input.cfg', help="SVM params")
+    rawopts.add_argument("--nfold", "-n", type=int, default=5, help="number of folds")
+    rawopts.add_argument("--repetition", "-r", type=int, default=1, help="number of repetitions")
+    rawopts.add_argument("--normalize", "-N", action='store_true', help="normalize vector to range(0, 1)")
     options = vars(rawopts.parse_args())
 
     with open(options['fragments']) as f:
@@ -80,9 +83,9 @@ def main():
                 if z:
                     svm[z[0]] = z[1](y)
 
-        model = Model(frag, svm, res[1], res[0])
+        model = Model(frag, svm, res[1], res[0],
+                      nfold=options['nfold'], repetitions=options['repetition'], normalize=options['normalize'])
         pickle.dump(model, open(options['model'], 'wb'))
-        # todo: build model.
 
 if __name__ == '__main__':
     main()
