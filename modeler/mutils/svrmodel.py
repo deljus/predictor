@@ -20,26 +20,55 @@
 #
 from sklearn.svm import SVR
 from sklearn.feature_extraction import DictVectorizer
+from sklearn.utils import shuffle
+from sklearn.cross_validation import KFold
+from sklearn.preprocessing import MinMaxScaler
+import numpy as np
 
 
 class Model(object):
-    def __init__(self, descriptors, svmparams, trainx, trainy):
+    def __init__(self, descriptors, svmparams, trainx, trainy, nfold=5, repetitions=1, normalize=False):
         self.__sparse = DictVectorizer(sparse=False)
         self.__descriptors = descriptors
-        self.__svm = SVR(**svmparams)
+        self.__svmparams = svmparams
+        self.__models = []
+        self.__trainparam = dict(nfold=nfold, repetitions=repetitions)
         self.__sparse.fit(trainx)
-        self.__fit(self.__sparse.transform(trainx), trainy)
+        self.__normalize = normalize
+        self.__fit(self.__sparse.transform(trainx), np.array(trainy))
 
     def setworkpath(self, path):
         self.__descriptors.setpath(path)
 
     def __fit(self, x, y):
-        self.__svm.fit(x, y)
+        for i in range(self.__trainparam['repetitions']):
+            xs, ys = shuffle(x, y, random_state=i)
+            kf = KFold(len(y), n_folds=self.__trainparam['nfold'])
+            for train, _ in kf:
+                x_train, y_train = xs[train], ys[train]
+                x_min = np.amin(x_train, axis=0)
+                x_max = np.amax(x_train, axis=0)
+                if self.__normalize:
+                    normal = MinMaxScaler()
+                    normal.fit(x_train)
+                else:
+                    normal = None
+                model = SVR(**self.__svmparams)
+                model.fit(x_train, y_train)
+                self.__models.append(dict(model=model, x_min=x_min, x_max=x_max, normal=normal))
 
     def predict(self, structure, solvent=None, temperature=None):
         if solvent:
             solvent = [solvent]
         if temperature:
             temperature = [temperature]
-        res = self.__descriptors.getfragments(inputfile=structure, solvent=solvent, temperature=temperature)
-        return self.__svm.predict(self.__sparse.transform(res[1]))
+        desk = self.__descriptors.getfragments(inputfile=structure, solvent=solvent, temperature=temperature)
+        res = []
+        for model in self.__models:
+            x_test = self.__sparse.transform(desk[1])
+            ad = desk[2] and (x_test - model['x_min']).min() >= 0 and (model['x_max'] - x_test).min() >= 0
+            if model['normal'] is not None:
+                x_test = model['normal'].transform(x_test)
+
+            res.append(dict(prediction=model['model'].predict(x_test), domain=ad))
+        return res
