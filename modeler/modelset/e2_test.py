@@ -67,7 +67,7 @@ class Model(consensus_dragos):
                 f.write(structure)
 
             print(self.__model.predict(temp_file_mol, solvent=solvent, temperature=temperature))
-            #os.remove(temp_file_mol)
+            os.remove(temp_file_mol)
 
             return self.report()
         else:
