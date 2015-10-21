@@ -19,7 +19,10 @@
 
                 if (isSketcherDataChanged)
                 {
-                    $('#btn-upload-sketcher-data-div').show();
+                    if ($('#btn-upload-sketcher-data-div').is(':hidden'))
+                    {
+                        show_save_sketcher_data_btn();
+                    }
                 }
                 isSketcherDataChanged=true;
 
@@ -99,15 +102,13 @@
 
 
                                 <div style="text-align:center;display:none" id="btn-upload-sketcher-data-div">
-                                    {% if task %}
+                                   	    <button class="btn btn-primary" id="btn-upload-sketcher-data">Submit</button>
+                                </div>
+                                <div style="text-align:center;display:none" id="btn-save-sketcher-data-div">
                                         <p>After changing data in the editor, press the Save button.
                                            You can correct mapping by dragging from atom to atom. For more detailed information please refer to <a href="https://www.youtube.com/watch?v=m9hPU_JpqMI">link</a>
                                         </p>
                                         <button class="btn btn-primary" onclick="save_draw_reaction()">Save</button>
-                                    {% else %}
-
-                                	    <button class="btn btn-primary" id="btn-upload-sketcher-data">Submit</button>
-                                    {% endif %}
                                 </div>
 
                             </div>

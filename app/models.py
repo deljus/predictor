@@ -235,7 +235,6 @@ class PredictorDataBase:
         :param temperature(str): Температура
         :return: reaction id or False
         '''
-        print('insert_reaction->'+reaction_structure)
         t = Tasks.get(id=task_id)
         if t:
             structure = Structures(structure=reaction_structure)
