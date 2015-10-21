@@ -45,14 +45,11 @@
                 var  jImg = $(this);
                 var model_id = jImg.attr('data-model');
                 var data = $('#model-example-structure'+model_id).val();
-                /*
                 reactionToMrv(data).done(function(result, textStatus, jqXHR){
                     var dataUrl = marvin.ImageExporter.mrvToDataUrl(result,"image/png",small_settings);
                     jImg.attr('src',dataUrl);
                 });
-                */
-                var dataUrl = marvin.ImageExporter.mrvToDataUrl(data,"image/png",small_settings);
-                jImg.attr('src',dataUrl);
+
             }
             catch(err){
                 jImg.attr('src','');

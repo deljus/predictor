@@ -102,7 +102,7 @@ def login():
         user = pdb.get_user(email=form.email.data)
         if user and pdb.check_password(user['id'], form.password.data):
             login_user(User(**user), remember=True)
-            flash('Logged in successfully.')
+            #flash('Logged in successfully.')
             return redirect(url_for('index'))
     return render_template('login.html', form=form)
 
