@@ -300,6 +300,7 @@ class ModelListAPI(Resource):
     def post(self):
         args = ModelListparserpost.parse_args()
         example = chemaxpost('calculate/molExport', args['example'])
+        print('#'*20, example)
         model_id = pdb.insert_model(args['name'], args['desc'], example, args['is_reaction'], args['hashes'])
         return model_id, 201
 
