@@ -33,4 +33,7 @@ def register_model(name, model, init=None):
 
 
 for mloader, pname, ispkg in pkgutil.iter_modules(models.__path__):
-    __import__('modelset.%s' % pname)
+    try:
+        __import__('modelset.%s' % pname)
+    except Exception:
+        pass
