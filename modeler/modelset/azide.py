@@ -42,7 +42,7 @@ class Model(consensus_dragos):
         return name
 
     def getexample(self):
-        return ' '
+        return '[I:8][CH2:2][c:1]1[cH:3][cH:4][cH:5][cH:6][cH:7]1.[N-:9]=[N+:10]=[N-:11]>>[N-:11]=[N+:10]=[N:9][CH2:2][c:1]1[cH:7][cH:6][cH:5][cH:4][cH:3]1.[I-:8]'
 
     def is_reation(self):
         return 1
