@@ -37,6 +37,8 @@ from app.forms import Registration, Login
 from app.logins import User
 from flask_login import login_user, login_required, logout_user, current_user
 
+from utils.utils import chemaxpost
+
 
 api = Api(app)
 
@@ -297,7 +299,8 @@ class ModelListAPI(Resource):
 
     def post(self):
         args = ModelListparserpost.parse_args()
-        model_id = pdb.insert_model(args['name'], args['desc'], args['example'], args['is_reaction'], args['hashes'])
+        example = chemaxpost('calculate/molExport', args['example'])
+        model_id = pdb.insert_model(args['name'], args['desc'], example, args['is_reaction'], args['hashes'])
         return model_id, 201
 
 
