@@ -864,7 +864,7 @@ function display_modelling_results(results)
         }
 
         str+='<tr>';
-        str+='<td rowspan="#REACTION_ROWSPAN#"><img width="300" class="reaction_img" reaction_id="'+r_id+'" src="static/images/ajax-loader-tiny.gif"  alt="Image unavailable"/></td>';
+        str+='<td rowspan="#REACTION_ROWSPAN#"><img width="300" class="reaction_img" reaction_id="'+r_id+'" src="{{ url_for("static", filename="images/ajax-loader-tiny.gif") }}"  alt="Image unavailable"/></td>';
 
         var prev_model = '';
         var modal_rowspan = 0;
@@ -872,8 +872,6 @@ function display_modelling_results(results)
         for (var j=0;j<reaction_results.length;j++)
         {
             _res = reaction_results[j];
-
-            console.log(_res)
 
             switch(_res.param)
             {
@@ -886,18 +884,21 @@ function display_modelling_results(results)
             if (j>0)
                 str += '<tr class="'+block_class+'" is_block_hide="1">';
 
+
+
             if (prev_model!=_res.model)
             {
                 str = str.replace('#MODAL_ROWSPAN#',modal_rowspan);
                 str+='<td rowspan=#MODAL_ROWSPAN#>'+_res.model+'</td>';
+                str+='<td rowspan=#MODAL_ROWSPAN#>'+solvents+'</td>';
+                str+='<td rowspan=#MODAL_ROWSPAN#>'+temperature+'</td>';
                 prev_model = _res.model;
                 modal_rowspan=0;
             }
 
 
-            str+='<td>'+temperature+'</td>';
-            str+='<td>'+solvents+'</td>';
 
+            str+='<td>'+_res.param+'</td>';
             var value = '';
             switch(String(_res.type))
             {
