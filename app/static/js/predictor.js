@@ -844,10 +844,22 @@ function display_modelling_results(results)
         var reaction_rowspan=0;
         var result = results[i];
         r_id = result.reaction_id;
+
+        var solvents = result.solvents;
+        try {
+            var _arr=new Array();
+            for (var j=0; j<solvents.length; j++)
+                _arr.push(solvents[j].name);
+            solvents = _arr.join(', ');
+        }
+        catch (err){solvents='';}
+
+        var temperature = result.temperature;
+
         var reaction_results = result.results;
         if (reaction_results.length==0)
         {
-            reaction_results = [{reaction_id:0, model:'unmodelable structure', param:' ', value:'', type:0}];
+            reaction_results = [{reaction_id:0, model:'unmodelable structure', param:' ', value:'', type:0, temperature:'', solvents:''}];
             //reaction_results = [{reaction_id:0, model:'unmodeling data', param:'', value:'', type:0}];
         }
 
@@ -860,6 +872,8 @@ function display_modelling_results(results)
         for (var j=0;j<reaction_results.length;j++)
         {
             _res = reaction_results[j];
+
+            console.log(_res)
 
             switch(_res.param)
             {
@@ -881,8 +895,9 @@ function display_modelling_results(results)
             }
 
 
+            str+='<td>'+temperature+'</td>';
+            str+='<td>'+solvents+'</td>';
 
-            str+='<td>'+_res.param+'</td>';
             var value = '';
             switch(String(_res.type))
             {
@@ -1044,7 +1059,7 @@ function load_model_example(model_id)
 
         Progress.done();
         try {
-
+            hide_select_mode();
             draw_moldata(model.example);
             show_editor(true);
         }

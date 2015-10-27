@@ -30,10 +30,10 @@ from app import app
 #todo: вернуть базу на postgres перед заливкой в svn
 if app.config.get("DEBUG"):
     db = Database("sqlite", "database.sqlite", create_db=True)
-    #sql_debug(True)
+    sql_debug(True)
 else:
     db = Database('postgres', user='postgres', password='nginxpony', host='localhost', database='predictor')
-    sql_debug(True)
+    #sql_debug(True)
 
 STATUS_ARRAY = ["Task created",
                 "Mapping required",
@@ -401,8 +401,12 @@ class PredictorDataBase:
                                            model=res.model.name,
                                            param=res.attrib,
                                            value=res.value,
-                                           type=res.type))
-                out.append(dict(reaction_id=r.id, results=result_arr))
+                                           type=res.type
+                                           ))
+                out.append(dict(reaction_id=r.id,
+                                temperature=r.temperature,
+                                solvents=[dict(id=r.id, name=r.name) for r in r.solvents.solvent],
+                                results=result_arr))
         return out
 
     @db_session

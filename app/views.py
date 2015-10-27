@@ -53,6 +53,12 @@ def get_cur_user():
 def index():
     return render_template("index.html", user_data=get_cur_user())
 
+@app.route("/home", methods=['GET'])
+def home():
+    return render_template("home.html", user_data=get_cur_user())
+
+
+
 
 @app.route('/task/<int:task>', methods=['GET', 'POST'])
 @login_required
