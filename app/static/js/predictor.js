@@ -923,8 +923,8 @@ function display_modelling_results(results)
             reaction_rowspan++;
             modal_rowspan++;
         }
-        str = str.replace('#MODAL_ROWSPAN#',modal_rowspan);
-        str = str.replace('#REACTION_ROWSPAN#',reaction_rowspan);
+        str = str.replace(/#MODAL_ROWSPAN#/g,modal_rowspan);
+        str = str.replace(/#REACTION_ROWSPAN#/g,reaction_rowspan);
     }
 
     var large_settings = {
