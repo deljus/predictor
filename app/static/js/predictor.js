@@ -888,7 +888,7 @@ function display_modelling_results(results)
 
             if (prev_model!=_res.model)
             {
-                str = str.replace('#MODAL_ROWSPAN#',modal_rowspan);
+                str = str.replace(/#MODAL_ROWSPAN#/g,modal_rowspan);
                 str+='<td rowspan=#MODAL_ROWSPAN#>'+_res.model+'</td>';
                 str+='<td rowspan=#MODAL_ROWSPAN#>'+solvents+'</td>';
                 str+='<td rowspan=#MODAL_ROWSPAN#>'+temperature+'</td>';
