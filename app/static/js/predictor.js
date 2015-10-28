@@ -741,6 +741,7 @@ function upload_draw_reaction(data)
 	    Progress.start();
 	    put_reaction_structure(reaction_id,data ).done(function (data, textStatus, jqXHR) {
 
+        isSketcherDataChanged =false;
         Progress.done();
         alert('Reaction has been saved successfully');
 
@@ -754,6 +755,14 @@ function upload_draw_reaction(data)
 
 function upload_reaction_form()
 {
+    if (isSketcherDataChanged)
+    {
+        if (!confirm('Reactions  in the editor has been changed. To save changes please click the button below editor.Continue without saving?'))
+        {
+            return false;
+        }
+
+    }
     Progress.start();
     log_log('upload_reaction_form->');
     var task_id = $("#task_id").val();
