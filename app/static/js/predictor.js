@@ -20,6 +20,40 @@ var isSketcherDataChanged = false;
 var API_BASE = '/api';
 /******************************************************/
 
+function array_distinct(arr, fld) {
+    var i = 0,
+        l = arr.length,
+        v, t, o = {}, n = [];
+
+    for (; i < l; i++) {
+        if (fld==undefined)
+            v = arr[i];
+        else
+            v = arr[i][fld];
+        t = typeof v;
+        if (typeof o[v + t] == 'undefined') {
+
+            o[v + t] = 1;
+            n.push(v);
+        }
+    }
+    return n;
+};
+function array_select(arr, fld, cond)
+{
+    var ret = new Array();
+    for (var i=0;i<arr.length;i++)
+    {
+        try{
+            if (arr[i][fld]==cond)
+                ret.push(arr[i]);
+        }
+        catch (err){}
+
+    }
+    return ret;
+}
+
 function reset_timer()
 {
     clearInterval(TAMER_ID);
@@ -804,7 +838,7 @@ function load_modelling_results(task_id)
         try {
             display_modelling_results(data);
         }
-        catch (err){log_log('load_modelling_results->'+err)}
+        catch (err){log_log(err)}
 
     }).fail(function(jqXHR, textStatus, errorThrown){log_log('ERROR:load_modelling_results->' + textStatus+ ' ' + errorThrown)});
     return true;
@@ -827,6 +861,7 @@ var reaction_structures = {};
 
 function display_modelling_results(results)
 {
+    log_log('display_modelling_results->');
 	// скроем редактор
 	hide_editor();
 	// скроем таблицу с реакциями
@@ -834,16 +869,37 @@ function display_modelling_results(results)
 		
     var jTbl = $("#results-tbody");
     jTbl.empty();
-    var str = '';
+    var tbd = jTbl.get(0);
 
-    var block_count=0;
-    var block_class = '';
-
+    /************************************/
     for (var i=0;i<results.length; i++)
     {
-        var reaction_rowspan=0;
+
         var result = results[i];
+
+        // ID реакции
         r_id = result.reaction_id;
+
+        // результаты моделирования конкретной реакции
+        var reaction_results = result.results;
+
+        if (reaction_results.length==0)
+        {
+            reaction_results = [{reaction_id:0, model:'unmodelable structure', param:' ', value:'', type:0}];
+            /*
+            reaction_results.push({reaction_id:0, model:'unmodelable structure', param:'qqq', value:'111', type:0});
+            reaction_results.push({reaction_id:0, model:'unmodelable structure', param:'qqq1', value:'111222', type:0});
+            reaction_results.push({reaction_id:0, model:'  modelable structure', param:'qqq1', value:'111442', type:0});
+            */
+
+        }
+
+        var rowReaction = tbd.insertRow();
+
+        var cellReactionImg = rowReaction.insertCell();
+        cellReactionImg.innerHTML = '<img width="300" class="reaction_img" reaction_id="'+r_id+'" src="{{ url_for("static", filename="images/ajax-loader-tiny.gif") }}"  alt="Image unavailable"/>';
+        if (reaction_results.length>1)
+            cellReactionImg.rowSpan = reaction_results.length;
 
         var solvents = result.solvents;
         try {
@@ -854,78 +910,74 @@ function display_modelling_results(results)
         }
         catch (err){solvents='';}
 
+        var cellSolvents = rowReaction.insertCell();
+        cellSolvents.innerHTML = solvents;
+        if (reaction_results.length>1)
+            cellSolvents.rowSpan = reaction_results.length;
+
         var temperature = result.temperature;
+        if (String(temperature)=="null")
+            temperature = "";
 
-        var reaction_results = result.results;
-        if (reaction_results.length==0)
+        var cellTemperature = rowReaction.insertCell();
+        cellTemperature.innerHTML = temperature;
+        if (reaction_results.length>1)
+            cellTemperature.rowSpan = reaction_results.length;
+
+        // сгруппируем по моделям
+        var models = array_distinct(reaction_results,'model');
+        for (var m=0;m<models.length;m++)
         {
-            reaction_results = [{reaction_id:0, model:'unmodelable structure', param:' ', value:'', type:0, temperature:'', solvents:''}];
-            //reaction_results = [{reaction_id:0, model:'unmodeling data', param:'', value:'', type:0}];
+            var model_results = array_select(reaction_results,'model',models[m]);
+
+            if (m>0)
+                rowReaction = tbd.insertRow();
+
+            var cellModel = rowReaction.insertCell();
+            cellModel.innerHTML = models[m];
+            if (model_results.length>1)
+                cellModel.rowSpan = model_results.length;
+
+            for (var r=0;r<model_results.length;r++)
+            {
+                if (r>0)
+                    rowReaction = tbd.insertRow();
+
+                var _res = model_results[r];
+
+                var cellParam= rowReaction.insertCell();
+                cellParam.innerHTML = _res.param;
+
+                var value = '';
+                switch(String(_res.type))
+                {
+                    case '0': // текст
+                        value = _res.value;
+                        break;
+                    case '1': // структура
+                        var img_id = 'result_structure_img_'+i+'_'+j;
+                        result_structures[img_id] = _res.value;
+                        value = '<img  id="'+img_id+'" src="{{ url_for("static", filename="images/ajax-loader-tiny.gif") }}" alt="Image unavailable" class="result-structure" />';
+                        break;
+                    case '2': // ссылка
+                        value = '<a href="'+_res.value+'">Open</a>';
+                        break;
+                    default:
+                        value = _res.value;
+                        break;
+                }
+
+                var cellValue = rowReaction.insertCell();
+                cellValue.innerHTML = value;
+
+
+
+            }
+
         }
 
-        str+='<tr>';
-        str+='<td rowspan="#REACTION_ROWSPAN#"><img width="300" class="reaction_img" reaction_id="'+r_id+'" src="{{ url_for("static", filename="images/ajax-loader-tiny.gif") }}"  alt="Image unavailable"/></td>';
-
-        var prev_model = '';
-        var modal_rowspan = 0;
-
-        for (var j=0;j<reaction_results.length;j++)
-        {
-            _res = reaction_results[j];
-
-            switch(_res.param)
-            {
-                // этот параметр отбрасываем
-                case 'TAG':
-                    continue;
-                break;
-            }
-
-            if (j>0)
-                str += '<tr class="'+block_class+'" is_block_hide="1">';
-
-
-
-            if (prev_model!=_res.model)
-            {
-                str = str.replace(/#MODAL_ROWSPAN#/g,modal_rowspan);
-                str+='<td rowspan=#MODAL_ROWSPAN#>'+_res.model+'</td>';
-                str+='<td rowspan=#MODAL_ROWSPAN#>'+solvents+'</td>';
-                str+='<td rowspan=#MODAL_ROWSPAN#>'+temperature+'</td>';
-                prev_model = _res.model;
-                modal_rowspan=0;
-            }
-
-
-
-            str+='<td>'+_res.param+'</td>';
-            var value = '';
-            switch(String(_res.type))
-            {
-                case '0': // текст
-                    value = _res.value;
-                    break;
-                case '1': // структура
-                    var img_id = 'result_structure_img_'+i+'_'+j;
-                    result_structures[img_id] = _res.value;
-                    value = '<img  id="'+img_id+'" src="{{ url_for("static", filename="images/ajax-loader-tiny.gif") }}" alt="Image unavailable" class="result-structure" />';
-                    break;
-                case '2': // ссылка
-                    value = '<a href="'+_res.value+'">Open</a>';
-                    break;
-                default:
-                    value = _res.value;
-                    break;
-            }
-
-            str+='<td>'+value+'</td>';
-            str+='</tr>';
-            reaction_rowspan++;
-            modal_rowspan++;
-        }
-        str = str.replace(/#MODAL_ROWSPAN#/g,modal_rowspan);
-        str = str.replace(/#REACTION_ROWSPAN#/g,reaction_rowspan);
     }
+
 
     var large_settings = {
             'carbonLabelVisible' : false,
@@ -934,8 +986,6 @@ function display_modelling_results(results)
             'width' : 600,
             'height' : 300
     };
-
-    jTbl.append(str);
 
 
     $("#results-div").show("normal");
