@@ -47,4 +47,4 @@ UPLOAD_PATH = '/home/server/upload/'
 #MOLCONVERT = '/home/stsouko/.ChemAxon/JChem/bin/molconvert'
 #STANDARDIZER = '/home/stsouko/.ChemAxon/JChem/bin/standardize'
 #PMAPPER = '/home/stsouko/.ChemAxon/JChem/bin/pmapper'
-THREAD_LIMIT = 3
+THREAD_LIMIT = 5

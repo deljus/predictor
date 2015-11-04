@@ -125,7 +125,7 @@ function model_done()
 var Progress = {}
 Progress.increase_progress = function(value){
 	
-	log_log('increase_progress->');
+	//log_log('increase_progress->');
 	try {	
 		var jPrg= $('.progress div[role=progressbar]');
 		if (value)
@@ -204,7 +204,7 @@ function upload_file(data)
 
 function upload_task_file_data()
 {
-	log_log('upload_task_file_data->');
+	//log_log('upload_task_file_data->');
 	Progress.start();
 			
 	var form_data = new FormData($('#upload-file-form')[0]);	
@@ -261,7 +261,7 @@ function isMolEmpty(data)
 
 function set_task_status(task_id, status)
 {
-    log_log('set_task_status->'+status);
+    //log_log('set_task_status->'+status);
     var data =  JSON.stringify({"task_status": status});
     return $.ajax({
         "url": API_BASE+"/task_status/"+task_id
@@ -274,7 +274,7 @@ function set_task_status(task_id, status)
 
 function get_task_status(task_id)
 {
-	log_log('get_task_status->'+task_id);
+	//log_log('get_task_status->'+task_id);
     return $.get(API_BASE+"/task_status/"+task_id);
 }
 
@@ -285,7 +285,7 @@ function get_reaction_structure(reaction_id)
 
 function put_reaction_structure(reaction_id, data)
 { 
-    log_log('put_reaction_structure->');
+    //log_log('put_reaction_structure->');
     var data = {"reaction_structure": data};
 
     return $.post(API_BASE+"/reaction_structure/"+reaction_id, data);
@@ -418,7 +418,7 @@ function upload_sketcher_data()
 
 function upload_task_draw_data(draw_data)
 {
-    log_log('upload_task_draw_data->');
+    //log_log('upload_task_draw_data->');
 	hide_upload_sketcher_data_btn();
 	hide_save_sketcher_data_btn();
 
@@ -432,7 +432,7 @@ function upload_task_draw_data(draw_data)
             ,"data": data
     }).done(function (data, textStatus, jqXHR) {
 
-		log_log('TASK_ID = '+data);
+		//log_log('TASK_ID = '+data);
         $("#task_id").val(data);
         start_task_mapping(data);
 
@@ -441,7 +441,7 @@ function upload_task_draw_data(draw_data)
 
 function start_task_mapping(task_id)
 {
-    log_log('start_task_mapping->');
+    //log_log('start_task_mapping->');
 	/***
     set_task_status(task_id, REQ_MAPPING).done(function (data, textStatus, jqXHR){
 
@@ -458,7 +458,7 @@ function start_task_mapping(task_id)
 
 function check_task_mapping_status(task_id)
 {
-    log_log('check_task_mapping_status->');
+    //log_log('check_task_mapping_status->');
 	
     get_task_status(task_id).done(function (data, textStatus, jqXHR){
 
@@ -481,7 +481,7 @@ function load_task_reactions(task_id)
 {
     // сбросим таймер - если функцию вызвали из левого меню
     reset_timer();
-    log_log('load_task_reactions->');
+    //log_log('load_task_reactions->');
 	if (!task_id)
 		task_id = get_task();
 		
@@ -516,7 +516,7 @@ function clear_editor()
 
 function display_task_reactions(reactions)
 {
-    log_log('display_task_reactions->');
+    //log_log('display_task_reactions->');
 	
 	// если скрыт редактор - покажем его
 	show_editor();
@@ -668,12 +668,62 @@ function display_task_reactions(reactions)
 	    load_reaction(first_reaction_id);
 
 
+    // загрузим модели в шапку
+    try {
+        get_models('').done(function(data, textStatus, jqXHR){
+
+            var str = '';
+            for (var i=0; i<data.length; i++)
+            {
+                var _id = data[i].id;
+                var _name = data[i].name;
+                str+='<option value="'+_id+'">'+_name+'</option>';
+            }
+
+            var jSelect = $("#model_selector");
+            // если модели еще не были загружены
+            if (jSelect.find('option').length==0)
+                jSelect.append(str);
+
+
+            jSelect.multiselect({
+                        buttonText: function(options, select) {
+                            return 'Model';
+                        },
+                        buttonTitle: function(options, select) {
+                            return 'Model';
+                        },
+                        onChange: function(option, checked, select) {
+                            var _val = $(option).val();
+                            var jTbl = $("#reactions-tbd");
+                            try {
+                                 jTbl.find('select[role=model]').each(function(){
+                                    var jSelect = $(this);
+                                    if (checked)
+                                        jSelect.find('option[value="'+_val+'"]').attr('selected', 'selected');
+                                     else
+                                        jSelect.find('option[value="'+_val+'"]').removeAttr('selected');
+                                    jSelect.multiselect('refresh');
+                                })
+                            }
+                            catch(err){log_log(err)}
+
+
+                        }
+                    });
+
+
+
+         })
+    }
+    catch (err){log_log('display_task_reactions->load models->'+err)}
 
 }
 
+
 function load_reaction(reaction_id)
 {
-    log_log('load_reaction->');
+    //log_log('load_reaction->');
 
     if (isNaN(reaction_id))
     {
@@ -733,7 +783,7 @@ function save_draw_reaction ()
 
 function upload_draw_reaction(data)
 {
-    log_log('upload_draw_reaction->');
+    //log_log('upload_draw_reaction->');
 	
 	var reaction_id = $('#reaction_id').val();
 	if (reaction_id!='')
@@ -764,7 +814,7 @@ function upload_reaction_form()
 
     }
     Progress.start();
-    log_log('upload_reaction_form->');
+    //log_log('upload_reaction_form->');
     var task_id = $("#task_id").val();
     if (isEmpty(task_id))
     {
@@ -793,7 +843,7 @@ function upload_reaction_form()
 
 function start_modelling()
 {
-    log_log('start_modelling->');
+    //log_log('start_modelling->');
 
     var task_id = $("#task_id").val();
     set_task_status(task_id, REQ_MODELLING).done(function (data, textStatus, jqXHR){
@@ -809,7 +859,7 @@ function start_modelling()
 
 function check_modelling_status(task_id)
 {
-    log_log('check_modelling_status->'+task_id);
+    //log_log('check_modelling_status->'+task_id);
 
     get_task_status(task_id).done(function (data, textStatus, jqXHR){
 
@@ -831,7 +881,7 @@ function load_modelling_results(task_id)
 {
     // сбросим таймер - если функцию вызвали из левого меню
     reset_timer();
-    log_log('load_modelling_results->');
+    //log_log('load_modelling_results->');
 	if (!task_id)
 		task_id = get_task();
 		
@@ -870,7 +920,7 @@ var reaction_structures = {};
 
 function display_modelling_results(results)
 {
-    log_log('display_modelling_results->');
+    //log_log('display_modelling_results->');
 	// скроем редактор
 	hide_editor();
 	// скроем таблицу с реакциями
@@ -964,7 +1014,7 @@ function display_modelling_results(results)
                         value = _res.value;
                         break;
                     case '1': // структура
-                        var img_id = 'result_structure_img_'+i+'_'+j;
+                        var img_id = 'result_structure_img_'+i+'_'+m+'_'+r;
                         result_structures[img_id] = _res.value;
                         value = '<img  id="'+img_id+'" src="{{ url_for("static", filename="images/ajax-loader-tiny.gif") }}" alt="Image unavailable" class="result-structure" />';
                         break;
