@@ -31,7 +31,8 @@ def main():
     rawopts.add_argument("--output", "-o", type=str, default=None, help="output SVM|HDR")
     rawopts.add_argument("--header", "-d", type=str, default=None, help="input header")
     rawopts.add_argument("--model", "-m", type=str, default=None, help="output model")
-    rawopts.add_argument("--extention", "-e", type=str, default=None, help="extention data file")
+    rawopts.add_argument("--extention", "-e", action='append', type=str, default=None,
+                         help="extention data files. -e extname:filename [-e extname2:filename2]")
     rawopts.add_argument("--fragments", "-f", type=str, default='input.param', help="fragmentor keys file")
     rawopts.add_argument("--svm", "-s", type=str, default='input.cfg', help="SVM params")
     rawopts.add_argument("--nfold", "-n", type=int, default=5, help="number of folds")
@@ -46,27 +47,50 @@ def main():
             tmp[key] = value.strip()
         options['fragments'] = tmp
 
+    extdata = {}
     if options['extention']:
+        for e in options['extention']:
+            record = None
+            ext, *file = e.split(':')
+            if file:
+                maxkey = 0
+                record = {}
+                with open(file[0]) as f:
+                    for i in f:
+                        key, *values = i.split()
+                        tmp = {}
+                        for j in values:
+                            dkey, dval = j.split(':')
+                            dkey = int(dkey)
+                            dval = float(dval)
+                            if dkey > maxkey:
+                                maxkey = dkey
+                            tmp[dkey] = dval
+                        record[key] = tmp
+                    for i in record.values():
+                        if maxkey not in i:
+                            i[maxkey] = 0
+            extdata[ext] = record
+
+        extblock = []
+        flag = False
         tmp = {}
-        ext = []
-        heat = []
-        with open(options['extention']) as f:
-            for i in f:
-                key, *values = i.split()
-                tmp[key] = {int(x.split(':')[0]): float(x.split(':')[1]) for x in values}
-
         with open(options['input']) as f:
-            lines = f.readlines()
-            for i, j in enumerate(lines, start=1):
-                if '>  <solvent>' in j:
-                    ext.append(lines[i].strip())
-                if '>  <temperature>' in j:
-                    heat.append(float(lines[i].strip()))
+            for i in f:
+                if '>  <' in i[:4]:
+                    key = i.strip()[4:-1]
+                    if key in extdata:
+                        flag = key
+                elif flag:
+                    tmp[flag] = extdata[flag][i.strip()] if extdata[flag] else float(i.strip())
+                    flag = False
+                elif '$$$$' in i:
+                    extblock.append(tmp)
+        options['extention'] = extblock
 
-        options['extention'] = (tmp, ext, heat)
-
-    frag = Fragmentor(workpath='.', header=options['header'], extention=options['extention'][0], **options['fragments'])
-    res = frag.getfragments(inputfile=options['input'], outputfile=options['output'], solvent=options['extention'][1],
+    frag = Fragmentor(workpath='.', header=options['header'], extention=extdata, **options['fragments'])
+    res = frag.getfragments(inputfile=options['input'], outputfile=options['output'],
+                            solvent=options['extention'][1],
                             temperature=options['extention'][2])
 
     if res and not options['output']:

@@ -65,7 +65,7 @@ class Fragmentor(object):
             f.write(self.__headdump)
         self.__execparams[self.__execparams.index('-h') + 1] = header
 
-    def getfragments(self, inputfile=None, outputfile=None, inputstring=None, temperature=None, solvent=None):
+    def getfragments(self, inputfile=None, outputfile=None, inputstring=None, **kwargs):
         parser = False
         timestamp = int(time.time())
         if inputstring:
