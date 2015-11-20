@@ -3,7 +3,7 @@
     {% block heading %}
 
 		<div class="heading">
-			<h1>Solvents</h1>
+			<h1>Home</h1>
 			<div class="progress" style="display:none">
                 <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100" style="width:10%">10%
                 </div>
@@ -14,7 +14,7 @@
     {% block body %}
 		<div class="row">
 			<aside class="col-md-4">
-				<ul class="list-group submenu">
+				<ul class="list-group submenu" style="display: none">
                     <li class="list-group-item"><a href="{{ url_for('models') }}">models&nbsp;descriptions</a></li>
                     <li class="list-group-item"><a href="{{ url_for('solvents') }}">solvents</a></li>
 				</ul>
@@ -24,23 +24,9 @@
 
                 <div class="row">
 
+                    <h3>Welcome to Kazan Federal University Chemoinformatics and molecular modeling lab</h3>
 
-                    <table  class="table table-hover table-bordered">
-                        <thead>
-                        <tr>
-                            <th>№</th>
-                            <th>Name</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                            {% for solvent in solvents %}
-                            <tr>
-                                <td>{{solvent.id}}</td>
-                                <td>{{solvent.name}}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    <img src="{{ url_for('static', filename='images/ksu_lab.jpg') }}" width="800">
                 </div>
 
 

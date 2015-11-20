@@ -20,6 +20,40 @@ var isSketcherDataChanged = false;
 var API_BASE = '/api';
 /******************************************************/
 
+function array_distinct(arr, fld) {
+    var i = 0,
+        l = arr.length,
+        v, t, o = {}, n = [];
+
+    for (; i < l; i++) {
+        if (fld==undefined)
+            v = arr[i];
+        else
+            v = arr[i][fld];
+        t = typeof v;
+        if (typeof o[v + t] == 'undefined') {
+
+            o[v + t] = 1;
+            n.push(v);
+        }
+    }
+    return n;
+};
+function array_select(arr, fld, cond)
+{
+    var ret = new Array();
+    for (var i=0;i<arr.length;i++)
+    {
+        try{
+            if (arr[i][fld]==cond)
+                ret.push(arr[i]);
+        }
+        catch (err){}
+
+    }
+    return ret;
+}
+
 function reset_timer()
 {
     clearInterval(TAMER_ID);
@@ -91,7 +125,7 @@ function model_done()
 var Progress = {}
 Progress.increase_progress = function(value){
 	
-	log_log('increase_progress->');
+	//log_log('increase_progress->');
 	try {	
 		var jPrg= $('.progress div[role=progressbar]');
 		if (value)
@@ -170,7 +204,7 @@ function upload_file(data)
 
 function upload_task_file_data()
 {
-	log_log('upload_task_file_data->');
+	//log_log('upload_task_file_data->');
 	Progress.start();
 			
 	var form_data = new FormData($('#upload-file-form')[0]);	
@@ -227,7 +261,7 @@ function isMolEmpty(data)
 
 function set_task_status(task_id, status)
 {
-    log_log('set_task_status->'+status);
+    //log_log('set_task_status->'+status);
     var data =  JSON.stringify({"task_status": status});
     return $.ajax({
         "url": API_BASE+"/task_status/"+task_id
@@ -240,7 +274,7 @@ function set_task_status(task_id, status)
 
 function get_task_status(task_id)
 {
-	log_log('get_task_status->'+task_id);
+	//log_log('get_task_status->'+task_id);
     return $.get(API_BASE+"/task_status/"+task_id);
 }
 
@@ -251,7 +285,7 @@ function get_reaction_structure(reaction_id)
 
 function put_reaction_structure(reaction_id, data)
 { 
-    log_log('put_reaction_structure->');
+    //log_log('put_reaction_structure->');
     var data = {"reaction_structure": data};
 
     return $.post(API_BASE+"/reaction_structure/"+reaction_id, data);
@@ -384,7 +418,7 @@ function upload_sketcher_data()
 
 function upload_task_draw_data(draw_data)
 {
-    log_log('upload_task_draw_data->');
+    //log_log('upload_task_draw_data->');
 	hide_upload_sketcher_data_btn();
 	hide_save_sketcher_data_btn();
 
@@ -398,7 +432,7 @@ function upload_task_draw_data(draw_data)
             ,"data": data
     }).done(function (data, textStatus, jqXHR) {
 
-		log_log('TASK_ID = '+data);
+		//log_log('TASK_ID = '+data);
         $("#task_id").val(data);
         start_task_mapping(data);
 
@@ -407,7 +441,7 @@ function upload_task_draw_data(draw_data)
 
 function start_task_mapping(task_id)
 {
-    log_log('start_task_mapping->');
+    //log_log('start_task_mapping->');
 	/***
     set_task_status(task_id, REQ_MAPPING).done(function (data, textStatus, jqXHR){
 
@@ -424,7 +458,7 @@ function start_task_mapping(task_id)
 
 function check_task_mapping_status(task_id)
 {
-    log_log('check_task_mapping_status->');
+    //log_log('check_task_mapping_status->');
 	
     get_task_status(task_id).done(function (data, textStatus, jqXHR){
 
@@ -447,7 +481,7 @@ function load_task_reactions(task_id)
 {
     // сбросим таймер - если функцию вызвали из левого меню
     reset_timer();
-    log_log('load_task_reactions->');
+    //log_log('load_task_reactions->');
 	if (!task_id)
 		task_id = get_task();
 		
@@ -482,7 +516,7 @@ function clear_editor()
 
 function display_task_reactions(reactions)
 {
-    log_log('display_task_reactions->');
+    //log_log('display_task_reactions->');
 	
 	// если скрыт редактор - покажем его
 	show_editor();
@@ -634,12 +668,62 @@ function display_task_reactions(reactions)
 	    load_reaction(first_reaction_id);
 
 
+    // загрузим модели в шапку
+    try {
+        get_models('').done(function(data, textStatus, jqXHR){
+
+            var str = '';
+            for (var i=0; i<data.length; i++)
+            {
+                var _id = data[i].id;
+                var _name = data[i].name;
+                str+='<option value="'+_id+'">'+_name+'</option>';
+            }
+
+            var jSelect = $("#model_selector");
+            // если модели еще не были загружены
+            if (jSelect.find('option').length==0)
+                jSelect.append(str);
+
+
+            jSelect.multiselect({
+                        buttonText: function(options, select) {
+                            return 'Model';
+                        },
+                        buttonTitle: function(options, select) {
+                            return 'Model';
+                        },
+                        onChange: function(option, checked, select) {
+                            var _val = $(option).val();
+                            var jTbl = $("#reactions-tbd");
+                            try {
+                                 jTbl.find('select[role=model]').each(function(){
+                                    var jSelect = $(this);
+                                    if (checked)
+                                        jSelect.find('option[value="'+_val+'"]').attr('selected', 'selected');
+                                     else
+                                        jSelect.find('option[value="'+_val+'"]').removeAttr('selected');
+                                    jSelect.multiselect('refresh');
+                                })
+                            }
+                            catch(err){log_log(err)}
+
+
+                        }
+                    });
+
+
+
+         })
+    }
+    catch (err){log_log('display_task_reactions->load models->'+err)}
 
 }
 
+
 function load_reaction(reaction_id)
 {
-    log_log('load_reaction->');
+    //log_log('load_reaction->');
 
     if (isNaN(reaction_id))
     {
@@ -699,7 +783,7 @@ function save_draw_reaction ()
 
 function upload_draw_reaction(data)
 {
-    log_log('upload_draw_reaction->');
+    //log_log('upload_draw_reaction->');
 	
 	var reaction_id = $('#reaction_id').val();
 	if (reaction_id!='')
@@ -707,6 +791,7 @@ function upload_draw_reaction(data)
 	    Progress.start();
 	    put_reaction_structure(reaction_id,data ).done(function (data, textStatus, jqXHR) {
 
+        isSketcherDataChanged =false;
         Progress.done();
         alert('Reaction has been saved successfully');
 
@@ -720,8 +805,16 @@ function upload_draw_reaction(data)
 
 function upload_reaction_form()
 {
+    if (isSketcherDataChanged)
+    {
+        if (!confirm('Reactions  in the editor has been changed. To save changes please click the button below editor.Continue without saving?'))
+        {
+            return false;
+        }
+
+    }
     Progress.start();
-    log_log('upload_reaction_form->');
+    //log_log('upload_reaction_form->');
     var task_id = $("#task_id").val();
     if (isEmpty(task_id))
     {
@@ -750,7 +843,7 @@ function upload_reaction_form()
 
 function start_modelling()
 {
-    log_log('start_modelling->');
+    //log_log('start_modelling->');
 
     var task_id = $("#task_id").val();
     set_task_status(task_id, REQ_MODELLING).done(function (data, textStatus, jqXHR){
@@ -766,7 +859,7 @@ function start_modelling()
 
 function check_modelling_status(task_id)
 {
-    log_log('check_modelling_status->'+task_id);
+    //log_log('check_modelling_status->'+task_id);
 
     get_task_status(task_id).done(function (data, textStatus, jqXHR){
 
@@ -788,7 +881,7 @@ function load_modelling_results(task_id)
 {
     // сбросим таймер - если функцию вызвали из левого меню
     reset_timer();
-    log_log('load_modelling_results->');
+    //log_log('load_modelling_results->');
 	if (!task_id)
 		task_id = get_task();
 		
@@ -804,7 +897,7 @@ function load_modelling_results(task_id)
         try {
             display_modelling_results(data);
         }
-        catch (err){log_log('load_modelling_results->'+err)}
+        catch (err){log_log(err)}
 
     }).fail(function(jqXHR, textStatus, errorThrown){log_log('ERROR:load_modelling_results->' + textStatus+ ' ' + errorThrown)});
     return true;
@@ -827,6 +920,7 @@ var reaction_structures = {};
 
 function display_modelling_results(results)
 {
+    //log_log('display_modelling_results->');
 	// скроем редактор
 	hide_editor();
 	// скроем таблицу с реакциями
@@ -834,82 +928,115 @@ function display_modelling_results(results)
 		
     var jTbl = $("#results-tbody");
     jTbl.empty();
-    var str = '';
+    var tbd = jTbl.get(0);
 
-    var block_count=0;
-    var block_class = '';
-
+    /************************************/
     for (var i=0;i<results.length; i++)
     {
-        var reaction_rowspan=0;
+
         var result = results[i];
+
+        // ID реакции
         r_id = result.reaction_id;
+
+        // результаты моделирования конкретной реакции
         var reaction_results = result.results;
+
         if (reaction_results.length==0)
         {
             reaction_results = [{reaction_id:0, model:'unmodelable structure', param:' ', value:'', type:0}];
-            //reaction_results = [{reaction_id:0, model:'unmodeling data', param:'', value:'', type:0}];
+            /*
+            reaction_results.push({reaction_id:0, model:'unmodelable structure', param:'qqq', value:'111', type:0});
+            reaction_results.push({reaction_id:0, model:'unmodelable structure', param:'qqq1', value:'111222', type:0});
+            reaction_results.push({reaction_id:0, model:'  modelable structure', param:'qqq1', value:'111442', type:0});
+            */
+
         }
 
-        str+='<tr>';
-        str+='<td rowspan="#REACTION_ROWSPAN#"><img width="300" class="reaction_img" reaction_id="'+r_id+'" src="static/images/ajax-loader-tiny.gif"  alt="Image unavailable"/></td>';
+        var rowReaction = tbd.insertRow();
 
-        var prev_model = '';
-        var modal_rowspan = 0;
+        var cellReactionImg = rowReaction.insertCell();
+        cellReactionImg.innerHTML = '<img width="300" class="reaction_img" reaction_id="'+r_id+'" src="{{ url_for("static", filename="images/ajax-loader-tiny.gif") }}"  alt="Image unavailable"/>';
+        if (reaction_results.length>1)
+            cellReactionImg.rowSpan = reaction_results.length;
 
-        for (var j=0;j<reaction_results.length;j++)
+        var solvents = result.solvents;
+        try {
+            var _arr=new Array();
+            for (var j=0; j<solvents.length; j++)
+                _arr.push(solvents[j].name);
+            solvents = _arr.join(', ');
+        }
+        catch (err){solvents='';}
+
+        var cellSolvents = rowReaction.insertCell();
+        cellSolvents.innerHTML = solvents;
+        if (reaction_results.length>1)
+            cellSolvents.rowSpan = reaction_results.length;
+
+        var temperature = result.temperature;
+        if (String(temperature)=="null")
+            temperature = "";
+
+        var cellTemperature = rowReaction.insertCell();
+        cellTemperature.innerHTML = temperature;
+        if (reaction_results.length>1)
+            cellTemperature.rowSpan = reaction_results.length;
+
+        // сгруппируем по моделям
+        var models = array_distinct(reaction_results,'model');
+        for (var m=0;m<models.length;m++)
         {
-            _res = reaction_results[j];
+            var model_results = array_select(reaction_results,'model',models[m]);
 
-            switch(_res.param)
+            if (m>0)
+                rowReaction = tbd.insertRow();
+
+            var cellModel = rowReaction.insertCell();
+            cellModel.innerHTML = models[m];
+            if (model_results.length>1)
+                cellModel.rowSpan = model_results.length;
+
+            for (var r=0;r<model_results.length;r++)
             {
-                // этот параметр отбрасываем
-                case 'TAG':
-                    continue;
-                break;
+                if (r>0)
+                    rowReaction = tbd.insertRow();
+
+                var _res = model_results[r];
+
+                var cellParam= rowReaction.insertCell();
+                cellParam.innerHTML = _res.param;
+
+                var value = '';
+                switch(String(_res.type))
+                {
+                    case '0': // текст
+                        value = _res.value;
+                        break;
+                    case '1': // структура
+                        var img_id = 'result_structure_img_'+i+'_'+m+'_'+r;
+                        result_structures[img_id] = _res.value;
+                        value = '<img  id="'+img_id+'" src="{{ url_for("static", filename="images/ajax-loader-tiny.gif") }}" alt="Image unavailable" class="result-structure" />';
+                        break;
+                    case '2': // ссылка
+                        value = '<a href="'+_res.value+'">Open</a>';
+                        break;
+                    default:
+                        value = _res.value;
+                        break;
+                }
+
+                var cellValue = rowReaction.insertCell();
+                cellValue.innerHTML = value;
+
+
+
             }
 
-            if (j>0)
-                str += '<tr class="'+block_class+'" is_block_hide="1">';
-
-            if (prev_model!=_res.model)
-            {
-                str = str.replace('#MODAL_ROWSPAN#',modal_rowspan);
-                str+='<td rowspan=#MODAL_ROWSPAN#>'+_res.model+'</td>';
-                prev_model = _res.model;
-                modal_rowspan=0;
-            }
-
-
-
-            str+='<td>'+_res.param+'</td>';
-            var value = '';
-            switch(String(_res.type))
-            {
-                case '0': // текст
-                    value = _res.value;
-                    break;
-                case '1': // структура
-                    var img_id = 'result_structure_img_'+i+'_'+j;
-                    result_structures[img_id] = _res.value;
-                    value = '<img  id="'+img_id+'" src="{{ url_for("static", filename="images/ajax-loader-tiny.gif") }}" alt="Image unavailable" class="result-structure" />';
-                    break;
-                case '2': // ссылка
-                    value = '<a href="'+_res.value+'">Open</a>';
-                    break;
-                default:
-                    value = _res.value;
-                    break;
-            }
-
-            str+='<td>'+value+'</td>';
-            str+='</tr>';
-            reaction_rowspan++;
-            modal_rowspan++;
         }
-        str = str.replace('#MODAL_ROWSPAN#',modal_rowspan);
-        str = str.replace('#REACTION_ROWSPAN#',reaction_rowspan);
+
     }
+
 
     var large_settings = {
             'carbonLabelVisible' : false,
@@ -918,8 +1045,6 @@ function display_modelling_results(results)
             'width' : 600,
             'height' : 300
     };
-
-    jTbl.append(str);
 
 
     $("#results-div").show("normal");
@@ -1044,7 +1169,7 @@ function load_model_example(model_id)
 
         Progress.done();
         try {
-
+            hide_select_mode();
             draw_moldata(model.example);
             show_editor(true);
         }

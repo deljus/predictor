@@ -42,7 +42,7 @@
 		</header>
 		<nav class="navbar navbar-default">
 			<ul class="nav navbar-nav">
-				<li><a href="/">Home</a></li>
+				<li {% if request.path=="/home" %} class="active" {% endif %}><a href="{{ url_for('home') }}">Home</a></li>
 				<li  {% if request.path=="/" %} class="active" {% endif %}><a href="/">Predictor</a></li>
 				<li  {% if request.path=="/models" %} class="active" {% endif %}><a href="{{ url_for('models') }}">Models</a></li>
                 <!--
