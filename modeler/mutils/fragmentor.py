@@ -30,6 +30,17 @@ class Fragmentor(object):
                  overwrite=True, header=None, extention=None):
 
         self.__extention = extention
+        self.__extshift = {}
+        shift = 0
+        for i in sorted(extention):
+            self.__extshift[i] = shift
+            if extention[i]:
+                for j in extention[i].values():
+                    shift += max(j)
+                    break
+            else:
+                shift += 1
+
         self.__workpath = workpath
         self.__fragmentor = 'Fragmentor-%s' % version
         tmp = ['-f', 'SVM']
@@ -65,8 +76,25 @@ class Fragmentor(object):
             f.write(self.__headdump)
         self.__execparams[self.__execparams.index('-h') + 1] = header
 
-    def getfragments(self, inputfile=None, outputfile=None, inputstring=None, **kwargs):
-        parser = False
+    def parsesdf(self, inputfile):
+        extblock = []
+        flag = False
+        tmp = {}
+        with open(inputfile) as f:
+            for i in f:
+                if '>  <' in i[:4]:
+                    key = i.strip()[4:-1]
+                    if key in self.__extention:
+                        flag = key
+                elif flag:
+                    tmp[flag] = self.__extention[flag][i.strip()] if self.__extention[flag] else {1: float(i.strip())}
+                    flag = False
+                elif '$$$$' in i:
+                    extblock.append(tmp)
+                    tmp = {}
+        return extblock
+
+    def get(self, inputfile=None, outputfile=None, inputstring=None, **kwargs):
         timestamp = int(time.time())
         if inputstring:
             inputfile = os.path.join(self.__workpath, "structure-%d.sdf" % timestamp)
@@ -75,30 +103,39 @@ class Fragmentor(object):
         elif not inputfile:
             return False
 
+        parser = False
         if not outputfile:
             outputfile = os.path.join(self.__workpath, "structure-%d" % timestamp)
             parser = True
 
-        execparams = [self.__fragmentor, '-i', os.path.join(self.__workpath, inputfile),
-                      '-o', os.path.join(self.__workpath, outputfile)]
+        execparams = [self.__fragmentor, '-i', inputfile, '-o', outputfile]
         execparams.extend(self.__execparams)
-
         sp.call(execparams, cwd=self.__workpath)
         if os.path.exists(outputfile + '.svm'):
+            if kwargs.get('parsesdf'):
+                extblock = self.parsesdf(inputfile)
+            elif all(isinstance(x, list) or isinstance(x, dict) for x in kwargs.values()):
+                extblock = []
+                for i, j in kwargs.items():
+                    if isinstance(j, list):
+                        for n, k in enumerate(j):
+                            data = {i: self.__extention[i][k] if self.__extention[i] else {1: k}}
+                            if len(extblock) > n:
+                                extblock[n].update(data)
+                            else:
+                                extblock.append(data)
+                    elif isinstance(j, dict):
+                        for n, k in j.items():
+                            data = {i: self.__extention[i][k] if self.__extention[i] else {1: k}}
+                            if len(extblock) > n:
+                                extblock[n].update(data)
+                            else:
+                                extblock.extend([{} for _ in range(n - len(extblock))] + [data])
+            else:
+                extblock = [{i: self.__extention[i][j] if self.__extention[i] else {1: j} for i, j in kwargs.items()}]
 
-            extention = []
-            if solvent is not None:
-                if temperature is not None:
-                    for i, j in zip(solvent, temperature):
-                        tmp = {x + 1: y for x, y in self.__extention.get(i).items()}
-                        tmp.update({1: j})
-                        extention.append(tmp)
-                else:
-                    extention = [self.__extention.get(x) for x in solvent]
-            elif temperature is not None:
-                extention = [{1: x} for x in temperature]
-            if extention:
-                self.__extendvector(outputfile + '.svm', extention)
+            if kwargs:
+                self.__extendvector(outputfile + '.svm', extblock)
 
             if parser:
                 return self.__parser(outputfile)
@@ -118,13 +155,18 @@ class Fragmentor(object):
 
     def __extendvector(self, descfile, extention):
         tmp = []
+        last = False
+
         with open(descfile) as f:
             for vector, ext in zip(f.readlines(), extention):
+                etmp = {}
                 svector = vector.split()
-                last, lval = svector[-1].split(':')
-                if lval == '0':
-                    svector.pop(-1)
-                tmp.append(' '.join(svector + ['%s:%s' % (x + int(last), y) for x, y in ext.items()]))
+                if not last:
+                    last = svector[-1].split(':')[0]
+                for k, v in ext.items():
+                    etmp.update({int(last) + self.__extshift[k] + x: y for x, y in v.items()})
+
+                tmp.append(' '.join(svector + ['%s:%s' % x for x in etmp.items()]))
 
         with open(descfile, 'w') as f:
             f.write('\n'.join(tmp))
