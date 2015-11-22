@@ -21,6 +21,7 @@
 import os
 import subprocess as sp
 import time
+from itertools import chain, repeat
 
 
 class Fragmentor(object):
@@ -158,13 +159,11 @@ class Fragmentor(object):
         last = False
 
         with open(descfile) as f:
-            for vector, ext in zip(f.readlines(), extention):
-                etmp = {}
+            for vector, ext in zip(f.readlines(), chain(extention, repeat({}))):
                 svector = vector.split()
                 if not last:
                     last = svector[-1].split(':')[0]
-                for k, v in ext.items():
-                    etmp.update({int(last) + self.__extshift[k] + x: y for x, y in v.items()})
+                etmp = {int(last) + self.__extshift[k] + x: y for k, v in ext.items() for x, y in v.items()}
 
                 tmp.append(' '.join(svector + ['%s:%s' % x for x in etmp.items()]))
 

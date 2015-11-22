@@ -60,11 +60,11 @@ class Model(object):
                 self.__models.append(dict(model=model, x_min=x_min, x_max=x_max, normal=normal))
 
     def predict(self, structure, **kwargs):
-        desk = self.__descriptors.get(inputfile=structure, **kwargs)
+        _, d_x, d_ad = self.__descriptors.get(inputfile=structure, **kwargs)
         res = []
         for model in self.__models:
-            x_test = self.__sparse.transform(desk[1])
-            ad = desk[2] and (x_test - model['x_min']).min() >= 0 and (model['x_max'] - x_test).min() >= 0
+            x_test = self.__sparse.transform(d_x)
+            ad = d_ad and (x_test - model['x_min']).min() >= 0 and (model['x_max'] - x_test).min() >= 0
             if model['normal'] is not None:
                 x_test = model['normal'].transform(x_test)
 
