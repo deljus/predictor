@@ -30,7 +30,6 @@ def parseext(rawext):
         record = None
         ext, *file = e.split(':')
         if file:
-            maxkey = 0
             record = {}
             with open(file[0]) as f:
                 for i in f:
@@ -40,13 +39,8 @@ def parseext(rawext):
                         dkey, dval = j.split(':')
                         dkey = int(dkey)
                         dval = float(dval)
-                        if dkey > maxkey:
-                            maxkey = dkey
                         tmp[dkey] = dval
                     record[key] = tmp
-                for i in record.values():
-                    if maxkey not in i:
-                        i[maxkey] = 0
         extdata[ext] = record
     return extdata
 
@@ -58,7 +52,7 @@ def main():
     rawopts.add_argument("--output", "-o", type=str, default=None, help="output SVM|HDR")
     rawopts.add_argument("--header", "-d", type=str, default=None, help="input header")
     rawopts.add_argument("--model", "-m", type=str, default=None, help="output model")
-    rawopts.add_argument("--extention", "-e", action='append', type=str, default={},
+    rawopts.add_argument("--extention", "-e", action='append', type=str, default=None,
                          help="extention data files. -e extname:filename [-e extname2:filename2]")
     rawopts.add_argument("--fragments", "-f", type=str, default='input.param', help="fragmentor keys file")
     rawopts.add_argument("--svm", "-s", type=str, default='input.cfg', help="SVM params")
@@ -75,7 +69,6 @@ def main():
         options['fragments'] = tmp
 
     extdata = parseext(options['extention']) if options['extention'] else {}
-
     frag = Fragmentor(workpath='.', header=options['header'], extention=extdata, **options['fragments'])
 
     if not options['output']:
@@ -95,6 +88,8 @@ def main():
         model = Model(frag, svm, inputfile=options['input'], parsesdf=True,
                       nfold=options['nfold'], repetitions=options['repetition'], normalize=options['normalize'])
         pickle.dump(model, open(options['model'], 'wb'))
+    else:
+        frag.get(inputfile=options['input'], parsesdf=True, outputfile=options['output'])
 
 if __name__ == '__main__':
     main()

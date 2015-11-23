@@ -32,25 +32,29 @@ class Fragmentor(object):
 
         self.__extention = extention
         self.__extshift = {}
+        self.__extheader = []
         shift = 0
         for i in sorted(extention):
             self.__extshift[i] = shift
             if extention[i]:
+                mshift = 0
                 for j in extention[i].values():
-                    shift += max(j)
-                    break
+                    if mshift < max(j):
+                        mshift = max(j)
+                shift += mshift
+                self.__extheader.extend(['%s.%s' % (i, x) for x in range(1, mshift + 1)])
             else:
+                self.__extheader.append(i)
                 shift += 1
-
         self.__workpath = workpath
         self.__fragmentor = 'Fragmentor-%s' % version
         tmp = ['-f', 'SVM']
         if s_option: tmp.extend(['-s', s_option])
         if header:
-            header = os.path.join(workpath, header)
             with open(header) as f:
                 self.__headdump = f.read()
-            self.__headsize = os.path.getsize(header)
+            with open(header) as f:
+                self.__headsize = len(f.readlines())
             tmp.extend(['-h', header])
         else:
             self.__headsize = None
@@ -135,37 +139,42 @@ class Fragmentor(object):
             else:
                 extblock = [{i: self.__extention[i][j] if self.__extention[i] else {1: j} for i, j in kwargs.items()}]
 
-            if kwargs:
-                self.__extendvector(outputfile + '.svm', extblock)
-
-            if parser:
-                return self.__parser(outputfile)
-            return True
+            return self.__extendvector(outputfile, extblock, parser)
         return False
 
-    def __parser(self, file):
+    def __extendvector(self, descfile, extention, parser):
         prop, vector = [], []
-        with open(file + '.svm') as f:
-            key, *values = f.readline().split()
-            prop.append(float(key) if key.strip() != '?' else 0)
-            vector.append({int(x.split(':')[0]): float(x.split(':')[1]) for x in values})
-        ad = self.__headsize == os.path.getsize(file + '.hdr') if self.__headsize else True
-        os.remove(file + '.svm')
-        os.remove(file + '.hdr')
-        return prop, vector, ad
 
-    def __extendvector(self, descfile, extention):
-        tmp = []
-        last = False
+        with open(descfile + '.hdr') as f:
+            last = len(f.readlines())
+            if self.__headsize is None:
+                ad = True
+            else:
+                ad = self.__headsize == last
+                last = self.__headsize
 
-        with open(descfile) as f:
-            for vector, ext in zip(f.readlines(), chain(extention, repeat({}))):
-                svector = vector.split()
-                if not last:
-                    last = svector[-1].split(':')[0]
-                etmp = {int(last) + self.__extshift[k] + x: y for k, v in ext.items() for x, y in v.items()}
+        with open(descfile + '.svm') as f:
+            for frag, ext in zip(f, chain(extention, repeat({}))):
+                y, *x = frag.split()
+                prop.append(float(y) if y.strip() != '?' else 0)
 
-                tmp.append(' '.join(svector + ['%s:%s' % x for x in etmp.items()]))
-
-        with open(descfile, 'w') as f:
-            f.write('\n'.join(tmp))
+                tmp = {}
+                for i in x:
+                    k, v = i.split(':')
+                    k = int(k)
+                    v = float(v)
+                    if k <= last:
+                        tmp[k] = v
+                    else:
+                        break
+                tmp.update({last + self.__extshift[k] + x: y for k, v in ext.items() for x, y in v.items()})
+                vector.append(tmp)
+        print(prop, vector, ad)
+        if parser:
+            os.remove(descfile + '.svm')
+            os.remove(descfile + '.hdr')
+            return prop, vector, ad
+        else:
+            with open(descfile + '.svm', 'w') as f:
+                for y, x in zip(prop, vector):
+                    f.write(' '.join(['%s ' % y] + ['%s:%s' % i for i in x.items()]) + '\n')
