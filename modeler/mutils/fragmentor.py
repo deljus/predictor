@@ -169,7 +169,6 @@ class Fragmentor(object):
                         break
                 tmp.update({last + self.__extshift[k] + x: y for k, v in ext.items() for x, y in v.items()})
                 vector.append(tmp)
-        print(prop, vector, ad)
         if parser:
             os.remove(descfile + '.svm')
             os.remove(descfile + '.hdr')
