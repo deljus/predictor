@@ -113,31 +113,32 @@ class Fragmentor(object):
             outputfile = os.path.join(self.__workpath, "structure-%d" % timestamp)
             parser = True
 
+        if kwargs.get('parsesdf'):
+                extblock = self.parsesdf(inputfile)
+        elif all(isinstance(x, list) or isinstance(x, dict) for x in kwargs.values()):
+            extblock = []
+            for i, j in kwargs.items():
+                if isinstance(j, list):
+                    for n, k in enumerate(j):
+                        data = {i: self.__extention[i][k] if self.__extention[i] else {1: k}}
+                        if len(extblock) > n:
+                            extblock[n].update(data)
+                        else:
+                            extblock.append(data)
+                elif isinstance(j, dict):
+                    for n, k in j.items():
+                        data = {i: self.__extention[i][k] if self.__extention[i] else {1: k}}
+                        if len(extblock) > n:
+                            extblock[n].update(data)
+                        else:
+                            extblock.extend([{} for _ in range(n - len(extblock))] + [data])
+        else:
+            extblock = [{i: self.__extention[i][j] if self.__extention[i] else {1: j} for i, j in kwargs.items()}]
+
         execparams = [self.__fragmentor, '-i', inputfile, '-o', outputfile]
         execparams.extend(self.__execparams)
         sp.call(execparams, cwd=self.__workpath)
         if os.path.exists(outputfile + '.svm'):
-            if kwargs.get('parsesdf'):
-                extblock = self.parsesdf(inputfile)
-            elif all(isinstance(x, list) or isinstance(x, dict) for x in kwargs.values()):
-                extblock = []
-                for i, j in kwargs.items():
-                    if isinstance(j, list):
-                        for n, k in enumerate(j):
-                            data = {i: self.__extention[i][k] if self.__extention[i] else {1: k}}
-                            if len(extblock) > n:
-                                extblock[n].update(data)
-                            else:
-                                extblock.append(data)
-                    elif isinstance(j, dict):
-                        for n, k in j.items():
-                            data = {i: self.__extention[i][k] if self.__extention[i] else {1: k}}
-                            if len(extblock) > n:
-                                extblock[n].update(data)
-                            else:
-                                extblock.extend([{} for _ in range(n - len(extblock))] + [data])
-            else:
-                extblock = [{i: self.__extention[i][j] if self.__extention[i] else {1: j} for i, j in kwargs.items()}]
 
             return self.__extendvector(outputfile, extblock, parser)
         return False
@@ -176,4 +177,4 @@ class Fragmentor(object):
         else:
             with open(descfile + '.svm', 'w') as f:
                 for y, x in zip(prop, vector):
-                    f.write(' '.join(['%s ' % y] + ['%s:%s' % i for i in x.items()]) + '\n')
+                    f.write(' '.join(['%s ' % y] + ['%s:%s' % (i, x[i]) for i in sorted(x)]) + '\n')
