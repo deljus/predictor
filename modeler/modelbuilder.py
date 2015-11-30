@@ -99,7 +99,7 @@ def main():
     rawopts.add_argument("--svm", "-s", type=str, default='input.cfg', help="SVM params")
     rawopts.add_argument("--nfold", "-n", type=int, default=5, help="number of folds")
     rawopts.add_argument("--repetition", "-r", type=int, default=1, help="number of repetitions")
-    rawopts.add_argument("--fit", "-f", type=str, default='rmse',
+    rawopts.add_argument("--fit", "-t", type=str, default='rmse',
                          help="crossval score for parameters fit/ (rmse|r2)")
     rawopts.add_argument("--dispcoef", "-p", type=float, default=0,
                          help="score parameter. mean(rmse|r2) - dispcoef * dispertion(rmse|r2)")

@@ -33,7 +33,6 @@ class Model(object):
                  fit='rmse', normalize=False, **kwargs):
         self.__sparse = DictVectorizer(sparse=False)
         self.__descriptors = descriptors
-        self.__model = []
         self.__trainparam = dict(nfold=nfold, repetitions=repetitions)
 
         y, x, _ = descriptors.get(**kwargs)
@@ -51,15 +50,18 @@ class Model(object):
         if any(isinstance(y, list) and len(y) > 1 for x in svmparams for y in x.values()):
             pass
         elif len(svmparams) == 1:
-            self.__model = self.__fit({x: y[0] for x, y in svmparams[0].items()})['model']
+            self.__model = self.__fit({x: y[0] for x, y in svmparams[0].items()})
         else:
             models = dict(model=None, r2=np.inf, rmse=np.inf)
             for params in svmparams:
-                fittedmodel = self.__fit({x: y[0] for x, y in params.items()})
-
+                params = {x: y[0] for x, y in params.items()}
+                print('fit model with params:', params)
+                fittedmodel = self.__fit(params)
                 if fittedmodel[self.__fitscore] < models[self.__fitscore]:
-                    models = dict(model=fittedmodel['model'], r2=fittedmodel['r2'], rmse=fittedmodel['rmse'])
-            self.__model = models['model']
+                    models = fittedmodel
+            self.__model = models
+
+        print('========\nSVM params %(params)s\nR2 = -%(r2)s\nRMSE = %(rmse)s' % self.__model)
 
     def __fit(self, svmparams):
         models = []
@@ -70,7 +72,6 @@ class Model(object):
             xs, ys = shuffle(self.__x, self.__y, random_state=i)
             kf = KFold(len(self.__y), n_folds=self.__trainparam['nfold'])
             for train, test in kf:
-                print(test)
                 x_train, y_train = xs[train], ys[train]
                 x_test, y_test = xs[test], ys[test]
                 x_min = np.amin(x_train, axis=0)
@@ -89,18 +90,19 @@ class Model(object):
 
                 y_pred[test] = model.predict(x_test)
                 models.append(dict(model=model, x_min=x_min, x_max=x_max, normal=normal))
-
+            print('repetition No %s completed' % i)
             rmse.append(sqrt(mean_squared_error(ys, y_pred)))
             r2.append(r2_score(ys, y_pred))
 
         return dict(model=models,
                     rmse=np.mean(rmse) - self.__dispcoef * np.var(rmse),
-                    r2=-np.mean(r2) + self.__dispcoef * np.var(r2))
+                    r2=-np.mean(r2) + self.__dispcoef * np.var(r2),
+                    params=svmparams)
 
     def predict(self, structure, **kwargs):
         _, d_x, d_ad = self.__descriptors.get(inputfile=structure, **kwargs)
         res = []
-        for model in self.__model:
+        for model in self.__model['model']:
             x_test = self.__sparse.transform(d_x)
             ad = d_ad and (x_test - model['x_min']).min() >= 0 and (model['x_max'] - x_test).min() >= 0
             if model['normal']:
