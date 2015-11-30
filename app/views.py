@@ -23,7 +23,7 @@ import re
 import sys
 import json
 
-from .config import UPLOAD_PATH, REQ_MAPPING
+from .config import UPLOAD_PATH, REQ_MAPPING, LOCK_SEARCHING
 from werkzeug import secure_filename
 
 from app import app
@@ -130,6 +130,9 @@ def registration():
             return redirect(url_for('index'))
     return render_template('registration.html', form=form)
 
+@app.route("/search", methods=['GET'])
+def search():
+    return render_template("search.html", user_data=get_cur_user())
 
 UploadFileParser = reqparse.RequestParser()
 UploadFileParser.add_argument('file.path', type=str)
@@ -181,6 +184,7 @@ class ParserAPI(Resource):
 
 parser = reqparse.RequestParser()
 parser.add_argument('reaction_structure', type=str)
+parser.add_argument('task_type', type=str)
 parser.add_argument('temperature', type=str)
 parser.add_argument('solvent', type=str)
 parser.add_argument('task_status', type=int)
@@ -254,7 +258,11 @@ class TaskListAPI(Resource):
         task_id = pdb.insert_task(email=email)
         args = parser.parse_args()
         pdb.insert_reaction(task_id, reaction_structure=args['reaction_structure'])
-        pdb.update_task_status(task_id, REQ_MAPPING)
+        task_type = args['task_type']
+        if task_type == 'model':
+            pdb.update_task_status(task_id, REQ_MAPPING)
+        elif task_type == 'search':
+            pdb.update_task_status(task_id, LOCK_SEARCHING)
         return task_id, 201
 
 

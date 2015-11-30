@@ -35,13 +35,20 @@ else:
     db = Database('postgres', user='postgres', password='nginxpony', host='localhost', database='predictor')
     #sql_debug(True)
 
-STATUS_ARRAY = ["Task created",
-                "Mapping required",
-                "Mapping processing",
-                "Mapping is done",
-                "Modelling required",
-                "Modelling processing",
-                "Modelling is done"]
+STATUS_ARRAY = ["Task created",         #0
+                "Mapping required",     #1
+                "Mapping processing",   #2
+                "Mapping is done",      #3
+                "Modelling required",   #4
+                "Modelling processing", #5
+                "Modelling is done",    #6
+                "",                     #7
+                "",                     #8
+                "",                     #9
+                "Search task created",  #10
+                "Searching required",   #11
+                "Searching is done"     #12
+                ]
 class Users(db.Entity):
     id = PrimaryKey(int, auto=True)
     email = Required(str, 128, unique=True)
@@ -164,6 +171,9 @@ class PredictorDataBase:
         if user:
             for t in user.tasks.order_by(Tasks.create_date):
                 if status and t.status != status:
+                    continue
+                # отфильтруем только задачи по моделированию
+                if t.status >= 10:
                     continue
                 # найдем структуру 1ой реакции в задаче
                 try:
