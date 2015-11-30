@@ -22,6 +22,7 @@ from mutils.fragmentor import Fragmentor
 from mutils.svrmodel import Model
 import argparse
 import pickle
+from math import exp
 
 
 def parseext(rawext):
@@ -45,6 +46,46 @@ def parseext(rawext):
     return extdata
 
 
+def drange(start, stop, step):
+    r = start
+    s = (stop - start) / (step - 1)
+    res = []
+    while r <= stop:
+        res.append(r)
+        r += s
+    return res
+
+
+def parsesvm(param, op, unpac=lambda x: x):
+    res = []
+    commaparam = param.split(',')
+    for i in commaparam:
+        ddotparam = i.split(':')
+        if len(ddotparam) == 1:
+            if ddotparam[0] == '^':
+                res.append(op(i[1:]))
+            else:
+                res.append(unpac(op(i)))
+        elif len(ddotparam) >= 3:
+            res.extend([unpac(x) for x in drange(op(ddotparam[0]), op(ddotparam[1]), int(ddotparam[2]))])
+
+    return res
+
+
+def pow2(x):
+    return pow(2, x)
+
+
+kernel = {'0': 'linear', '1': 'poly', '2': 'rbf', '3': 'sigmoid'}
+repl = {'-t': ('kernel', lambda x: [kernel[i] for i in x.split(',')]),
+        '-c': ('C', lambda x: parsesvm(x, float, unpac=pow2)),
+        '-d': ('degree', lambda x: parsesvm(x, int)),
+        '-e': ('tol', lambda x: parsesvm(x, float, unpac=pow2)),
+        '-p': ('epsilon', lambda x: parsesvm(x, float, unpac=pow2)),
+        '-g': ('gamma', lambda x: parsesvm(x, float, unpac=pow2)),
+        '-r': ('coef0', lambda x: parsesvm(x, float))}
+
+
 def main():
     rawopts = argparse.ArgumentParser(description="Model Builder",
                                       epilog="Copyright 2015 Ramil Nugmanov <stsouko@live.ru>")
@@ -58,7 +99,13 @@ def main():
     rawopts.add_argument("--svm", "-s", type=str, default='input.cfg', help="SVM params")
     rawopts.add_argument("--nfold", "-n", type=int, default=5, help="number of folds")
     rawopts.add_argument("--repetition", "-r", type=int, default=1, help="number of repetitions")
+    rawopts.add_argument("--fit", "-f", type=str, default='rmse',
+                         help="crossval score for parameters fit/ (rmse|r2)")
+    rawopts.add_argument("--dispcoef", "-p", type=float, default=0,
+                         help="score parameter. mean(rmse|r2) - dispcoef * dispertion(rmse|r2)")
+
     rawopts.add_argument("--normalize", "-N", action='store_true', help="normalize vector to range(0, 1)")
+
     options = vars(rawopts.parse_args())
 
     with open(options['fragments']) as f:
@@ -72,24 +119,24 @@ def main():
     frag = Fragmentor(workpath='.', header=options['header'], extention=extdata, **options['fragments'])
 
     if not options['output']:
+        svm = []
         with open(options['svm']) as f:
-            opts = f.readline().split()
-            repl = {'-t': ('kernel', lambda x: {'0': 'linear', '1': 'poly', '2': 'rbf', '3': 'sigmoid'}[x]),
-                    '-c': ('C', lambda x: float(x)),
-                    '-e': ('epsilon', lambda x: float(x)),
-                    '-g': ('gamma', lambda x: float(x)),
-                    '-r': ('coef0', lambda x: float(x))}
-            svm = {}
-            for x, y in zip(opts[::2], opts[1::2]):
-                z = repl.get(x)
-                if z:
-                    svm[z[0]] = z[1](y)
+            for line in f:
+                opts = line.split()
+                tmp = {}
+                for x, y in zip(opts[::2], opts[1::2]):
+                    z = repl.get(x)
+                    if z:
+                        tmp[z[0]] = z[1](y)
+                svm.append(tmp)
 
-        model = Model(frag, svm, inputfile=options['input'], parsesdf=True,
+        model = Model(frag, svm, inputfile=options['input'], parsesdf=True, dispcoef=options['dispcoef'],
+                      fit=options['fit'],
                       nfold=options['nfold'], repetitions=options['repetition'], normalize=options['normalize'])
         pickle.dump(model, open(options['model'], 'wb'))
     else:
         frag.get(inputfile=options['input'], parsesdf=True, outputfile=options['output'])
+
 
 if __name__ == '__main__':
     main()

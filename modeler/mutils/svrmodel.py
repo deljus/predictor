@@ -23,50 +23,88 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.utils import shuffle
 from sklearn.cross_validation import KFold
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error, r2_score
+from math import sqrt
 import numpy as np
 
 
 class Model(object):
-    def __init__(self, descriptors, svmparams, nfold=5, repetitions=1, normalize=False, **kwargs):
+    def __init__(self, descriptors, svmparams, nfold=5, repetitions=1, dispcoef=0,
+                 fit='rmse', normalize=False, **kwargs):
         self.__sparse = DictVectorizer(sparse=False)
         self.__descriptors = descriptors
-        self.__svmparams = svmparams
-        self.__models = []
+        self.__model = []
         self.__trainparam = dict(nfold=nfold, repetitions=repetitions)
 
-        trainy, trainx, _ = descriptors.get(**kwargs)
-        self.__sparse.fit(trainx)
+        y, x, _ = descriptors.get(**kwargs)
+        self.__sparse.fit(x)
+        self.__x, self.__y = self.__sparse.transform(x), np.array(y)
         self.__normalize = normalize
-        self.__fit(self.__sparse.transform(trainx), np.array(trainy))
+        self.__dispcoef = dispcoef
+        self.__fitscore = fit
+        self.__crossval(svmparams)
 
     def setworkpath(self, path):
         self.__descriptors.setpath(path)
 
-    def __fit(self, x, y):
+    def __crossval(self, svmparams):
+        if any(isinstance(y, list) and len(y) > 1 for x in svmparams for y in x.values()):
+            pass
+        elif len(svmparams) == 1:
+            self.__model = self.__fit({x: y[0] for x, y in svmparams[0].items()})['model']
+        else:
+            models = dict(model=None, r2=np.inf, rmse=np.inf)
+            for params in svmparams:
+                fittedmodel = self.__fit({x: y[0] for x, y in params.items()})
+
+                if fittedmodel[self.__fitscore] < models[self.__fitscore]:
+                    models = dict(model=fittedmodel['model'], r2=fittedmodel['r2'], rmse=fittedmodel['rmse'])
+            self.__model = models['model']
+
+    def __fit(self, svmparams):
+        models = []
+        rmse = []
+        r2 = []
+        y_pred = np.empty_like(self.__y)
         for i in range(self.__trainparam['repetitions']):
-            xs, ys = shuffle(x, y, random_state=i)
-            kf = KFold(len(y), n_folds=self.__trainparam['nfold'])
-            for train, _ in kf:
+            xs, ys = shuffle(self.__x, self.__y, random_state=i)
+            kf = KFold(len(self.__y), n_folds=self.__trainparam['nfold'])
+            for train, test in kf:
+                print(test)
                 x_train, y_train = xs[train], ys[train]
+                x_test, y_test = xs[test], ys[test]
                 x_min = np.amin(x_train, axis=0)
                 x_max = np.amax(x_train, axis=0)
+
                 if self.__normalize:
                     normal = MinMaxScaler()
                     normal.fit(x_train)
+                    x_test = normal.transform(x_test)
+                    x_train = normal.transform(x_train)
                 else:
                     normal = None
-                model = SVR(**self.__svmparams)
+
+                model = SVR(**svmparams)
                 model.fit(x_train, y_train)
-                self.__models.append(dict(model=model, x_min=x_min, x_max=x_max, normal=normal))
+
+                y_pred[test] = model.predict(x_test)
+                models.append(dict(model=model, x_min=x_min, x_max=x_max, normal=normal))
+
+            rmse.append(sqrt(mean_squared_error(ys, y_pred)))
+            r2.append(r2_score(ys, y_pred))
+
+        return dict(model=models,
+                    rmse=np.mean(rmse) - self.__dispcoef * np.var(rmse),
+                    r2=-np.mean(r2) + self.__dispcoef * np.var(r2))
 
     def predict(self, structure, **kwargs):
         _, d_x, d_ad = self.__descriptors.get(inputfile=structure, **kwargs)
         res = []
-        for model in self.__models:
+        for model in self.__model:
             x_test = self.__sparse.transform(d_x)
             ad = d_ad and (x_test - model['x_min']).min() >= 0 and (model['x_max'] - x_test).min() >= 0
-            if model['normal'] is not None:
-                x_test = model['normal'].transform(x_test)
+            if model['normal']:
+                x_test = model['normal'](x_test)
 
             res.append(dict(prediction=model['model'].predict(x_test), domain=ad))
         return res
