@@ -21,6 +21,7 @@
 import os
 import subprocess as sp
 import time
+from itertools import chain, repeat
 
 
 class Fragmentor(object):
@@ -30,15 +31,30 @@ class Fragmentor(object):
                  overwrite=True, header=None, extention=None):
 
         self.__extention = extention
+        self.__extshift = {}
+        self.__extheader = []
+        shift = 0
+        for i in sorted(extention):
+            self.__extshift[i] = shift
+            if extention[i]:
+                mshift = 0
+                for j in extention[i].values():
+                    if mshift < max(j):
+                        mshift = max(j)
+                shift += mshift
+                self.__extheader.extend(['%s.%s' % (i, x) for x in range(1, mshift + 1)])
+            else:
+                self.__extheader.append(i)
+                shift += 1
         self.__workpath = workpath
         self.__fragmentor = 'Fragmentor-%s' % version
         tmp = ['-f', 'SVM']
         if s_option: tmp.extend(['-s', s_option])
         if header:
-            header = os.path.join(workpath, header)
             with open(header) as f:
                 self.__headdump = f.read()
-            self.__headsize = os.path.getsize(header)
+            with open(header) as f:
+                self.__headsize = len(f.readlines())
             tmp.extend(['-h', header])
         else:
             self.__headsize = None
@@ -65,8 +81,25 @@ class Fragmentor(object):
             f.write(self.__headdump)
         self.__execparams[self.__execparams.index('-h') + 1] = header
 
-    def getfragments(self, inputfile=None, outputfile=None, inputstring=None, temperature=None, solvent=None):
-        parser = False
+    def parsesdf(self, inputfile):
+        extblock = []
+        flag = False
+        tmp = {}
+        with open(inputfile) as f:
+            for i in f:
+                if '>  <' in i[:4]:
+                    key = i.strip()[4:-1]
+                    if key in self.__extention:
+                        flag = key
+                elif flag:
+                    tmp[flag] = self.__extention[flag][i.strip()] if self.__extention[flag] else {1: float(i.strip())}
+                    flag = False
+                elif '$$$$' in i:
+                    extblock.append(tmp)
+                    tmp = {}
+        return extblock
+
+    def get(self, inputfile=None, outputfile=None, inputstring=None, **kwargs):
         timestamp = int(time.time())
         if inputstring:
             inputfile = os.path.join(self.__workpath, "structure-%d.sdf" % timestamp)
@@ -75,56 +108,73 @@ class Fragmentor(object):
         elif not inputfile:
             return False
 
+        parser = False
         if not outputfile:
             outputfile = os.path.join(self.__workpath, "structure-%d" % timestamp)
             parser = True
 
-        execparams = [self.__fragmentor, '-i', os.path.join(self.__workpath, inputfile),
-                      '-o', os.path.join(self.__workpath, outputfile)]
-        execparams.extend(self.__execparams)
+        if kwargs.get('parsesdf'):
+                extblock = self.parsesdf(inputfile)
+        elif all(isinstance(x, list) or isinstance(x, dict) for x in kwargs.values()):
+            extblock = []
+            for i, j in kwargs.items():
+                if isinstance(j, list):
+                    for n, k in enumerate(j):
+                        data = {i: self.__extention[i][k] if self.__extention[i] else {1: k}}
+                        if len(extblock) > n:
+                            extblock[n].update(data)
+                        else:
+                            extblock.append(data)
+                elif isinstance(j, dict):
+                    for n, k in j.items():
+                        data = {i: self.__extention[i][k] if self.__extention[i] else {1: k}}
+                        if len(extblock) > n:
+                            extblock[n].update(data)
+                        else:
+                            extblock.extend([{} for _ in range(n - len(extblock))] + [data])
+        else:
+            extblock = [{i: self.__extention[i][j] if self.__extention[i] else {1: j} for i, j in kwargs.items()}]
 
+        execparams = [self.__fragmentor, '-i', inputfile, '-o', outputfile]
+        execparams.extend(self.__execparams)
         sp.call(execparams, cwd=self.__workpath)
         if os.path.exists(outputfile + '.svm'):
 
-            extention = []
-            if solvent is not None:
-                if temperature is not None:
-                    for i, j in zip(solvent, temperature):
-                        tmp = {x + 1: y for x, y in self.__extention.get(i).items()}
-                        tmp.update({1: j})
-                        extention.append(tmp)
-                else:
-                    extention = [self.__extention.get(x) for x in solvent]
-            elif temperature is not None:
-                extention = [{1: x} for x in temperature]
-            if extention:
-                self.__extendvector(outputfile + '.svm', extention)
-
-            if parser:
-                return self.__parser(outputfile)
-            return True
+            return self.__extendvector(outputfile, extblock, parser)
         return False
 
-    def __parser(self, file):
+    def __extendvector(self, descfile, extention, parser):
         prop, vector = [], []
-        with open(file + '.svm') as f:
-            key, *values = f.readline().split()
-            prop.append(float(key) if key.strip() != '?' else 0)
-            vector.append({int(x.split(':')[0]): float(x.split(':')[1]) for x in values})
-        ad = self.__headsize == os.path.getsize(file + '.hdr') if self.__headsize else True
-        os.remove(file + '.svm')
-        os.remove(file + '.hdr')
-        return prop, vector, ad
 
-    def __extendvector(self, descfile, extention):
-        tmp = []
-        with open(descfile) as f:
-            for vector, ext in zip(f.readlines(), extention):
-                svector = vector.split()
-                last, lval = svector[-1].split(':')
-                if lval == '0':
-                    svector.pop(-1)
-                tmp.append(' '.join(svector + ['%s:%s' % (x + int(last), y) for x, y in ext.items()]))
+        with open(descfile + '.hdr') as f:
+            last = len(f.readlines())
+            if self.__headsize is None:
+                ad = True
+            else:
+                ad = self.__headsize == last
+                last = self.__headsize
 
-        with open(descfile, 'w') as f:
-            f.write('\n'.join(tmp))
+        with open(descfile + '.svm') as f:
+            for frag, ext in zip(f, chain(extention, repeat({}))):
+                y, *x = frag.split()
+                prop.append(float(y) if y.strip() != '?' else 0)
+
+                tmp = {}
+                for i in x:
+                    k, v = i.split(':')
+                    k = int(k)
+                    v = float(v)
+                    if k <= last:
+                        tmp[k] = v
+                    else:
+                        break
+                tmp.update({last + self.__extshift[k] + x: y for k, v in ext.items() for x, y in v.items()})
+                vector.append(tmp)
+        if parser:
+            os.remove(descfile + '.svm')
+            os.remove(descfile + '.hdr')
+            return prop, vector, ad
+        else:
+            with open(descfile + '.svm', 'w') as f:
+                for y, x in zip(prop, vector):
+                    f.write(' '.join(['%s ' % y] + ['%s:%s' % (i, x[i]) for i in sorted(x)]) + '\n')

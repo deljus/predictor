@@ -27,12 +27,14 @@ import numpy as np
 
 
 class Model(object):
-    def __init__(self, descriptors, svmparams, trainx, trainy, nfold=5, repetitions=1, normalize=False):
+    def __init__(self, descriptors, svmparams, nfold=5, repetitions=1, normalize=False, **kwargs):
         self.__sparse = DictVectorizer(sparse=False)
         self.__descriptors = descriptors
         self.__svmparams = svmparams
         self.__models = []
         self.__trainparam = dict(nfold=nfold, repetitions=repetitions)
+
+        trainy, trainx, _ = descriptors.get(**kwargs)
         self.__sparse.fit(trainx)
         self.__normalize = normalize
         self.__fit(self.__sparse.transform(trainx), np.array(trainy))
@@ -57,16 +59,12 @@ class Model(object):
                 model.fit(x_train, y_train)
                 self.__models.append(dict(model=model, x_min=x_min, x_max=x_max, normal=normal))
 
-    def predict(self, structure, solvent=None, temperature=None):
-        if solvent:
-            solvent = [solvent]
-        if temperature:
-            temperature = [temperature]
-        desk = self.__descriptors.getfragments(inputfile=structure, solvent=solvent, temperature=temperature)
+    def predict(self, structure, **kwargs):
+        _, d_x, d_ad = self.__descriptors.get(inputfile=structure, **kwargs)
         res = []
         for model in self.__models:
-            x_test = self.__sparse.transform(desk[1])
-            ad = desk[2] and (x_test - model['x_min']).min() >= 0 and (model['x_max'] - x_test).min() >= 0
+            x_test = self.__sparse.transform(d_x)
+            ad = d_ad and (x_test - model['x_min']).min() >= 0 and (model['x_max'] - x_test).min() >= 0
             if model['normal'] is not None:
                 x_test = model['normal'].transform(x_test)
 

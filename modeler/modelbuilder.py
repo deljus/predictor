@@ -24,6 +24,27 @@ import argparse
 import pickle
 
 
+def parseext(rawext):
+    extdata = {}
+    for e in rawext:
+        record = None
+        ext, *file = e.split(':')
+        if file:
+            record = {}
+            with open(file[0]) as f:
+                for i in f:
+                    key, *values = i.split()
+                    tmp = {}
+                    for j in values:
+                        dkey, dval = j.split(':')
+                        dkey = int(dkey)
+                        dval = float(dval)
+                        tmp[dkey] = dval
+                    record[key] = tmp
+        extdata[ext] = record
+    return extdata
+
+
 def main():
     rawopts = argparse.ArgumentParser(description="Model Builder",
                                       epilog="Copyright 2015 Ramil Nugmanov <stsouko@live.ru>")
@@ -31,7 +52,8 @@ def main():
     rawopts.add_argument("--output", "-o", type=str, default=None, help="output SVM|HDR")
     rawopts.add_argument("--header", "-d", type=str, default=None, help="input header")
     rawopts.add_argument("--model", "-m", type=str, default=None, help="output model")
-    rawopts.add_argument("--extention", "-e", type=str, default=None, help="extention data file")
+    rawopts.add_argument("--extention", "-e", action='append', type=str, default=None,
+                         help="extention data files. -e extname:filename [-e extname2:filename2]")
     rawopts.add_argument("--fragments", "-f", type=str, default='input.param', help="fragmentor keys file")
     rawopts.add_argument("--svm", "-s", type=str, default='input.cfg', help="SVM params")
     rawopts.add_argument("--nfold", "-n", type=int, default=5, help="number of folds")
@@ -46,30 +68,10 @@ def main():
             tmp[key] = value.strip()
         options['fragments'] = tmp
 
-    if options['extention']:
-        tmp = {}
-        ext = []
-        heat = []
-        with open(options['extention']) as f:
-            for i in f:
-                key, *values = i.split()
-                tmp[key] = {int(x.split(':')[0]): float(x.split(':')[1]) for x in values}
+    extdata = parseext(options['extention']) if options['extention'] else {}
+    frag = Fragmentor(workpath='.', header=options['header'], extention=extdata, **options['fragments'])
 
-        with open(options['input']) as f:
-            lines = f.readlines()
-            for i, j in enumerate(lines, start=1):
-                if '>  <solvent>' in j:
-                    ext.append(lines[i].strip())
-                if '>  <temperature>' in j:
-                    heat.append(float(lines[i].strip()))
-
-        options['extention'] = (tmp, ext, heat)
-
-    frag = Fragmentor(workpath='.', header=options['header'], extention=options['extention'][0], **options['fragments'])
-    res = frag.getfragments(inputfile=options['input'], outputfile=options['output'], solvent=options['extention'][1],
-                            temperature=options['extention'][2])
-
-    if res and not options['output']:
+    if not options['output']:
         with open(options['svm']) as f:
             opts = f.readline().split()
             repl = {'-t': ('kernel', lambda x: {'0': 'linear', '1': 'poly', '2': 'rbf', '3': 'sigmoid'}[x]),
@@ -83,9 +85,11 @@ def main():
                 if z:
                     svm[z[0]] = z[1](y)
 
-        model = Model(frag, svm, res[1], res[0],
+        model = Model(frag, svm, inputfile=options['input'], parsesdf=True,
                       nfold=options['nfold'], repetitions=options['repetition'], normalize=options['normalize'])
         pickle.dump(model, open(options['model'], 'wb'))
+    else:
+        frag.get(inputfile=options['input'], parsesdf=True, outputfile=options['output'])
 
 if __name__ == '__main__':
     main()
