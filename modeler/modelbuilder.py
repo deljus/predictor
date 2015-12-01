@@ -22,7 +22,6 @@ from mutils.fragmentor import Fragmentor
 from mutils.svrmodel import Model
 import argparse
 import pickle
-from math import exp
 
 
 def parseext(rawext):
@@ -62,27 +61,30 @@ def parsesvm(param, op, unpac=lambda x: x):
     for i in commaparam:
         ddotparam = i.split(':')
         if len(ddotparam) == 1:
-            if ddotparam[0] == '^':
-                res.append(op(i[1:]))
+            if i[0] == '^':
+                res.append(unpac(op(i[1:])))
             else:
-                res.append(unpac(op(i)))
+                res.append(op(i))
         elif len(ddotparam) >= 3:
-            res.extend([unpac(x) for x in drange(op(ddotparam[0]), op(ddotparam[1]), int(ddotparam[2]))])
+            if i[0] == '^':
+                res.extend([unpac(x) for x in drange(op(ddotparam[0][1:]), op(ddotparam[1]), int(ddotparam[2]))])
+            else:
+                res.extend([x for x in drange(op(ddotparam[0]), op(ddotparam[1]), int(ddotparam[2]))])
 
     return res
 
 
-def pow2(x):
-    return pow(2, x)
+def pow10(x):
+    return pow(10, x)
 
 
 kernel = {'0': 'linear', '1': 'poly', '2': 'rbf', '3': 'sigmoid'}
 repl = {'-t': ('kernel', lambda x: [kernel[i] for i in x.split(',')]),
-        '-c': ('C', lambda x: parsesvm(x, float, unpac=pow2)),
+        '-c': ('C', lambda x: parsesvm(x, float, unpac=pow10)),
         '-d': ('degree', lambda x: parsesvm(x, int)),
-        '-e': ('tol', lambda x: parsesvm(x, float, unpac=pow2)),
-        '-p': ('epsilon', lambda x: parsesvm(x, float, unpac=pow2)),
-        '-g': ('gamma', lambda x: parsesvm(x, float, unpac=pow2)),
+        '-e': ('tol', lambda x: parsesvm(x, float, unpac=pow10)),
+        '-p': ('epsilon', lambda x: parsesvm(x, float, unpac=pow10)),
+        '-g': ('gamma', lambda x: parsesvm(x, float, unpac=pow10)),
         '-r': ('coef0', lambda x: parsesvm(x, float))}
 
 
@@ -123,7 +125,7 @@ def main():
         with open(options['svm']) as f:
             for line in f:
                 opts = line.split()
-                tmp = {}
+                tmp = dict(kernel=['rbf'], C=[1.0], epsilon=[.1], tol=[.001], degree=[3], gamma=[0], coef0=[0])
                 for x, y in zip(opts[::2], opts[1::2]):
                     z = repl.get(x)
                     if z:

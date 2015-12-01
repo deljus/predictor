@@ -18,6 +18,7 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+from itertools import product
 from sklearn.svm import SVR
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.utils import shuffle
@@ -47,19 +48,35 @@ class Model(object):
         self.__descriptors.setpath(path)
 
     def __crossval(self, svmparams):
-        if any(isinstance(y, list) and len(y) > 1 for x in svmparams for y in x.values()):
-            pass
-        elif len(svmparams) == 1:
-            self.__model = self.__fit({x: y[0] for x, y in svmparams[0].items()})
-        else:
-            models = dict(model=None, r2=np.inf, rmse=np.inf)
-            for params in svmparams:
-                params = {x: y[0] for x, y in params.items()}
-                print('fit model with params:', params)
-                fittedmodel = self.__fit(params)
-                if fittedmodel[self.__fitscore] < models[self.__fitscore]:
-                    models = fittedmodel
-            self.__model = models
+        tmp = []
+        models = dict(model=None, r2=np.inf, rmse=np.inf)
+        for param in svmparams:
+            # (C epsilon tol)
+            baseparams = [x for x in product(param['C'], param['epsilon'], param['tol'])]
+            # if not(c > pow(10, 6) and e > pow(10, 6) or c < pow(10, 6) and e < pow(10, 6))]
+            #
+
+            for i in param['kernel']:
+                if i == 'linear':  # u'*v
+                    tmp.extend([dict(kernel='linear', C=c, epsilon=e, tol=t) for c, e, t in baseparams])
+                elif i == 'rbf':  # exp(-gamma*|u-v|^2)
+                    tmp.extend([dict(kernel='rbf', C=c, epsilon=e, tol=t, gamma=g) for g, (c, e, t)
+                                in product(param['gamma'], baseparams)])
+                elif i == 'sigmoid':  # tanh(gamma*u'*v + coef0)
+                    tmp.extend([dict(kernel='sigmoid', C=c, epsilon=e, tol=t, gamma=g, coef0=f) for g, f, (c, e, t)
+                                in product(param['gamma'], param['coef0'], baseparams)])
+                elif i == 'poly':  # (gamma*u'*v + coef0)^degree
+                    tmp.extend([dict(kernel='poly', C=c, epsilon=e, tol=t, gamma=g, coef0=f, degree=d)
+                                for g, f, d, (c, e, t)
+                                in product(param['gamma'], param['coef0'], param['degree'], baseparams)])
+
+        for param in tmp:
+            print('fit model with params:', param)
+            fittedmodel = self.__fit(param)
+            print('R2 = -%(r2)s\nRMSE = %(rmse)s' % fittedmodel)
+            if fittedmodel[self.__fitscore] < models[self.__fitscore]:
+                models = fittedmodel
+        self.__model = models
 
         print('========\nSVM params %(params)s\nR2 = -%(r2)s\nRMSE = %(rmse)s' % self.__model)
 
@@ -90,7 +107,7 @@ class Model(object):
 
                 y_pred[test] = model.predict(x_test)
                 models.append(dict(model=model, x_min=x_min, x_max=x_max, normal=normal))
-            print('repetition No %s completed' % i)
+            print('repetition No %s completed' % (i + 1))
             rmse.append(sqrt(mean_squared_error(ys, y_pred)))
             r2.append(r2_score(ys, y_pred))
 
