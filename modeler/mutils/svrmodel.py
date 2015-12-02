@@ -48,37 +48,80 @@ class Model(object):
         self.__descriptors.setpath(path)
 
     def __crossval(self, svmparams):
-        tmp = []
-        models = dict(model=None, r2=np.inf, rmse=np.inf)
+
         for param in svmparams:
+            for i in param:
+                if i != 'kernel':
+                    param[i] = {x: {} for x in param[i]}
+        print(svmparams)
             # (C epsilon tol)
-            baseparams = [x for x in product(param['C'], param['epsilon'], param['tol'])]
+            # tol = {x: {} for x in param['tol']}
+            # while len(tol) > 10:
+            #     tkeys = list(tol.keys())
+            #     #print(tkeys)
+            #     dist = [(abs(x - y), x, y) for x, y in zip(tkeys, tkeys[1:])]
+            #     #print(dist)
+            #     minimal = min(dist)
+            #     print(minimal)
+            #     left = next((x for x in dist if x[2] == minimal[1]), [0])
+            #     right = next((x for x in dist if x[1] == minimal[2]), [0])
+            #     if left[0] > right[0]:
+            #         tol[minimal[1]] = {minimal[2], None}
+            #         tol.pop(minimal[2])
+            #     else:
+            #         tol[minimal[2]] = {minimal[1]: None}
+            #         tol.pop(minimal[1])
+            #     print(tol)
+
             # if not(c > pow(10, 6) and e > pow(10, 6) or c < pow(10, 6) and e < pow(10, 6))]
             #
+        bestmodel = dict(model=None, r2=np.inf, rmse=np.inf)
+        for param in svmparams:
+            model = dict(model=None, r2=np.inf, rmse=np.inf)
+            while True:
+                stepmodel = dict(model=None, r2=np.inf, rmse=np.inf)
+                tmp = self.__prepareparams(param)
+                for i in tmp:
+                    print('fit model with params:', i)
+                    fittedmodel = self.__fit(i)
+                    print('R2 = -%(r2)s\nRMSE = %(rmse)s' % fittedmodel)
+                    if fittedmodel[self.__fitscore] < stepmodel[self.__fitscore]:
+                        stepmodel = fittedmodel
 
-            for i in param['kernel']:
-                if i == 'linear':  # u'*v
-                    tmp.extend([dict(kernel='linear', C=c, epsilon=e, tol=t) for c, e, t in baseparams])
-                elif i == 'rbf':  # exp(-gamma*|u-v|^2)
-                    tmp.extend([dict(kernel='rbf', C=c, epsilon=e, tol=t, gamma=g) for g, (c, e, t)
-                                in product(param['gamma'], baseparams)])
-                elif i == 'sigmoid':  # tanh(gamma*u'*v + coef0)
-                    tmp.extend([dict(kernel='sigmoid', C=c, epsilon=e, tol=t, gamma=g, coef0=f) for g, f, (c, e, t)
-                                in product(param['gamma'], param['coef0'], baseparams)])
-                elif i == 'poly':  # (gamma*u'*v + coef0)^degree
-                    tmp.extend([dict(kernel='poly', C=c, epsilon=e, tol=t, gamma=g, coef0=f, degree=d)
-                                for g, f, d, (c, e, t)
-                                in product(param['gamma'], param['coef0'], param['degree'], baseparams)])
+                if stepmodel[self.__fitscore] < model[self.__fitscore]:
+                    model = stepmodel
+                    tmp = {}
+                    for i, j in model['params'].items():
+                        if i == 'kernel':
+                            tmp[i] = j
+                        else:
+                            tmp[i] = param[i][j]
+                    param = tmp
+                else:
+                    break
+            if model[self.__fitscore] < bestmodel[self.__fitscore]:
+                bestmodel = model
 
-        for param in tmp:
-            print('fit model with params:', param)
-            fittedmodel = self.__fit(param)
-            print('R2 = -%(r2)s\nRMSE = %(rmse)s' % fittedmodel)
-            if fittedmodel[self.__fitscore] < models[self.__fitscore]:
-                models = fittedmodel
-        self.__model = models
+        print('========\nSVM params %(params)s\nR2 = -%(r2)s\nRMSE = %(rmse)s' % bestmodel)
+        self.__model = bestmodel
 
-        print('========\nSVM params %(params)s\nR2 = -%(r2)s\nRMSE = %(rmse)s' % self.__model)
+    @staticmethod
+    def __prepareparams(param):
+        tmp = []
+        baseparams = [x for x in product(param['C'], param['epsilon'], param['tol'])]
+        if param['kernel'] == 'linear':  # u'*v
+            tmp.extend([dict(kernel='linear', C=c, epsilon=e, tol=t) for c, e, t in baseparams])
+        elif param['kernel'] == 'rbf':  # exp(-gamma*|u-v|^2)
+            tmp.extend([dict(kernel='rbf', C=c, epsilon=e, tol=t, gamma=g) for g, (c, e, t)
+                        in product(param['gamma'], baseparams)])
+        elif param['kernel'] == 'sigmoid':  # tanh(gamma*u'*v + coef0)
+            tmp.extend([dict(kernel='sigmoid', C=c, epsilon=e, tol=t, gamma=g, coef0=f) for g, f, (c, e, t)
+                        in product(param['gamma'], param['coef0'], baseparams)])
+        elif param['kernel'] == 'poly':  # (gamma*u'*v + coef0)^degree
+            tmp.extend([dict(kernel='poly', C=c, epsilon=e, tol=t, gamma=g, coef0=f, degree=d)
+                        for g, f, d, (c, e, t)
+                        in product(param['gamma'], param['coef0'], param['degree'], baseparams)])
+        return tmp
 
     def __fit(self, svmparams):
         models = []

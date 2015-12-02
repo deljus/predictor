@@ -18,6 +18,7 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+from itertools import product
 from mutils.fragmentor import Fragmentor
 from mutils.svrmodel import Model
 import argparse
@@ -121,7 +122,7 @@ def main():
     frag = Fragmentor(workpath='.', header=options['header'], extention=extdata, **options['fragments'])
 
     if not options['output']:
-        svm = []
+        svm = {}
         with open(options['svm']) as f:
             for line in f:
                 opts = line.split()
@@ -130,9 +131,37 @@ def main():
                     z = repl.get(x)
                     if z:
                         tmp[z[0]] = z[1](y)
-                svm.append(tmp)
 
-        model = Model(frag, svm, inputfile=options['input'], parsesdf=True, dispcoef=options['dispcoef'],
+                for i in tmp['kernel']:
+                    if i == 'linear':  # u'*v
+                        if svm.get('linear'):
+                            for k in ('C', 'epsilon', 'tol'):
+                                svm['linear'][k].extend(tmp[k])
+                        else:
+                            svm['linear'] = dict(kernel='linear', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'])
+                    elif i == 'rbf':  # exp(-gamma*|u-v|^2)
+                        if svm.get('rbf'):
+                            for k in ('C', 'epsilon', 'tol', 'gamma'):
+                                svm['rbf'][k].extend(tmp[k])
+                        else:
+                            svm['rbf'] = dict(kernel='rbf', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
+                                              gamma=tmp['gamma'])
+                    elif i == 'sigmoid':  # tanh(gamma*u'*v + coef0)
+                        if svm.get('sigmoid'):
+                            for k in ('C', 'epsilon', 'tol', 'gamma', 'coef0'):
+                                svm['sigmoid'][k].extend(tmp[k])
+                        else:
+                            svm['sigmoid'] = dict(kernel='sigmoid', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
+                                                  gamma=tmp['gamma'], coef0=tmp['coef0'])
+                    elif i == 'poly':  # (gamma*u'*v + coef0)^degree
+                        if svm.get('poly'):
+                            for k in ('C', 'epsilon', 'tol', 'gamma', 'coef0', 'degree'):
+                                svm['poly'][k].extend(tmp[k])
+                        else:
+                            svm['poly'] = dict(kernel='poly', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
+                                               gamma=tmp['gamma'], coef0=tmp['coef0'], degree=tmp['degree'])
+
+        model = Model(frag, svm.values(), inputfile=options['input'], parsesdf=True, dispcoef=options['dispcoef'],
                       fit=options['fit'],
                       nfold=options['nfold'], repetitions=options['repetition'], normalize=options['normalize'])
         pickle.dump(model, open(options['model'], 'wb'))
