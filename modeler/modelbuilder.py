@@ -123,6 +123,8 @@ def main():
 
     if not options['output']:
         svm = {}
+        if options['header'] is None:
+            frag.genheader()
         with open(options['svm']) as f:
             for line in f:
                 opts = line.split()

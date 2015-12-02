@@ -33,6 +33,7 @@ class Fragmentor(object):
         self.__extention = extention
         self.__extshift = {}
         self.__extheader = []
+        self.__genheader = False
         shift = 0
         for i in sorted(extention):
             self.__extshift[i] = shift
@@ -51,10 +52,7 @@ class Fragmentor(object):
         tmp = ['-f', 'SVM']
         if s_option: tmp.extend(['-s', s_option])
         if header:
-            with open(header) as f:
-                self.__headdump = f.read()
-            with open(header) as f:
-                self.__headsize = len(f.readlines())
+            self.__dumpheader(header)
             tmp.extend(['-h', header])
         else:
             self.__headsize = None
@@ -74,12 +72,21 @@ class Fragmentor(object):
 
         self.__execparams = tmp
 
+    def __dumpheader(self, header):
+        with open(header) as f:
+                self.__headdump = f.read()
+        with open(header) as f:
+            self.__headsize = len(f.readlines())
+
     def setpath(self, path):
         self.__workpath = path
         header = os.path.join(path, "model-%d.hdr" % int(time.time()))
         with open(header, 'w') as f:
             f.write(self.__headdump)
         self.__execparams[self.__execparams.index('-h') + 1] = header
+
+    def genheader(self):
+        self.__genheader = True
 
     def parsesdf(self, inputfile):
         extblock = []
@@ -139,12 +146,15 @@ class Fragmentor(object):
         execparams.extend(self.__execparams)
         sp.call(execparams, cwd=self.__workpath)
         if os.path.exists(outputfile + '.svm'):
-
             return self.__extendvector(outputfile, extblock, parser)
         return False
 
     def __extendvector(self, descfile, extention, parser):
         prop, vector = [], []
+
+        if self.__genheader:
+            self.__genheader = False
+            self.__dumpheader(descfile + '.hdr')
 
         with open(descfile + '.hdr') as f:
             last = len(f.readlines())
