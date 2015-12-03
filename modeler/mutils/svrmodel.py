@@ -47,33 +47,41 @@ class Model(object):
     def setworkpath(self, path):
         self.__descriptors.setpath(path)
 
-    def __splitrange(self, param):
+    def __splitrange(self, param, dep=0):
+        tmp = {}
+        fdep = dep
         stepindex = list(range(0, len(param), round(len(param)/10) or 1))
-        print(stepindex)
-        if len(stepindex) == len(param):
-            tmp = {x: {} for x in param}
-        else:
-            tmp = {}
-            stepindex.insert(0, -1)
-            stepindex.append(len(param))
-            for i, j, k in zip(stepindex, stepindex[1:], stepindex[2:]):
-                tmp[param[j]] = self.__splitrange(param[i+1:j] + param[j+1:k])
-        print(tmp)
-        return tmp
+        stepindex.insert(0, -1)
+        stepindex.append(len(param))
+        for i, j, k in zip(stepindex, stepindex[1:], stepindex[2:]):
+            tmp[param[j]], tmpd = self.__splitrange(param[i+1:j] + param[j+1:k], dep=dep+1)
+            if tmpd > fdep:
+                fdep = tmpd
+        return tmp, fdep
 
     def __crossval(self, svmparams):
+        fcount = 0
+        depindex = []
+        maxdep = []
         for param in svmparams:
+            di = {}
+            md = 0
             for i in param:
                 if i != 'kernel':
-                    param[i] = self.__splitrange(param[i])
-        print(param)
+                    param[i], di[i] = self.__splitrange(param[i])
+                    if di[i] > md:
+                        md = di[i]
+            depindex.append(di)
+            maxdep.append(md)
+
         bestmodel = dict(model=None, r2=np.inf, rmse=np.inf)
-        for param in svmparams:
+        for param, md, di in zip(svmparams, maxdep, depindex):
             model = dict(model=None, r2=np.inf, rmse=np.inf)
             while True:
                 stepmodel = dict(model=None, r2=np.inf, rmse=np.inf)
                 tmp = self.__prepareparams(param)
                 for i in tmp:
+                    fcount += 1
                     print('fit model with params:', i)
                     fittedmodel = self.__fit(i)
                     print('R2 = -%(r2)s\nRMSE = %(rmse)s' % fittedmodel)
@@ -86,6 +94,8 @@ class Model(object):
                     for i, j in model['params'].items():
                         if i == 'kernel':
                             tmp[i] = j
+                        elif di[i] < md and not param[i][j]:
+                            tmp[i] = param[i]
                         else:
                             tmp[i] = param[i][j]
                     param = tmp
@@ -95,6 +105,7 @@ class Model(object):
                 bestmodel = model
 
         print('========\nSVM params %(params)s\nR2 = -%(r2)s\nRMSE = %(rmse)s' % bestmodel)
+        print('%s variants checked' % fcount)
         self.__model = bestmodel
 
     @staticmethod
