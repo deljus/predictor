@@ -48,13 +48,16 @@ class Model(object):
         self.__descriptors.setpath(path)
 
     def __splitrange(self, param):
-        stepindex = list(range(1, len(param), round(len(param)/10) or 1))
+        stepindex = list(range(0, len(param), round(len(param)/10) or 1))
         print(stepindex)
-        if len(stepindex) + 1 == len(param):
+        if len(stepindex) == len(param):
             tmp = {x: {} for x in param}
         else:
-            for i in range(1, len(stepindex)-1):
-                pass
+            tmp = {}
+            stepindex.insert(0, -1)
+            stepindex.append(len(param))
+            for i, j, k in zip(stepindex, stepindex[1:], stepindex[2:]):
+                tmp[param[j]] = self.__splitrange(param[i+1:j] + param[j+1:k])
         print(tmp)
         return tmp
 
@@ -63,7 +66,7 @@ class Model(object):
             for i in param:
                 if i != 'kernel':
                     param[i] = self.__splitrange(param[i])
-
+        print(param)
         bestmodel = dict(model=None, r2=np.inf, rmse=np.inf)
         for param in svmparams:
             model = dict(model=None, r2=np.inf, rmse=np.inf)
