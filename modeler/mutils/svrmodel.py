@@ -47,34 +47,23 @@ class Model(object):
     def setworkpath(self, path):
         self.__descriptors.setpath(path)
 
-    def __crossval(self, svmparams):
+    def __splitrange(self, param):
+        stepindex = list(range(1, len(param), round(len(param)/10) or 1))
+        print(stepindex)
+        if len(stepindex) + 1 == len(param):
+            tmp = {x: {} for x in param}
+        else:
+            for i in range(1, len(stepindex)-1):
+                pass
+        print(tmp)
+        return tmp
 
+    def __crossval(self, svmparams):
         for param in svmparams:
             for i in param:
                 if i != 'kernel':
-                    param[i] = {x: {} for x in param[i]}
-        print(svmparams)
-            # (C epsilon tol)
-            # tol = {x: {} for x in param['tol']}
-            # while len(tol) > 10:
-            #     tkeys = list(tol.keys())
-            #     #print(tkeys)
-            #     dist = [(abs(x - y), x, y) for x, y in zip(tkeys, tkeys[1:])]
-            #     #print(dist)
-            #     minimal = min(dist)
-            #     print(minimal)
-            #     left = next((x for x in dist if x[2] == minimal[1]), [0])
-            #     right = next((x for x in dist if x[1] == minimal[2]), [0])
-            #     if left[0] > right[0]:
-            #         tol[minimal[1]] = {minimal[2], None}
-            #         tol.pop(minimal[2])
-            #     else:
-            #         tol[minimal[2]] = {minimal[1]: None}
-            #         tol.pop(minimal[1])
-            #     print(tol)
+                    param[i] = self.__splitrange(param[i])
 
-            # if not(c > pow(10, 6) and e > pow(10, 6) or c < pow(10, 6) and e < pow(10, 6))]
-            #
         bestmodel = dict(model=None, r2=np.inf, rmse=np.inf)
         for param in svmparams:
             model = dict(model=None, r2=np.inf, rmse=np.inf)
