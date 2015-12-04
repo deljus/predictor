@@ -74,6 +74,10 @@ class Model(object):
             depindex.append(di)
             maxdep.append(md)
 
+        print('========================================\n'
+              'Y mean +- variance = %f +- %f\n'
+              '  max = %f, min = %f' % (self.__y.mean(), self.__y.var(), self.__y.max(), self.__y.min()))
+
         bestmodel = dict(model=None, r2=np.inf, rmse=np.inf)
         for param, md, di in zip(svmparams, maxdep, depindex):
             model = dict(model=None, r2=np.inf, rmse=np.inf)
@@ -104,8 +108,9 @@ class Model(object):
             if model[self.__fitscore] < bestmodel[self.__fitscore]:
                 bestmodel = model
 
-        print('========\nSVM params %(params)s\nR2 = -%(r2)s\nRMSE = %(rmse)s' % bestmodel)
-        print('%s variants checked' % fcount)
+        print('========================================\n'
+              'SVM params %(params)s\nR2 = -%(r2)s\nRMSE = %(rmse)s' % bestmodel)
+        print('========================================\n%s variants checked' % fcount)
         self.__model = bestmodel
 
     @staticmethod
