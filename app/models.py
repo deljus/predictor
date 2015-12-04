@@ -32,8 +32,8 @@ if app.config.get("DEBUG"):
     db = Database("sqlite", "database.sqlite", create_db=True)
     sql_debug(True)
 else:
-    db = Database('postgres', user='postgres', password='nginxpony', host='localhost', database='predictor')
-    #sql_debug(True)
+    db = Database('postgres', user=app.config.get("DB_USER"), password=app.config.get("DB_PASS"),
+                  host=app.config.get("DB_HOST"), database=app.config.get("DB_NAME"))
 
 STATUS_ARRAY = ["Task created",         #0
                 "Mapping required",     #1

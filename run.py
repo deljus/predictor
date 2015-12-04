@@ -23,7 +23,4 @@
 from app import app
 
 if __name__ == "__main__":
-    if app.config.get("DEBUG"):
-        app.run(host='0.0.0.0', debug=True)
-    else:
-        app.run()
+    app.run(app.config.get("HOST", "localhost"), port=app.config.get("PORT", 5000), debug=app.config.get("DEBUG"))
