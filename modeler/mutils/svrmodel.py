@@ -75,8 +75,8 @@ class Model(object):
             maxdep.append(md)
 
         print('========================================\n'
-              'Y mean +- variance = %f +- %f\n'
-              '  max = %f, min = %f' % (self.__y.mean(), self.__y.var(), self.__y.max(), self.__y.min()))
+              'Y mean +- variance = %s +- %s\n'
+              '  max = %s, min = %s' % (self.__y.mean(), self.__y.var(), self.__y.max(), self.__y.min()))
 
         bestmodel = dict(model=None, r2=np.inf, rmse=np.inf)
         for param, md, di in zip(svmparams, maxdep, depindex):
