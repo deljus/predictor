@@ -51,7 +51,7 @@ class Fragmentor(object):
                     shift += 1
 
         self.__workpath = workpath
-        self.__fragmentor = 'Fragmentor-%s' % version
+        self.__fragmentor = 'fragmentor-%s' % version
         tmp = ['-f', 'SVM']
         if s_option: tmp.extend(['-s', s_option])
         if header:

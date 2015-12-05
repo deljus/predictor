@@ -102,6 +102,7 @@ def main():
     rawopts.add_argument("--svm", "-s", type=str, default='input.cfg', help="SVM params")
     rawopts.add_argument("--nfold", "-n", type=int, default=5, help="number of folds")
     rawopts.add_argument("--repetition", "-r", type=int, default=1, help="number of repetitions")
+    rawopts.add_argument("--n_jobs", "-j", type=int, default=2, help="number of parallel folds fit. [may be <= kfolds]")
     rawopts.add_argument("--fit", "-t", type=str, default='rmse',
                          help="crossval score for parameters fit/ (rmse|r2)")
     rawopts.add_argument("--dispcoef", "-p", type=float, default=0,
@@ -164,7 +165,7 @@ def main():
                                                gamma=tmp['gamma'], coef0=tmp['coef0'], degree=tmp['degree'])
 
         model = Model(frag, svm.values(), inputfile=options['input'], parsesdf=True, dispcoef=options['dispcoef'],
-                      fit=options['fit'],
+                      fit=options['fit'], n_jobs=options['n_jobs'],
                       nfold=options['nfold'], repetitions=options['repetition'], normalize=options['normalize'])
         pickle.dump(model, open(options['model'], 'wb'))
     else:

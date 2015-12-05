@@ -19,6 +19,7 @@
 #  MA 02110-1301, USA.
 #
 from itertools import product
+from sklearn.externals.joblib import Parallel, delayed
 from sklearn.svm import SVR
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.utils import shuffle
@@ -29,9 +30,29 @@ from math import sqrt
 import numpy as np
 
 
+def _kfold(xs, ys, train, test, svmparams, normalize):
+    x_train, y_train = xs[train], ys[train]
+    x_test, y_test = xs[test], list(ys[test])
+    x_min = np.amin(x_train, axis=0)
+    x_max = np.amax(x_train, axis=0)
+
+    if normalize:
+        normal = MinMaxScaler()
+        normal.fit(x_train)
+        x_test = normal.transform(x_test)
+        x_train = normal.transform(x_train)
+    else:
+        normal = None
+
+    model = SVR(**svmparams)
+    model.fit(x_train, y_train)
+    y_pred = list(model.predict(x_test))
+    return dict(model=model, normal=normal, x_min=x_min, x_max=x_max, y_test=y_test, y_pred=y_pred)
+
+
 class Model(object):
     def __init__(self, descriptors, svmparams, nfold=5, repetitions=1, dispcoef=0,
-                 fit='rmse', normalize=False, **kwargs):
+                 fit='rmse', normalize=False, n_jobs=2, **kwargs):
         self.__sparse = DictVectorizer(sparse=False)
         self.__descriptors = descriptors
         self.__trainparam = dict(nfold=nfold, repetitions=repetitions)
@@ -42,6 +63,8 @@ class Model(object):
         self.__normalize = normalize
         self.__dispcoef = dispcoef
         self.__fitscore = fit
+
+        self.__n_jobs = n_jobs
         self.__crossval(svmparams)
 
     def setworkpath(self, path):
@@ -76,7 +99,7 @@ class Model(object):
 
         print('========================================\n'
               'Y mean +- variance = %s +- %s\n'
-              '  max = %s, min = %s' % (self.__y.mean(), self.__y.var(), self.__y.max(), self.__y.min()))
+              '  max = %s, min = %s' % (self.__y.mean(), sqrt(self.__y.var()), self.__y.max(), self.__y.min()))
 
         bestmodel = dict(model=None, r2=np.inf, rmse=np.inf)
         for param, md, di in zip(svmparams, maxdep, depindex):
@@ -109,7 +132,7 @@ class Model(object):
                 bestmodel = model
 
         print('========================================\n'
-              'SVM params %(params)s\nR2 = -%(r2)s\nRMSE = %(rmse)s' % bestmodel)
+              'SVM params %(params)s\n-R2 = %(r2)s\nRMSE = %(rmse)s' % bestmodel)
         print('========================================\n%s variants checked' % fcount)
         self.__model = bestmodel
 
@@ -135,36 +158,23 @@ class Model(object):
         models = []
         rmse = []
         r2 = []
-        y_pred = np.empty_like(self.__y)
+        parallel = Parallel(n_jobs=self.__n_jobs)
+        kf = list(KFold(len(self.__y), n_folds=self.__trainparam['nfold']))
         for i in range(self.__trainparam['repetitions']):
             xs, ys = shuffle(self.__x, self.__y, random_state=i)
-            kf = KFold(len(self.__y), n_folds=self.__trainparam['nfold'])
-            for train, test in kf:
-                x_train, y_train = xs[train], ys[train]
-                x_test, y_test = xs[test], ys[test]
-                x_min = np.amin(x_train, axis=0)
-                x_max = np.amax(x_train, axis=0)
+            folds = parallel(delayed(_kfold)(xs, ys, train, test, svmparams, self.__normalize) for train, test in kf)
+            y_test, y_pred = [], []
+            for fold in folds:
+                models.append(fold)
+                y_pred.extend(fold['y_pred'])
+                y_test.extend(fold['y_test'])
+            rmse.append(sqrt(mean_squared_error(y_test, y_pred)))
+            r2.append(r2_score(y_test, y_pred))
 
-                if self.__normalize:
-                    normal = MinMaxScaler()
-                    normal.fit(x_train)
-                    x_test = normal.transform(x_test)
-                    x_train = normal.transform(x_train)
-                else:
-                    normal = None
-
-                model = SVR(**svmparams)
-                model.fit(x_train, y_train)
-
-                y_pred[test] = model.predict(x_test)
-                models.append(dict(model=model, x_min=x_min, x_max=x_max, normal=normal))
             print('repetition No %s completed' % (i + 1))
-            rmse.append(sqrt(mean_squared_error(ys, y_pred)))
-            r2.append(r2_score(ys, y_pred))
-
         return dict(model=models,
-                    rmse=np.mean(rmse) - self.__dispcoef * np.var(rmse),
-                    r2=-np.mean(r2) + self.__dispcoef * np.var(r2),
+                    rmse=np.mean(rmse) - self.__dispcoef * sqrt(np.var(rmse)),
+                    r2=-np.mean(r2) + self.__dispcoef * sqrt(np.var(r2)),
                     params=svmparams)
 
     def predict(self, structure, **kwargs):
