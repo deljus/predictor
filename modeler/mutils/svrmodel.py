@@ -75,7 +75,9 @@ class Model(object):
         self.__descriptors.setpath(path)
 
     def getmodelstats(self):
-        return dict(r2=self.__model['r2'], rmse=self.__model['rmse'], fitparams=self.__model['params'],
+        return dict(r2=self.__model['r2'], rmse=self.__model['rmse'],
+                    vr2=self.__model['vr2'], vrmse=self.__model['vrmse'],
+                    fitparams=self.__model['params'],
                     repetitions=self.__repetitions, nfolds=self.__nfold, normalize=self.__normalize)
 
     def __splitrange(self, param, dep=0):
@@ -119,7 +121,7 @@ class Model(object):
                     fcount += 1
                     print('fit model with params:', i)
                     fittedmodel = self.__fit(i)
-                    print('R2 = %s\nRMSE = %s' % (-fittedmodel['r2'], fittedmodel['rmse']))
+                    print('R2 +- variance = %(r2)s +- %(vr2)s\nRMSE +- variance = %(rmse)s +- %(vrmse)s' % fittedmodel)
                     if fittedmodel[self.__fitscore] < var_param_model[self.__fitscore]:
                         var_param_model = fittedmodel
 
@@ -139,8 +141,8 @@ class Model(object):
             if var_kern_model[self.__fitscore] < bestmodel[self.__fitscore]:
                 bestmodel = var_kern_model
 
-        print('========================================\n'
-              'SVM params %(params)s\nR2 = %(r2)s\nRMSE = %(rmse)s' % bestmodel)
+        print('========================================\nSVM params %(params)s\n'
+              'R2 +- variance = %(r2)s +- %(vr2)s\nRMSE +- variance = %(rmse)s +- %(vrmse)s' % bestmodel)
         print('========================================\n%s variants checked' % fcount)
         self.__model = bestmodel
 
@@ -180,10 +182,13 @@ class Model(object):
                             zip(*[iter(y_pred)] * self.__nfold)):
             rmse.append(sqrt(mean_squared_error(y_t, y_p)))
             r2.append(r2_score(y_t, y_p))
-        return dict(model=models, rmse=np.mean(rmse), r2=np.mean(r2),
-                    Crmse=np.mean(rmse) - self.__dispcoef * sqrt(np.var(rmse)),
-                    Cr2=-np.mean(r2) + self.__dispcoef * sqrt(np.var(r2)),
-                    params=svmparams)
+
+        rmse = np.mean(rmse)
+        vrmse = sqrt(np.var(rmse))
+        r2 = np.mean(r2)
+        vr2 = sqrt(np.var(r2))
+        return dict(model=models, rmse=rmse, r2=r2, vrmse=vrmse, vr2=vr2,params=svmparams,
+                    Crmse=rmse - self.__dispcoef * vrmse, Cr2=-r2 + self.__dispcoef * vr2)
 
     def predict(self, structure, **kwargs):
         _, d_x, d_ad = self.__descriptors.get(inputfile=structure, **kwargs)
