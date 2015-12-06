@@ -33,8 +33,10 @@ import numpy as np
 def _kfold(xs, ys, train, test, svmparams, normalize):
     x_train, y_train = xs[train], ys[train]
     x_test, y_test = xs[test], list(ys[test])
-    x_min = np.amin(x_train, axis=0)
-    x_max = np.amax(x_train, axis=0)
+    x_min = x_train.min(axis=0)
+    x_max = x_train.max(axis=0)
+    y_min = y_train.min()
+    y_max = y_train.max()
 
     if normalize:
         normal = MinMaxScaler()
@@ -47,7 +49,8 @@ def _kfold(xs, ys, train, test, svmparams, normalize):
     model = SVR(**svmparams)
     model.fit(x_train, y_train)
     y_pred = list(model.predict(x_test))
-    return dict(model=model, normal=normal, x_min=x_min, x_max=x_max, y_test=y_test, y_pred=y_pred)
+    return dict(model=model, normal=normal, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max,
+                y_test=y_test, y_pred=y_pred)
 
 
 class Model(object):
@@ -55,20 +58,25 @@ class Model(object):
                  fit='rmse', normalize=False, n_jobs=2, **kwargs):
         self.__sparse = DictVectorizer(sparse=False)
         self.__descriptors = descriptors
-        self.__trainparam = dict(nfold=nfold, repetitions=repetitions)
+        self.__nfold = nfold
+        self.__repetitions = repetitions
 
         y, x, _ = descriptors.get(**kwargs)
         self.__sparse.fit(x)
         self.__x, self.__y = self.__sparse.transform(x), np.array(y)
         self.__normalize = normalize
         self.__dispcoef = dispcoef
-        self.__fitscore = fit
+        self.__fitscore = 'C' + fit
 
         self.__n_jobs = n_jobs
         self.__crossval(svmparams)
 
     def setworkpath(self, path):
         self.__descriptors.setpath(path)
+
+    def getmodelstats(self):
+        return dict(r2=self.__model['r2'], rmse=self.__model['rmse'], fitparams=self.__model['params'],
+                    repetitions=self.__repetitions, nfolds=self.__nfold, normalize=self.__normalize)
 
     def __splitrange(self, param, dep=0):
         tmp = {}
@@ -101,24 +109,24 @@ class Model(object):
               'Y mean +- variance = %s +- %s\n'
               '  max = %s, min = %s' % (self.__y.mean(), sqrt(self.__y.var()), self.__y.max(), self.__y.min()))
 
-        bestmodel = dict(model=None, r2=np.inf, rmse=np.inf)
+        bestmodel = dict(model=None, Cr2=np.inf, Crmse=np.inf)
         for param, md, di in zip(svmparams, maxdep, depindex):
-            model = dict(model=None, r2=np.inf, rmse=np.inf)
+            var_kern_model = dict(model=None, Cr2=np.inf, Crmse=np.inf)
             while True:
-                stepmodel = dict(model=None, r2=np.inf, rmse=np.inf)
+                var_param_model = dict(model=None, Cr2=np.inf, Crmse=np.inf)
                 tmp = self.__prepareparams(param)
                 for i in tmp:
                     fcount += 1
                     print('fit model with params:', i)
                     fittedmodel = self.__fit(i)
-                    print('R2 = -%(r2)s\nRMSE = %(rmse)s' % fittedmodel)
-                    if fittedmodel[self.__fitscore] < stepmodel[self.__fitscore]:
-                        stepmodel = fittedmodel
+                    print('R2 = %s\nRMSE = %s' % (-fittedmodel['r2'], fittedmodel['rmse']))
+                    if fittedmodel[self.__fitscore] < var_param_model[self.__fitscore]:
+                        var_param_model = fittedmodel
 
-                if stepmodel[self.__fitscore] < model[self.__fitscore]:
-                    model = stepmodel
+                if var_param_model[self.__fitscore] < var_kern_model[self.__fitscore]:
+                    var_kern_model = var_param_model
                     tmp = {}
-                    for i, j in model['params'].items():
+                    for i, j in var_kern_model['params'].items():
                         if i == 'kernel':
                             tmp[i] = j
                         elif di[i] < md and not param[i][j]:
@@ -128,11 +136,11 @@ class Model(object):
                     param = tmp
                 else:
                     break
-            if model[self.__fitscore] < bestmodel[self.__fitscore]:
-                bestmodel = model
+            if var_kern_model[self.__fitscore] < bestmodel[self.__fitscore]:
+                bestmodel = var_kern_model
 
         print('========================================\n'
-              'SVM params %(params)s\n-R2 = %(r2)s\nRMSE = %(rmse)s' % bestmodel)
+              'SVM params %(params)s\nR2 = %(r2)s\nRMSE = %(rmse)s' % bestmodel)
         print('========================================\n%s variants checked' % fcount)
         self.__model = bestmodel
 
@@ -155,36 +163,40 @@ class Model(object):
         return tmp
 
     def __fit(self, svmparams):
-        models = []
-        rmse = []
-        r2 = []
+        models, y_test, y_pred, r2, rmse = [], [], [], [], []
         parallel = Parallel(n_jobs=self.__n_jobs)
-        kf = list(KFold(len(self.__y), n_folds=self.__trainparam['nfold']))
-        for i in range(self.__trainparam['repetitions']):
-            xs, ys = shuffle(self.__x, self.__y, random_state=i)
-            folds = parallel(delayed(_kfold)(xs, ys, train, test, svmparams, self.__normalize) for train, test in kf)
-            y_test, y_pred = [], []
-            for fold in folds:
-                models.append(fold)
-                y_pred.extend(fold['y_pred'])
-                y_test.extend(fold['y_test'])
-            rmse.append(sqrt(mean_squared_error(y_test, y_pred)))
-            r2.append(r2_score(y_test, y_pred))
+        kf = list(KFold(len(self.__y), n_folds=self.__nfold))
+        folds = parallel(delayed(_kfold)(xs, ys, train, test, svmparams, self.__normalize)
+                         for xs, ys in
+                         (shuffle(self.__x, self.__y, random_state=i) for i in range(self.__repetitions))
+                         for train, test in kf)
 
-            print('repetition No %s completed' % (i + 1))
-        return dict(model=models,
-                    rmse=np.mean(rmse) - self.__dispcoef * sqrt(np.var(rmse)),
-                    r2=-np.mean(r2) + self.__dispcoef * sqrt(np.var(r2)),
+        for fold in folds:
+            y_pred.extend(fold.pop('y_pred'))
+            y_test.extend(fold.pop('y_test'))
+            models.append(fold)
+        #  street magic. split y_pred and y_test to repetitions
+        for y_t, y_p in zip(zip(*[iter(y_test)] * self.__nfold),
+                            zip(*[iter(y_pred)] * self.__nfold)):
+            rmse.append(sqrt(mean_squared_error(y_t, y_p)))
+            r2.append(r2_score(y_t, y_p))
+        return dict(model=models, rmse=np.mean(rmse), r2=np.mean(r2),
+                    Crmse=np.mean(rmse) - self.__dispcoef * sqrt(np.var(rmse)),
+                    Cr2=-np.mean(r2) + self.__dispcoef * sqrt(np.var(r2)),
                     params=svmparams)
 
     def predict(self, structure, **kwargs):
         _, d_x, d_ad = self.__descriptors.get(inputfile=structure, **kwargs)
         res = []
-        for model in self.__model['model']:
-            x_test = self.__sparse.transform(d_x)
-            ad = d_ad and (x_test - model['x_min']).min() >= 0 and (model['x_max'] - x_test).min() >= 0
-            if model['normal']:
-                x_test = model['normal'](x_test)
+        for i in d_x:
+            tmp = []
+            x_test = self.__sparse.transform([i])
+            for model in self.__model['model']:
+                x_ad = d_ad and (x_test - model['x_min']).min() >= 0 and (model['x_max'] - x_test).min() >= 0
+                x_t = model['normal'](x_test) if model['normal'] else x_test
+                y_pred = model['model'].predict(x_t)
+                y_ad = model['y_min'] <= y_pred <= model['y_max']
 
-            res.append(dict(prediction=model['model'].predict(x_test), domain=ad))
+                tmp.append(dict(prediction=y_pred, domain=x_ad, y_domain=y_ad))
+            res.append(tmp)
         return res
