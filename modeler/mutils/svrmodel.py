@@ -183,11 +183,9 @@ class Model(object):
             rmse.append(sqrt(mean_squared_error(y_t, y_p)))
             r2.append(r2_score(y_t, y_p))
 
-        rmse = np.mean(rmse)
-        vrmse = sqrt(np.var(rmse))
-        r2 = np.mean(r2)
-        vr2 = sqrt(np.var(r2))
-        return dict(model=models, rmse=rmse, r2=r2, vrmse=vrmse, vr2=vr2,params=svmparams,
+        rmse, vrmse = np.mean(rmse), sqrt(np.var(rmse))
+        r2, vr2 = np.mean(r2), sqrt(np.var(r2))
+        return dict(model=models, rmse=rmse, r2=r2, vrmse=vrmse, vr2=vr2, params=svmparams,
                     Crmse=rmse - self.__dispcoef * vrmse, Cr2=-r2 + self.__dispcoef * vr2)
 
     def predict(self, structure, **kwargs):
