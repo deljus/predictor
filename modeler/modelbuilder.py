@@ -23,6 +23,7 @@ from mutils.fragmentor import Fragmentor
 from mutils.svrmodel import Model
 import argparse
 import pickle
+import gzip
 
 
 def parseext(rawext):
@@ -167,7 +168,7 @@ def main():
         model = Model(frag, svm.values(), inputfile=options['input'], parsesdf=True, dispcoef=options['dispcoef'],
                       fit=options['fit'], n_jobs=options['n_jobs'],
                       nfold=options['nfold'], repetitions=options['repetition'], normalize=options['normalize'])
-        pickle.dump(model, open(options['model'], 'wb'))
+        pickle.dump(model, gzip.open(options['model'], 'wb'))
     else:
         frag.get(inputfile=options['input'], parsesdf=True, outputfile=options['output'])
 
