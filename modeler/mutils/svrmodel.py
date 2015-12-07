@@ -191,6 +191,8 @@ class Model(object):
             y_test.extend(ky_test)
         print(kr2)
         print(krmse)
+        print(y_test)
+        print(y_pred)
         rmse, vrmse = np.mean(krmse), sqrt(np.var(krmse))
         r2, vr2 = np.mean(kr2), sqrt(np.var(kr2))
         dragos_rmse = sqrt(mean_squared_error(y_test, y_pred))
