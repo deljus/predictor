@@ -109,7 +109,9 @@ class Model(object):
 
         print('========================================\n'
               'Y mean +- variance = %s +- %s\n'
-              '  max = %s, min = %s' % (self.__y.mean(), sqrt(self.__y.var()), self.__y.max(), self.__y.min()))
+              '  max = %s, min = %s\n'
+              '========================================' %
+              (self.__y.mean(), sqrt(self.__y.var()), self.__y.max(), self.__y.min()))
 
         bestmodel = dict(model=None, Cr2=np.inf, Crmse=np.inf)
         for param, md, di in zip(svmparams, maxdep, depindex):
@@ -142,7 +144,8 @@ class Model(object):
                 bestmodel = var_kern_model
 
         print('========================================\nSVM params %(params)s\n'
-              'R2 +- variance = %(r2)s +- %(vr2)s\nRMSE +- variance = %(rmse)s +- %(vrmse)s' % bestmodel)
+              'R2 +- variance = %(r2)s +- %(vr2)s\nRMSE +- variance = %(rmse)s +- %(vrmse)s\n'
+              'Dragos_RMSE = %(dragos_rmse)s\nDragos_R2 = %(dragos_r2)s' % bestmodel)
         print('========================================\n%s variants checked' % fcount)
         self.__model = bestmodel
 
@@ -173,20 +176,27 @@ class Model(object):
                          (shuffle(self.__x, self.__y, random_state=i) for i in range(self.__repetitions))
                          for train, test in kf)
 
-        for fold in folds:
-            y_pred.extend(fold.pop('y_pred'))
-            y_test.extend(fold.pop('y_test'))
-            models.append(fold)
-        #  street magic. split y_pred and y_test to repetitions
-        for y_t, y_p in zip(zip(*[iter(y_test)] * self.__nfold),
-                            zip(*[iter(y_pred)] * self.__nfold)):
-            rmse.append(sqrt(mean_squared_error(y_t, y_p)))
-            r2.append(r2_score(y_t, y_p))
+        #  street magic. split folds to repetitions
+        for kfold in zip(*[iter(folds)] * self.__nfold):
+            ky_pred, ky_test = [], []
+            for fold in kfold:
+                ky_pred.extend(fold.pop('y_pred'))
+                ky_test.extend(fold.pop('y_test'))
+                models.append(fold)
+
+            rmse.append(sqrt(mean_squared_error(ky_test, ky_pred)))
+            r2.append(r2_score(ky_test, ky_pred))
+
+            y_pred.extend(ky_pred)
+            y_test.extend(ky_test)
 
         rmse, vrmse = np.mean(rmse), sqrt(np.var(rmse))
         r2, vr2 = np.mean(r2), sqrt(np.var(r2))
+        dragos_rmse = sqrt(mean_squared_error(y_test, y_pred))
+        dragos_r2 = r2_score(y_test, y_pred)
         return dict(model=models, rmse=rmse, r2=r2, vrmse=vrmse, vr2=vr2, params=svmparams,
-                    Crmse=rmse - self.__dispcoef * vrmse, Cr2=-r2 + self.__dispcoef * vr2)
+                    Crmse=rmse + self.__dispcoef * vrmse, Cr2=-r2 + self.__dispcoef * vr2,
+                    dragos_rmse=dragos_rmse, dragos_r2=dragos_r2)
 
     def predict(self, structure, **kwargs):
         _, d_x, d_ad = self.__descriptors.get(inputfile=structure, **kwargs)
