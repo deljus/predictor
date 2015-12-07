@@ -77,6 +77,7 @@ class Model(object):
     def getmodelstats(self):
         return dict(r2=self.__model['r2'], rmse=self.__model['rmse'],
                     vr2=self.__model['vr2'], vrmse=self.__model['vrmse'],
+                    dragos_rmse=self.__model['dragos_rmse'], dragos_r2=self.__model['dragos_r2'],
                     fitparams=self.__model['params'],
                     repetitions=self.__repetitions, nfolds=self.__nfold, normalize=self.__normalize)
 
@@ -121,7 +122,7 @@ class Model(object):
                 tmp = self.__prepareparams(param)
                 for i in tmp:
                     fcount += 1
-                    print('fit model with params:', i)
+                    print('%d: fit model with params:' % fcount, i)
                     fittedmodel = self.__fit(i)
                     print('R2 +- variance = %(r2)s +- %(vr2)s\nRMSE +- variance = %(rmse)s +- %(vrmse)s' % fittedmodel)
                     if fittedmodel[self.__fitscore] < var_param_model[self.__fitscore]:
@@ -186,10 +187,10 @@ class Model(object):
 
             krmse.append(sqrt(mean_squared_error(ky_test, ky_pred)))
             kr2.append(r2_score(ky_test, ky_pred))
-
             y_pred.extend(ky_pred)
             y_test.extend(ky_test)
-
+        print(kr2)
+        print(krmse)
         rmse, vrmse = np.mean(krmse), sqrt(np.var(krmse))
         r2, vr2 = np.mean(kr2), sqrt(np.var(kr2))
         dragos_rmse = sqrt(mean_squared_error(y_test, y_pred))
