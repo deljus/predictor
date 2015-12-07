@@ -168,7 +168,7 @@ class Model(object):
         return tmp
 
     def __fit(self, svmparams):
-        models, y_test, y_pred, r2, rmse = [], [], [], [], []
+        models, y_test, y_pred, kr2, krmse = [], [], [], [], []
         parallel = Parallel(n_jobs=self.__n_jobs)
         kf = list(KFold(len(self.__y), n_folds=self.__nfold))
         folds = parallel(delayed(_kfold)(xs, ys, train, test, svmparams, self.__normalize)
@@ -184,14 +184,14 @@ class Model(object):
                 ky_test.extend(fold.pop('y_test'))
                 models.append(fold)
 
-            rmse.append(sqrt(mean_squared_error(ky_test, ky_pred)))
-            r2.append(r2_score(ky_test, ky_pred))
+            krmse.append(sqrt(mean_squared_error(ky_test, ky_pred)))
+            kr2.append(r2_score(ky_test, ky_pred))
 
             y_pred.extend(ky_pred)
             y_test.extend(ky_test)
 
-        rmse, vrmse = np.mean(rmse), sqrt(np.var(rmse))
-        r2, vr2 = np.mean(r2), sqrt(np.var(r2))
+        rmse, vrmse = np.mean(krmse), sqrt(np.var(krmse))
+        r2, vr2 = np.mean(kr2), sqrt(np.var(kr2))
         dragos_rmse = sqrt(mean_squared_error(y_test, y_pred))
         dragos_r2 = r2_score(y_test, y_pred)
         return dict(model=models, rmse=rmse, r2=r2, vrmse=vrmse, vr2=vr2, params=svmparams,
