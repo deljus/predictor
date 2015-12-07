@@ -78,6 +78,7 @@ class Model(object):
         return dict(r2=self.__model['r2'], rmse=self.__model['rmse'],
                     vr2=self.__model['vr2'], vrmse=self.__model['vrmse'],
                     dragos_rmse=self.__model['dragos_rmse'], dragos_r2=self.__model['dragos_r2'],
+                    drmse=self.__model['drmse'], dr2=self.__model['dr2'],
                     fitparams=self.__model['params'],
                     repetitions=self.__repetitions, nfolds=self.__nfold, normalize=self.__normalize)
 
@@ -146,7 +147,8 @@ class Model(object):
 
         print('========================================\nSVM params %(params)s\n'
               'R2 +- variance = %(r2)s +- %(vr2)s\nRMSE +- variance = %(rmse)s +- %(vrmse)s\n'
-              'Dragos_RMSE = %(dragos_rmse)s\nDragos_R2 = %(dragos_r2)s' % bestmodel)
+              'Dragos_RMSE = %(dragos_rmse)s\nDragos_RMSE - RMSE = %(drmse)s\n'
+              'Dragos_R2 = %(dragos_r2)s\nDragos_R2 - R2 = %(dr2)s' % bestmodel)
         print('========================================\n%s variants checked' % fcount)
         self.__model = bestmodel
 
@@ -189,17 +191,14 @@ class Model(object):
             kr2.append(r2_score(ky_test, ky_pred))
             y_pred.extend(ky_pred)
             y_test.extend(ky_test)
-        print(kr2)
-        print(krmse)
-        print(y_test)
-        print(y_pred)
+
         rmse, vrmse = np.mean(krmse), sqrt(np.var(krmse))
         r2, vr2 = np.mean(kr2), sqrt(np.var(kr2))
         dragos_rmse = sqrt(mean_squared_error(y_test, y_pred))
         dragos_r2 = r2_score(y_test, y_pred)
         return dict(model=models, rmse=rmse, r2=r2, vrmse=vrmse, vr2=vr2, params=svmparams,
                     Crmse=rmse + self.__dispcoef * vrmse, Cr2=-r2 + self.__dispcoef * vr2,
-                    dragos_rmse=dragos_rmse, dragos_r2=dragos_r2)
+                    dragos_rmse=dragos_rmse, dragos_r2=dragos_r2, drmse=rmse-dragos_rmse, dr2=r2-dragos_r2)
 
     def predict(self, structure, **kwargs):
         _, d_x, d_ad = self.__descriptors.get(inputfile=structure, **kwargs)
