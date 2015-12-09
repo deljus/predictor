@@ -113,6 +113,7 @@ def main():
                          help="score parameter. mean(rmse|r2) - dispcoef * dispertion(rmse|r2)")
 
     rawopts.add_argument("--normalize", "-N", action='store_true', help="normalize vector to range(0, 1)")
+    rawopts.add_argument("--smartcv", "-S", action='store_true', help="smart crossvalidation [experimental]")
 
     options = vars(rawopts.parse_args())
 
@@ -169,7 +170,7 @@ def main():
                                                gamma=tmp['gamma'], coef0=tmp['coef0'], degree=tmp['degree'])
 
         model = Model(frag, svm.values(), inputfile=options['input'], parsesdf=True, dispcoef=options['dispcoef'],
-                      fit=options['fit'], n_jobs=options['n_jobs'], nfold=options['nfold'],
+                      fit=options['fit'], n_jobs=options['n_jobs'], nfold=options['nfold'], smartcv=options['smartcv'],
                       rep_boost=options['rep_boost'], repetitions=options['repetition'], normalize=options['normalize'])
         pickle.dump(model, gzip.open(options['model'], 'wb'))
     else:

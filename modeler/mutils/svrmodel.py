@@ -55,7 +55,7 @@ def _kfold(xs, ys, train, test, svmparams, normalize):
 
 class Model(object):
     def __init__(self, descriptors, svmparams, nfold=5, repetitions=1, rep_boost=25, dispcoef=0,
-                 fit='rmse', normalize=False, n_jobs=2, **kwargs):
+                 fit='rmse', normalize=False, n_jobs=2, smartcv=False, **kwargs):
         self.__sparse = DictVectorizer(sparse=False)
         self.__descriptors = descriptors
         self.__nfold = nfold
@@ -68,6 +68,7 @@ class Model(object):
         self.__normalize = normalize
         self.__dispcoef = dispcoef
         self.__fitscore = 'C' + fit
+        self.__smartcv = smartcv
 
         self.__n_jobs = n_jobs
         self.__crossval(svmparams)
@@ -177,7 +178,7 @@ class Model(object):
         kf = list(KFold(len(self.__y), n_folds=self.__nfold))
         folds = parallel(delayed(_kfold)(xs, ys, train, test, svmparams, self.__normalize)
                          for xs, ys in
-                         (shuffle(self.__x, self.__y, random_state=i) for i in range(repetitions))
+                         (self.__shuffle(i) for i in range(repetitions))
                          for train, test in kf)
 
         #  street magic. split folds to repetitions
@@ -199,6 +200,13 @@ class Model(object):
         return dict(model=models, rmse=rmse, r2=r2, vrmse=vrmse, vr2=vr2, params=svmparams,
                     Crmse=rmse + self.__dispcoef * vrmse, Cr2=-r2 + self.__dispcoef * vr2,
                     dragos_rmse=dragos_rmse, drmse=rmse-dragos_rmse)
+
+    def __shuffle(self, seed):
+        if self.__smartcv:
+            data = None
+        else:
+            data = shuffle(self.__x, self.__y, random_state=seed)
+        return data
 
     def predict(self, structure, **kwargs):
         _, d_x, d_ad = self.__descriptors.get(inputfile=structure, **kwargs)
