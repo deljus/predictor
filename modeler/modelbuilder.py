@@ -92,7 +92,8 @@ repl = {'-t': ('kernel', lambda x: [kernel[i] for i in x.split(',')]),
 
 def main():
     rawopts = argparse.ArgumentParser(description="Model Builder",
-                                      epilog="Copyright 2015 Ramil Nugmanov <stsouko@live.ru>")
+                                      epilog="Copyright 2015 Ramil Nugmanov <stsouko@live.ru>",
+                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     rawopts.add_argument("--input", "-i", type=str, default='input.sdf', help="input SDF ")
     rawopts.add_argument("--output", "-o", type=str, default=None, help="output SVM|HDR")
     rawopts.add_argument("--header", "-d", type=str, default=None, help="input header")
@@ -103,7 +104,9 @@ def main():
     rawopts.add_argument("--svm", "-s", type=str, default='input.cfg', help="SVM params")
     rawopts.add_argument("--nfold", "-n", type=int, default=5, help="number of folds")
     rawopts.add_argument("--repetition", "-r", type=int, default=1, help="number of repetitions")
-    rawopts.add_argument("--n_jobs", "-j", type=int, default=2, help="number of parallel fit jobs.")
+    rawopts.add_argument("--rep_boost", "-R", type=int, default=25,
+                         help="percentage of repetitions for use in greed search for optimization speedup")
+    rawopts.add_argument("--n_jobs", "-j", type=int, default=2, help="number of parallel fit jobs")
     rawopts.add_argument("--fit", "-t", type=str, default='rmse',
                          help="crossval score for parameters fit/ (rmse|r2)")
     rawopts.add_argument("--dispcoef", "-p", type=float, default=0,
@@ -166,8 +169,8 @@ def main():
                                                gamma=tmp['gamma'], coef0=tmp['coef0'], degree=tmp['degree'])
 
         model = Model(frag, svm.values(), inputfile=options['input'], parsesdf=True, dispcoef=options['dispcoef'],
-                      fit=options['fit'], n_jobs=options['n_jobs'],
-                      nfold=options['nfold'], repetitions=options['repetition'], normalize=options['normalize'])
+                      fit=options['fit'], n_jobs=options['n_jobs'], nfold=options['nfold'],
+                      rep_boost=options['rep_boost'], repetitions=options['repetition'], normalize=options['normalize'])
         pickle.dump(model, gzip.open(options['model'], 'wb'))
     else:
         frag.get(inputfile=options['input'], parsesdf=True, outputfile=options['output'])

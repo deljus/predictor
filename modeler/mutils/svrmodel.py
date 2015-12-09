@@ -26,7 +26,7 @@ from sklearn.utils import shuffle
 from sklearn.cross_validation import KFold
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, r2_score
-from math import sqrt
+from math import sqrt, ceil
 import numpy as np
 
 
@@ -54,12 +54,13 @@ def _kfold(xs, ys, train, test, svmparams, normalize):
 
 
 class Model(object):
-    def __init__(self, descriptors, svmparams, nfold=5, repetitions=1, dispcoef=0,
+    def __init__(self, descriptors, svmparams, nfold=5, repetitions=1, rep_boost=25, dispcoef=0,
                  fit='rmse', normalize=False, n_jobs=2, **kwargs):
         self.__sparse = DictVectorizer(sparse=False)
         self.__descriptors = descriptors
         self.__nfold = nfold
         self.__repetitions = repetitions
+        self.__rep_boost = ceil(repetitions * (rep_boost % 100) / 100)
 
         y, x, _ = descriptors.get(**kwargs)
         self.__sparse.fit(x)
@@ -123,7 +124,7 @@ class Model(object):
                 for i in tmp:
                     fcount += 1
                     print('%d: fit model with params:' % fcount, i)
-                    fittedmodel = self.__fit(i)
+                    fittedmodel = self.__fit(i, self.__rep_boost)
                     print('R2 +- variance = %(r2)s +- %(vr2)s\nRMSE +- variance = %(rmse)s +- %(vrmse)s' % fittedmodel)
                     if fittedmodel[self.__fitscore] < var_param_model[self.__fitscore]:
                         var_param_model = fittedmodel
@@ -144,6 +145,8 @@ class Model(object):
             if var_kern_model[self.__fitscore] < bestmodel[self.__fitscore]:
                 bestmodel = var_kern_model
 
+        if self.__repetitions > self.__rep_boost:
+            bestmodel = self.__fit(bestmodel['params'], self.__repetitions)
         print('========================================\nSVM params %(params)s\n'
               'R2 +- variance = %(r2)s +- %(vr2)s\nRMSE +- variance = %(rmse)s +- %(vrmse)s\n'
               'Dragos_RMSE = %(dragos_rmse)s\nDragos_RMSE - RMSE = %(drmse)s' % bestmodel)
@@ -168,13 +171,13 @@ class Model(object):
                         in product(param['gamma'], param['coef0'], param['degree'], baseparams)])
         return tmp
 
-    def __fit(self, svmparams):
+    def __fit(self, svmparams, repetitions):
         models, y_test, y_pred, kr2, krmse = [], [], [], [], []
         parallel = Parallel(n_jobs=self.__n_jobs)
         kf = list(KFold(len(self.__y), n_folds=self.__nfold))
         folds = parallel(delayed(_kfold)(xs, ys, train, test, svmparams, self.__normalize)
                          for xs, ys in
-                         (shuffle(self.__x, self.__y, random_state=i) for i in range(self.__repetitions))
+                         (shuffle(self.__x, self.__y, random_state=i) for i in range(repetitions))
                          for train, test in kf)
 
         #  street magic. split folds to repetitions
