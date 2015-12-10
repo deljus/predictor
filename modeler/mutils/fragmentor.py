@@ -149,8 +149,8 @@ class Fragmentor(object):
 
         execparams = [self.__fragmentor, '-i', inputfile, '-o', outputfile]
         execparams.extend(self.__execparams)
-        sp.call(execparams, cwd=self.__workpath)
-        if os.path.exists(outputfile + '.svm') and os.path.exists(outputfile + '.hdr'):
+        exitcode = sp.call(execparams, cwd=self.__workpath) == 0
+        if exitcode and os.path.exists(outputfile + '.svm') and os.path.exists(outputfile + '.hdr'):
             if self.__genheader:
                 self.__genheader = False
                 self.__dumpheader(outputfile + '.hdr')
