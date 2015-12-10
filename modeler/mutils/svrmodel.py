@@ -54,15 +54,18 @@ def _kfold(xs, ys, train, test, svmparams, normalize):
 
 
 class Model(object):
-    def __init__(self, descriptors, svmparams, nfold=5, repetitions=1, rep_boost=25, dispcoef=0,
-                 fit='rmse', normalize=False, n_jobs=2, smartcv=False, **kwargs):
+    def __init__(self, descriptorgen, svmparams, nfold=5, repetitions=1, rep_boost=25, dispcoef=0,
+                 fit='rmse', normalize=False, n_jobs=2, smartcv=False, descriptors=None, **kwargs):
         self.__sparse = DictVectorizer(sparse=False)
-        self.__descriptors = descriptors
+        self.__descriptorgen = descriptorgen
         self.__nfold = nfold
         self.__repetitions = repetitions
         self.__rep_boost = ceil(repetitions * (rep_boost % 100) / 100)
 
-        y, x, _ = descriptors.get(**kwargs)
+        if descriptors:
+            y, x = descriptors
+        else:
+            y, x, _ = descriptorgen.get(**kwargs)
         self.__sparse.fit(x)
         self.__x, self.__y = self.__sparse.transform(x), np.array(y)
         self.__normalize = normalize
@@ -74,7 +77,7 @@ class Model(object):
         self.__crossval(svmparams)
 
     def setworkpath(self, path):
-        self.__descriptors.setpath(path)
+        self.__descriptorgen.setpath(path)
 
     def getmodelstats(self):
         return dict(r2=self.__model['r2'], rmse=self.__model['rmse'],
@@ -209,7 +212,7 @@ class Model(object):
         return data
 
     def predict(self, structure, **kwargs):
-        _, d_x, d_ad = self.__descriptors.get(inputfile=structure, **kwargs)
+        _, d_x, d_ad = self.__descriptorgen.get(inputfile=structure, **kwargs)
         res = []
         for i in d_x:
             tmp = []
