@@ -25,7 +25,7 @@ from itertools import chain, repeat
 
 
 class Fragmentor(object):
-    def __init__(self, workpath='/tmp', version='last', s_option=None, fragment_type=3, min_length=2, max_length=10,
+    def __init__(self, workpath='.', version='last', s_option=None, fragment_type=3, min_length=2, max_length=10,
                  colorname=None, marked_atom=None, cgr_dynbonds=None, xml=None, doallways=False,
                  useformalcharge=False, atompairs=False, fragmentstrict=False, getatomfragment=False,
                  overwrite=True, header=None, extention=None):
@@ -54,11 +54,11 @@ class Fragmentor(object):
         self.__fragmentor = 'fragmentor-%s' % version
         tmp = ['-f', 'SVM']
         if s_option: tmp.extend(['-s', s_option])
-        if header:
+        if header and os.path.exists(header):
             self.__dumpheader(header)
             tmp.extend(['-h', header])
         else:
-            self.__headsize = None
+            self.__genheader = True
 
         tmp.extend(['-t', fragment_type, '-l', min_length, '-u', max_length])
 
@@ -87,11 +87,6 @@ class Fragmentor(object):
         with open(header, 'w') as f:
             f.write(self.__headdump)
         self.__execparams[self.__execparams.index('-h') + 1] = header
-
-    def genheader(self):
-        self.__execparams.insert(self.__execparams.index('-t'), '-h')
-        self.__execparams.insert(self.__execparams.index('-t'), '')
-        self.__genheader = True
 
     def parsesdf(self, inputfile):
         extblock = []
@@ -154,6 +149,9 @@ class Fragmentor(object):
             if self.__genheader:
                 self.__genheader = False
                 self.__dumpheader(outputfile + '.hdr')
+                self.__execparams.insert(self.__execparams.index('-t'), '-h')
+                self.__execparams.insert(self.__execparams.index('-t'), '')
+                self.setpath(self.__workpath)
             return self.__extendvector(outputfile, extblock, parser)
         return False
 

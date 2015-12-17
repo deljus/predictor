@@ -24,6 +24,7 @@ from mutils.svrmodel import Model
 import argparse
 import pickle
 import gzip
+from itertools import repeat
 
 
 class Modelbuilder(object):
@@ -31,30 +32,51 @@ class Modelbuilder(object):
         self.__options = self.__argparser()
 
         fragments = self.__parsefragmentoropts(self.__options['fragments'])
-        extdata = self.__parseext(self.__options['extention']) if self.__options['extention'] else {}
-        frag = Fragmentor(workpath='.', header=self.__options['header'], extention=extdata, **fragments)
+
+        """ kostyl. for old model compatability
+        """
         if self.__options['descriptors']:
-            self.__options['descriptors'] = self.__parsesvm(self.__options['descriptors'])
+            if len(self.__options['descriptors']) != len(fragments):
+                return
+            descriptors = []
+            for x, y in zip(self.__options['descriptors'], fragments):
+                descriptors.append(self.__parsesvm(x + '.svm'))
+                y['header'] = x + '.hdr'
+        else:
+            descriptors = repeat(None)
+
+        extdata = self.__parseext(self.__options['extention']) if self.__options['extention'] else {}
+
+        self.__frags = [Fragmentor(extention=extdata, **x) for x in fragments]
+
         if not self.__options['output']:
-            if self.__options['header'] is None:
-                frag.genheader()
-            svm = self.__getsvmparam(self.__options['svm'])
+            if self.__options['svm']:
+                svm = self.__getsvmparam(self.__options['svm'])
+            else:
+                svm = self.__dragossvmfit()
             if svm:
                 if os.access(self.__options['model'], os.W_OK):
-
-                    model = Model(frag, svm.values(), inputfile=self.__options['input'], parsesdf=True,
-                                  dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
-                                  n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
-                                  smartcv=self.__options['smartcv'], rep_boost=self.__options['rep_boost'],
-                                  repetitions=self.__options['repetition'], normalize=self.__options['normalize'],
-                                  descriptors=self.__options['descriptors'])
-                    pickle.dump(model, gzip.open(self.__options['model'], 'wb'))
+                    models = [Model(x, svm.values(), inputfile=self.__options['input'], parsesdf=True,
+                                    dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
+                                    n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
+                                    smartcv=self.__options['smartcv'], rep_boost=self.__options['rep_boost'],
+                                    repetitions=self.__options['repetition'], normalize=self.__options['normalize'],
+                                    descriptors=y) for x, y in zip(self.__frags, descriptors)]
+                    pickle.dump(models, gzip.open(self.__options['model'], 'wb'))
                 else:
                     print('path for save model not writable')
             else:
                 print('check SVM params file')
         else:
-            frag.get(inputfile=self.__options['input'], parsesdf=True, outputfile=self.__options['output'])
+            for n, frag in enumerate(self.__frags):
+                frag.get(inputfile=self.__options['input'], parsesdf=True,
+                         outputfile='%s.%d' % (self.__options['output'], n))
+
+    def __dragossvmfit(self):
+        for n, frag in enumerate(self.__frags):
+            frag.get(inputfile=self.__options['input'], parsesdf=True,
+                     outputfile='%s.tmp.%d' % (self.__options['input'], n))
+        return ()
 
     def __parsesvm(self, file):
         prop, vector = [], []
@@ -72,16 +94,15 @@ class Modelbuilder(object):
                                           formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         rawopts.add_argument("--input", "-i", type=str, default='input.sdf', help="input SDF ")
         rawopts.add_argument("--output", "-o", type=str, default=None, help="output SVM|HDR")
-        rawopts.add_argument("--header", "-d", type=str, default=None, help="input header")
 
-        rawopts.add_argument("--descriptors", "-D", type=str, default=None,
+        rawopts.add_argument("--descriptors", "-D", action='append', type=str, default=None,
                              help="input SVM with precalculated descriptors for fitting")
 
         rawopts.add_argument("--model", "-m", type=str, default='output.model', help="output model")
         rawopts.add_argument("--extention", "-e", action='append', type=str, default=None,
                              help="extention data files. -e extname:filename [-e extname2:filename2]")
         rawopts.add_argument("--fragments", "-f", type=str, default='input.fragparam', help="fragmentor keys file")
-        rawopts.add_argument("--svm", "-s", type=str, default='input.svmparam', help="SVM params")
+        rawopts.add_argument("--svm", "-s", type=str, default=None, help="SVM params")
         rawopts.add_argument("--nfold", "-n", type=int, default=5, help="number of folds")
         rawopts.add_argument("--repetition", "-r", type=int, default=1, help="number of repetitions")
         rawopts.add_argument("--rep_boost", "-R", type=int, default=25,
@@ -97,14 +118,17 @@ class Modelbuilder(object):
 
         return vars(rawopts.parse_args())
 
-    @staticmethod
-    def __parsefragmentoropts(file):
+    def __parsefragmentoropts(self, file):
+        params = []
         with open(file) as f:
-            tmp = {}
-            for x in f:
-                key, value = x.split('=')
-                tmp[key] = value.strip()
-        return tmp
+            for line in f:
+                opts = line.split()
+                tmp = {}
+                for x in opts:
+                    key, value = x.split('=')
+                    tmp[key.strip()] = value.strip()
+                params.append(tmp)
+        return params
 
     @staticmethod
     def __parseext(rawext):
