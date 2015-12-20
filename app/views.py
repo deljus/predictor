@@ -48,11 +48,11 @@ def get_cur_user():
         user_data = dict(id=current_user.get_id(), email=current_user.get_email())
     return user_data
 
-'''
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     return render_template("index.html", user_data=get_cur_user())
-'''
+
 
 @app.route('/predictor', methods=['GET', 'POST'])
 def predictor():
