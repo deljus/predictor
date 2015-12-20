@@ -52,3 +52,10 @@
 .mjs-top select {
   background: white;
 }
+
+/* UIBinder:InlineBar */
+.mjs-toolbar div.horizontal, .mjs-touchToolbar div.horizontal {
+	display: -webkit-inline-flex;
+	display: -ms-inline-flex;
+	display: inline-flex;
+}

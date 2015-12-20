@@ -31,12 +31,16 @@
 
 		var marvinPackage = _getPackage(wrapperElement);
 		if (marvinPackage) {
-			resolve(marvinPackage);
+			marvinPackage.onReady(function() {
+				resolve(marvinPackage);
+			});
 		} else { // use listener
 			wrapperElement.addEventListener("load", function handleSketchLoad (e) {
 				var marvin = _getPackage(wrapperElement);
 				if (marvin) {
-					resolve(marvin);
+					marvin.onReady(function() {
+						resolve(marvin);
+					});
 				} else {
 					reject("Unable to find marvin package");
 				}
@@ -86,6 +90,10 @@
 
 			});
 		}
+	}
+
+	if (!("Promise" in win) && ("ES6Promise" in win) && ("polyfill" in win.ES6Promise)) {
+		win.ES6Promise.polyfill();
 	}
 	
 	win.MarvinJSUtil = {

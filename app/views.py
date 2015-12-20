@@ -48,9 +48,14 @@ def get_cur_user():
         user_data = dict(id=current_user.get_id(), email=current_user.get_email())
     return user_data
 
-
+'''
 @app.route('/', methods=['GET', 'POST'])
 def index():
+    return render_template("index.html", user_data=get_cur_user())
+'''
+
+@app.route('/predictor', methods=['GET', 'POST'])
+def predictor():
     return render_template("index.html", user_data=get_cur_user())
 
 @app.route("/home", methods=['GET'])
@@ -60,28 +65,28 @@ def home():
 
 
 
-@app.route('/task/<int:task>', methods=['GET', 'POST'])
+@app.route('/predictor/task/<int:task>', methods=['GET', 'POST'])
 @login_required
 def task(task=0):
     return render_template("index.html", task=task, user_data=get_cur_user())
 
-@app.route("/model_example/<int:model>", methods=['GET', 'POST'])
+@app.route("/predictor/model_example/<int:model>", methods=['GET', 'POST'])
 def model_example(model=0):
     return render_template("index.html", model=model, user_data=get_cur_user())
 
 
-@app.route("/download", methods=['GET'])
+@app.route("/predictor/download", methods=['GET'])
 def download_file():
     return excel.make_response_from_array([[1, 2], [3, 4]], "xls")
 
 
-@app.route("/solvents", methods=['GET'])
+@app.route("/predictor/solvents", methods=['GET'])
 def solvents():
     solvents = pdb.get_solvents()
     return render_template("solvents.html", solvents=solvents, user_data=get_cur_user())
 
 
-@app.route("/models", methods=['GET'])
+@app.route("/predictor/models", methods=['GET'])
 def models():
     models = pdb.get_models()
     return render_template("models.html", models=models, user_data=get_cur_user())
@@ -93,7 +98,7 @@ def user():
     return render_template('user.html',  user_data=get_cur_user())
 
 
-@app.route('/my_tasks', methods=['GET'])
+@app.route('/user/my_tasks', methods=['GET'])
 @login_required
 def my_tasks():
     user_data = get_cur_user()
@@ -103,7 +108,7 @@ def my_tasks():
     return render_template('login.html', form=Login())
 
 
-@app.route("/login", methods=['GET', 'POST'])
+@app.route("/user/login", methods=['GET', 'POST'])
 def login():
     form = Login()
     if form.validate_on_submit():
@@ -111,23 +116,23 @@ def login():
         if user and pdb.check_password(user['id'], form.password.data):
             login_user(User(**user), remember=True)
             #flash('Logged in successfully.')
-            return redirect(url_for('index'))
+            return redirect(url_for('predictor'))
     return render_template('login.html', form=form)
 
 
-@app.route('/logout', methods=['GET'])
+@app.route('/user/logout', methods=['GET'])
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('login'))
 
 
-@app.route("/registration", methods=['GET', 'POST'])
+@app.route("/user/registration", methods=['GET', 'POST'])
 def registration():
     form = Registration()
     if form.validate_on_submit():
         if pdb.add_user(form.email.data, form.password.data):
-            return redirect(url_for('index'))
+            return redirect(url_for('predictor'))
     return render_template('registration.html', form=form)
 
 @app.route("/search", methods=['GET'])

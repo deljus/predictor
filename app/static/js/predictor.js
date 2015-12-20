@@ -680,33 +680,7 @@ function display_task_reactions(reactions, models)
                                         load_reaction(r_id);
                                     });
 
-    /*********** Loading models
-    try {
-        get_models('').done(function(data, textStatus, jqXHR){
-
-            var str = '';
-            for (var i=0; i<data.length; i++)
-            {
-                var _id = data[i].id;
-                var _name = data[i].name;
-                str+='<option value="'+_id+'">'+_name+'</option>';
-            }
-
-            jTbl.find('select[role=model]').each(function(){
-                var jSelect = $(this);
-                // если модели еще не были загружены
-                if (jSelect.find('option').length==0)
-                    jSelect.append(str);
-
-                jSelect.find('option[value='+jSelect.attr('model')+']').attr('selected','selected');
-                jSelect.multiselect();
-            })
-         })
-    }
-    catch (err){log_log('display_task_reactions->load models->'+err)}
- ***************/
-
-    /*********** Loading solvents ***************/
+   /*********** Loading solvents ***************/
     try {
 
         get_solvents().done(function(data, textStatus, jqXHR){
@@ -834,10 +808,16 @@ function load_reaction(reaction_id)
 function draw_moldata (data)
 {
     try {
-        marvinSketcherInstance.importStructure(MOL_FORMAT, data);
-        // сбросим флаг изменений в редакторе и скроем кнопку - Сохранить
-        //isSketcherDataChanged = false;
-        //hide_upload_sketcher_data_btn();
+
+        marvinSketcherInstance.importStructure(MOL_FORMAT, data).then(function(obj) {
+
+
+        }, function(error) {
+            alert("Molecule export failed:"+error);
+        });
+            // сбросим флаг изменений в редакторе и скроем кнопку - Сохранить
+            //isSketcherDataChanged = false;
+            //hide_upload_sketcher_data_btn();
 
     }
     catch(err){
@@ -1165,7 +1145,8 @@ function display_modelling_results(results)
                         'cpkColoring' : true,
                         'implicitHydrogen' : false,
                         'width' : 300,
-                        'height' : 100
+                        'height' : 100,
+                        'zoomMode': 'autoshrink'
                 };
                 try {
                     reaction_structures[reaction_id] = data;
