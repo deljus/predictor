@@ -25,7 +25,7 @@ from itertools import chain, repeat
 
 
 class Fragmentor(object):
-    def __init__(self, workpath='/tmp', version='last', s_option=None, fragment_type=3, min_length=2, max_length=10,
+    def __init__(self, workpath='.', version='last', s_option=None, fragment_type=3, min_length=2, max_length=10,
                  colorname=None, marked_atom=None, cgr_dynbonds=None, xml=None, doallways=False,
                  useformalcharge=False, atompairs=False, fragmentstrict=False, getatomfragment=False,
                  overwrite=True, header=None, extention=None):
@@ -33,31 +33,32 @@ class Fragmentor(object):
         self.__extention = extention
         self.__extshift = {}
         self.__extheader = []
-        shift = 0
-        for i in sorted(extention):
-            self.__extshift[i] = shift
-            if extention[i]:
-                mshift = 0
-                for j in extention[i].values():
-                    if mshift < max(j):
-                        mshift = max(j)
-                shift += mshift
-                self.__extheader.extend(['%s.%s' % (i, x) for x in range(1, mshift + 1)])
-            else:
-                self.__extheader.append(i)
-                shift += 1
+        self.__genheader = False
+
+        if extention:
+            shift = 0
+            for i in sorted(extention):
+                self.__extshift[i] = shift
+                if extention[i]:
+                    mshift = 0
+                    for j in extention[i].values():
+                        if mshift < max(j):
+                            mshift = max(j)
+                    shift += mshift
+                    self.__extheader.extend(['%s.%s' % (i, x) for x in range(1, mshift + 1)])
+                else:
+                    self.__extheader.append(i)
+                    shift += 1
+
         self.__workpath = workpath
-        self.__fragmentor = 'Fragmentor-%s' % version
+        self.__fragmentor = 'fragmentor-%s' % version
         tmp = ['-f', 'SVM']
         if s_option: tmp.extend(['-s', s_option])
-        if header:
-            with open(header) as f:
-                self.__headdump = f.read()
-            with open(header) as f:
-                self.__headsize = len(f.readlines())
+        if header and os.path.exists(header):
+            self.__dumpheader(header)
             tmp.extend(['-h', header])
         else:
-            self.__headsize = None
+            self.__genheader = True
 
         tmp.extend(['-t', fragment_type, '-l', min_length, '-u', max_length])
 
@@ -73,6 +74,12 @@ class Fragmentor(object):
         if not overwrite: tmp.append('--Pipe')
 
         self.__execparams = tmp
+
+    def __dumpheader(self, header):
+        with open(header) as f:
+                self.__headdump = f.read()
+        with open(header) as f:
+            self.__headsize = len(f.readlines())
 
     def setpath(self, path):
         self.__workpath = path
@@ -137,9 +144,14 @@ class Fragmentor(object):
 
         execparams = [self.__fragmentor, '-i', inputfile, '-o', outputfile]
         execparams.extend(self.__execparams)
-        sp.call(execparams, cwd=self.__workpath)
-        if os.path.exists(outputfile + '.svm'):
-
+        exitcode = sp.call(execparams, cwd=self.__workpath) == 0
+        if exitcode and os.path.exists(outputfile + '.svm') and os.path.exists(outputfile + '.hdr'):
+            if self.__genheader:
+                self.__genheader = False
+                self.__dumpheader(outputfile + '.hdr')
+                self.__execparams.insert(self.__execparams.index('-t'), '-h')
+                self.__execparams.insert(self.__execparams.index('-t'), '')
+                self.setpath(self.__workpath)
             return self.__extendvector(outputfile, extblock, parser)
         return False
 
@@ -178,3 +190,4 @@ class Fragmentor(object):
             with open(descfile + '.svm', 'w') as f:
                 for y, x in zip(prop, vector):
                     f.write(' '.join(['%s ' % y] + ['%s:%s' % (i, x[i]) for i in sorted(x)]) + '\n')
+            return True

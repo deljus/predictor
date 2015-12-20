@@ -26,6 +26,7 @@ from flask_login import LoginManager
 
 login_manager = LoginManager()
 
+
 def create_app(configfile=None):
     app = Flask(__name__)
     AppConfig(app, configfile)
@@ -34,16 +35,12 @@ def create_app(configfile=None):
     #bcrypt = Bcrypt(app)
     login_manager.login_view = 'login'
 
-    #app.config['UPLOAD_FOLDER'] = '/upload/'
-    app.config['ALLOWED_EXTENSIONS'] = set(['sdf', 'mrv', 'txt' ])
     return app
-
 
 app = create_app(configfile='config.ini')
 
+
 from app.models import PredictorDataBase as pdb
 pdb = pdb()
-
-
 
 from app import views

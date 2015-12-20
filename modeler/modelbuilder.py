@@ -18,78 +18,222 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+import os
 from mutils.fragmentor import Fragmentor
 from mutils.svrmodel import Model
 import argparse
 import pickle
+import gzip
+from itertools import repeat
 
 
-def parseext(rawext):
-    extdata = {}
-    for e in rawext:
-        record = None
-        ext, *file = e.split(':')
-        if file:
-            record = {}
-            with open(file[0]) as f:
-                for i in f:
-                    key, *values = i.split()
-                    tmp = {}
-                    for j in values:
-                        dkey, dval = j.split(':')
-                        dkey = int(dkey)
-                        dval = float(dval)
-                        tmp[dkey] = dval
-                    record[key] = tmp
-        extdata[ext] = record
-    return extdata
+class Modelbuilder(object):
+    def __init__(self):
+        self.__options = self.__argparser()
 
+        fragments = self.__parsefragmentoropts(self.__options['fragments'])
 
-def main():
-    rawopts = argparse.ArgumentParser(description="Model Builder",
-                                      epilog="Copyright 2015 Ramil Nugmanov <stsouko@live.ru>")
-    rawopts.add_argument("--input", "-i", type=str, default='input.sdf', help="input SDF ")
-    rawopts.add_argument("--output", "-o", type=str, default=None, help="output SVM|HDR")
-    rawopts.add_argument("--header", "-d", type=str, default=None, help="input header")
-    rawopts.add_argument("--model", "-m", type=str, default=None, help="output model")
-    rawopts.add_argument("--extention", "-e", action='append', type=str, default=None,
-                         help="extention data files. -e extname:filename [-e extname2:filename2]")
-    rawopts.add_argument("--fragments", "-f", type=str, default='input.param', help="fragmentor keys file")
-    rawopts.add_argument("--svm", "-s", type=str, default='input.cfg', help="SVM params")
-    rawopts.add_argument("--nfold", "-n", type=int, default=5, help="number of folds")
-    rawopts.add_argument("--repetition", "-r", type=int, default=1, help="number of repetitions")
-    rawopts.add_argument("--normalize", "-N", action='store_true', help="normalize vector to range(0, 1)")
-    options = vars(rawopts.parse_args())
+        """ kostyl. for old model compatability
+        """
+        if self.__options['descriptors']:
+            if len(self.__options['descriptors']) != len(fragments):
+                return
+            descriptors = []
+            for x, y in zip(self.__options['descriptors'], fragments):
+                descriptors.append(self.__parsesvm(x + '.svm'))
+                y['header'] = x + '.hdr'
+        else:
+            descriptors = repeat(None)
 
-    with open(options['fragments']) as f:
-        tmp = {}
-        for x in f:
-            key, value = x.split('=')
-            tmp[key] = value.strip()
-        options['fragments'] = tmp
+        extdata = self.__parseext(self.__options['extention']) if self.__options['extention'] else {}
 
-    extdata = parseext(options['extention']) if options['extention'] else {}
-    frag = Fragmentor(workpath='.', header=options['header'], extention=extdata, **options['fragments'])
+        self.__frags = [Fragmentor(extention=extdata, **x) for x in fragments]
 
-    if not options['output']:
-        with open(options['svm']) as f:
-            opts = f.readline().split()
-            repl = {'-t': ('kernel', lambda x: {'0': 'linear', '1': 'poly', '2': 'rbf', '3': 'sigmoid'}[x]),
-                    '-c': ('C', lambda x: float(x)),
-                    '-e': ('epsilon', lambda x: float(x)),
-                    '-g': ('gamma', lambda x: float(x)),
-                    '-r': ('coef0', lambda x: float(x))}
-            svm = {}
-            for x, y in zip(opts[::2], opts[1::2]):
-                z = repl.get(x)
-                if z:
-                    svm[z[0]] = z[1](y)
+        if not self.__options['output']:
+            if self.__options['svm']:
+                svm = self.__getsvmparam(self.__options['svm'])
+            else:
+                svm = self.__dragossvmfit()
+            if svm:
+                if os.access(self.__options['model'], os.W_OK):
+                    models = [Model(x, svm.values(), inputfile=self.__options['input'], parsesdf=True,
+                                    dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
+                                    n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
+                                    smartcv=self.__options['smartcv'], rep_boost=self.__options['rep_boost'],
+                                    repetitions=self.__options['repetition'], normalize=self.__options['normalize'],
+                                    descriptors=y) for x, y in zip(self.__frags, descriptors)]
+                    pickle.dump(models, gzip.open(self.__options['model'], 'wb'))
+                else:
+                    print('path for save model not writable')
+            else:
+                print('check SVM params file')
+        else:
+            for n, frag in enumerate(self.__frags):
+                frag.get(inputfile=self.__options['input'], parsesdf=True,
+                         outputfile='%s.%d' % (self.__options['output'], n))
 
-        model = Model(frag, svm, inputfile=options['input'], parsesdf=True,
-                      nfold=options['nfold'], repetitions=options['repetition'], normalize=options['normalize'])
-        pickle.dump(model, open(options['model'], 'wb'))
-    else:
-        frag.get(inputfile=options['input'], parsesdf=True, outputfile=options['output'])
+    def __dragossvmfit(self):
+        for n, frag in enumerate(self.__frags):
+            frag.get(inputfile=self.__options['input'], parsesdf=True,
+                     outputfile='%s.tmp.%d' % (self.__options['input'], n))
+        return ()
+
+    def __parsesvm(self, file):
+        prop, vector = [], []
+        with open(file) as f:
+            for frag in f:
+                y, *x = frag.split()
+                prop.append(float(y) if y.strip() != '?' else 0)
+                vector.append({int(k): float(v) for k, v in (i.split(':') for i in x)})
+
+        return prop, vector
+
+    def __argparser(self):
+        rawopts = argparse.ArgumentParser(description="Model Builder",
+                                          epilog="Copyright 2015 Ramil Nugmanov <stsouko@live.ru>",
+                                          formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        rawopts.add_argument("--input", "-i", type=str, default='input.sdf', help="input SDF ")
+        rawopts.add_argument("--output", "-o", type=str, default=None, help="output SVM|HDR")
+
+        rawopts.add_argument("--descriptors", "-D", action='append', type=str, default=None,
+                             help="input SVM with precalculated descriptors for fitting")
+
+        rawopts.add_argument("--model", "-m", type=str, default='output.model', help="output model")
+        rawopts.add_argument("--extention", "-e", action='append', type=str, default=None,
+                             help="extention data files. -e extname:filename [-e extname2:filename2]")
+        rawopts.add_argument("--fragments", "-f", type=str, default='input.fragparam', help="fragmentor keys file")
+        rawopts.add_argument("--svm", "-s", type=str, default=None, help="SVM params")
+        rawopts.add_argument("--nfold", "-n", type=int, default=5, help="number of folds")
+        rawopts.add_argument("--repetition", "-r", type=int, default=1, help="number of repetitions")
+        rawopts.add_argument("--rep_boost", "-R", type=int, default=25,
+                             help="percentage of repetitions for use in greed search for optimization speedup")
+        rawopts.add_argument("--n_jobs", "-j", type=int, default=2, help="number of parallel fit jobs")
+        rawopts.add_argument("--fit", "-t", type=str, default='rmse',
+                             help="crossval score for parameters fit/ (rmse|r2)")
+        rawopts.add_argument("--dispcoef", "-p", type=float, default=0,
+                             help="score parameter. mean(rmse|r2) - dispcoef * dispertion(rmse|r2)")
+
+        rawopts.add_argument("--normalize", "-N", action='store_true', help="normalize vector to range(0, 1)")
+        rawopts.add_argument("--smartcv", "-S", action='store_true', help="smart crossvalidation [experimental]")
+
+        return vars(rawopts.parse_args())
+
+    def __parsefragmentoropts(self, file):
+        params = []
+        with open(file) as f:
+            for line in f:
+                opts = line.split()
+                tmp = {}
+                for x in opts:
+                    key, value = x.split('=')
+                    tmp[key.strip()] = value.strip()
+                params.append(tmp)
+        return params
+
+    @staticmethod
+    def __parseext(rawext):
+        extdata = {}
+        for e in rawext:
+            record = None
+            ext, *file = e.split(':')
+            if file:
+                record = {}
+                with open(file[0]) as f:
+                    for i in f:
+                        key, *values = i.split()
+                        tmp = {}
+                        for j in values:
+                            dkey, dval = j.split(':')
+                            dkey = int(dkey)
+                            dval = float(dval)
+                            tmp[dkey] = dval
+                        record[key] = tmp
+            extdata[ext] = record
+        return extdata
+
+    @staticmethod
+    def __drange(start, stop, step):
+        r = start
+        s = (stop - start) / (step - 1)
+        res = []
+        while r <= stop:
+            res.append(r)
+            r += s
+        return res
+
+    def __parsesvmopts(self, param, op, unpac=lambda x: x):
+        res = []
+        commaparam = param.split(',')
+        for i in commaparam:
+            ddotparam = i.split(':')
+            if len(ddotparam) == 1:
+                if i[0] == '^':
+                    res.append(unpac(op(i[1:])))
+                else:
+                    res.append(op(i))
+            elif len(ddotparam) >= 3:
+                if i[0] == '^':
+                    res.extend([unpac(x) for x in self.__drange(op(ddotparam[0][1:]),
+                                                                op(ddotparam[1]), int(ddotparam[2]))])
+                else:
+                    res.extend([x for x in self.__drange(op(ddotparam[0]), op(ddotparam[1]), int(ddotparam[2]))])
+
+        return res
+
+    @staticmethod
+    def __pow10(x):
+        return pow(10, x)
+
+    __kernel = {'0': 'linear', '1': 'poly', '2': 'rbf', '3': 'sigmoid'}
+
+    def __getsvmparam(self, file):
+        svm = {}
+        repl = {'-t': ('kernel', lambda x: [self.__kernel[i] for i in x.split(',')]),
+                '-c': ('C', lambda x: self.__parsesvmopts(x, float, unpac=self.__pow10)),
+                '-d': ('degree', lambda x: self.__parsesvmopts(x, int)),
+                '-e': ('tol', lambda x: self.__parsesvmopts(x, float, unpac=self.__pow10)),
+                '-p': ('epsilon', lambda x: self.__parsesvmopts(x, float, unpac=self.__pow10)),
+                '-g': ('gamma', lambda x: self.__parsesvmopts(x, float, unpac=self.__pow10)),
+                '-r': ('coef0', lambda x: self.__parsesvmopts(x, float))}
+        with open(file) as f:
+            for line in f:
+                opts = line.split()
+                tmp = dict(kernel=['rbf'], C=[1.0], epsilon=[.1], tol=[.001], degree=[3], gamma=[0], coef0=[0])
+                for x, y in zip(opts[::2], opts[1::2]):
+                    z = repl.get(x)
+                    if z:
+                        tmp[z[0]] = z[1](y)
+
+                for i in tmp['kernel']:
+                    if i == 'linear':  # u'*v
+                        if svm.get('linear'):
+                            for k in ('C', 'epsilon', 'tol'):
+                                svm['linear'][k].extend(tmp[k])
+                        else:
+                            svm['linear'] = dict(kernel='linear', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'])
+                    elif i == 'rbf':  # exp(-gamma*|u-v|^2)
+                        if svm.get('rbf'):
+                            for k in ('C', 'epsilon', 'tol', 'gamma'):
+                                svm['rbf'][k].extend(tmp[k])
+                        else:
+                            svm['rbf'] = dict(kernel='rbf', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
+                                              gamma=tmp['gamma'])
+                    elif i == 'sigmoid':  # tanh(gamma*u'*v + coef0)
+                        if svm.get('sigmoid'):
+                            for k in ('C', 'epsilon', 'tol', 'gamma', 'coef0'):
+                                svm['sigmoid'][k].extend(tmp[k])
+                        else:
+                            svm['sigmoid'] = dict(kernel='sigmoid', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
+                                                  gamma=tmp['gamma'], coef0=tmp['coef0'])
+                    elif i == 'poly':  # (gamma*u'*v + coef0)^degree
+                        if svm.get('poly'):
+                            for k in ('C', 'epsilon', 'tol', 'gamma', 'coef0', 'degree'):
+                                svm['poly'][k].extend(tmp[k])
+                        else:
+                            svm['poly'] = dict(kernel='poly', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
+                                               gamma=tmp['gamma'], coef0=tmp['coef0'], degree=tmp['degree'])
+        return svm
+
 
 if __name__ == '__main__':
-    main()
+    main = Modelbuilder()
