@@ -48,15 +48,15 @@ def get_cur_user():
         user_data = dict(id=current_user.get_id(), email=current_user.get_email())
     return user_data
 
-
+# Этот роут для infochim.u-strasbg.fr нужно закомментить
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template("index.html", user_data=get_cur_user())
+    return render_template("predictor.html", user_data=get_cur_user())
 
 
 @app.route('/predictor', methods=['GET', 'POST'])
 def predictor():
-    return render_template("index.html", user_data=get_cur_user())
+    return render_template("predictor.html", user_data=get_cur_user())
 
 @app.route("/home", methods=['GET'])
 def home():
@@ -68,11 +68,11 @@ def home():
 @app.route('/predictor/task/<int:task>', methods=['GET', 'POST'])
 @login_required
 def task(task=0):
-    return render_template("index.html", task=task, user_data=get_cur_user())
+    return render_template("predictor.html", task=task, user_data=get_cur_user())
 
 @app.route("/predictor/model_example/<int:model>", methods=['GET', 'POST'])
 def model_example(model=0):
-    return render_template("index.html", model=model, user_data=get_cur_user())
+    return render_template("predictor.html", model=model, user_data=get_cur_user())
 
 
 @app.route("/predictor/download", methods=['GET'])
