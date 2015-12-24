@@ -64,7 +64,7 @@ class Modelbuilder(object):
                                     descriptors=y) for x, y in zip(self.__frags, descriptors)]
                     pickle.dump(models, gzip.open(self.__options['model'], 'wb'))
                 else:
-                    print('path for save model not writable')
+                    print('path for model saving not writable')
             else:
                 print('check SVM params file')
         else:
@@ -96,7 +96,8 @@ class Modelbuilder(object):
         rawopts.add_argument("--output", "-o", type=str, default=None, help="output SVM|HDR")
 
         rawopts.add_argument("--descriptors", "-D", action='append', type=str, default=None,
-                             help="input SVM with precalculated descriptors for fitting")
+                             help="input SVM|HDR with precalculated descriptors for fitting. "
+                                  "-D filename{without .svm|hdr} [-D next filename if used more than 1 fragmentation]")
 
         rawopts.add_argument("--model", "-m", type=str, default='output.model', help="output model")
         rawopts.add_argument("--extention", "-e", action='append', type=str, default=None,
