@@ -42,10 +42,10 @@
 		</header>
 		<nav class="navbar navbar-default">
 			<ul class="nav navbar-nav">
-				<li {% if request.path=="/home" %} class="active" {% endif %}><a href="{{ url_for('home') }}">Home</a></li>
-				<li  {% if request.path=="/" %} class="active" {% endif %}><a href="/">Predictor</a></li>
-				<li  {% if request.path=="/models" %} class="active" {% endif %}><a href="{{ url_for('models') }}">Models</a></li>
-				<li  {% if request.path=="/search" %} class="active" {% endif %}><a href="{{ url_for('search') }}">Search</a></li>
+				<li {% if request.path.find( "home")!=-1 %} class="active" {% endif %}><a href="{{ url_for('home') }}">Home</a></li>
+				<li  {% if request.path=="/predictor" %} class="active" {% endif %}><a href="{{ url_for('predictor') }}">Predictor</a></li>
+				<li  {% if request.path.find( "models")!=-1 %} class="active" {% endif %}><a href="{{ url_for('models') }}">Models</a></li>
+				<li  {% if request.path.find( "search")!=-1 %} class="active" {% endif %}><a href="{{ url_for('search') }}">Search</a></li>
                 <!--
 				<li><a href="/partners/">Partners</a></li>
 				<li><a href="/customers/">Customers</a></li>

@@ -67,7 +67,7 @@
 		}
 	}
 
-	win.Promise = Promise;
+	//win.Promise = Promise;
 
 	function _getIframe (id) {
 		var re = new RegExp(/^#.*/);
