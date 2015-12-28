@@ -37,6 +37,7 @@ class Modelbuilder(object):
         """
         if self.__options['descriptors']:
             if len(self.__options['descriptors']) != len(fragments):
+                print('number of descriptors files mismatch number of fragmentation')
                 return
             descriptors = []
             for x, y in zip(self.__options['descriptors'], fragments):
@@ -44,6 +45,9 @@ class Modelbuilder(object):
                 y['header'] = x + '.hdr'
         else:
             descriptors = repeat(None)
+
+        print(fragments, descriptors)
+        return
 
         extdata = self.__parseext(self.__options['extention']) if self.__options['extention'] else {}
 
