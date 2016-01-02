@@ -19,7 +19,7 @@
 #  MA 02110-1301, USA.
 #
 
-from .config import CHEMAXON, SERVER, PORT
+from utils.config import CHEMAXON, SERVER, PORT
 
 import requests
 import json

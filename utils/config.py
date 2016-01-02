@@ -23,9 +23,13 @@ import os
 SERVER = "http://arsole.u-strasbg.fr"
 PORT = 80
 CHEMAXON = "%s:80/webservices" % SERVER
-STANDARD = open(os.path.join(os.path.dirname(__file__), "std_rules.xml")).read()
+JCHEMBIN = '/home/server/ChemAxon/JChem/bin'
+UPLOAD_PATH = '/home/server/upload/'
 
 INTERVAL = 3
+THREAD_LIMIT = 5
+
+STANDARD = open(os.path.join(os.path.dirname(__file__), "std_rules.xml")).read()
 
 REQ_MAPPING = 1
 LOCK_MAPPING = 2
@@ -34,17 +38,9 @@ REQ_MODELLING = 4
 LOCK_MODELLING = 5
 MODELLING_DONE = 6
 
-MOLCONVERT = '/home/server/ChemAxon/JChem/bin/molconvert'
-STANDARDIZER = '/home/server/ChemAxon/JChem/bin/standardize'
-CXCALC = '/home/server/ChemAxon/JChem/bin/cxcalc'
-REACTOR = '/home/server/ChemAxon/JChem/bin/react'
-JCSEARCH = '/home/server/ChemAxon/JChem/bin/jcsearch'
-PMAPPER = '/home/server/ChemAxon/JChem/bin/pmapper'
-
-UPLOAD_PATH = '/home/server/upload/'
-
-#UPLOAD_PATH = '/tmp/'
-#MOLCONVERT = '/home/stsouko/.ChemAxon/JChem/bin/molconvert'
-#STANDARDIZER = '/home/stsouko/.ChemAxon/JChem/bin/standardize'
-#PMAPPER = '/home/stsouko/.ChemAxon/JChem/bin/pmapper'
-THREAD_LIMIT = 5
+MOLCONVERT = os.path.join(JCHEMBIN, 'molconvert')
+STANDARDIZER = os.path.join(JCHEMBIN, 'standardize')
+CXCALC = os.path.join(JCHEMBIN, 'cxcalc')
+REACTOR = os.path.join(JCHEMBIN, 'react')
+JCSEARCH = os.path.join(JCHEMBIN, 'jcsearch')
+PMAPPER = os.path.join(JCHEMBIN, 'pmapper')

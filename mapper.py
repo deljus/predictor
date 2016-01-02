@@ -24,7 +24,7 @@ import time
 
 from utils.config import INTERVAL, THREAD_LIMIT, REQ_MAPPING
 from utils.utils import gettask, getfiletask
-from core import mapper, create_task_from_file
+from utils.mappercore import mapper, create_task_from_file
 
 
 TASKS = []

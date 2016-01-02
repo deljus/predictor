@@ -23,7 +23,7 @@ import json
 import sched
 import threading
 import time
-import modelset as models
+import modeler.modelset as models
 from utils.utils import serverget, serverput, serverpost, serverdel, gettask
 from utils.config import INTERVAL, THREAD_LIMIT, REQ_MODELLING, LOCK_MODELLING, MODELLING_DONE
 
