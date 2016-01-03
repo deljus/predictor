@@ -22,7 +22,9 @@ import json
 import os
 import time
 import subprocess as sp
-from modelset import consensus_dragos, getmodelset, register_model, chemaxpost
+from modeler.consensus import consensus_dragos, getmodelset
+from utils.utils import chemaxpost
+from modeler.modelset import register_model
 
 
 class Model(consensus_dragos):
