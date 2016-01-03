@@ -19,6 +19,9 @@
 #  MA 02110-1301, USA.
 #
 import os
+
+import time
+
 from modeler.fragmentor import Fragmentor
 from modeler.svrmodel import Model
 import argparse
@@ -57,15 +60,15 @@ class Modelbuilder(object):
             if self.__options['svm']:
                 svm = self.__getsvmparam(self.__options['svm'])
             else:
-                svm = self.__dragossvmfit()
+                svm, descriptors = self.__dragossvmfit()
             if svm:
                 if os.access(self.__options['model'], os.W_OK):
-                    models = [Model(x, svm.values(), inputfile=self.__options['input'], parsesdf=True,
+                    models = [Model(x, y.values(), inputfile=self.__options['input'], parsesdf=True,
                                     dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
                                     n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
                                     smartcv=self.__options['smartcv'], rep_boost=self.__options['rep_boost'],
                                     repetitions=self.__options['repetition'], normalize=self.__options['normalize'],
-                                    descriptors=y) for x, y in zip(self.__frags, descriptors)]
+                                    descriptors=z) for x, y, z in zip(self.__frags, svm, descriptors)]
                     # todo: удалять совсем плохие фрагментации.
                     pickle.dump(models, gzip.open(self.__options['model'], 'wb'))
                 else:
@@ -73,19 +76,30 @@ class Modelbuilder(object):
             else:
                 print('check SVM params file or installation of Dragos Genetics')
         else:
-            self.__gendesc()
+            self.__gendesc(self.__options['output'])
 
-    def __gendesc(self):
-        for n, frag in enumerate(self.__frags):
-            frag.get(inputfile=self.__options['input'], parsesdf=True,
-                     outputfile='%s.%d' % (self.__options['output'], n))
+    def __gendesc(self, output):
+        for n, frag in enumerate(self.__frags, start=1):
+            if not frag.get(inputfile=self.__options['input'], parsesdf=True,
+                            outputfile='%s.%d' % (output, n)):
+                print('BAD fragmentor params in %d line' % n)
+                return False
+        return True
 
     def __dragossvmfit(self):
-        self.__gendesc()
-        # todo: запилить драгошову генетику.
-        execparams = []
-        exitcode = sp.call(execparams) == 0
-        return {}
+        files = os.path.join('.', "dragos-%d" % int(time.time()))
+        if self.__gendesc(files):
+            # todo: запилить драгошову генетику.
+            # чтобы не мучиться затолкать все в башскрипт. главное не перемещать и удалаять файлы а только посчитать и
+            # выписать в 1 файл свм параметров удалив все временное.
+            execparams = ['dragosgfstarter', files]
+            exitcode = sp.call(execparams) == 0
+            if exitcode:
+                with open('%s.results' %files) as f:
+                    for i in f:
+
+                return
+        return {}, []
 
     def __parsesvm(self, file):
         prop, vector = [], []
