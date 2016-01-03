@@ -49,6 +49,8 @@ STATUS_ARRAY = ["Task created",         #0
                 "Searching required",   #11
                 "Searching is done"     #12
                 ]
+
+
 class Users(db.Entity):
     id = PrimaryKey(int, auto=True)
     email = Required(str, 128, unique=True)
@@ -307,7 +309,6 @@ class PredictorDataBase:
                             models={m.id: m.name for m in r.models},
                             solvents={s.solvent.id: s.amount for s in r.solvents}))
         return arr
-
 
     @db_session
     def update_reaction_structure(self, reaction_id, structure, status=None):

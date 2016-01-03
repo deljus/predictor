@@ -19,8 +19,8 @@
 #  MA 02110-1301, USA.
 #
 import os
-from mutils.fragmentor import Fragmentor
-from mutils.svrmodel import Model
+from modeler.fragmentor import Fragmentor
+from modeler.svrmodel import Model
 import argparse
 import pickle
 import gzip

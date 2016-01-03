@@ -22,7 +22,8 @@ import json
 import os
 import re
 import subprocess as sp
-from mutils import STANDARDIZER, chemaxpost, PMAPPER, chemaxpost
+from utils.config import PMAPPER
+from utils.utils import chemaxpost
 
 
 class standardize_dragos():

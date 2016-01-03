@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2015 Ramil Nugmanov <stsouko@live.ru>
+# Copyright 2015, 2016 Ramil Nugmanov <stsouko@live.ru>
 # This file is part of PREDICTOR.
 #
 # PREDICTOR is free software; you can redistribute it and/or modify
@@ -29,7 +29,6 @@ from utils.config import INTERVAL, THREAD_LIMIT, REQ_MODELLING, LOCK_MODELLING, 
 
 TASKS = []
 LOSE = []
-
 SOLVENTS = {}
 
 
@@ -46,6 +45,7 @@ def getmodel(model_name):
 
 
 def taskthread(task_id):
+    tmpLOSE = []
     if serverput("task_status/%s" % task_id, {'task_status': LOCK_MODELLING}):
         chemicals = serverget("task_reactions/%s" % task_id, None)
         for r in chemicals:
@@ -62,16 +62,23 @@ def taskthread(task_id):
                         reaction_result = dict(modelid=model_id, result=json.dumps(model_result))
                         if not serverpost("reaction_result/%s" % reaction_id, reaction_result):
                             # если не удалось записать результаты моделирования, то схороним их на повторную отправку.
-                            LOSE.append(('post', "reaction_result/%s" % reaction_id, reaction_result))
+                            tmpLOSE.append(("reaction_result/%s" % reaction_id, reaction_result))
 
-    if not serverput("task_status/%s" % task_id, {'task_status': MODELLING_DONE}):
-        LOSE.append(("put", "task_status/%s" % task_id, {'task_status': MODELLING_DONE}))
+    if tmpLOSE or not serverput("task_status/%s" % task_id, {'task_status': MODELLING_DONE}):
+        LOSE.append((tmpLOSE, ("task_status/%s" % task_id, {'task_status': MODELLING_DONE})))
 
 
 def run():
     TASKS.extend(gettask(REQ_MODELLING)) #todo: надо запилить приоритеты. в начало совать важные в конец остальное
     if LOSE:
-        pass #todo: запилить заливку повторную данных.
+        for i in range(len(LOSE)):
+            tmp = []
+            for j in LOSE[i][0]:
+                if not serverpost(*j):
+                    tmp.append(j)
+            if tmp or not serverput(*LOSE[i][1]):
+                LOSE[i] = (tmp, LOSE[i][1])
+
     while TASKS and threading.active_count() < THREAD_LIMIT:
         i = TASKS.pop(0)
         t = threading.Thread(target=taskthread, args=([i['id']]))
