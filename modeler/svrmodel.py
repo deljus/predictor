@@ -82,7 +82,6 @@ class Model(object):
     def getmodelstats(self):
         return dict(r2=self.__model['r2'], rmse=self.__model['rmse'],
                     vr2=self.__model['vr2'], vrmse=self.__model['vrmse'],
-                    dragos_rmse=self.__model['dragos_rmse'], drmse=self.__model['drmse'],
                     fitparams=self.__model['params'],
                     repetitions=self.__repetitions, nfolds=self.__nfold, normalize=self.__normalize)
 
@@ -151,9 +150,10 @@ class Model(object):
 
         if self.__repetitions > self.__rep_boost:
             bestmodel = self.__fit(bestmodel['params'], self.__repetitions)
-        print('========================================\nSVM params %(params)s\n'
-              'R2 +- variance = %(r2)s +- %(vr2)s\nRMSE +- variance = %(rmse)s +- %(vrmse)s\n'
-              'Dragos_RMSE = %(dragos_rmse)s\nDragos_RMSE - RMSE = %(drmse)s' % bestmodel)
+        print('========================================\n'
+              'SVM params %(params)s\n'
+              'R2 +- variance = %(r2)s +- %(vr2)s\n'
+              'RMSE +- variance = %(rmse)s +- %(vrmse)s' % bestmodel)
         print('========================================\n%s variants checked' % fcount)
         self.__model = bestmodel
 
@@ -199,12 +199,11 @@ class Model(object):
 
         rmse, vrmse = np.mean(krmse), sqrt(np.var(krmse))
         r2, vr2 = np.mean(kr2), sqrt(np.var(kr2))
-        dragos_rmse = sqrt(mean_squared_error(y_test, y_pred))
         return dict(model=models, rmse=rmse, r2=r2, vrmse=vrmse, vr2=vr2, params=svmparams,
-                    Crmse=rmse + self.__dispcoef * vrmse, Cr2=-r2 + self.__dispcoef * vr2,
-                    dragos_rmse=dragos_rmse, drmse=rmse-dragos_rmse)
+                    Crmse=rmse + self.__dispcoef * vrmse, Cr2=-r2 + self.__dispcoef * vr2)
 
     def __shuffle(self, seed):
+        # todo: запилить анализ аутов
         if self.__smartcv:
             data = None
         else:

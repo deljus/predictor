@@ -25,6 +25,7 @@ import argparse
 import pickle
 import gzip
 from itertools import repeat
+import subprocess as sp
 
 
 class Modelbuilder(object):
@@ -37,7 +38,7 @@ class Modelbuilder(object):
         """
         if self.__options['descriptors']:
             if len(self.__options['descriptors']) != len(fragments):
-                print('number of descriptors files mismatch number of fragmentation')
+                print('number of descriptors files mismatch number of fragmentation params')
                 return
             descriptors = []
             for x, y in zip(self.__options['descriptors'], fragments):
@@ -47,7 +48,6 @@ class Modelbuilder(object):
             descriptors = repeat(None)
 
         print(fragments, descriptors)
-        return
 
         extdata = self.__parseext(self.__options['extention']) if self.__options['extention'] else {}
 
@@ -66,21 +66,26 @@ class Modelbuilder(object):
                                     smartcv=self.__options['smartcv'], rep_boost=self.__options['rep_boost'],
                                     repetitions=self.__options['repetition'], normalize=self.__options['normalize'],
                                     descriptors=y) for x, y in zip(self.__frags, descriptors)]
+                    # todo: удалять совсем плохие фрагментации.
                     pickle.dump(models, gzip.open(self.__options['model'], 'wb'))
                 else:
                     print('path for model saving not writable')
             else:
-                print('check SVM params file')
+                print('check SVM params file or installation of Dragos Genetics')
         else:
-            for n, frag in enumerate(self.__frags):
-                frag.get(inputfile=self.__options['input'], parsesdf=True,
-                         outputfile='%s.%d' % (self.__options['output'], n))
+            self.__gendesc()
 
-    def __dragossvmfit(self):
+    def __gendesc(self):
         for n, frag in enumerate(self.__frags):
             frag.get(inputfile=self.__options['input'], parsesdf=True,
-                     outputfile='%s.tmp.%d' % (self.__options['input'], n))
-        return ()
+                     outputfile='%s.%d' % (self.__options['output'], n))
+
+    def __dragossvmfit(self):
+        self.__gendesc()
+        # todo: запилить драгошову генетику.
+        execparams = []
+        exitcode = sp.call(execparams) == 0
+        return {}
 
     def __parsesvm(self, file):
         prop, vector = [], []
@@ -107,7 +112,7 @@ class Modelbuilder(object):
         rawopts.add_argument("--extention", "-e", action='append', type=str, default=None,
                              help="extention data files. -e extname:filename [-e extname2:filename2]")
         rawopts.add_argument("--fragments", "-f", type=str, default='input.fragparam', help="fragmentor keys file")
-        rawopts.add_argument("--svm", "-s", type=str, default=None, help="SVM params")
+        rawopts.add_argument("--svm", "-s", type=str, default=None, help="SVM params. use Dragos Genetics if don't set")
         rawopts.add_argument("--nfold", "-n", type=int, default=5, help="number of folds")
         rawopts.add_argument("--repetition", "-r", type=int, default=1, help="number of repetitions")
         rawopts.add_argument("--rep_boost", "-R", type=int, default=25,
@@ -119,7 +124,7 @@ class Modelbuilder(object):
                              help="score parameter. mean(rmse|r2) - dispcoef * dispertion(rmse|r2)")
 
         rawopts.add_argument("--normalize", "-N", action='store_true', help="normalize vector to range(0, 1)")
-        rawopts.add_argument("--smartcv", "-S", action='store_true', help="smart crossvalidation [experimental]")
+        rawopts.add_argument("--smartcv", "-S", action='store_true', help="smart crossvalidation [NOT implemented]")
 
         return vars(rawopts.parse_args())
 
