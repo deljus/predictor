@@ -18,7 +18,8 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import pkgutil, os
+import os
+import pkgutil
 
 MODELS = {}
 
@@ -26,9 +27,7 @@ MODELS = {}
 def register_model(name, model, init=None):
     MODELS[name] = (model, init)
 
-print(next(pkgutil.iter_modules(os.path.dirname(__file__))))
-
-for mloader, pname, ispkg in pkgutil.iter_modules(os.path.dirname(__file__)):
+for mloader, pname, ispkg in pkgutil.iter_modules([os.path.dirname(__file__)]):
     try:
         print('import model ', pname)
         __import__('modelset.%s' % pname)
