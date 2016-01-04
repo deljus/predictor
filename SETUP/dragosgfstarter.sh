@@ -1,15 +1,21 @@
 #!/usr/bin/env bash
-mkdir worktmp.$1
+# make work dir
+workdir=worktmp.`basename $1`
+mkdir ${workdir}
+# copy svm files to individual workdirs
+# make SVMreg files
 for i in $1.*.svm; do
-    mkdir worktmp.$1/${i%.svm} &&
-    cp ${i} worktmp.$1/${i%.svm}/file.svm &&
-    awk '{print $1}' ${i%.svm} > worktmp.$1/${i%.svm}/file.SVMreg
+    curworkdir=${workdir}/${i%.svm}
+    mkdir ${curworkdir} &&
+    cp ${i} ${curworkdir}/file.svm &&
+    awk '{print $1}' ${i} > ${curworkdir}/file.SVMreg
 done
 
-# start dragos
+# start dragosscript
 
-for i in worktmp.$1/*; do
-    echo ${i} `tail -n 1 ${i}/bestprop`
-done > $1.results
+# parse results
+for i in ${workdir}/*; do
+    head -n 1 ${i}/bestprop | need grep > `basename ${i}`.result
+done
 
-rm -rf worktmp.$1
+rm -rf ${workdir}

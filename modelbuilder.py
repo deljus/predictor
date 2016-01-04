@@ -58,7 +58,17 @@ class Modelbuilder(object):
 
         if not self.__options['output']:
             if self.__options['svm']:
+                if 1 < len(self.__options['svm']) < len(self.__frags) or len(self.__options['svm']) > len(self.__frags):
+                    print('NUMBER of svm params files SHOULD BE EQUAL to number of Fragmentations or to 1')
+                    return
+
                 svm = self.__getsvmparam(self.__options['svm'])
+                if len(self.__options['svm']) != len(svm):
+                    print('some of SVM params files is empty')
+                    return
+
+                if len(self.__options['svm']) == 1:
+                    svm *= len(self.__frags)
             else:
                 svm, descriptors = self.__dragossvmfit()
             if svm:
@@ -87,19 +97,19 @@ class Modelbuilder(object):
         return True
 
     def __dragossvmfit(self):
+        """ files - basename for descriptors.
+        """
         files = os.path.join('.', "dragos-%d" % int(time.time()))
+        execparams = ['dragosgfstarter', files]
         if self.__gendesc(files):
-            # todo: запилить драгошову генетику.
-            # чтобы не мучиться затолкать все в башскрипт. главное не перемещать и удалаять файлы а только посчитать и
-            # выписать в 1 файл свм параметров удалив все временное.
-            execparams = ['dragosgfstarter', files]
-            exitcode = sp.call(execparams) == 0
-            if exitcode:
-                with open('%s.results' %files) as f:
-                    for i in f:
-
-                return
-        return {}, []
+            """ parse descriptors for speedup
+            """
+            descriptors = [self.__parsesvm('%s.%d.svm' % (files, x + 1)) for x in range(len(self.__frags))]
+            if sp.call(execparams) == 0:
+                svm = self.__getsvmparam(['%s.%d.result' % (files, x + 1) for x in range(len(self.__frags))])
+                if len(svm) == len(self.__frags):
+                    return svm, descriptors
+        return None, None
 
     def __parsesvm(self, file):
         prop, vector = [], []
@@ -126,7 +136,10 @@ class Modelbuilder(object):
         rawopts.add_argument("--extention", "-e", action='append', type=str, default=None,
                              help="extention data files. -e extname:filename [-e extname2:filename2]")
         rawopts.add_argument("--fragments", "-f", type=str, default='input.fragparam', help="fragmentor keys file")
-        rawopts.add_argument("--svm", "-s", type=str, default=None, help="SVM params. use Dragos Genetics if don't set")
+        rawopts.add_argument("--svm", "-s", action='append', type=str, default=None,
+                             help="SVM params. use Dragos Genetics if don't set."
+                                  "can be multiple [-s 1 -s 2 ...]"
+                                  "(number of files should be equal to number of fragments params) or single for all")
         rawopts.add_argument("--nfold", "-n", type=int, default=5, help="number of folds")
         rawopts.add_argument("--repetition", "-r", type=int, default=1, help="number of repetitions")
         rawopts.add_argument("--rep_boost", "-R", type=int, default=25,
@@ -210,8 +223,8 @@ class Modelbuilder(object):
 
     __kernel = {'0': 'linear', '1': 'poly', '2': 'rbf', '3': 'sigmoid'}
 
-    def __getsvmparam(self, file):
-        svm = {}
+    def __getsvmparam(self, files):
+        res = []
         repl = {'-t': ('kernel', lambda x: [self.__kernel[i] for i in x.split(',')]),
                 '-c': ('C', lambda x: self.__parsesvmopts(x, float, unpac=self.__pow10)),
                 '-d': ('degree', lambda x: self.__parsesvmopts(x, int)),
@@ -219,44 +232,49 @@ class Modelbuilder(object):
                 '-p': ('epsilon', lambda x: self.__parsesvmopts(x, float, unpac=self.__pow10)),
                 '-g': ('gamma', lambda x: self.__parsesvmopts(x, float, unpac=self.__pow10)),
                 '-r': ('coef0', lambda x: self.__parsesvmopts(x, float))}
-        with open(file) as f:
-            for line in f:
-                opts = line.split()
-                tmp = dict(kernel=['rbf'], C=[1.0], epsilon=[.1], tol=[.001], degree=[3], gamma=[0], coef0=[0])
-                for x, y in zip(opts[::2], opts[1::2]):
-                    z = repl.get(x)
-                    if z:
-                        tmp[z[0]] = z[1](y)
+        for file in files:
+            svm = {}
+            with open(file) as f:
+                for line in f:
+                    opts = line.split()
+                    tmp = dict(kernel=['rbf'], C=[1.0], epsilon=[.1], tol=[.001], degree=[3], gamma=[0], coef0=[0])
+                    for x, y in zip(opts[::2], opts[1::2]):
+                        z = repl.get(x)
+                        if z:
+                            tmp[z[0]] = z[1](y)
 
-                for i in tmp['kernel']:
-                    if i == 'linear':  # u'*v
-                        if svm.get('linear'):
-                            for k in ('C', 'epsilon', 'tol'):
-                                svm['linear'][k].extend(tmp[k])
-                        else:
-                            svm['linear'] = dict(kernel='linear', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'])
-                    elif i == 'rbf':  # exp(-gamma*|u-v|^2)
-                        if svm.get('rbf'):
-                            for k in ('C', 'epsilon', 'tol', 'gamma'):
-                                svm['rbf'][k].extend(tmp[k])
-                        else:
-                            svm['rbf'] = dict(kernel='rbf', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
-                                              gamma=tmp['gamma'])
-                    elif i == 'sigmoid':  # tanh(gamma*u'*v + coef0)
-                        if svm.get('sigmoid'):
-                            for k in ('C', 'epsilon', 'tol', 'gamma', 'coef0'):
-                                svm['sigmoid'][k].extend(tmp[k])
-                        else:
-                            svm['sigmoid'] = dict(kernel='sigmoid', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
-                                                  gamma=tmp['gamma'], coef0=tmp['coef0'])
-                    elif i == 'poly':  # (gamma*u'*v + coef0)^degree
-                        if svm.get('poly'):
-                            for k in ('C', 'epsilon', 'tol', 'gamma', 'coef0', 'degree'):
-                                svm['poly'][k].extend(tmp[k])
-                        else:
-                            svm['poly'] = dict(kernel='poly', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
-                                               gamma=tmp['gamma'], coef0=tmp['coef0'], degree=tmp['degree'])
-        return svm
+                    for i in tmp['kernel']:
+                        if i == 'linear':  # u'*v
+                            if svm.get('linear'):
+                                for k in ('C', 'epsilon', 'tol'):
+                                    svm['linear'][k].extend(tmp[k])
+                            else:
+                                svm['linear'] = dict(kernel='linear', C=tmp['C'], epsilon=tmp['epsilon'],
+                                                     tol=tmp['tol'])
+                        elif i == 'rbf':  # exp(-gamma*|u-v|^2)
+                            if svm.get('rbf'):
+                                for k in ('C', 'epsilon', 'tol', 'gamma'):
+                                    svm['rbf'][k].extend(tmp[k])
+                            else:
+                                svm['rbf'] = dict(kernel='rbf', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
+                                                  gamma=tmp['gamma'])
+                        elif i == 'sigmoid':  # tanh(gamma*u'*v + coef0)
+                            if svm.get('sigmoid'):
+                                for k in ('C', 'epsilon', 'tol', 'gamma', 'coef0'):
+                                    svm['sigmoid'][k].extend(tmp[k])
+                            else:
+                                svm['sigmoid'] = dict(kernel='sigmoid', C=tmp['C'], epsilon=tmp['epsilon'],
+                                                      tol=tmp['tol'], gamma=tmp['gamma'], coef0=tmp['coef0'])
+                        elif i == 'poly':  # (gamma*u'*v + coef0)^degree
+                            if svm.get('poly'):
+                                for k in ('C', 'epsilon', 'tol', 'gamma', 'coef0', 'degree'):
+                                    svm['poly'][k].extend(tmp[k])
+                            else:
+                                svm['poly'] = dict(kernel='poly', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
+                                                   gamma=tmp['gamma'], coef0=tmp['coef0'], degree=tmp['degree'])
+            if svm:
+                res.append(svm)
+        return res
 
 
 if __name__ == '__main__':
