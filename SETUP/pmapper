@@ -10,25 +10,23 @@
 ### END INIT INFO
 
 # Author: Ramil Nugmanov <stsouko@live.ru>
-#
 
-# Do NOT "set -e"
-
-# PATH should only include /usr/* if it runs after the mountnfs.sh script
-ROOT=/home/www/predictor
-PATH=/sbin:/usr/sbin:/bin:/usr/bin
+# START CONFIG
 DESC="mapper service"
 NAME="pmapper"
-DAEMON=$ROOT/mapper/mapper.py
-DAEMON_ARGS="--options args"
-PIDFILE=/var/run/$NAME.pid
-SCRIPTNAME=/etc/init.d/$NAME
+PYFILE="mapper.py"
+ROOT=/home/www/predictor
+# END
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+DAEMON=${ROOT}/${PYFILE}
+SCRIPTNAME=/etc/init.d/${NAME}
 
 # Exit if the package is not installed
 [ -x "$DAEMON" ] || exit 0
 
 # Read configuration variable file if it is present
-[ -r /etc/default/$NAME ] && . /etc/default/$NAME
+[ -r /etc/default/${NAME} ] && . /etc/default/${NAME}
 
 # Load the VERBOSE setting and other rcS variables
 . /lib/init/vars.sh
@@ -47,8 +45,8 @@ do_start()
 	#   0 if daemon has been started
 	#   1 if daemon was already running
 	#   2 if daemon could not be started
-	screen -dmS mapper bash -rcfile $ROOT/bin/activate
-	screen -dmS mapper python $DAEMON
+	screen -dmS mapper bash -rcfile ${ROOT}/SETUP/${NAME}rc
+	screen -dmS mapper python ${DAEMON}
 	return 0
 	# Add code here, if necessary, that waits for the process to be ready
 	# to handle requests from services started subsequently which depend
@@ -60,27 +58,9 @@ do_start()
 #
 do_stop()
 {
-	# Return
-	#   0 if daemon has been stopped
-	#   1 if daemon was already stopped
-	#   2 if daemon could not be stopped
-	#   other if a failure occurred
-	start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --pidfile $PIDFILE --name $NAME
-	RETVAL="$?"
-	[ "$RETVAL" = 2 ] && return 2
-	# Wait for children to finish too if this is a daemon that forks
-	# and if the daemon is only ever run from this initscript.
-	# If the above conditions are not satisfied then add some other code
-	# that waits for the process to drop all resources that could be
-	# needed by services started subsequently.  A last resort is to
-	# sleep for some time.
-	start-stop-daemon --stop --quiet --oknodo --retry=0/30/KILL/5 --exec $DAEMON
-	[ "$?" = 2 ] && return 2
-	# Many daemons don't delete their pidfiles when they exit.
-	rm -f $PIDFILE
-	return "$RETVAL"
+	screen -XS mapper quit
+	return 0
 }
-
 
 case "$1" in
   start)
@@ -100,10 +80,6 @@ case "$1" in
 	esac
 	;;
   restart)
-	#
-	# If the "reload" option is implemented then remove the
-	# 'force-reload' alias
-	#
 	log_daemon_msg "Restarting $DESC" "$NAME"
 	do_stop
 	case "$?" in
@@ -122,7 +98,6 @@ case "$1" in
 	esac
 	;;
   *)
-	#echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
 	echo "Usage: $SCRIPTNAME {start|stop|status|restart}" >&2
 	exit 3
 	;;
