@@ -41,7 +41,7 @@ class Modelbuilder(object):
         """
         if self.__options['descriptors']:
             if len(self.__options['descriptors']) != len(fragments):
-                print('number of descriptors files mismatch number of fragmentation params')
+                print('number of descriptors files SHOULD BE EQUAL to number of fragmentation params')
                 return
             descriptors = []
             for x, y in zip(self.__options['descriptors'], fragments):
@@ -50,11 +50,9 @@ class Modelbuilder(object):
         else:
             descriptors = repeat(None)
 
-        print(fragments, descriptors)
-
         extdata = self.__parseext(self.__options['extention']) if self.__options['extention'] else {}
 
-        self.__frags = [Fragmentor(extention=extdata, **x) for x in fragments]
+        self.__frags = [Fragmentor(workpath=self.__options['workpath'], extention=extdata, **x) for x in fragments]
 
         if not self.__options['output']:
             if self.__options['svm']:
@@ -71,6 +69,8 @@ class Modelbuilder(object):
                     svm *= len(self.__frags)
             else:
                 svm, descriptors = self.__dragossvmfit()
+                print(svm)
+                return
             if svm:
                 if os.access(self.__options['model'], os.W_OK):
                     models = [Model(x, y.values(), inputfile=self.__options['input'], parsesdf=True,
@@ -99,7 +99,7 @@ class Modelbuilder(object):
     def __dragossvmfit(self):
         """ files - basename for descriptors.
         """
-        files = os.path.join('.', "dragos-%d" % int(time.time()))
+        files = os.path.join(self.__options['workpath'], "dragos-%d" % int(time.time()))
         execparams = ['dragosgfstarter', files]
         if self.__gendesc(files):
             """ parse descriptors for speedup
@@ -125,6 +125,8 @@ class Modelbuilder(object):
         rawopts = argparse.ArgumentParser(description="Model Builder",
                                           epilog="Copyright 2015 Ramil Nugmanov <stsouko@live.ru>",
                                           formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        rawopts.add_argument("--workpath", "-w", type=str, default='.', help="work path")
+
         rawopts.add_argument("--input", "-i", type=str, default='input.sdf', help="input SDF ")
         rawopts.add_argument("--output", "-o", type=str, default=None, help="output SVM|HDR")
 
