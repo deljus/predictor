@@ -25,7 +25,7 @@ from itertools import chain, repeat
 
 
 class Fragmentor(object):
-    def __init__(self, workpath='.', version='last', s_option=None, fragment_type=3, min_length=2, max_length=10,
+    def __init__(self, workpath='.', version='last', s_option=None, fragment_type='3', min_length='2', max_length='10',
                  colorname=None, marked_atom=None, cgr_dynbonds=None, xml=None, doallways=False,
                  useformalcharge=False, atompairs=False, fragmentstrict=False, getatomfragment=False,
                  overwrite=True, header=None, extention=None):
