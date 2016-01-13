@@ -23,4 +23,5 @@ for i in ${workdir}/*; do
     head -n1 ${i}/work/`head -n1 ${i}/work/best_pop | grep -oP "attempt.[0-9]+"`/svm.pars > `dirname $1`/`basename ${i}`.result
 done
 
+# remove tmp
 rm -rf ${workdir}
