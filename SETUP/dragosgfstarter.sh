@@ -6,7 +6,7 @@ workdir=`dirname $1`/worktmp.`basename $1`
 mkdir -p ${workdir}
 # copy svm files to individual workdirs
 # make SVMreg files
-for i in `find $(dirname $1) -type f -name "*.svm"`; do
+for i in `find $(dirname $1) -type f -name "$(basename $1)*.svm"`; do
     curworkdir=${workdir}/`basename ${i%.svm}`
     mkdir ${curworkdir} &&
     cp ${i} ${curworkdir}/file.svm &&
@@ -15,7 +15,6 @@ done
 
 # start dragosscript
 for i in ${workdir}/* ; do
-    mkdir ${i}/work &&
     ${GACONF}/pilot_local.csh data_dir=${i} workdir=${i}/work >& ${i}/msg.log
 done
 
