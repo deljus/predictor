@@ -104,10 +104,10 @@ class Modelbuilder(object):
         if self.__gendesc(files):
             """ parse descriptors for speedup
             """
-            descriptors = [self.__parsesvm('%s.%d.svm' % (files, x + 1)) for x in range(len(self.__frags))]
             if sp.call(execparams) == 0:
                 svm = self.__getsvmparam(['%s.%d.result' % (files, x + 1) for x in range(len(self.__frags))])
                 if len(svm) == len(self.__frags):
+                    descriptors = [self.__parsesvm('%s.%d.svm' % (files, x + 1)) for x in range(len(self.__frags))]
                     return svm, descriptors
         return None, None
 
