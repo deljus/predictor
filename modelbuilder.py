@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2015 Ramil Nugmanov <stsouko@live.ru>
+# Copyright 2015, 2016 Ramil Nugmanov <stsouko@live.ru>
 # This file is part of PREDICTOR.
 #
 # PREDICTOR is free software; you can redistribute it and/or modify
@@ -19,11 +19,9 @@
 #  MA 02110-1301, USA.
 #
 import os
-
 import time
-
 from modeler.fragmentor import Fragmentor
-from modeler.svrmodel import Model
+from modeler.svmodel import Model
 import argparse
 import pickle
 import gzip

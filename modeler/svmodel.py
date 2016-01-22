@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2015 Ramil Nugmanov <stsouko@live.ru>
+# Copyright 2015, 2016 Ramil Nugmanov <stsouko@live.ru>
 # This file is part of PREDICTOR.
 #
 # PREDICTOR is free software; you can redistribute it and/or modify
@@ -18,21 +18,22 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+from collections import defaultdict
 from itertools import product
 from sklearn.externals.joblib import Parallel, delayed
-from sklearn.svm import SVR
+from sklearn.svm import SVR, SVC
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.utils import shuffle
 from sklearn.cross_validation import KFold
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score, confusion_matrix
 from math import sqrt, ceil
 import numpy as np
 
 
-def _kfold(xs, ys, train, test, svmparams, normalize):
-    x_train, y_train = xs[train], ys[train]
-    x_test, y_test = xs[test], list(ys[test])
+def _kfold(est, x, y, train, test, svmparams, normalize):
+    x_train, y_train = x[train], y[train]
+    x_test, y_test = x[test], list(y[test])
     x_min = x_train.min(axis=0)
     x_max = x_train.max(axis=0)
     y_min = y_train.min()
@@ -46,18 +47,25 @@ def _kfold(xs, ys, train, test, svmparams, normalize):
     else:
         normal = None
 
-    model = SVR(**svmparams)
+    model = est(**svmparams)
     model.fit(x_train, y_train)
     y_pred = list(model.predict(x_test))
     return dict(model=model, normal=normal, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max,
-                y_test=y_test, y_pred=y_pred)
+                y_test=y_test, y_pred=y_pred, y_index=test)
 
 
 class Model(object):
     def __init__(self, descriptorgen, svmparams, nfold=5, repetitions=1, rep_boost=25, dispcoef=0,
-                 fit='rmse', normalize=False, n_jobs=2, smartcv=False, descriptors=None, **kwargs):
+                 fit='rmse', estimator='svr', scorers=('rmse', 'r2'),
+                 normalize=False, n_jobs=2, smartcv=False, descriptors=None, **kwargs):
+        _scorers = dict(rmse=lambda y_test, y_pred: sqrt(mean_squared_error(y_test, y_pred)),
+                        r2=lambda y_test, y_pred: r2_score(y_test, y_pred),
+                        kappa=self.__kappa_stat, ba=self.__balance_acc)
+
         self.__sparse = DictVectorizer(sparse=False)
         self.__descriptorgen = descriptorgen
+        self.__estimator = self.__estimators.get(estimator, SVR)
+
         self.__nfold = nfold
         self.__repetitions = repetitions
         self.__rep_boost = ceil(repetitions * (rep_boost % 100) / 100)
@@ -68,13 +76,30 @@ class Model(object):
             y, x, _ = descriptorgen.get(**kwargs)
         self.__sparse.fit(x)
         self.__x, self.__y = self.__sparse.transform(x), np.array(y)
+
         self.__normalize = normalize
         self.__dispcoef = dispcoef
-        self.__fitscore = 'C' + fit
+        self.__scorers = {x: _scorers[x] for x in scorers if x in _scorers}
+        self.__fitscore = 'C' + (fit if fit in scorers else scorers[0])
+        self.__scorereporter = '\n'.join(['{0} +- variance = %({0})s +- %(v{0})s'.format(i) for i in self.__scorers])
         self.__smartcv = smartcv
 
         self.__n_jobs = n_jobs
         self.__crossval(svmparams)
+
+    __estimators = dict(svr=SVR, svc=SVC)
+
+    @staticmethod
+    def __kappa_stat(y_test, y_pred):
+        (tn, fp), (fn, tp) = confusion_matrix(y_test, y_pred)
+        a = len(y_test)
+        pe = ((tp + fp) * (tp + fn) + (fn + tn) * (fp + tn)) / (a**2)
+        return ((tp + tn) / a - pe)/(1 - pe)
+
+    @staticmethod
+    def __balance_acc(y_test, y_pred):
+        (tn, fp), (fn, tp) = confusion_matrix(y_test, y_pred)
+        return 0.5 * tp / (tp + fn) + (0.5 * tn / (tn + fp) if (tn + fp) else .5)
 
     def setworkpath(self, path):
         self.__descriptorgen.setpath(path)
@@ -128,7 +153,7 @@ class Model(object):
                     fcount += 1
                     print('%d: fit model with params:' % fcount, i)
                     fittedmodel = self.__fit(i, self.__rep_boost)
-                    print('R2 +- variance = %(r2)s +- %(vr2)s\nRMSE +- variance = %(rmse)s +- %(vrmse)s' % fittedmodel)
+                    print(self.__scorereporter % fittedmodel)
                     if fittedmodel[self.__fitscore] < var_param_model[self.__fitscore]:
                         var_param_model = fittedmodel
 
@@ -151,9 +176,8 @@ class Model(object):
         if self.__repetitions > self.__rep_boost:
             bestmodel = self.__fit(bestmodel['params'], self.__repetitions)
         print('========================================\n'
-              'SVM params %(params)s\n'
-              'R2 +- variance = %(r2)s +- %(vr2)s\n'
-              'RMSE +- variance = %(rmse)s +- %(vrmse)s' % bestmodel)
+              'SVM params %(params)s\n' +
+              self.__scorereporter % bestmodel)
         print('========================================\n%s variants checked' % fcount)
         self.__model = bestmodel
 
@@ -176,14 +200,15 @@ class Model(object):
         return tmp
 
     def __fit(self, svmparams, repetitions):
-        models, y_test, y_pred, kr2, krmse = [], [], [], [], []
+        models, y_test, y_pred = [], [], []
+        scorers = defaultdict(list)
         parallel = Parallel(n_jobs=self.__n_jobs)
         kf = list(KFold(len(self.__y), n_folds=self.__nfold))
-        folds = parallel(delayed(_kfold)(xs, ys, train, test, svmparams, self.__normalize)
-                         for xs, ys in
-                         (self.__shuffle(i) for i in range(repetitions))
+        setindexes = np.arange(len(self.__y))
+        folds = parallel(delayed(_kfold)(self.__estimator, self.__x, self.__y, s[train], s[test], svmparams, self.__normalize)
+                         for s in (self.__shuffle(setindexes, i) for i in range(repetitions))
                          for train, test in kf)
-
+        # todo: запилить анализ аутов. y_index - indexes of test elements
         #  street magic. split folds to repetitions
         for kfold in zip(*[iter(folds)] * self.__nfold):
             ky_pred, ky_test = [], []
@@ -192,23 +217,26 @@ class Model(object):
                 ky_test.extend(fold.pop('y_test'))
                 models.append(fold)
 
-            krmse.append(sqrt(mean_squared_error(ky_test, ky_pred)))
-            kr2.append(r2_score(ky_test, ky_pred))
+            for s, f in self.__scorers.items():
+                scorers[s].append(f(ky_test, ky_pred))
+
             y_pred.extend(ky_pred)
             y_test.extend(ky_test)
 
-        rmse, vrmse = np.mean(krmse), sqrt(np.var(krmse))
-        r2, vr2 = np.mean(kr2), sqrt(np.var(kr2))
-        return dict(model=models, rmse=rmse, r2=r2, vrmse=vrmse, vr2=vr2, params=svmparams,
-                    Crmse=rmse + self.__dispcoef * vrmse, Cr2=-r2 + self.__dispcoef * vr2)
+        res = dict(model=models, params=svmparams,)
+        for s, v in scorers.items():
+            m, v = np.mean(v), sqrt(np.var(v))
+            c = (1 if s in ('rmse',) else -1) * m + self.__dispcoef * v
+            res.update({s: m, 'C' + s: c, 'v' + s: v})
 
-    def __shuffle(self, seed):
-        # todo: запилить анализ аутов
+        return res
+
+    def __shuffle(self, setindexes, seed):
         if self.__smartcv:
-            data = None
+            shuffled = None
         else:
-            data = shuffle(self.__x, self.__y, random_state=seed)
-        return data
+            shuffled = shuffle(setindexes, random_state=seed)
+        return shuffled
 
     def predict(self, structure, **kwargs):
         _, d_x, d_ad = self.__descriptorgen.get(inputfile=structure, **kwargs)
