@@ -73,6 +73,7 @@ class Modelbuilder(object):
                 if os.access(self.__options['model'], os.W_OK):
                     models = [Model(x, y.values(), inputfile=self.__options['input'], parsesdf=True,
                                     dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
+                                    scorers=self.__options['scorers'], estimator=self.__options['estimator'],
                                     n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
                                     smartcv=self.__options['smartcv'], rep_boost=self.__options['rep_boost'],
                                     repetitions=self.__options['repetition'], normalize=self.__options['normalize'],
@@ -145,10 +146,14 @@ class Modelbuilder(object):
         rawopts.add_argument("--rep_boost", "-R", type=int, default=25,
                              help="percentage of repetitions for use in greed search for optimization speedup")
         rawopts.add_argument("--n_jobs", "-j", type=int, default=2, help="number of parallel fit jobs")
+
+        rawopts.add_argument("--estimator", "-E", type=str, default='svr', help="estimator [svr, svc]")
+        rawopts.add_argument("--scorers", "-T", action='append', type=str, default=['rmse', 'r2'],
+                             help="needed scoring functions. -T rmse [-T r2]")
         rawopts.add_argument("--fit", "-t", type=str, default='rmse',
-                             help="crossval score for parameters fit/ (rmse|r2)")
+                             help="crossval score for parameters fit. (rmse|r2|ba|kappa)")
         rawopts.add_argument("--dispcoef", "-p", type=float, default=0,
-                             help="score parameter. mean(rmse|r2) - dispcoef * dispertion(rmse|r2)")
+                             help="score parameter. mean(score) - dispcoef * dispertion(score)")
 
         rawopts.add_argument("--normalize", "-N", action='store_true', help="normalize vector to range(0, 1)")
         rawopts.add_argument("--smartcv", "-S", action='store_true', help="smart crossvalidation [NOT implemented]")
