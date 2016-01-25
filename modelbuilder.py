@@ -67,9 +67,9 @@ class Modelbuilder(object):
                     svm *= len(self.__frags)
             else:
                 svm, descriptors = self.__dragossvmfit()
-                print(svm)
-                return
+
             if svm:
+                print(svm)
                 if os.access(self.__options['model'], os.W_OK):
                     models = [Model(x, y.values(), inputfile=self.__options['input'], parsesdf=True,
                                     dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
@@ -108,6 +108,8 @@ class Modelbuilder(object):
                 if len(svm) == len(self.__frags):
                     descriptors = [self.__parsesvm('%s.%d.svm' % (files, x + 1)) for x in range(len(self.__frags))]
                     return svm, descriptors
+                else:
+                    print('some of SVM params files is empty')
         return None, None
 
     def __parsesvm(self, file):
@@ -120,7 +122,8 @@ class Modelbuilder(object):
 
         return prop, vector
 
-    def __argparser(self):
+    @staticmethod
+    def __argparser():
         rawopts = argparse.ArgumentParser(description="Model Builder",
                                           epilog="Copyright 2015 Ramil Nugmanov <stsouko@live.ru>",
                                           formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -155,7 +158,7 @@ class Modelbuilder(object):
         rawopts.add_argument("--dispcoef", "-p", type=float, default=0,
                              help="score parameter. mean(score) - dispcoef * dispertion(score)")
 
-        rawopts.add_argument("--normalize", "-N", action='store_true', help="normalize vector to range(0, 1)")
+        rawopts.add_argument("--normalize", "-N", action='store_true', help="normalize X vector to range(0, 1)")
         rawopts.add_argument("--smartcv", "-S", action='store_true', help="smart crossvalidation [NOT implemented]")
 
         return vars(rawopts.parse_args())
