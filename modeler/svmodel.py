@@ -58,8 +58,8 @@ class Model(object):
     def __init__(self, descriptorgen, svmparams, nfold=5, repetitions=1, rep_boost=25, dispcoef=0,
                  fit='rmse', estimator='svr', scorers=('rmse', 'r2'),
                  normalize=False, n_jobs=2, smartcv=False, descriptors=None, **kwargs):
-        _scorers = dict(rmse=lambda y_test, y_pred: sqrt(mean_squared_error(y_test, y_pred)),
-                        r2=lambda y_test, y_pred: r2_score(y_test, y_pred),
+        _scorers = dict(rmse=self.__rmse,
+                        r2=r2_score,
                         kappa=self.__kappa_stat, ba=self.__balance_acc)
 
         self.__sparse = DictVectorizer(sparse=False)
@@ -100,6 +100,10 @@ class Model(object):
     def __balance_acc(y_test, y_pred):
         (tn, fp), (fn, tp) = confusion_matrix(y_test, y_pred)
         return 0.5 * tp / (tp + fn) + (0.5 * tn / (tn + fp) if (tn + fp) else .5)
+
+    @staticmethod
+    def __rmse(y_test, y_pred):
+        return sqrt(mean_squared_error(y_test, y_pred))
 
     def setworkpath(self, path):
         self.__descriptorgen.setpath(path)
