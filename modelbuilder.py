@@ -69,8 +69,9 @@ class Modelbuilder(object):
                 svm, descriptors = self.__dragossvmfit()
 
             if svm:
-                print(svm)
-                if os.access(self.__options['model'], os.W_OK):
+                if not os.path.isdir(self.__options['model']) and \
+                        (os.path.exists(self.__options['model']) and os.access(self.__options['model'], os.W_OK) or
+                         os.access(os.path.dirname(self.__options['model']), os.W_OK)):
                     models = [Model(x, y.values(), inputfile=self.__options['input'], parsesdf=True,
                                     dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
                                     scorers=self.__options['scorers'], estimator=self.__options['estimator'],
@@ -125,7 +126,7 @@ class Modelbuilder(object):
     @staticmethod
     def __argparser():
         rawopts = argparse.ArgumentParser(description="Model Builder",
-                                          epilog="Copyright 2015 Ramil Nugmanov <stsouko@live.ru>",
+                                          epilog="Copyright 2015, 2016 Ramil Nugmanov <stsouko@live.ru>",
                                           formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         rawopts.add_argument("--workpath", "-w", type=str, default='.', help="work path")
 
