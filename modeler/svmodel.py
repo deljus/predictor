@@ -58,13 +58,25 @@ def _rmse(y_test, y_pred):
     return sqrt(mean_squared_error(y_test, y_pred))
 
 
+def _kappa_stat(y_test, y_pred):
+    (tn, fp), (fn, tp) = confusion_matrix(y_test, y_pred)
+    a = len(y_test)
+    pe = ((tp + fp) * (tp + fn) + (fn + tn) * (fp + tn)) / (a**2)
+    return ((tp + tn) / a - pe)/(1 - pe)
+
+
+def _balance_acc(y_test, y_pred):
+    (tn, fp), (fn, tp) = confusion_matrix(y_test, y_pred)
+    return 0.5 * tp / (tp + fn) + (0.5 * tn / (tn + fp) if (tn + fp) else .5)
+
+
 class Model(object):
     def __init__(self, descriptorgen, svmparams, nfold=5, repetitions=1, rep_boost=25, dispcoef=0,
                  fit='rmse', estimator='svr', scorers=('rmse', 'r2'),
                  normalize=False, n_jobs=2, smartcv=False, descriptors=None, **kwargs):
         _scorers = dict(rmse=_rmse,
                         r2=r2_score,
-                        kappa=self.__kappa_stat, ba=self.__balance_acc)
+                        kappa=_kappa_stat, ba=_balance_acc)
 
         self.__sparse = DictVectorizer(sparse=False)
         self.__descriptorgen = descriptorgen
@@ -92,18 +104,6 @@ class Model(object):
         self.__crossval(svmparams)
 
     __estimators = dict(svr=SVR, svc=SVC)
-
-    @staticmethod
-    def __kappa_stat(y_test, y_pred):
-        (tn, fp), (fn, tp) = confusion_matrix(y_test, y_pred)
-        a = len(y_test)
-        pe = ((tp + fp) * (tp + fn) + (fn + tn) * (fp + tn)) / (a**2)
-        return ((tp + tn) / a - pe)/(1 - pe)
-
-    @staticmethod
-    def __balance_acc(y_test, y_pred):
-        (tn, fp), (fn, tp) = confusion_matrix(y_test, y_pred)
-        return 0.5 * tp / (tp + fn) + (0.5 * tn / (tn + fp) if (tn + fp) else .5)
 
     def setworkpath(self, path):
         self.__descriptorgen.setpath(path)
@@ -250,7 +250,7 @@ class Model(object):
             x_test = self.__sparse.transform([i])
             for model in self.__model['model']:
                 x_ad = d_ad and (x_test - model['x_min']).min() >= 0 and (model['x_max'] - x_test).min() >= 0
-                x_t = model['normal'](x_test) if model['normal'] else x_test
+                x_t = model['normal'].transform(x_test) if model['normal'] else x_test
                 y_pred = model['model'].predict(x_t)
                 y_ad = model['y_min'] <= y_pred <= model['y_max']
 
