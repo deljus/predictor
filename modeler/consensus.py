@@ -20,40 +20,9 @@
 #
 from math import sqrt, ceil
 import numpy as np
-import xmltodict as x2d
 
 
-def getmodelset(conffile):
-    xml = x2d.parse(open(conffile, 'r').read())['models']
-    batch = xml['model']
-    conf = xml.get('conf', {})
-    models = {}
-
-    if not isinstance(batch, list):
-        batch = [batch]
-    for x in batch:
-        name = x['name']
-        execlist = []
-        scripts = x['scripts']['script']
-        if not isinstance(scripts, list):
-            scripts = [scripts]
-
-        for y in scripts:
-            params = y['params']['param']
-            if not isinstance(params, list):
-                params = [params]
-            plist = []
-            for z in params:
-                plist.extend(z['name'].split() if 'type' in z and z['type'] == 'list' else [z['name']])
-
-            execlist.append([y['exec_path']] + plist)
-
-        models[name] = execlist
-
-    return models, conf
-
-
-class consensus_dragos():
+class ConsensusDragos:
     def __init__(self):
         self.__TRUST = 5
         self.__INlist = []
@@ -120,31 +89,4 @@ class consensus_dragos():
                     zad='None of the local models have applicability domains covering this structure')
 
     __trustdesc = {5: 'Optimal', 4: 'Good', 3: 'Medium', 2: 'Low'}
-
-
-def bondbox(boxfile, descfile, dftype):
-    box = {}
-    AD = True
-    with open(boxfile) as f:
-        for line in f:
-            fragment, *vrange = line.split()
-            box[int(fragment)] = [float(x) for x in vrange]
-
-    with open(descfile) as f:
-        if dftype == 'svm':
-            for fragment in f.read().split()[1:]:
-                pos, count = fragment.split(':')
-                min, max = box.get(int(pos), [0, 0])
-                if not (min <= float(count) <= max):
-                    AD = False
-                    break
-        elif dftype == 'csv':
-            for pos, count in enumerate(f.read().split(';')[1:]):
-                min, max = box.get(pos + 1, [0, 0])
-                if not (min <= float(count) <= max):
-                    AD = False
-                    break
-        else:
-            AD = False
-    return AD
 

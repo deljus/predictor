@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2015 Ramil Nugmanov <stsouko@live.ru>
+# Copyright 2015, 2016 Ramil Nugmanov <stsouko@live.ru>
 # This file is part of PREDICTOR.
 #
 # PREDICTOR is free software; you can redistribute it and/or modify
@@ -21,32 +21,30 @@
 import os
 import time
 import subprocess as sp
-from modelset import consensus_dragos, getmodelset, register_model, chemaxpost, standardize_dragos, ISIDAatommarker, \
-    bondbox
+import pickle
+import gzip
+from utils.utils import chemaxpost
+from modeler.modelset import register_model
+from modeler.consensus import ConsensusDragos, getmodelset, standardize_dragos, ISIDAatommarker, bondbox
 script_path = os.path.dirname(__file__)
 
 
-class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
-    def __init__(self, conffile):
-        self.__models, self.__conf = getmodelset(os.path.join(script_path, conffile))
-        self.__modelpath = os.path.join(script_path, self.__conf.get('path'))
+class Model(ConsensusDragos, standardize_dragos, ISIDAatommarker):
+    def __init__(self, file):
+        self.__models, self.__conf = pickle.load(gzip.open(file, 'rb'))
 
         cons = self.__conf.get('consensus', dict(nlim=0, tol=1000000))
         self.Nlim = float(cons.get('nlim', 0))
         self.TOL = float(cons.get('tol', 1000000))
 
-        self.__std_out = self.__conf.get('standardize_out', 'sdf')
         if 'markerrule' in self.__conf:
-            self.markerrule = os.path.join(self.__modelpath, self.__conf.get('markerrule'))
+            self.markerrule = self.__conf.get('markerrule')
             self.__markatoms = self.markatoms
         else:
             self.__markatoms = lambda x: None
 
         self.__unit = self.__conf.get('report_units', None)
 
-        self.__boxpath = self.__conf.get('boxrange', None)
-        self.__fragtype = self.__conf.get('fragtype', 'svm')
-        self.__fragext = self.__conf.get('fragext', self.__fragtype)
         super().__init__()
 
     def getexample(self):
@@ -109,12 +107,7 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
                         print('model execution failed')
                     else:
                         try:
-                            if self.__boxpath:
-                                boxfile = os.path.join(self.__modelpath, '%s%s.range' % (self.__boxpath, model))
-                                fragments = os.path.join(self.__modelpath, '%s.%s' % (temp_file_mol, self.__fragext))
-                                AD = bondbox(boxfile, fragments, self.__fragtype)
-                            else:
-                                AD = True
+
 
                             with open(temp_file_res_path, 'r') as f:
                                 for line in f:
@@ -139,7 +132,7 @@ class Model(consensus_dragos, standardize_dragos, ISIDAatommarker):
 
 files = os.listdir(script_path)
 for i in files:
-    if os.path.splitext(i)[1] == '.xml':
+    if os.path.splitext(i)[1] == '.model':
         try:
             model = Model(i)
             register_model(model.getname(), Model, init=i)

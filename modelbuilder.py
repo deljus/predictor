@@ -79,8 +79,8 @@ class Modelbuilder(object):
                                     smartcv=self.__options['smartcv'], rep_boost=self.__options['rep_boost'],
                                     repetitions=self.__options['repetition'], normalize=self.__options['normalize'],
                                     descriptors=z) for x, y, z in zip(self.__frags, svm, descriptors)]
-                    # todo: удалять совсем плохие фрагментации.
-                    pickle.dump(models, gzip.open(self.__options['model'], 'wb'))
+                    # todo: удалять совсем плохие фрагментации. добавлять описание модели.
+                    pickle.dump([models, {}], gzip.open(self.__options['model'], 'wb'))
                 else:
                     print('path for model saving not writable')
             else:

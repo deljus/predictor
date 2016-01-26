@@ -26,7 +26,7 @@ from utils.config import PMAPPER
 from utils.utils import chemaxpost
 
 
-class standardize_dragos():
+class StandardizeDragos:
     def __init__(self):
         self.__stdrules = self.__loadrules()
         self.__unwanted = self.__loadunwanted()
@@ -96,7 +96,7 @@ class standardize_dragos():
         return True
 
 
-class ISIDAatommarker():
+class ISIDAatommarker:
     def markatoms(self, file_path):
         '''
         marks atoms in 7th col of sdf.
