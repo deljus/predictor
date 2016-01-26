@@ -243,16 +243,17 @@ class Model(object):
         return shuffled
 
     def predict(self, structure, **kwargs):
-        _, d_x, d_ad = self.__descriptorgen.get(inputfile=structure, **kwargs)
         res = []
-        for i in d_x:
+        for _, d_x, d_ad in zip(*self.__descriptorgen.get(inputfile=structure, **kwargs)):
             tmp = []
-            x_test = self.__sparse.transform([i])
+            x_test = self.__sparse.transform([d_x])
             for model in self.__model['model']:
                 x_ad = d_ad and (x_test - model['x_min']).min() >= 0 and (model['x_max'] - x_test).min() >= 0
+                print(d_ad, x_ad)
                 x_t = model['normal'].transform(x_test) if model['normal'] else x_test
                 y_pred = model['model'].predict(x_t)
                 y_ad = model['y_min'] <= y_pred <= model['y_max']
+                print(y_pred, model['y_min'], model['y_max'])
 
                 tmp.append(dict(prediction=y_pred, domain=x_ad, y_domain=y_ad))
             res.append(tmp)

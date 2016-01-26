@@ -156,22 +156,20 @@ class Fragmentor(object):
         return False
 
     def __extendvector(self, descfile, extention, parser):
-        prop, vector = [], []
+        prop, vector, ad = [], [], []
 
         with open(descfile + '.hdr') as f:
-            last = len(f.readlines())
-            if self.__headsize is None:
-                ad = True
-            else:
-                ad = self.__headsize == last
+            if self.__headsize is not None:
                 last = self.__headsize
+            else:
+                last = len(f.readlines())
 
         with open(descfile + '.svm') as f:
             for frag, ext in zip(f, chain(extention, repeat({}))):
                 y, *x = frag.split()
                 prop.append(float(y) if y.strip() != '?' else 0)
-
-                tmp = {}
+                ad.append(True)
+                tmp = {}  # X vector
                 for i in x:
                     k, v = i.split(':')
                     k = int(k)
@@ -179,6 +177,7 @@ class Fragmentor(object):
                     if k <= last:
                         tmp[k] = v
                     else:
+                        ad[-1] = False
                         break
                 tmp.update({last + self.__extshift[k] + x: y for k, v in ext.items() for x, y in v.items()})
                 vector.append(tmp)
