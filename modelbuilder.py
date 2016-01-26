@@ -113,7 +113,8 @@ class Modelbuilder(object):
                     print('some of SVM params files is empty')
         return None, None
 
-    def __parsesvm(self, file):
+    @staticmethod
+    def __parsesvm(file):
         prop, vector = [], []
         with open(file) as f:
             for frag in f:
