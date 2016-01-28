@@ -25,7 +25,7 @@ import threading
 import time
 import modeler.modelset as models
 from utils.utils import serverget, serverput, serverpost, serverdel, gettask
-from utils.config import INTERVAL, THREAD_LIMIT, REQ_MODELLING, LOCK_MODELLING, MODELLING_DONE
+from utils.config import INTERVAL, THREAD_LIMIT, REQ_MODELLING, LOCK_MODELLING, MODELLING_DONE, WORK_PATH
 
 TASKS = []
 LOSE = []
@@ -36,9 +36,9 @@ def getmodel(model_name):
     Model, init = models.MODELS[model_name]
     try:
         if init:
-            model = Model(init)
+            model = Model(WORK_PATH, init)
         else:
-            model = Model()
+            model = Model(WORK_PATH)
     except:
         model = None
     return model

@@ -109,10 +109,10 @@ class Model(object):
         self.__descriptorgen.setpath(path)
 
     def getmodelstats(self):
-        return dict(r2=self.__model['r2'], rmse=self.__model['rmse'],
-                    vr2=self.__model['vr2'], vrmse=self.__model['vrmse'],
-                    fitparams=self.__model['params'],
-                    repetitions=self.__repetitions, nfolds=self.__nfold, normalize=self.__normalize)
+        stat = {x: self.__model[x] for x in self.__scorers}
+        stat.update(dict(fitparams=self.__model['params'], repetitions=self.__repetitions,
+                         nfolds=self.__nfold, normalize=self.__normalize))
+        return stat
 
     def __splitrange(self, param, dep=0):
         tmp = {}
@@ -215,10 +215,11 @@ class Model(object):
         # todo: запилить анализ аутов. y_index - indexes of test elements
         #  street magic. split folds to repetitions
         for kfold in zip(*[iter(folds)] * self.__nfold):
-            ky_pred, ky_test = [], []
+            ky_pred, ky_test, ky_index = [], [], []
             for fold in kfold:
                 ky_pred.extend(fold.pop('y_pred'))
                 ky_test.extend(fold.pop('y_test'))
+                ky_index.extend(fold.pop['y_index'])
                 models.append(fold)
 
             for s, f in self.__scorers.items():
@@ -243,7 +244,7 @@ class Model(object):
         return shuffled
 
     def predict(self, structure, **kwargs):
-        _, d_x, d_ad = self.__descriptorgen.get(inputfile=structure, **kwargs)
+        _, d_x, d_ad = self.__descriptorgen.get(inputstring=structure, **kwargs)
         res = dict(prediction=np.empty((len(d_x), len(self.__model['model'])), dtype=float),
                    domain=np.empty((len(d_x), len(self.__model['model'])), dtype=bool),
                    y_domain=np.empty((len(d_x), len(self.__model['model'])), dtype=bool))

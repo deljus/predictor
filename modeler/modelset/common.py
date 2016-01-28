@@ -25,47 +25,40 @@ import pickle
 import gzip
 from utils.utils import chemaxpost
 from modeler.modelset import register_model
-from modeler.consensus import ConsensusDragos, getmodelset, standardize_dragos, ISIDAatommarker, bondbox
+from modeler.structprepare import ISIDAatommarker, StandardizeDragos
+from modeler.consensus import ConsensusDragos
 script_path = os.path.dirname(__file__)
 
 
-class Model(ConsensusDragos, standardize_dragos, ISIDAatommarker):
-    def __init__(self, file):
+class Model(ConsensusDragos, StandardizeDragos, ISIDAatommarker):
+    def __init__(self, workpath, file):
         self.__models, self.__conf = pickle.load(gzip.open(file, 'rb'))
+        self.__workpath = workpath
 
-        cons = self.__conf.get('consensus', dict(nlim=0, tol=1000000))
-        self.Nlim = float(cons.get('nlim', 0))
-        self.TOL = float(cons.get('tol', 1000000))
+        self.Nlim = self.__conf.get('nlim', 0)
+        self.TOL = self.__conf.get('tol', 1000000)
 
+        StandardizeDragos.__init__()
+        ConsensusDragos.__init__()
         if 'markerrule' in self.__conf:
-            self.markerrule = self.__conf.get('markerrule')
-            self.__markatoms = self.markatoms
-        else:
-            self.__markatoms = lambda x: None
+            ISIDAatommarker.__init__(self.__conf.get('markerrule'), self.__workpath)
 
         self.__unit = self.__conf.get('report_units', None)
 
-        super().__init__()
-
     def getexample(self):
-        desc = self.__conf.get('example', ' ')
-        return desc
+        return self.__conf.get('example', ' ')
 
     def getdesc(self):
-        desc = self.__conf.get('desc', 'no description')
-        return desc
+        return self.__conf.get('desc', 'no description')
 
     def getname(self):
-        name = self.__conf.get('name', 'no name')
-        return name
+        return self.__conf.get('name', 'no name')
 
     def is_reation(self):
-        is_reaction = self.__conf.get('is_reaction', 'false').lower()
-        return 1 if is_reaction == 'true' else 0
+        return 1 if self.__conf.get('is_reaction', False) else 0
 
     def gethashes(self):
-        hashlist = self.__conf.get('hashes', '').split()
-        return hashlist
+        return self.__conf.get('hashes', [])
 
     def getresult(self, chemical):
         structure = chemical['structure']
@@ -73,40 +66,28 @@ class Model(ConsensusDragos, standardize_dragos, ISIDAatommarker):
         if structure != ' ':
             fixtime = int(time.time())
             temp_file_mol = "structure-%d.sdf" % fixtime
-            temp_file_mol_path = os.path.join(self.__modelpath, temp_file_mol)
-            temp_file_res = "structure-%d.res" % fixtime
-            temp_file_res_path = os.path.join(self.__modelpath, temp_file_res)
+            temp_file_mol_path = os.path.join(self.__workpath, temp_file_mol)
 
             """
             self.standardize() method prepares structure for modeling and return True if OK else False
             """
-            if self.standardize(structure, temp_file_mol_path, mformat=self.__std_out):
-                """
-                self.markatoms() create atom marking 7th column in SDF based on pmapper.
-                need self.markerrule var with path to config.xml
-                work like Utils/HBMap + map2markedatom.pl
-                """
-                self.__markatoms(temp_file_mol_path)
+            if not self.is_reation():
+                stdmol = self.standardize(structure, mformat='sdf')
+                if stdmol:
+                    """
+                    self.markatoms() create atom marking 7th column in SDF based on pmapper.
+                    need self.markerrule var with path to config.xml
+                    work like Utils/HBMap + map2markedatom.pl
+                    """
+                    if 'markerrule' in self.__conf:
+                        stdmol = self.markatoms(stdmol)
+                        structure = dict(type='structure', attrib='used structure', value=stdmol)
+            else:
+                stdmol = # get cgr
 
-                with open(temp_file_mol_path) as f:
-                    structure = dict(type='structure', attrib='used structure', value=f.read())
-
-                for model, params in self.__models.items():
-                    try:
-                        for execparams in params:
-                            tmp = []
-                            for x in execparams:
-                                if 'input_file' in x:
-                                    x = x.replace('input_file', temp_file_mol)
-                                elif 'output_file' in x:
-                                    x = x.replace('output_file', temp_file_res)
-                                tmp.append(x)
-                            execparams = tmp
-                            sp.call(execparams, cwd=self.__modelpath)
-                    except:
-                        print('model execution failed')
-                    else:
-                        try:
+            for model in self.__models:
+                model.setworkpath(self.__workpath)
+                model.predict(stdmol)
 
 
                             with open(temp_file_res_path, 'r') as f:
@@ -134,7 +115,7 @@ files = os.listdir(script_path)
 for i in files:
     if os.path.splitext(i)[1] == '.model':
         try:
-            model = Model(i)
+            model = Model('.', i)
             register_model(model.getname(), Model, init=i)
         except:
             pass

@@ -21,7 +21,7 @@
 import os
 import time
 from modeler.fragmentor import Fragmentor
-from modeler.svmodel import Model
+from modeler.svmodel import Model as SVM
 import argparse
 import pickle
 import gzip
@@ -33,66 +33,73 @@ class Modelbuilder(object):
     def __init__(self):
         self.__options = self.__argparser()
 
-        fragments = self.__parsefragmentoropts(self.__options['fragments'])
+        if self.__options['fragments']:
+            descgenparams = self.__parsefragmentoropts(self.__options['fragments'])
+            descgenerator = Fragmentor
+        else:
+            return
 
         """ kostyl. for old model compatability
         """
         if self.__options['descriptors']:
-            if len(self.__options['descriptors']) != len(fragments):
-                print('number of descriptors files SHOULD BE EQUAL to number of fragmentation params')
+            if len(self.__options['descriptors']) != len(descgenparams):
+                print('number of descriptors files SHOULD BE EQUAL to number of descriptor generator params')
                 return
             descriptors = []
-            for x, y in zip(self.__options['descriptors'], fragments):
+
+            for x, y in zip(self.__options['descriptors'], descgenparams):
                 descriptors.append(self.__parsesvm(x + '.svm'))
-                y['header'] = x + '.hdr'
+                if self.__options['fragments']:
+                    y['header'] = x + '.hdr'
         else:
             descriptors = repeat(None)
 
         extdata = self.__parseext(self.__options['extention']) if self.__options['extention'] else {}
 
-        self.__frags = [Fragmentor(workpath=self.__options['workpath'], extention=extdata, **x) for x in fragments]
+        self.__descgens = [descgenerator(workpath=self.__options['workpath'], extention=extdata, **x)
+                           for x in descgenparams]
 
         if not self.__options['output']:
             if self.__options['svm']:
-                if 1 < len(self.__options['svm']) < len(self.__frags) or len(self.__options['svm']) > len(self.__frags):
-                    print('NUMBER of svm params files SHOULD BE EQUAL to number of Fragmentations or to 1')
-                    return
-
-                svm = self.__getsvmparam(self.__options['svm'])
-                if len(self.__options['svm']) != len(svm):
-                    print('some of SVM params files is empty')
-                    return
-
-                if len(self.__options['svm']) == 1:
-                    svm *= len(self.__frags)
+                estimatorparams = self.__getsvmparam(self.__options['svm'])
+                estimator = SVM
             else:
-                svm, descriptors = self.__dragossvmfit()
+                estimatorparams, descriptors = self.__dragossvmfit()
+                estimator = SVM
 
-            if svm:
-                if not os.path.isdir(self.__options['model']) and \
-                        (os.path.exists(self.__options['model']) and os.access(self.__options['model'], os.W_OK) or
-                         os.access(os.path.dirname(self.__options['model']), os.W_OK)):
-                    models = [Model(x, y.values(), inputfile=self.__options['input'], parsesdf=True,
+            if 1 < len(estimatorparams) < len(self.__descgens) or \
+                    len(estimatorparams) > len(self.__descgens) or not estimatorparams:
+                print('NUMBER of estimator params files SHOULD BE EQUAL to '
+                      'number of descriptor generator params files or to 1')
+                return
+
+            if len(estimatorparams) == 1:
+                estimatorparams *= len(self.__descgens)
+
+            if not os.path.isdir(self.__options['model']) and \
+                    (os.path.exists(self.__options['model']) and os.access(self.__options['model'], os.W_OK) or
+                     os.access(os.path.dirname(self.__options['model']), os.W_OK)):
+                models = [estimator(x, y.values(), inputfile=self.__options['input'], parsesdf=True,
                                     dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
                                     scorers=self.__options['scorers'], estimator=self.__options['estimator'],
                                     n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
                                     smartcv=self.__options['smartcv'], rep_boost=self.__options['rep_boost'],
                                     repetitions=self.__options['repetition'], normalize=self.__options['normalize'],
-                                    descriptors=z) for x, y, z in zip(self.__frags, svm, descriptors)]
-                    # todo: удалять совсем плохие фрагментации. добавлять описание модели.
-                    pickle.dump([models, {}], gzip.open(self.__options['model'], 'wb'))
-                else:
-                    print('path for model saving not writable')
+                                    descriptors=z) for x, y, z in zip(self.__descgens, estimatorparams, descriptors)]
+
+                # todo: удалять совсем плохие фрагментации. добавлять описание модели.
+                pickle.dump([models, {}], gzip.open(self.__options['model'], 'wb'))
             else:
-                print('check SVM params file or installation of Dragos Genetics')
+                print('path for model saving not writable')
+
         else:
             self.__gendesc(self.__options['output'])
 
     def __gendesc(self, output):
-        for n, frag in enumerate(self.__frags, start=1):
-            if not frag.get(inputfile=self.__options['input'], parsesdf=True,
+        for n, dgen in enumerate(self.__descgens, start=1):
+            if not dgen.get(inputfile=self.__options['input'], parsesdf=True,
                             outputfile='%s.%d' % (output, n)):
-                print('BAD fragmentor params in %d line' % n)
+                print('BAD Descriptor generator params in %d line' % n)
                 return False
         return True
 
@@ -100,18 +107,15 @@ class Modelbuilder(object):
         """ files - basename for descriptors.
         """
         files = os.path.join(self.__options['workpath'], "dragos-%d" % int(time.time()))
-        execparams = ['dragosgfstarter', files]
+        execparams = ['dragosgfstarter', files, self.__options['estimator']]
         if self.__gendesc(files):
             """ parse descriptors for speedup
             """
             if sp.call(execparams) == 0:
-                svm = self.__getsvmparam(['%s.%d.result' % (files, x + 1) for x in range(len(self.__frags))])
-                if len(svm) == len(self.__frags):
-                    descriptors = [self.__parsesvm('%s.%d.svm' % (files, x + 1)) for x in range(len(self.__frags))]
-                    return svm, descriptors
-                else:
-                    print('some of SVM params files is empty')
-        return None, None
+                svm = self.__getsvmparam(['%s.%d.result' % (files, x + 1) for x in range(len(self.__descgens))])
+                descriptors = [self.__parsesvm('%s.%d.svm' % (files, x + 1)) for x in range(len(self.__descgens))]
+                return svm, descriptors
+        return [], None
 
     @staticmethod
     def __parsesvm(file):
@@ -141,7 +145,7 @@ class Modelbuilder(object):
         rawopts.add_argument("--model", "-m", type=str, default='output.model', help="output model")
         rawopts.add_argument("--extention", "-e", action='append', type=str, default=None,
                              help="extention data files. -e extname:filename [-e extname2:filename2]")
-        rawopts.add_argument("--fragments", "-f", type=str, default='input.fragparam', help="fragmentor keys file")
+        rawopts.add_argument("--fragments", "-f", type=str, default=None, help="ISIDA Fragmentor keys file")
         rawopts.add_argument("--svm", "-s", action='append', type=str, default=None,
                              help="SVM params. use Dragos Genetics if don't set."
                                   "can be multiple [-s 1 -s 2 ...]"

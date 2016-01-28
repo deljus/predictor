@@ -22,11 +22,14 @@ import json
 import os
 import re
 import subprocess as sp
+
+import time
+
 from utils.config import PMAPPER
 from utils.utils import chemaxpost
 
 
-class StandardizeDragos:
+class StandardizeDragos(object):
     def __init__(self):
         self.__stdrules = self.__loadrules()
         self.__unwanted = self.__loadunwanted()
@@ -34,7 +37,6 @@ class StandardizeDragos:
         self.__maxionsize = 5
         self.__minmainsize = 6
         self.__maxmainsize = 101
-        super().__init__()
 
     def __loadrules(self):
         with open(os.path.join(os.path.dirname(__file__), "standardrules_dragos.smarts")) as f:
@@ -44,12 +46,14 @@ class StandardizeDragos:
     def __loadunwanted(self):
         return '(%s)' % '|'.join(open(os.path.join(os.path.dirname(__file__), "unwanted.elem")).read().split())
 
-    def standardize(self, structure, file_path, mformat="sdf"):
+    def standardize(self, structure, mformat="sdf"):
         """
         step 1. canonical smiles, dearomatized & dealkalinized
         neutralize all species, except for FOUR-LEGGED NITROGEN, which has to be positive for else chemically incorrect
         Automatically represent N-oxides, incl. nitros, as N+-O-.
         generate major tautomer & aromatize
+        :param mformat: mol return format
+        :param structure: chemaxon recognizable structure
         """
 
         data = {"structure": structure, "parameters": "smiles",
@@ -90,29 +94,39 @@ class StandardizeDragos:
             else:
                 return False
 
-        with open(file_path, 'w') as f:
-            f.write(biggest)
-
-        return True
+        return biggest
 
 
-class ISIDAatommarker:
-    def markatoms(self, file_path):
-        '''
+class ISIDAatommarker(object):
+    def __init__(self, markerrule, workpath):
+        self.__workpath = workpath
+
+        file = os.path.join(self.__workpath, 'iamr%d' % int(time.time()))
+        with open(file, 'w') as f:
+            f.write(markerrule)
+
+        self.__markerrule = file
+
+    def markatoms(self, structure):
+        """
         marks atoms in 7th col of sdf.
         if molecule has atom mapping - will be used mapping.
-        '''
+        :param file: path to SD file
+        """
         marks = []
         flag = 0
         manual = False
         buffer = []
+        file = os.path.join(self.__workpath, 'iam%d' % int(time.time()))
+        with open(file, 'w') as f:
+            f.write(structure)
 
-        for x in sp.check_output([PMAPPER, '-c', self.markerrule, file_path]).decode().split():
+        for x in sp.check_output([PMAPPER, '-c', self.__markerrule, file]).decode().split():
             marks.extend(x.split(';'))
 
         marksg = (n for n in marks)
 
-        with open(file_path, 'r') as f:
+        with open(file, 'r') as f:
             for line in f:
                 if '999 V2000' in line:
                     flag = int(line[:3])
@@ -132,5 +146,6 @@ class ISIDAatommarker:
                     for k, v in b1.items():
                         buffer[-k] = v
 
-        with open(file_path, 'w') as f:
-            f.write(''.join(buffer))
+        os.remove(file)
+        os.remove(self.__markerrule)
+        return ''.join(buffer)

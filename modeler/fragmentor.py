@@ -109,7 +109,7 @@ class Fragmentor(object):
     def get(self, inputfile=None, outputfile=None, inputstring=None, **kwargs):
         timestamp = int(time.time())
         if inputstring:
-            inputfile = os.path.join(self.__workpath, "structure-%d.sdf" % timestamp)
+            inputfile = os.path.join(self.__workpath, "frg-%d.sdf" % timestamp)
             with open(inputfile, 'w') as f:
                 f.write(inputstring)
         elif not inputfile:

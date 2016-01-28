@@ -25,6 +25,7 @@ PORT = 80
 CHEMAXON = "%s:80/webservices" % SERVER
 JCHEMBIN = '/home/server/ChemAxon/JChem/bin'
 UPLOAD_PATH = '/home/server/upload/'
+WORK_PATH = '/tmp'
 
 INTERVAL = 3
 THREAD_LIMIT = 5

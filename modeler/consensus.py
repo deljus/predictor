@@ -22,12 +22,11 @@ from math import sqrt, ceil
 import numpy as np
 
 
-class ConsensusDragos:
+class ConsensusDragos(object):
     def __init__(self):
         self.__TRUST = 5
         self.__INlist = []
         self.__ALLlist = []
-        super().__init__()
 
     def cumulate(self, P, AD):
         if AD:
