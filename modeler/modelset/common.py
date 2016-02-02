@@ -25,7 +25,6 @@ import pickle
 import gzip
 from utils.utils import chemaxpost
 from modeler.modelset import register_model
-from modeler.structprepare import ISIDAatommarker, StandardizeDragos
 from modeler.consensus import ConsensusDragos
 script_path = os.path.dirname(__file__)
 

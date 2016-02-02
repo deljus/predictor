@@ -21,8 +21,7 @@
 import json
 import os
 import re
-import subprocess as sp
-
+from subprocess import Popen, PIPE, STDOUT
 import time
 
 from utils.config import PMAPPER
@@ -99,53 +98,49 @@ class StandardizeDragos(object):
 
 class ISIDAatommarker(object):
     def __init__(self, markerrule, workpath):
-        self.__workpath = workpath
-
-        file = os.path.join(self.__workpath, 'iamr%d' % int(time.time()))
-        with open(file, 'w') as f:
-            f.write(markerrule)
-
-        self.__markerrule = file
+        self.__workfile = os.path.join(workpath, 'iamr%d' % int(time.time()))
+        self.__markerrule = markerrule
 
     def markatoms(self, structure):
         """
         marks atoms in 7th col of sdf.
         if molecule has atom mapping - will be used mapping.
-        :param file: path to SD file
+        :type structure: str
         """
+        with open(self.__workfile, 'w') as f:
+            f.write(self.__markerrule)
+
+        p = Popen([PMAPPER, '-c', self.__markerrule], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+        pout = p.communicate(input=structure.encode())[0]
+
         marks = []
         flag = 0
         manual = False
         buffer = []
-        file = os.path.join(self.__workpath, 'iam%d' % int(time.time()))
-        with open(file, 'w') as f:
-            f.write(structure)
 
-        for x in sp.check_output([PMAPPER, '-c', self.__markerrule, file]).decode().split():
+        for x in pout.decode().split():
             marks.extend(x.split(';'))
 
         marksg = (n for n in marks)
 
-        with open(file, 'r') as f:
-            for line in f:
-                if '999 V2000' in line:
-                    flag = int(line[:3])
-                    b1 = {}
-                elif flag:
-                    if line[60:63] != '  0':
-                        manual = True
-                        line = line[:51] + '  1' + line[54:]
-                    elif 'A' in next(marksg):
-                        b1[flag] = line
-                        line = line[:51] + '  1' + line[54:60] + '  1' + line[63:]
-                    flag -= 1
+        for line in structure.splitlines(True):
+            if '999 V2000' in line:
+                flag = int(line[:3])
+                b1 = {}
+            elif flag:
+                if line[60:63] != '  0':
+                    manual = True
+                    line = line[:51] + '  1' + line[54:]
+                elif 'A' in next(marksg):
+                    b1[flag] = line
+                    line = line[:51] + '  1' + line[54:60] + '  1' + line[63:]
+                flag -= 1
 
-                buffer.append(line)
-                if manual and not flag:
-                    manual = False
-                    for k, v in b1.items():
-                        buffer[-k] = v
+            buffer.append(line)
+            if manual and not flag:
+                manual = False
+                for k, v in b1.items():
+                    buffer[-k] = v
 
-        os.remove(file)
-        os.remove(self.__markerrule)
+        os.remove(self.__workfile)
         return ''.join(buffer)

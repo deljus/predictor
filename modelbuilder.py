@@ -27,12 +27,21 @@ import pickle
 import gzip
 from itertools import repeat
 import subprocess as sp
+from modeler.structprepare import ISIDAatommarker, StandardizeDragos
+
+
+class DefaultList(list):
+    @staticmethod
+    def __copy__():
+        return []
 
 
 class Modelbuilder(object):
     def __init__(self):
         self.__options = self.__argparser()
 
+        """ Descriptor generator Block
+        """
         if self.__options['fragments']:
             descgenparams = self.__parsefragmentoropts(self.__options['fragments'])
             descgenerator = Fragmentor
@@ -60,15 +69,17 @@ class Modelbuilder(object):
                            for x in descgenparams]
 
         if not self.__options['output']:
-            if self.__options['svm']:
-                estimatorparams = self.__getsvmparam(self.__options['svm'])
-                estimator = SVM
+            if self.__options['estimator'] in ['svr', 'svc']:
+                estimator = lambda *vargs, **kwargs: SVM(*vargs, estimator=self.__options['estimator'], **kwargs)
+                if self.__options['svm']:
+                    estimatorparams = self.__getsvmparam(self.__options['svm'])
+                else:
+                    estimatorparams, descriptors = self.__dragossvmfit()
             else:
-                estimatorparams, descriptors = self.__dragossvmfit()
-                estimator = SVM
+                return
 
             if 1 < len(estimatorparams) < len(self.__descgens) or \
-                    len(estimatorparams) > len(self.__descgens) or not estimatorparams:
+               len(estimatorparams) > len(self.__descgens) or not estimatorparams:
                 print('NUMBER of estimator params files SHOULD BE EQUAL to '
                       'number of descriptor generator params files or to 1')
                 return
@@ -81,7 +92,7 @@ class Modelbuilder(object):
                      os.access(os.path.dirname(self.__options['model']), os.W_OK)):
                 models = [estimator(x, y.values(), inputfile=self.__options['input'], parsesdf=True,
                                     dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
-                                    scorers=self.__options['scorers'], estimator=self.__options['estimator'],
+                                    scorers=self.__options['scorers'],
                                     n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
                                     smartcv=self.__options['smartcv'], rep_boost=self.__options['rep_boost'],
                                     repetitions=self.__options['repetition'], normalize=self.__options['normalize'],
@@ -136,33 +147,48 @@ class Modelbuilder(object):
         rawopts.add_argument("--workpath", "-w", type=str, default='.', help="work path")
 
         rawopts.add_argument("--input", "-i", type=str, default='input.sdf', help="input SDF ")
+
+        rawopts.add_argument("--dragosmolstd", action='store_true',
+                             help="prepare molecules with Dragos approach [NOT for REACTIONS]")
+        rawopts.add_argument("--markatoms", type=str, default=None,
+                             help="prepare molecules with JChem pmapper [NOT for REACTIONS]")
+
         rawopts.add_argument("--output", "-o", type=str, default=None, help="output SVM|HDR")
 
         rawopts.add_argument("--descriptors", "-D", action='append', type=str, default=None,
                              help="input SVM|HDR with precalculated descriptors for fitting. "
-                                  "-D filename{without .svm|hdr} [-D next filename if used more than 1 fragmentation]")
+                                  "-D filename{without .file extention} "
+                                  "[-D next filename if used more than 1 descriptor generator]")
 
         rawopts.add_argument("--model", "-m", type=str, default='output.model', help="output model")
         rawopts.add_argument("--extention", "-e", action='append', type=str, default=None,
                              help="extention data files. -e extname:filename [-e extname2:filename2]")
-        rawopts.add_argument("--fragments", "-f", type=str, default=None, help="ISIDA Fragmentor keys file")
-        rawopts.add_argument("--svm", "-s", action='append', type=str, default=None,
-                             help="SVM params. use Dragos Genetics if don't set."
-                                  "can be multiple [-s 1 -s 2 ...]"
-                                  "(number of files should be equal to number of fragments params) or single for all")
+
+        dgroup = rawopts.add_mutually_exclusive_group()
+        dgroup.add_argument("--fragments", "-f", type=str, default=None, help="ISIDA Fragmentor keys file")
+
+        egroup = rawopts.add_mutually_exclusive_group()
+        egroup.add_argument("--svm", "-s", action='append', type=str, default=None,
+                            help="SVM params. use Dragos Genetics if don't set."
+                                 "can be multiple [-s 1 -s 2 ...]"
+                                 "(number of files should be equal to number of fragments params) or single for all")
+
         rawopts.add_argument("--nfold", "-n", type=int, default=5, help="number of folds")
         rawopts.add_argument("--repetition", "-r", type=int, default=1, help="number of repetitions")
         rawopts.add_argument("--rep_boost", "-R", type=int, default=25,
                              help="percentage of repetitions for use in greed search for optimization speedup")
         rawopts.add_argument("--n_jobs", "-j", type=int, default=2, help="number of parallel fit jobs")
 
-        rawopts.add_argument("--estimator", "-E", type=str, default='svr', help="estimator [svr, svc]")
-        rawopts.add_argument("--scorers", "-T", action='append', type=str, default=['rmse', 'r2'],
+        rawopts.add_argument("--estimator", "-E", type=str, default='svr', choices=['svr', 'svc'],
+                             help="estimator")
+        rawopts.add_argument("--scorers", "-T", action='append', type=str, default=DefaultList(['rmse', 'r2']),
+                             choices=['rmse', 'r2', 'ba', 'kappa'],
                              help="needed scoring functions. -T rmse [-T r2]")
-        rawopts.add_argument("--fit", "-t", type=str, default='rmse',
-                             help="crossval score for parameters fit. (rmse|r2|ba|kappa)")
+        rawopts.add_argument("--fit", "-t", type=str, default='rmse', choices=['rmse', 'r2', 'ba', 'kappa'],
+                             help="crossval score for parameters fit. (should be in selected scorers)")
+
         rawopts.add_argument("--dispcoef", "-p", type=float, default=0,
-                             help="score parameter. mean(score) - dispcoef * dispertion(score)")
+                             help="score parameter. mean(score) - dispcoef * sqrt(variance(score)). -score for rmse")
 
         rawopts.add_argument("--normalize", "-N", action='store_true', help="normalize X vector to range(0, 1)")
         rawopts.add_argument("--smartcv", "-S", action='store_true', help="smart crossvalidation [NOT implemented]")
