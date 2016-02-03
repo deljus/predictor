@@ -42,69 +42,80 @@ class Modelbuilder(object):
 
         """ Descriptor generator Block
         """
+        descgenerator = []
         if self.__options['fragments']:
-            descgenparams = self.__parsefragmentoropts(self.__options['fragments'])
-            descgenerator = Fragmentor
+            descgenerator.extend([(Fragmentor, x, 'fragments') for x in
+                                  self.__parsefragmentoropts(self.__options['fragments'])])
         else:
             return
 
         """ kostyl. for old model compatability
         """
         if self.__options['descriptors']:
-            if len(self.__options['descriptors']) != len(descgenparams):
-                print('number of descriptors files SHOULD BE EQUAL to number of descriptor generator params')
+            if len(self.__options['descriptors']) != len(descgenerator):
+                print('number of descriptors files SHOULD BE EQUAL to number of configured descriptor generators')
                 return
             descriptors = []
 
-            for x, y in zip(self.__options['descriptors'], descgenparams):
+            for x, y in zip(self.__options['descriptors'], descgenerator):
                 descriptors.append(self.__parsesvm(x + '.svm'))
-                if self.__options['fragments']:
-                    y['header'] = x + '.hdr'
+                if y[2] == 'fragments':
+                    y[1]['header'] = x + '.hdr'
         else:
             descriptors = repeat(None)
 
         extdata = self.__parseext(self.__options['extention']) if self.__options['extention'] else {}
 
-        self.__descgens = [descgenerator(workpath=self.__options['workpath'], extention=extdata, **x)
-                           for x in descgenparams]
+        self.__descgens = [g(workpath=self.__options['workpath'], extention=extdata, **x)
+                           for g, x, _ in descgenerator]
 
         if not self.__options['output']:
-            if self.__options['estimator'] in ['svr', 'svc']:
-                estimator = lambda *vargs, **kwargs: SVM(*vargs, estimator=self.__options['estimator'], **kwargs)
+            ests = []
+            if {'svr', 'svc'}.intersection(self.__options['estimator']):
                 if self.__options['svm']:
-                    estimatorparams = self.__getsvmparam(self.__options['svm'])
+                    estparams = self.__getsvmparam(self.__options['svm'])
                 else:
-                    estimatorparams, descriptors = self.__dragossvmfit()
+                    estparams = self.__dragossvmfit({'svr', 'svc'}.intersection(self.__options['estimator']).pop())
+
+                estparams = self.__chkest(estparams)
+                if not estparams:
+                    return
+                ests.append((lambda *vargs, **kwargs: SVM(*vargs, estimator=self.__options['estimator'], **kwargs),
+                             estparams))
             else:
                 return
-
-            if 1 < len(estimatorparams) < len(self.__descgens) or \
-               len(estimatorparams) > len(self.__descgens) or not estimatorparams:
-                print('NUMBER of estimator params files SHOULD BE EQUAL to '
-                      'number of descriptor generator params files or to 1')
-                return
-
-            if len(estimatorparams) == 1:
-                estimatorparams *= len(self.__descgens)
 
             if not os.path.isdir(self.__options['model']) and \
                     (os.path.exists(self.__options['model']) and os.access(self.__options['model'], os.W_OK) or
                      os.access(os.path.dirname(self.__options['model']), os.W_OK)):
-                models = [estimator(x, y.values(), inputfile=self.__options['input'], parsesdf=True,
-                                    dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
-                                    scorers=self.__options['scorers'],
-                                    n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
-                                    smartcv=self.__options['smartcv'], rep_boost=self.__options['rep_boost'],
-                                    repetitions=self.__options['repetition'], normalize=self.__options['normalize'],
-                                    descriptors=z) for x, y, z in zip(self.__descgens, estimatorparams, descriptors)]
+                models = [g(x, y.values(), inputfile=self.__options['input'], parsesdf=True,
+                            dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
+                            scorers=self.__options['scorers'],
+                            n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
+                            smartcv=self.__options['smartcv'], rep_boost=self.__options['rep_boost'],
+                            repetitions=self.__options['repetition'], normalize=self.__options['normalize'],
+                            descriptors=z) for g, e in ests
+                          for x, y, z in zip(self.__descgens, e, descriptors)]
 
                 # todo: удалять совсем плохие фрагментации. добавлять описание модели.
-                pickle.dump([models, {}], gzip.open(self.__options['model'], 'wb'))
+                pickle.dump(dict(models=models, config={}, structure_prepare=None),
+                            gzip.open(self.__options['model'], 'wb'))
             else:
                 print('path for model saving not writable')
 
         else:
             self.__gendesc(self.__options['output'])
+
+    def __chkest(self, estimatorparams):
+        if 1 < len(estimatorparams) < len(self.__descgens) or \
+               len(estimatorparams) > len(self.__descgens) or not estimatorparams:
+            print('NUMBER of estimator params files SHOULD BE EQUAL to '
+                  'number of descriptor generator params files or to 1')
+            return False
+
+        if len(estimatorparams) == 1:
+            estimatorparams *= len(self.__descgens)
+        return estimatorparams
 
     def __gendesc(self, output):
         for n, dgen in enumerate(self.__descgens, start=1):
@@ -114,19 +125,22 @@ class Modelbuilder(object):
                 return False
         return True
 
-    def __dragossvmfit(self):
+    def __dragossvmfit(self, tasktype):
         """ files - basename for descriptors.
         """
         files = os.path.join(self.__options['workpath'], "dragos-%d" % int(time.time()))
-        execparams = ['dragosgfstarter', files, self.__options['estimator']]
+        execparams = ['dragosgfstarter', files, tasktype]
         if self.__gendesc(files):
             """ parse descriptors for speedup
             """
             if sp.call(execparams) == 0:
                 svm = self.__getsvmparam(['%s.%d.result' % (files, x + 1) for x in range(len(self.__descgens))])
-                descriptors = [self.__parsesvm('%s.%d.svm' % (files, x + 1)) for x in range(len(self.__descgens))]
-                return svm, descriptors
-        return [], None
+                for x in range(len(self.__descgens)):
+                    os.remove('%s.%d.svm' % (files, x + 1))
+                    os.remove('%s.%d.hdr' % (files, x + 1))
+                    os.remove('%s.%d.result' % (files, x + 1))
+                return svm
+        return []
 
     @staticmethod
     def __parsesvm(file):
@@ -158,20 +172,20 @@ class Modelbuilder(object):
         rawopts.add_argument("--descriptors", "-D", action='append', type=str, default=None,
                              help="input SVM|HDR with precalculated descriptors for fitting. "
                                   "-D filename{without .file extention} "
-                                  "[-D next filename if used more than 1 descriptor generator]")
+                                  "[-D next filename if used more than 1 descriptor generator] "
+                                  "for multiset set files in next order: fragmentor, NOT_IMPLEMENTED")
 
         rawopts.add_argument("--model", "-m", type=str, default='output.model', help="output model")
         rawopts.add_argument("--extention", "-e", action='append', type=str, default=None,
                              help="extention data files. -e extname:filename [-e extname2:filename2]")
 
-        dgroup = rawopts.add_mutually_exclusive_group()
-        dgroup.add_argument("--fragments", "-f", type=str, default=None, help="ISIDA Fragmentor keys file")
+        rawopts.add_argument("--fragments", "-f", type=str, default=None, help="ISIDA Fragmentor keys file")
 
-        egroup = rawopts.add_mutually_exclusive_group()
-        egroup.add_argument("--svm", "-s", action='append', type=str, default=None,
-                            help="SVM params. use Dragos Genetics if don't set."
-                                 "can be multiple [-s 1 -s 2 ...]"
-                                 "(number of files should be equal to number of fragments params) or single for all")
+        rawopts.add_argument("--svm", "-s", action='append', type=str, default=None,
+                             help="SVM params. use Dragos Genetics if don't set."
+                                  "can be multiple [-s 1 -s 2 ...]"
+                                  "(number of files should be equal to number of configured descriptor generators) "
+                                  "or single for all")
 
         rawopts.add_argument("--nfold", "-n", type=int, default=5, help="number of folds")
         rawopts.add_argument("--repetition", "-r", type=int, default=1, help="number of repetitions")
@@ -179,7 +193,8 @@ class Modelbuilder(object):
                              help="percentage of repetitions for use in greed search for optimization speedup")
         rawopts.add_argument("--n_jobs", "-j", type=int, default=2, help="number of parallel fit jobs")
 
-        rawopts.add_argument("--estimator", "-E", type=str, default='svr', choices=['svr', 'svc'],
+        rawopts.add_argument("--estimator", "-E", action='append', type=str, default=DefaultList(['svr']),
+                             choices=['svr', 'svc'],
                              help="estimator")
         rawopts.add_argument("--scorers", "-T", action='append', type=str, default=DefaultList(['rmse', 'r2']),
                              choices=['rmse', 'r2', 'ba', 'kappa'],

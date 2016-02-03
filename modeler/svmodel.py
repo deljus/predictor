@@ -51,7 +51,7 @@ def _kfold(est, x, y, train, test, svmparams, normalize):
     model.fit(x_train, y_train)
     y_pred = list(model.predict(x_test))
     return dict(model=model, normal=normal, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max,
-                y_test=y_test, y_pred=y_pred, y_index=test)
+                y_test=y_test, y_pred=y_pred, y_index=list(test))
 
 
 def _rmse(y_test, y_pred):
@@ -106,7 +106,7 @@ class Model(object):
     __estimators = dict(svr=SVR, svc=SVC)
 
     def setworkpath(self, path):
-        self.__descriptorgen.setpath(path)
+        self.__descriptorgen.setworkpath(path)
 
     def getmodelstats(self):
         stat = {x: self.__model[x] for x in self.__scorers}
@@ -219,7 +219,7 @@ class Model(object):
             for fold in kfold:
                 ky_pred.extend(fold.pop('y_pred'))
                 ky_test.extend(fold.pop('y_test'))
-                ky_index.extend(fold.pop['y_index'])
+                ky_index.extend(fold.pop('y_index'))
                 models.append(fold)
 
             for s, f in self.__scorers.items():

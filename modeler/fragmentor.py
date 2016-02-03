@@ -34,6 +34,7 @@ class Fragmentor(object):
         self.__extshift = {}
         self.__extheader = []
         self.__genheader = False
+        self.__headpath = None
 
         if extention:
             shift = 0
@@ -56,7 +57,7 @@ class Fragmentor(object):
         if s_option: tmp.extend(['-s', s_option])
         if header and os.path.exists(header):
             self.__dumpheader(header)
-            tmp.extend(['-h', header])
+            tmp.extend(['-h', ''])
         else:
             self.__genheader = True
 
@@ -81,12 +82,19 @@ class Fragmentor(object):
         with open(header) as f:
             self.__headsize = len(f.readlines())
 
-    def setpath(self, path):
+    def setworkpath(self, path):
         self.__workpath = path
-        header = os.path.join(path, "model-%d.hdr" % int(time.time()))
+
+    def __prepareheader(self):
+        header = os.path.join(self.__workpath, "model-%d.hdr" % int(time.time()))
         with open(header, 'w') as f:
             f.write(self.__headdump)
         self.__execparams[self.__execparams.index('-h') + 1] = header
+        self.__headpath = header
+
+    def __clearheader(self):
+        if self.__headpath and os.path.exists(self.__headpath):
+            os.remove(self.__headpath)
 
     def parsesdf(self, inputfile):
         extblock = []
@@ -142,16 +150,21 @@ class Fragmentor(object):
         else:
             extblock = [{i: self.__extention[i][j] if self.__extention[i] else {1: j} for i, j in kwargs.items()}]
 
+        """ prepare header if exist (normally true). run fragmentor. remove header.
+        """
+        if not self.__genheader:
+            self.__prepareheader()
         execparams = [self.__fragmentor, '-i', inputfile, '-o', outputfile]
         execparams.extend(self.__execparams)
         exitcode = sp.call(execparams, cwd=self.__workpath) == 0
+        self.__clearheader()
+
         if exitcode and os.path.exists(outputfile + '.svm') and os.path.exists(outputfile + '.hdr'):
             if self.__genheader:
                 self.__genheader = False
                 self.__dumpheader(outputfile + '.hdr')
                 self.__execparams.insert(self.__execparams.index('-t'), '-h')
                 self.__execparams.insert(self.__execparams.index('-t'), '')
-                self.setpath(self.__workpath)
             return self.__extendvector(outputfile, extblock, parser)
         return False
 
