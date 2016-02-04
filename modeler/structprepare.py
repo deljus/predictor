@@ -29,23 +29,23 @@ from utils.utils import chemaxpost
 
 
 class StandardizeDragos(object):
-    def __init__(self):
-        self.__stdrules = self.__loadrules()
+    def __init__(self, rules):
+        self.__stdrules = self.__loadrules(rules)
         self.__unwanted = self.__loadunwanted()
         self.__minratio = 2
         self.__maxionsize = 5
         self.__minmainsize = 6
         self.__maxmainsize = 101
 
-    def __loadrules(self):
-        with open(os.path.join(os.path.dirname(__file__), "standardrules_dragos.smarts")) as f:
+    def __loadrules(self, rules):
+        with open(rules or os.path.join(os.path.dirname(__file__), "standardrules_dragos.smarts")) as f:
             rules = '..'.join([x.split()[0] for x in f])
         return rules
 
     def __loadunwanted(self):
         return '(%s)' % '|'.join(open(os.path.join(os.path.dirname(__file__), "unwanted.elem")).read().split())
 
-    def standardize(self, structure, mformat="sdf"):
+    def get(self, structure, mformat="sdf"):
         """
         step 1. canonical smiles, dearomatized & dealkalinized
         neutralize all species, except for FOUR-LEGGED NITROGEN, which has to be positive for else chemically incorrect
@@ -97,11 +97,13 @@ class StandardizeDragos(object):
 
 
 class ISIDAatommarker(object):
-    def __init__(self, markerrule, workpath):
-        self.__workfile = os.path.join(workpath, 'iamr%d' % int(time.time()))
+    def __init__(self, markerrule):
         self.__markerrule = markerrule
 
-    def markatoms(self, structure):
+    def setworkpath(self, path):
+        self.__workfile = os.path.join(path, 'iamr%d' % int(time.time()))
+
+    def get(self, structure):
         """
         marks atoms in 7th col of sdf.
         if molecule has atom mapping - will be used mapping.

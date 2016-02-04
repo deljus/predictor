@@ -86,10 +86,8 @@ class Model(object):
         self.__repetitions = repetitions
         self.__rep_boost = ceil(repetitions * (rep_boost % 100) / 100)
 
-        if descriptors:
-            y, x = descriptors
-        else:
-            y, x, _ = descriptorgen.get(**kwargs)
+        y, x, *_ = descriptors or descriptorgen.get(**kwargs)
+
         self.__sparse.fit(x)
         self.__x, self.__y = self.__sparse.transform(x), np.array(y)
 

@@ -27,7 +27,6 @@ import pickle
 import gzip
 from itertools import repeat
 import subprocess as sp
-from modeler.structprepare import ISIDAatommarker, StandardizeDragos
 
 
 class DefaultList(list):
@@ -71,16 +70,17 @@ class Modelbuilder(object):
 
         if not self.__options['output']:
             ests = []
-            if {'svr', 'svc'}.intersection(self.__options['estimator']):
+            svm = {'svr', 'svc'}.intersection(self.__options['estimator']).pop()
+            if svm:
                 if self.__options['svm']:
                     estparams = self.__getsvmparam(self.__options['svm'])
                 else:
-                    estparams = self.__dragossvmfit({'svr', 'svc'}.intersection(self.__options['estimator']).pop())
+                    estparams = self.__dragossvmfit(svm)
 
                 estparams = self.__chkest(estparams)
                 if not estparams:
                     return
-                ests.append((lambda *vargs, **kwargs: SVM(*vargs, estimator=self.__options['estimator'], **kwargs),
+                ests.append((lambda *vargs, **kwargs: SVM(*vargs, estimator=svm, **kwargs),
                              estparams))
             else:
                 return

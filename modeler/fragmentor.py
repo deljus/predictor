@@ -22,13 +22,37 @@ import os
 import subprocess as sp
 import time
 from itertools import chain, repeat
+from modeler.structprepare import ISIDAatommarker, StandardizeDragos
+from CGRtools.main_condenser import condenser_core
+from io import StringIO
+
+
+class CGRWrapper(object):
+    def __init__(self, **kwargs):
+        self.__kwargs = kwargs
+
+    def get(self, structure):
+        output = StringIO()
+        condenser_core(input=structure, output=output, **self.__kwargs)
+        return output.getvalue()
 
 
 class Fragmentor(object):
     def __init__(self, workpath='.', version='last', s_option=None, fragment_type='3', min_length='2', max_length='10',
                  colorname=None, marked_atom=None, cgr_dynbonds=None, xml=None, doallways=False,
                  useformalcharge=False, atompairs=False, fragmentstrict=False, getatomfragment=False,
-                 overwrite=True, header=None, extention=None):
+                 overwrite=True, header=None, extention=None, marker_rules=None, standardize=None,
+                 cgr_type=None, cgr_stereo=False, cgr_balance=0, cgr_b_templates=None,
+                 cgr_map_repair=False, cgr_e_rules=None, cgr_c_rules=None):
+
+        self.__marker = ISIDAatommarker(marker_rules) if marker_rules else None
+        self.__standardize = StandardizeDragos(standardize) if standardize else None
+
+        self.__cgr = CGRWrapper(type=cgr_type, stereo=cgr_stereo, balance=int(cgr_balance),
+                                b_templates=open(cgr_b_templates) if cgr_b_templates else None,
+                                map_repair=cgr_map_repair,
+                                e_rules=open(cgr_e_rules) if cgr_e_rules else None,
+                                c_rules=open(cgr_c_rules) if cgr_c_rules else None) if cgr_type else None
 
         self.__extention = extention
         self.__extshift = {}
@@ -51,7 +75,7 @@ class Fragmentor(object):
                     self.__extheader.append(i)
                     shift += 1
 
-        self.__workpath = workpath
+        self.setworkpath(workpath)
         self.__fragmentor = 'fragmentor-%s' % version
         tmp = ['-f', 'SVM']
         if s_option: tmp.extend(['-s', s_option])
@@ -84,6 +108,8 @@ class Fragmentor(object):
 
     def setworkpath(self, path):
         self.__workpath = path
+        if self.__marker:
+            self.__marker.setworkpath(path)
 
     def __prepareheader(self):
         header = os.path.join(self.__workpath, "model-%d.hdr" % int(time.time()))
@@ -116,6 +142,22 @@ class Fragmentor(object):
 
     def get(self, inputfile=None, outputfile=None, inputstring=None, **kwargs):
         timestamp = int(time.time())
+
+        """ PMAPPER and Standardizer works only with molecules. NOT CGR!
+        """
+        def splitter(f):
+            return ''.join(f.get(x + '$$$$\n') for x in (inputstring or open(inputfile).read()).split('$$$$\n'))
+        if self.__marker:
+            inputstring = splitter(self.__marker)
+        if self.__standardize:
+            inputstring = splitter(self.__standardize)
+            inputfile = None
+
+        if self.__cgr:
+            inputstring = self.__cgr.get(StringIO(inputstring) if inputstring else open(inputfile))
+            inputfile = None
+        """ END
+        """
         if inputstring:
             inputfile = os.path.join(self.__workpath, "frg-%d.sdf" % timestamp)
             with open(inputfile, 'w') as f:
