@@ -20,7 +20,6 @@
 #
 import os
 import subprocess as sp
-import time
 from itertools import chain, repeat
 from modeler.structprepare import ISIDAatommarker, StandardizeDragos
 from CGRtools.main_condenser import condenser_core
@@ -45,7 +44,7 @@ class Fragmentor(object):
                  cgr_type=None, cgr_stereo=False, cgr_balance=0, cgr_b_templates=None,
                  cgr_map_repair=False, cgr_e_rules=None, cgr_c_rules=None):
 
-        self.__marker = ISIDAatommarker(marker_rules) if marker_rules else None
+        self.__marker = ISIDAatommarker(marker_rules, workpath) if marker_rules else None
         self.__standardize = StandardizeDragos(standardize) if standardize else None
 
         self.__cgr = CGRWrapper(type=cgr_type, stereo=cgr_stereo, balance=int(cgr_balance),
@@ -75,7 +74,7 @@ class Fragmentor(object):
                     self.__extheader.append(i)
                     shift += 1
 
-        self.setworkpath(workpath)
+        self.__workpath = workpath
         self.__fragmentor = 'fragmentor-%s' % version
         tmp = ['-f', 'SVM']
         if s_option: tmp.extend(['-s', s_option])
@@ -106,21 +105,16 @@ class Fragmentor(object):
         with open(header) as f:
             self.__headsize = len(f.readlines())
 
-    def setworkpath(self, path):
-        self.__workpath = path
+    def setworkpath(self, workpath):
+        self.__workpath = workpath
         if self.__marker:
-            self.__marker.setworkpath(path)
+            self.__marker.setworkpath(workpath)
 
     def __prepareheader(self):
-        header = os.path.join(self.__workpath, "model-%d.hdr" % int(time.time()))
+        header = os.path.join(self.__workpath, "model.hdr")
         with open(header, 'w') as f:
             f.write(self.__headdump)
         self.__execparams[self.__execparams.index('-h') + 1] = header
-        self.__headpath = header
-
-    def __clearheader(self):
-        if self.__headpath and os.path.exists(self.__headpath):
-            os.remove(self.__headpath)
 
     def parsesdf(self, inputfile):
         extblock = []
@@ -141,8 +135,6 @@ class Fragmentor(object):
         return extblock
 
     def get(self, inputfile=None, outputfile=None, inputstring=None, **kwargs):
-        timestamp = int(time.time())
-
         """ PMAPPER and Standardizer works only with molecules. NOT CGR!
         """
         def splitter(f):
@@ -159,7 +151,7 @@ class Fragmentor(object):
         """ END
         """
         if inputstring:
-            inputfile = os.path.join(self.__workpath, "frg-%d.sdf" % timestamp)
+            inputfile = os.path.join(self.__workpath, "frg.sdf")
             with open(inputfile, 'w') as f:
                 f.write(inputstring)
         elif not inputfile:
@@ -167,7 +159,7 @@ class Fragmentor(object):
 
         parser = False
         if not outputfile:
-            outputfile = os.path.join(self.__workpath, "structure-%d" % timestamp)
+            outputfile = os.path.join(self.__workpath, "frg")
             parser = True
 
         if kwargs.get('parsesdf'):
@@ -199,7 +191,6 @@ class Fragmentor(object):
         execparams = [self.__fragmentor, '-i', inputfile, '-o', outputfile]
         execparams.extend(self.__execparams)
         exitcode = sp.call(execparams, cwd=self.__workpath) == 0
-        self.__clearheader()
 
         if exitcode and os.path.exists(outputfile + '.svm') and os.path.exists(outputfile + '.hdr'):
             if self.__genheader:
@@ -237,8 +228,6 @@ class Fragmentor(object):
                 tmp.update({last + self.__extshift[k] + x: y for k, v in ext.items() for x, y in v.items()})
                 vector.append(tmp)
         if parser:
-            os.remove(descfile + '.svm')
-            os.remove(descfile + '.hdr')
             return prop, vector, ad
         else:
             with open(descfile + '.svm', 'w') as f:

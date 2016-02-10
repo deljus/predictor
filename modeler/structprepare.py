@@ -22,8 +22,6 @@ import json
 import os
 import re
 from subprocess import Popen, PIPE, STDOUT
-import time
-
 from utils.config import PMAPPER
 from utils.utils import chemaxpost
 
@@ -79,7 +77,7 @@ class StandardizeDragos(object):
         else:
             return False
 
-        #false if element in unwanted list
+        # false if element in unwanted list
         if re.search(self.__unwanted, biggest):
             return False
 
@@ -97,11 +95,18 @@ class StandardizeDragos(object):
 
 
 class ISIDAatommarker(object):
-    def __init__(self, markerrule):
+    def __init__(self, markerrule, workpath):
         self.__markerrule = markerrule
+        self.__workfile = os.path.join(workpath, 'iam')
+        self.__loadrules()
 
-    def setworkpath(self, path):
-        self.__workfile = os.path.join(path, 'iamr%d' % int(time.time()))
+    def setworkpath(self, workpath):
+        self.__workfile = os.path.join(workpath, 'iam')
+        self.__loadrules()
+
+    def __loadrules(self):
+        with open(self.__workfile, 'w') as f:
+            f.write(self.__markerrule)
 
     def get(self, structure):
         """
@@ -109,10 +114,8 @@ class ISIDAatommarker(object):
         if molecule has atom mapping - will be used mapping.
         :type structure: str
         """
-        with open(self.__workfile, 'w') as f:
-            f.write(self.__markerrule)
 
-        p = Popen([PMAPPER, '-c', self.__markerrule], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+        p = Popen([PMAPPER, '-c', self.__workfile], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
         pout = p.communicate(input=structure.encode())[0]
 
         marks = []
@@ -144,5 +147,4 @@ class ISIDAatommarker(object):
                 for k, v in b1.items():
                     buffer[-k] = v
 
-        os.remove(self.__workfile)
         return ''.join(buffer)

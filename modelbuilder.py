@@ -65,7 +65,7 @@ class Modelbuilder(object):
 
         extdata = self.__parseext(self.__options['extention']) if self.__options['extention'] else {}
 
-        self.__descgens = [g(workpath=self.__options['workpath'], extention=extdata, **x)
+        self.__descgens = [g(extention=extdata, **x)
                            for g, x, _ in descgenerator]
 
         if not self.__options['output']:

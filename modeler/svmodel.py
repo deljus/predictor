@@ -18,6 +18,8 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+import tempfile
+import shutil
 from collections import defaultdict
 from itertools import product
 from sklearn.externals.joblib import Parallel, delayed
@@ -72,11 +74,12 @@ def _balance_acc(y_test, y_pred):
 
 class Model(object):
     def __init__(self, descriptorgen, svmparams, nfold=5, repetitions=1, rep_boost=25, dispcoef=0,
-                 fit='rmse', estimator='svr', scorers=('rmse', 'r2'),
+                 fit='rmse', estimator='svr', scorers=('rmse', 'r2'), workpath='.',
                  normalize=False, n_jobs=2, smartcv=False, descriptors=None, **kwargs):
         _scorers = dict(rmse=_rmse,
                         r2=r2_score,
                         kappa=_kappa_stat, ba=_balance_acc)
+        self.setworkpath(workpath)
 
         self.__sparse = DictVectorizer(sparse=False)
         self.__descriptorgen = descriptorgen
@@ -103,8 +106,12 @@ class Model(object):
 
     __estimators = dict(svr=SVR, svc=SVC)
 
-    def setworkpath(self, path):
-        self.__descriptorgen.setworkpath(path)
+    def setworkpath(self, workpath):
+        self.__workpath = tempfile.mkdtemp(dir=workpath)
+        self.__descriptorgen.setworkpath(self.__workpath)
+
+    def delworkpath(self):
+        shutil.rmtree(self.__workpath)
 
     def getmodelstats(self):
         stat = {x: self.__model[x] for x in self.__scorers}

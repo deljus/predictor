@@ -20,11 +20,11 @@
 #
 import os
 
-SERVER = "http://arsole.u-strasbg.fr"
-PORT = 80
-CHEMAXON = "%s:80/webservices" % SERVER
-JCHEMBIN = '/home/server/ChemAxon/JChem/bin'
-UPLOAD_PATH = '/home/server/upload/'
+SERVER = "https://cimm.kpfu.ru"
+PORT = 443
+CHEMAXON = "%s/webservices" % SERVER
+JCHEMBIN = '/home/stsouko/ChemAxon/JChem/bin'
+UPLOAD_PATH = '/tmp'
 WORK_PATH = '/tmp'
 
 INTERVAL = 3
