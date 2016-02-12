@@ -24,7 +24,6 @@ from collections import defaultdict
 from itertools import product
 from sklearn.externals.joblib import Parallel, delayed
 from sklearn.svm import SVR, SVC
-from sklearn.feature_extraction import DictVectorizer
 from sklearn.utils import shuffle
 from sklearn.cross_validation import KFold
 from sklearn.preprocessing import MinMaxScaler
@@ -79,10 +78,10 @@ class Model(object):
         _scorers = dict(rmse=_rmse,
                         r2=r2_score,
                         kappa=_kappa_stat, ba=_balance_acc)
+
+        self.__descriptorgen = descriptorgen
         self.setworkpath(workpath)
 
-        self.__sparse = DictVectorizer(sparse=False)
-        self.__descriptorgen = descriptorgen
         self.__estimator = self.__estimators.get(estimator, SVR)
 
         self.__nfold = nfold
@@ -91,7 +90,7 @@ class Model(object):
 
         y, x, *_ = descriptors or descriptorgen.get(**kwargs)
 
-        self.__sparse.fit(x)
+
         self.__x, self.__y = self.__sparse.transform(x), np.array(y)
 
         self.__normalize = normalize

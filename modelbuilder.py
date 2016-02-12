@@ -20,6 +20,7 @@
 #
 import os
 import time
+import pandas as pd
 from modeler.fragmentor import Fragmentor
 from modeler.svmodel import Model as SVM
 import argparse
@@ -64,7 +65,6 @@ class Modelbuilder(object):
             descriptors = repeat(None)
 
         extdata = self.__parseext(self.__options['extention']) if self.__options['extention'] else {}
-
         self.__descgens = [g(extention=extdata, **x)
                            for g, x, _ in descgenerator]
 
@@ -229,17 +229,9 @@ class Modelbuilder(object):
             record = None
             ext, *file = e.split(':')
             if file:
-                record = {}
-                with open(file[0]) as f:
-                    for i in f:
-                        key, *values = i.split()
-                        tmp = {}
-                        for j in values:
-                            dkey, dval = j.split(':')
-                            dkey = int(dkey)
-                            dval = float(dval)
-                            tmp[dkey] = dval
-                        record[key] = tmp
+                v = pd.read_csv(file[0])
+                k = v.pop('EXTKEY')
+                record = dict(key=k, value=v.rename(columns=lambda x: '%s.%s' % (ext, x)))
             extdata[ext] = record
         return extdata
 

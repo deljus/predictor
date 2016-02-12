@@ -21,9 +21,13 @@
 import os
 import subprocess as sp
 from itertools import chain, repeat
+
+import numpy as np
+import pandas as pd
 from modeler.structprepare import ISIDAatommarker, StandardizeDragos
 from CGRtools.main_condenser import condenser_core
 from io import StringIO
+from sklearn.feature_extraction import DictVectorizer
 
 
 class CGRWrapper(object):
@@ -53,26 +57,12 @@ class Fragmentor(object):
                                 e_rules=open(cgr_e_rules) if cgr_e_rules else None,
                                 c_rules=open(cgr_c_rules) if cgr_c_rules else None) if cgr_type else None
 
+        self.__sparse = DictVectorizer(sparse=False)
+
         self.__extention = extention
-        self.__extshift = {}
-        self.__extheader = []
         self.__genheader = False
         self.__headpath = None
 
-        if extention:
-            shift = 0
-            for i in sorted(extention):
-                self.__extshift[i] = shift
-                if extention[i]:
-                    mshift = 0
-                    for j in extention[i].values():
-                        if mshift < max(j):
-                            mshift = max(j)
-                    shift += mshift
-                    self.__extheader.extend(['%s.%s' % (i, x) for x in range(1, mshift + 1)])
-                else:
-                    self.__extheader.append(i)
-                    shift += 1
 
         self.__workpath = workpath
         self.__fragmentor = 'fragmentor-%s' % version
@@ -101,9 +91,10 @@ class Fragmentor(object):
 
     def __dumpheader(self, header):
         with open(header) as f:
-                self.__headdump = f.read()
-        with open(header) as f:
-            self.__headsize = len(f.readlines())
+            self.__headdump = f.read()
+            lines = self.__headdump.splitlines()
+            self.__headsize = len(lines)
+            self.__headdict = {int(k[:-1]): v for k, v in (i.split() for i in lines)}
 
     def setworkpath(self, workpath):
         self.__workpath = workpath
@@ -119,7 +110,7 @@ class Fragmentor(object):
     def parsesdf(self, inputfile):
         extblock = []
         flag = False
-        tmp = {}
+        tmp = []
         with open(inputfile) as f:
             for i in f:
                 if '>  <' in i[:4]:
@@ -127,18 +118,23 @@ class Fragmentor(object):
                     if key in self.__extention:
                         flag = key
                 elif flag:
-                    tmp[flag] = self.__extention[flag][i.strip()] if self.__extention[flag] else {1: float(i.strip())}
+                    data = self.__extention[flag]['value'].loc[self.__extention[flag]['key'] == i.strip()] if \
+                        self.__extention[flag] else pd.DataFrame([{flag: float(i.strip())}])
+                    data.index = [0]
+                    tmp.append(data)
                     flag = False
                 elif '$$$$' in i:
                     extblock.append(tmp)
-                    tmp = {}
+                    tmp = []
         return extblock
 
     def get(self, inputfile=None, outputfile=None, inputstring=None, **kwargs):
         """ PMAPPER and Standardizer works only with molecules. NOT CGR!
         """
+
         def splitter(f):
             return ''.join(f.get(x + '$$$$\n') for x in (inputstring or open(inputfile).read()).split('$$$$\n'))
+
         if self.__marker:
             inputstring = splitter(self.__marker)
         if self.__standardize:
@@ -163,26 +159,34 @@ class Fragmentor(object):
             parser = True
 
         if kwargs.get('parsesdf'):
-                extblock = self.parsesdf(inputfile)
-        elif all(isinstance(x, list) or isinstance(x, dict) for x in kwargs.values()):
+            extblock = self.parsesdf(inputfile)
+
+        elif all(isinstance(x, list) or isinstance(x, dict) for y, x in kwargs.items() if y in self.__extention):
             extblock = []
             for i, j in kwargs.items():
-                if isinstance(j, list):
-                    for n, k in enumerate(j):
-                        data = {i: self.__extention[i][k] if self.__extention[i] else {1: k}}
+                if i in self.__extention:
+                    for n, k in enumerate(j) if isinstance(j, list) else j.items():
+                        data = self.__extention[i]['value'].loc[self.__extention[i]['key'] == k] if \
+                            self.__extention[i] else pd.DataFrame([{i: k}])
+                        data.index = [0]
                         if len(extblock) > n:
-                            extblock[n].update(data)
+                            extblock[n].append(data)
                         else:
-                            extblock.append(data)
-                elif isinstance(j, dict):
-                    for n, k in j.items():
-                        data = {i: self.__extention[i][k] if self.__extention[i] else {1: k}}
-                        if len(extblock) > n:
-                            extblock[n].update(data)
-                        else:
-                            extblock.extend([{} for _ in range(n - len(extblock))] + [data])
+                            extblock.extend([[] for _ in range(n - len(extblock))] + [data])
+
+        elif not any(isinstance(x, list) or isinstance(x, dict) for y, x in kwargs.items() if y in self.__extention):
+            tmp = []
+            for i, j in kwargs.items():
+                if i in self.__extention:
+                    data = self.__extention[i]['value'].loc[self.__extention[i]['key'] == i] if \
+                           self.__extention[i] else pd.DataFrame([{i: j}])
+                    data.index = [0]
+                    tmp.append(data)
+            extblock = [tmp]
+
         else:
-            extblock = [{i: self.__extention[i][j] if self.__extention[i] else {1: j} for i, j in kwargs.items()}]
+            print('WHAT DO YOU WANT? use correct extentions params')
+            return False
 
         """ prepare header if exist (normally true). run fragmentor. remove header.
         """
@@ -190,7 +194,8 @@ class Fragmentor(object):
             self.__prepareheader()
         execparams = [self.__fragmentor, '-i', inputfile, '-o', outputfile]
         execparams.extend(self.__execparams)
-        exitcode = sp.call(execparams, cwd=self.__workpath) == 0
+        print(' '.join(execparams))
+        exitcode = sp.call(execparams) == 0
 
         if exitcode and os.path.exists(outputfile + '.svm') and os.path.exists(outputfile + '.hdr'):
             if self.__genheader:
@@ -201,17 +206,10 @@ class Fragmentor(object):
             return self.__extendvector(outputfile, extblock, parser)
         return False
 
-    def __extendvector(self, descfile, extention, parser):
+    def __extendvector(self, outputfile, extblock, parser):
         prop, vector, ad = [], [], []
-
-        with open(descfile + '.hdr') as f:
-            if self.__headsize is not None:
-                last = self.__headsize
-            else:
-                last = len(f.readlines())
-
-        with open(descfile + '.svm') as f:
-            for frag, ext in zip(f, chain(extention, repeat({}))):
+        with open(outputfile + '.svm') as sf:
+            for frag, ext in zip(sf, chain(extblock, repeat([]))):
                 y, *x = frag.split()
                 prop.append(float(y) if y.strip() != '?' else 0)
                 ad.append(True)
@@ -219,18 +217,22 @@ class Fragmentor(object):
                 for i in x:
                     k, v = i.split(':')
                     k = int(k)
-                    v = float(v)
-                    if k <= last:
-                        tmp[k] = v
+                    v = int(v)
+                    if k <= self.__headsize:
+                        tmp[self.__headdict[k]] = v
                     else:
                         ad[-1] = False
                         break
-                tmp.update({last + self.__extshift[k] + x: y for k, v in ext.items() for x, y in v.items()})
-                vector.append(tmp)
+                vector.append(pd.concat([pd.DataFrame([tmp])] + ext, axis=1))
+        dataX = pd.concat(vector, ignore_index=True)
+        dataY = np.array(prop)
+
+        print(dataX)
+
         if parser:
-            return prop, vector, ad
+            return dataY, dataX, ad
         else:
-            with open(descfile + '.svm', 'w') as f:
+            with open(outputfile + '.svm', 'w') as f:
                 for y, x in zip(prop, vector):
                     f.write(' '.join(['%s ' % y] + ['%s:%s' % (i, x[i]) for i in sorted(x)]) + '\n')
             return True
