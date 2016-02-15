@@ -26,7 +26,6 @@ from modeler.svmodel import Model as SVM
 import argparse
 import pickle
 import gzip
-from itertools import repeat
 import subprocess as sp
 
 
@@ -48,21 +47,6 @@ class Modelbuilder(object):
                                   self.__parsefragmentoropts(self.__options['fragments'])])
         else:
             return
-
-        """ kostyl. for old model compatability
-        """
-        if self.__options['descriptors']:
-            if len(self.__options['descriptors']) != len(descgenerator):
-                print('number of descriptors files SHOULD BE EQUAL to number of configured descriptor generators')
-                return
-            descriptors = []
-
-            for x, y in zip(self.__options['descriptors'], descgenerator):
-                descriptors.append(self.__parsesvm(x + '.svm'))
-                if y[2] == 'fragments':
-                    y[1]['header'] = x + '.hdr'
-        else:
-            descriptors = repeat(None)
 
         extdata = self.__parseext(self.__options['extention']) if self.__options['extention'] else {}
         self.__descgens = [g(extention=extdata, **x)
@@ -93,9 +77,9 @@ class Modelbuilder(object):
                             scorers=self.__options['scorers'],
                             n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
                             smartcv=self.__options['smartcv'], rep_boost=self.__options['rep_boost'],
-                            repetitions=self.__options['repetition'], normalize=self.__options['normalize'],
-                            descriptors=z) for g, e in ests
-                          for x, y, z in zip(self.__descgens, e, descriptors)]
+                            repetitions=self.__options['repetition'],
+                            normalize=self.__options['normalize']) for g, e in ests
+                          for x, y in zip(self.__descgens, e)]
 
                 # todo: удалять совсем плохие фрагментации. добавлять описание модели.
                 pickle.dump(dict(models=models, config={}, structure_prepare=None),
@@ -141,17 +125,6 @@ class Modelbuilder(object):
                     os.remove('%s.%d.result' % (files, x + 1))
                 return svm
         return []
-
-    @staticmethod
-    def __parsesvm(file):
-        prop, vector = [], []
-        with open(file) as f:
-            for frag in f:
-                y, *x = frag.split()
-                prop.append(float(y) if y.strip() != '?' else 0)
-                vector.append({int(k): float(v) for k, v in (i.split(':') for i in x)})
-
-        return prop, vector
 
     @staticmethod
     def __argparser():

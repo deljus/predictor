@@ -20,7 +20,7 @@
 #
 import os
 import subprocess as sp
-from itertools import chain, repeat
+from itertools import chain, repeat, count
 
 import numpy as np
 import pandas as pd
@@ -235,7 +235,12 @@ class Fragmentor(object):
                 self.__execparams.insert(self.__execparams.index('-t'), '-h')
                 self.__execparams.insert(self.__execparams.index('-t'), '')
             X, Y, D = self.__parsefragmentoroutput(outputfile)
-            return pd.concat([X, extblock], axis=1), Y, D
+
+            if parser:
+                return pd.concat([X, extblock], axis=1), Y, D
+            else:
+                return self.__savesvm(outputfile, pd.concat([X, extblock], axis=1), Y)
+
         return False
 
     def __parsefragmentoroutput(self, outputfile):
@@ -257,10 +262,20 @@ class Fragmentor(object):
                         break
                 vector.append(pd.DataFrame([tmp], columns=self.__headcolumns))
 
-        return pd.concat(vector, ignore_index=True).fillna(0), np.array(prop), pd.Series(ad)
+        return pd.concat(vector, ignore_index=True).fillna(0), pd.Series(prop), pd.Series(ad)
 
-#        else:
-#            with open(outputfile + '.svm', 'w') as f:
-#                for y, x in zip(prop, vector):
-#                    f.write(' '.join(['%s ' % y] + ['%s:%s' % (i, x[i]) for i in sorted(x)]) + '\n')
-#            return True
+    def __savesvm(self, outputfile, X, Y):
+        k2nd = {}
+        k2nc = count(1)
+
+        def k2n(k):
+            n = k2nd.get(k)
+            if n is None:
+                n = next(k2nc)
+                k2nd[k] = n
+            return n
+        with open(outputfile + '.svm', 'w') as f:
+            f.write(' '.join(['Property'] + ['%s:%s' % (k2n(i), i) for i in X.T.to_dict()[0]]) + '\n')
+            for i, j in zip(X.T.to_dict().values(), Y.tolist()):
+                f.write(' '.join(['%s ' % j] + ['%s:%s' % (k2n(k), v) for k, v in i.items()]) + '\n')
+        return True

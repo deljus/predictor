@@ -33,18 +33,17 @@ import numpy as np
 
 
 def _kfold(est, x, y, train, test, svmparams, normalize):
-    x_train, y_train = x[train], y[train]
-    x_test, y_test = x[test], list(y[test])
-    x_min = x_train.min(axis=0)
-    x_max = x_train.max(axis=0)
+    x_train, y_train = x.loc[train], y[train]
+    x_test, y_test = x.loc[test], list(y[test])
+    x_min = x_train.min()
+    x_max = x_train.max()
     y_min = y_train.min()
     y_max = y_train.max()
 
     if normalize:
         normal = MinMaxScaler()
-        normal.fit(x_train)
+        x_train = normal.fit_transform(x_train)
         x_test = normal.transform(x_test)
-        x_train = normal.transform(x_train)
     else:
         normal = None
 
@@ -74,7 +73,7 @@ def _balance_acc(y_test, y_pred):
 class Model(object):
     def __init__(self, descriptorgen, svmparams, nfold=5, repetitions=1, rep_boost=25, dispcoef=0,
                  fit='rmse', estimator='svr', scorers=('rmse', 'r2'), workpath='.',
-                 normalize=False, n_jobs=2, smartcv=False, descriptors=None, **kwargs):
+                 normalize=False, n_jobs=2, smartcv=False, **kwargs):
         _scorers = dict(rmse=_rmse,
                         r2=r2_score,
                         kappa=_kappa_stat, ba=_balance_acc)
@@ -88,10 +87,7 @@ class Model(object):
         self.__repetitions = repetitions
         self.__rep_boost = ceil(repetitions * (rep_boost % 100) / 100)
 
-        y, x, *_ = descriptors or descriptorgen.get(**kwargs)
-
-
-        self.__x, self.__y = self.__sparse.transform(x), np.array(y)
+        self.__x, self.__y, *_ = descriptorgen.get(**kwargs)
 
         self.__normalize = normalize
         self.__dispcoef = dispcoef
@@ -229,8 +225,8 @@ class Model(object):
             for s, f in self.__scorers.items():
                 scorers[s].append(f(ky_test, ky_pred))
 
-            y_pred.extend(ky_pred)
-            y_test.extend(ky_test)
+            #y_pred.extend(ky_pred)
+            #y_test.extend(ky_test)
 
         res = dict(model=models, params=svmparams,)
         for s, v in scorers.items():
@@ -248,14 +244,14 @@ class Model(object):
         return shuffled
 
     def predict(self, structure, **kwargs):
-        _, d_x, d_ad = self.__descriptorgen.get(inputstring=structure, **kwargs)
+        d_x, _, d_ad = self.__descriptorgen.get(inputstring=structure, **kwargs)
         res = dict(prediction=np.empty((len(d_x), len(self.__model['model'])), dtype=float),
                    domain=np.empty((len(d_x), len(self.__model['model'])), dtype=bool),
                    y_domain=np.empty((len(d_x), len(self.__model['model'])), dtype=bool))
-        x_test = self.__sparse.transform(d_x)
+
         for i, model in enumerate(self.__model['model']):
-            x_ad = ((x_test - model['x_min']).min(axis=1) >= 0) & ((model['x_max'] - x_test).min(axis=1) >= 0) & d_ad
-            x_t = model['normal'].transform(x_test) if model['normal'] else x_test
+            x_ad = ((d_x - model['x_min']).min(axis=1) >= 0) & ((model['x_max'] - d_x).min(axis=1) >= 0) & d_ad
+            x_t = model['normal'].transform(d_x) if model['normal'] else d_x
             y_pred = model['model'].predict(x_t)
             y_ad = (model['y_min'] <= y_pred) & (y_pred <= model['y_max'])
 
