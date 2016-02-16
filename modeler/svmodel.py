@@ -22,6 +22,7 @@ import tempfile
 import shutil
 from collections import defaultdict
 from itertools import product
+import pandas as pd
 from sklearn.externals.joblib import Parallel, delayed
 from sklearn.svm import SVR, SVC
 from sklearn.utils import shuffle
@@ -34,7 +35,7 @@ import numpy as np
 
 def _kfold(est, x, y, train, test, svmparams, normalize):
     x_train, y_train = x.loc[train], y[train]
-    x_test, y_test = x.loc[test], list(y[test])
+    x_test, y_test = x.loc[test], y[test]
     x_min = x_train.min()
     x_max = x_train.max()
     y_min = y_train.min()
@@ -42,16 +43,16 @@ def _kfold(est, x, y, train, test, svmparams, normalize):
 
     if normalize:
         normal = MinMaxScaler()
-        x_train = normal.fit_transform(x_train)
-        x_test = normal.transform(x_test)
+        x_train = pd.DataFrame(normal.fit_transform(x_train), columns=x_train.columns)
+        x_test = pd.DataFrame(normal.transform(x_test), columns=x_train.columns)
     else:
         normal = None
 
     model = est(**svmparams)
     model.fit(x_train, y_train)
-    y_pred = list(model.predict(x_test))
+    y_pred = pd.Series(model.predict(x_test), index=test)
     return dict(model=model, normal=normal, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max,
-                y_test=y_test, y_pred=y_pred, y_index=list(test))
+                y_test=y_test, y_pred=y_pred)
 
 
 def _rmse(y_test, y_pred):
@@ -67,7 +68,7 @@ def _kappa_stat(y_test, y_pred):
 
 def _balance_acc(y_test, y_pred):
     (tn, fp), (fn, tp) = confusion_matrix(y_test, y_pred)
-    return 0.5 * tp / (tp + fn) + (0.5 * tn / (tn + fp) if (tn + fp) else .5)
+    return (0.5 * tp / (tp + fn) if (tp + fn) else .5) + (0.5 * tn / (tn + fp) if (tn + fp) else .5)
 
 
 class Model(object):
@@ -215,18 +216,22 @@ class Model(object):
         # todo: запилить анализ аутов. y_index - indexes of test elements
         #  street magic. split folds to repetitions
         for kfold in zip(*[iter(folds)] * self.__nfold):
-            ky_pred, ky_test, ky_index = [], [], []
+            ky_pred, ky_test = [], []
             for fold in kfold:
-                ky_pred.extend(fold.pop('y_pred'))
-                ky_test.extend(fold.pop('y_test'))
-                ky_index.extend(fold.pop('y_index'))
+                ky_pred.append(fold.pop('y_pred'))
+                ky_test.append(fold.pop('y_test'))
                 models.append(fold)
 
+            ky_pred = pd.concat(ky_pred)
+            ky_test = pd.concat(ky_test)
             for s, f in self.__scorers.items():
                 scorers[s].append(f(ky_test, ky_pred))
 
-            #y_pred.extend(ky_pred)
-            #y_test.extend(ky_test)
+            y_pred.append(ky_pred)
+            y_test.append(ky_test)
+
+        y_pred = pd.concat(y_pred, axis=1)
+        y_test = pd.concat(y_test, axis=1)
 
         res = dict(model=models, params=svmparams,)
         for s, v in scorers.items():
@@ -245,17 +250,16 @@ class Model(object):
 
     def predict(self, structure, **kwargs):
         d_x, _, d_ad = self.__descriptorgen.get(inputstring=structure, **kwargs)
-        res = dict(prediction=np.empty((len(d_x), len(self.__model['model'])), dtype=float),
-                   domain=np.empty((len(d_x), len(self.__model['model'])), dtype=bool),
-                   y_domain=np.empty((len(d_x), len(self.__model['model'])), dtype=bool))
 
+        pred, dom, ydom = [], [], []
         for i, model in enumerate(self.__model['model']):
-            x_ad = ((d_x - model['x_min']).min(axis=1) >= 0) & ((model['x_max'] - d_x).min(axis=1) >= 0) & d_ad
-            x_t = model['normal'].transform(d_x) if model['normal'] else d_x
-            y_pred = model['model'].predict(x_t)
-            y_ad = (model['y_min'] <= y_pred) & (y_pred <= model['y_max'])
+            x_t = pd.DataFrame(model['normal'].transform(d_x), columns=d_x.columns) if model['normal'] else d_x
 
-            res['domain'][:, i] = x_ad
-            res['prediction'][:, i] = y_pred
-            res['y_domain'][:, i] = y_ad
+            dom.append(((d_x - model['x_min']).min(axis=1) >= 0) & ((model['x_max'] - d_x).min(axis=1) >= 0) & d_ad)
+            pred.append(pd.Series(model['model'].predict(x_t)))
+            ydom.append((model['y_min'] <= pred[-1]) & (pred[-1] <= model['y_max']))
+
+        res = dict(prediction=pd.concat(pred, axis=1),
+                   domain=pd.concat(dom, axis=1), y_domain=pd.concat(ydom, axis=1))
+
         return res
