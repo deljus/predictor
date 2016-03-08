@@ -58,6 +58,15 @@ def index():
 def predictor():
     return render_template("predictor.html", user_data=get_cur_user())
 
+
+
+@app.route('/api/predictor', methods=['GET', 'POST'])
+def predictor1():
+    return render_template("predictor.html", user_data=get_cur_user())
+
+
+
+
 @app.route("/home", methods=['GET'])
 def home():
     return render_template("home.html", user_data=get_cur_user())
