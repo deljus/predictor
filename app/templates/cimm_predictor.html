@@ -1,0 +1,200 @@
+{% extends "layout.html" %}
+
+    {% block heading %}
+
+	<script src="{{ url_for('static', filename='js/webservices.js') }}"></script>
+    <script src="{{ url_for('static', filename='gui/lib/promise-1.0.0.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/marvinjslauncher.js') }}"></script>
+
+    <script src="{{ url_for('static', filename='js/predictor.js') }}"></script>
+
+<script>
+    $(document).ready(function handleDocumentReady (e) {
+        initControl();
+        MarvinJSUtil.getEditor("#sketch").then(function (sketcherInstance) {
+            marvinSketcherInstance = sketcherInstance;
+
+            // повесим функцию на изменение в редакторе
+            marvinSketcherInstance.on('molchange', function(){
+
+                if (isSketcherDataChanged)
+                {
+                    if ($('#btn-upload-sketcher-data-div').is(':hidden'))
+                    {
+                        show_save_sketcher_data_btn();
+                    }
+                }
+                isSketcherDataChanged=true;
+
+            });
+
+            {% if task and task>0 %}
+                load_task({{task}});
+            {% endif %}
+
+            {% if model and model>0 %}
+                load_model_example({{model}});
+            {% endif %}
+
+        },function (error) {});
+
+        MarvinJSUtil.getPackage("#sketch").then(function (marvinNameSpace) {
+            marvinNameSpace.onReady(function () {
+                marvin = marvinNameSpace;
+            });
+        }, function () {
+            alert("Cannot retrieve marvin instance from iframe");
+        });
+
+    });
+</script>
+
+
+        <div id="openModal" class="modalDialog">
+            <div>
+                <a href="#" title="Close" class="close" onclick="$('#openModal').hide();return false;">X</a>
+                <img id="modal-img" src="{{ url_for('static', filename='images/ajax-loader-big.gif') }}" alt="image not enabled" width="100%">
+            </div>
+        </div>
+
+		<div class="heading">
+			<h1>Predictor</h1>
+			<div class="progress" style="display:none">
+                <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100" style="width:10%"></div>
+
+            </div>
+		</div>
+    {% endblock %}
+    {% block body %}
+
+
+
+		<div class="row">
+			<aside class="col-md-3">
+				<ul class="list-group submenu">
+					<li class="list-group-item"><a href="#" onClick="select_mode('file')">upload file</a></li>
+					<li class="list-group-item"><a href="#" onClick="select_mode('editor')">open editor</a></li>
+					<li class="list-group-item"><a href="#" onclick="load_reactions()">mapping results</a></li>
+					<li class="list-group-item"><a href="#" onclick="load_results()">modelling results</a></li>
+
+                    {% if user_data %}
+					<li class="list-group-item"><a href="{{ url_for('my_tasks') }}"><b>my tasks</b></a></li>
+                    {% endif %}
+
+				</ul>
+			</aside>
+			<section class="col-md-21">
+
+                    <div id="select-mode-div">
+	                    <div style="text-align:center">
+                       		<button class="btn btn-primary" onclick="select_mode('file')"><h4>Upload File</h4></button>
+                        	<button class="btn btn-primary" onclick="select_mode('editor')"><h4>Open Editor</h4></button>
+                        </div>
+                    </div>
+
+                    <div class="row">
+
+                        <div class="col-md-12">
+
+                            <div class="resizable"  id="editor-div">
+
+                                <iframe src="{{ url_for('static', filename='editorws.html') }}" id="sketch" data-toolbars="reaction" class="hidden-sketcher-frame"></iframe>
+
+
+                                <div style="text-align:center;display:none" id="btn-upload-sketcher-data-div">
+                                   	    <button class="btn btn-primary" id="btn-upload-sketcher-data">Submit</button>
+                                </div>
+                                <div style="text-align:center;display:none" id="btn-save-sketcher-data-div">
+                                        <p>After changing data in the editor, press the Save button.
+                                           You can correct mapping by dragging from atom to atom. For more detailed information please refer to <a href="https://www.youtube.com/watch?v=m9hPU_JpqMI">link</a>
+                                        </p>
+                                        <button class="btn btn-primary" onclick="save_draw_reaction()">Save</button>
+                                </div>
+
+                            </div>
+
+                            <div id="file-upload-div" style="display:none" style="text-align:center">
+                                 <form id="upload-file-form" method="post" enctype="multipart/form-data">
+
+                                     <div style="margin-bottom:4px;margin-top:4px;">
+                                        <div class="fileinput fileinput-new input-group" data-provides="fileinput">
+                                          <div class="form-control" data-trigger="fileinput">
+                                          	<i class="glyphicon glyphicon-file fileinput-exists"></i>
+                                            	<span class="fileinput-filename"></span>
+                                          </div>
+                                          <span class="input-group-addon btn btn-default btn-file">
+                                          	<span class="fileinput-new">Select file</span>
+                                          	<span class="fileinput-exists">Change</span>
+                                          	<input type="file" id="file" name="file">
+                                          </span>
+                                          <a href="#" class="input-group-addon btn btn-default fileinput-exists" data-dismiss="fileinput">Remove</a>
+                                        </div>
+
+                                     </div>
+                                     <div style="margin-bottom:4px;margin-top:4px;">
+                                        <button id="upload-file-btn" type="button" class="btn btn-primary">Submit file</button>
+                                     </div>
+                                 </form>
+                            </div>
+                        </div>
+
+                        <div class="col-md-12">
+                            <div id="reactions-div" style="display:none">
+
+                                <h3>Reactions</h3>
+                                <form id="reactions-form" name="reactions-form" enctype="multipart/form-data">
+                                    <input id="task_id" name="task_id" type="hidden" value=""/>
+                                    <input id="reaction_id" name="reaction_id" type="hidden" value=""/>
+                                    <table id="reactions-tbl" class="table table-hover table-bordered">
+                                        <thead>
+                                        <tr>
+                                            <th>Reaction</th>
+                                            <th><select multiple="multiple"  style="display:none;"  id="model_selector" ></select>
+                                            </th>
+                                            <th>Solvent</th>
+                                            <th>Temperature</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody id="reactions-tbd"></tbody>
+
+                                    </table>
+                                    <input type="hidden" id="task_reaction_ids" name="task_reaction_ids" value="" />
+                                </form>
+                                <div style="text-align:center">
+                               		<button onclick="upload_reaction_form()" class="btn btn-primary">Start modelling</button>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div id="results-div" style="display:none">
+                            <h3>Modeling results</h3>
+                            <table class="table table-striped table-bordered" id="results-tbl">
+                                <thead>
+                                    <tr>
+                                        <th>Reaction</th>
+                                        <th>Solvents</th>
+                                        <th>Temperature</th>
+                                        <th>Model</th>
+                                        <th>Parameter</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="results-tbody"></tbody>
+                            </table>
+                            <div style="text-align:center">
+                                <button onclick="download_results('xls')" class="btn btn-primary">Export (MS Excel)</button>
+                                <button onclick="download_results('csv')" class="btn btn-primary">Export (CSV)</button>
+
+                            </div>
+                        </div>
+					</div>
+
+
+
+
+			</section>
+		</div>
+	{% endblock %}
