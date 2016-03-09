@@ -2,10 +2,13 @@
 
 function getDefaultServicesPrefix() {
 	
-    var servername = 'http://'+document.domain;
     // если отлаживаем локально, то сервисы ищем на 8080 порту
+	/***
+	var servername = 'https://'+document.domain;
 	if (String(document.domain).indexOf('127.0.0.1')!=-1 || String(document.domain).indexOf('192.168.')!=-1 )
 		servername += ':8080';
+	***/
+	var servername = "https://cimm.kpfu.ru";
 	var webapp = "/webservices";
 	return servername + webapp;
 }
