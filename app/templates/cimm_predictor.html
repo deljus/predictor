@@ -57,44 +57,33 @@
             </div>
         </div>
 
-		<div class="heading">
-			<h1>Predictor</h1>
+		<div class="heading hide">
+			<!--<h1>Predictor</h1> -->
 			<div class="progress" style="display:none">
                 <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100" style="width:10%"></div>
 
             </div>
 		</div>
+
+
+		<nav class="navbar navbar-default">
+			<ul class="nav navbar-nav">
+                <li class="list-group-item"><a href="#" onClick="select_mode('file')">upload file</a></li>
+				<li class="list-group-item"><a href="#" onClick="select_mode('editor')">open editor</a></li>
+				<li class="list-group-item"><a href="#" onclick="load_reactions()">mapping results</a></li>
+				<li class="list-group-item"><a href="#" onclick="load_results()">modelling results</a></li>
+		</nav>
+
+
     {% endblock %}
     {% block body %}
 
 
 
-		<div class="row">
-			<aside class="col-md-3">
-				<ul class="list-group submenu">
-					<li class="list-group-item"><a href="#" onClick="select_mode('file')">upload file</a></li>
-					<li class="list-group-item"><a href="#" onClick="select_mode('editor')">open editor</a></li>
-					<li class="list-group-item"><a href="#" onclick="load_reactions()">mapping results</a></li>
-					<li class="list-group-item"><a href="#" onclick="load_results()">modelling results</a></li>
+		<div>
+                    <div  class="container-fluid">
 
-                    {% if user_data %}
-					<li class="list-group-item"><a href="{{ url_for('my_tasks') }}"><b>my tasks</b></a></li>
-                    {% endif %}
-
-				</ul>
-			</aside>
-			<section class="col-md-21">
-
-                    <div id="select-mode-div">
-	                    <div style="text-align:center">
-                       		<button class="btn btn-primary" onclick="select_mode('file')"><h4>Upload File</h4></button>
-                        	<button class="btn btn-primary" onclick="select_mode('editor')"><h4>Open Editor</h4></button>
-                        </div>
-                    </div>
-
-                    <div class="row">
-
-                        <div class="col-md-12">
+                        <div>
 
                             <div class="resizable"  id="editor-div">
 
@@ -138,7 +127,7 @@
                             </div>
                         </div>
 
-                        <div class="col-md-12">
+                        <div>
                             <div id="reactions-div" style="display:none">
 
                                 <h3>Reactions</h3>
@@ -194,7 +183,5 @@
 
 
 
-
-			</section>
 		</div>
 	{% endblock %}

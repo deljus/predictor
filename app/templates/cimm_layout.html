@@ -28,7 +28,7 @@
   <body>
 	<div class="wrapper conteiner-fluid">
 
-		<nav class="navbar navbar-default">
+		<nav class="navbar navbar-default hide">
 			<ul class="nav navbar-nav">
 				<li {% if request.path.find( "home")!=-1 %} class="active" {% endif %}><a href="{{ url_for('home') }}">Home</a></li>
 				<li  {% if request.path=="/predictor" %} class="active" {% endif %}><a href="{{ url_for('predictor') }}">Predictor</a></li>
