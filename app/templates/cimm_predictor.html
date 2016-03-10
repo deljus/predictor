@@ -70,7 +70,7 @@
 			<ul class="nav navbar-nav">
                 <li class="list-group-item "><a href="#" onClick="select_mode('file')">upload file</a></li>
 				<li class="list-group-item"><a href="#" onClick="select_mode('editor')">open editor</a></li>
-				<li class="list-group-item"><a href="#" onclick="load_reactions()">mapping results</a></li>
+				<li class="list-group-item"><a href="#" onclick="load_reactions()">mapping</a></li>
 				<li class="list-group-item"><a href="#" onclick="load_results()">modelling results</a></li>
                 </ul>
 		</nav>
@@ -84,9 +84,9 @@
 		<div>
                     <div  class="container-fluid">
 
-                        <div>
+                        <div class="resizable">
 
-                            <div class="resizable"  id="editor-div">
+                            <div  id="editor-div">
 
                                 <iframe src="{{ url_for('static', filename='editorws.html') }}" id="sketch" data-toolbars="reaction" class="hidden-sketcher-frame"></iframe>
 
