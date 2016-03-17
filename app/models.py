@@ -281,7 +281,7 @@ class PredictorDataBase:
     def get_reaction(self, reaction_id):
         '''
         функция возвращает структуру реакции по заданному ID
-        :param id(str): ID реакции
+        :param reaction_id: ID реакции
         :return: поля реакции
         '''
         c = Chemicals.get(id=reaction_id)
