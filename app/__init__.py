@@ -25,10 +25,11 @@ from flask_appconfig import AppConfig
 from flask_login import LoginManager
 
 login_manager = LoginManager()
+from .config import PORTAL_BASE
 
 
 def create_app(configfile=None):
-    app = Flask(__name__)
+    app = Flask(__name__, static_url_path=PORTAL_BASE+'/static', static_folder="static")
     AppConfig(app, configfile)
     Bootstrap(app)
     login_manager.init_app(app)

@@ -34,3 +34,5 @@ LOCK_SEARCHING = 11
 SEARCHING_DONE = 12
 
 UPLOAD_PATH = '/home/server/upload/'
+
+PORTAL_BASE = '/chemodeller'

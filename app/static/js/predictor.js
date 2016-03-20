@@ -24,7 +24,7 @@ var isSketcherDataChanged = false;
 
 // все модели
 var MODELS = new Array();
-var API_BASE = '/api';
+var API_BASE = getApiUrl();
 /******************************************************/
 
 function array_distinct(arr, fld) {

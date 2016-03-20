@@ -13,6 +13,11 @@ function getDefaultServicesPrefix() {
 	return servername + webapp;
 }
 
+function getApiUrl()
+{
+	return '/cimm/api';
+}
+
 function getDefaultServices() {
 	var base = getDefaultServicesPrefix();
 	var services = {

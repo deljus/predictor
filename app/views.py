@@ -23,7 +23,7 @@ import re
 import sys
 import json
 
-from .config import UPLOAD_PATH, REQ_MAPPING, LOCK_SEARCHING
+from .config import UPLOAD_PATH, REQ_MAPPING, LOCK_SEARCHING, PORTAL_BASE
 from werkzeug import secure_filename
 
 from app import app
@@ -49,60 +49,55 @@ def get_cur_user():
     return user_data
 
 # Этот роут для infochim.u-strasbg.fr нужно закомментить
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    return render_template("predictor.html", user_data=get_cur_user())
-
-
-@app.route('/predictor', methods=['GET', 'POST'])
+@app.route(PORTAL_BASE+'/', methods=['GET', 'POST'])
+@app.route(PORTAL_BASE+'/predictor', methods=['GET', 'POST'])
 def predictor():
     return render_template("predictor.html", user_data=get_cur_user())
 
-@app.route('/api/predictor', methods=['GET', 'POST'])
-@app.route('/api', methods=['GET'])
+@app.route(PORTAL_BASE+'/cimm_predictor', methods=['GET'])
 def cimm_predictor():
-    str = render_template("cimm_predictor.html", user_data=get_cur_user())
-    return str.replace('static','api/static')
+    return render_template("cimm_predictor.html", user_data=get_cur_user())
 
-@app.route("/home", methods=['GET'])
+
+@app.route(PORTAL_BASE+'/home', methods=['GET'])
 def home():
     return render_template("home.html", user_data=get_cur_user())
 
 
-@app.route('/predictor/task/<int:task>', methods=['GET', 'POST'])
+@app.route(PORTAL_BASE+'/predictor/task/<int:task>', methods=['GET', 'POST'])
 @login_required
 def task(task=0):
     return render_template("predictor.html", task=task, user_data=get_cur_user())
 
-@app.route("/predictor/model_example/<int:model>", methods=['GET', 'POST'])
+@app.route(PORTAL_BASE+'/predictor/model_example/<int:model>', methods=['GET', 'POST'])
 def model_example(model=0):
     return render_template("predictor.html", model=model, user_data=get_cur_user())
 
 
-@app.route("/predictor/download", methods=['GET'])
+@app.route(PORTAL_BASE+'/predictor/download', methods=['GET'])
 def download_file():
     return excel.make_response_from_array([[1, 2], [3, 4]], "xls")
 
 
-@app.route("/predictor/solvents", methods=['GET'])
+@app.route(PORTAL_BASE+'/predictor/solvents', methods=['GET'])
 def solvents():
     solvents = pdb.get_solvents()
     return render_template("solvents.html", solvents=solvents, user_data=get_cur_user())
 
 
-@app.route("/predictor/models", methods=['GET'])
+@app.route(PORTAL_BASE+'/predictor/models', methods=['GET'])
 def models():
     models = pdb.get_models()
     return render_template("models.html", models=models, user_data=get_cur_user())
 
 
-@app.route('/user', methods=['GET'])
+@app.route(PORTAL_BASE+'/user', methods=['GET'])
 @login_required
 def user():
     return render_template('user.html',  user_data=get_cur_user())
 
 
-@app.route('/user/my_tasks', methods=['GET'])
+@app.route(PORTAL_BASE+'/user/my_tasks', methods=['GET'])
 @login_required
 def my_tasks():
     user_data = get_cur_user()
@@ -112,7 +107,7 @@ def my_tasks():
     return render_template('login.html', form=Login())
 
 
-@app.route("/user/login", methods=['GET', 'POST'])
+@app.route(PORTAL_BASE+'/user/login', methods=['GET', 'POST'])
 def login():
     form = Login()
     if form.validate_on_submit():
@@ -124,14 +119,14 @@ def login():
     return render_template('login.html', form=form)
 
 
-@app.route('/user/logout', methods=['GET'])
+@app.route(PORTAL_BASE+'/user/logout', methods=['GET'])
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('login'))
 
 
-@app.route("/user/registration", methods=['GET', 'POST'])
+@app.route(PORTAL_BASE+'/user/registration', methods=['GET', 'POST'])
 def registration():
     form = Registration()
     if form.validate_on_submit():
@@ -139,7 +134,7 @@ def registration():
             return redirect(url_for('predictor'))
     return render_template('registration.html', form=form)
 
-@app.route("/search", methods=['GET'])
+@app.route(PORTAL_BASE+'/search', methods=['GET'])
 def search():
     return render_template("search.html", user_data=get_cur_user())
 
@@ -406,30 +401,30 @@ class DownloadResultsAPI(Resource):
 ##
 ## Actually setup the Api resource routing here
 ##
-api.add_resource(ReactionListAPI, '/api/reactions')
+api.add_resource(ReactionListAPI, PORTAL_BASE+'/api/reactions')
 
-api.add_resource(ReactionAPI, '/api/reaction/<reaction_id>')
-api.add_resource(ReactionStructureAPI, '/api/reaction_structure/<reaction_id>')
-api.add_resource(ReactionResultAPI, '/api/reaction_result/<reaction_id>')
+api.add_resource(ReactionAPI, PORTAL_BASE+'/api/reaction/<reaction_id>')
+api.add_resource(ReactionStructureAPI, PORTAL_BASE+'/api/reaction_structure/<reaction_id>')
+api.add_resource(ReactionResultAPI, PORTAL_BASE+'/api/reaction_result/<reaction_id>')
 
 # работа со статусами задач
-api.add_resource(TaskStatusAPI, '/api/task_status/<task_id>')
+api.add_resource(TaskStatusAPI, PORTAL_BASE+'/api/task_status/<task_id>')
 
 # получение задач
-api.add_resource(TaskListAPI, '/api/tasks')
+api.add_resource(TaskListAPI, PORTAL_BASE+'/api/tasks')
 
-api.add_resource(TaskReactionsAPI, '/api/task_reactions/<task_id>')
+api.add_resource(TaskReactionsAPI, PORTAL_BASE+'/api/task_reactions/<task_id>')
 
-api.add_resource(TaskModellingAPI, '/api/task_modelling/<task_id>')
+api.add_resource(TaskModellingAPI, PORTAL_BASE+'/api/task_modelling/<task_id>')
 
-api.add_resource(ModelListAPI, '/api/models')
-api.add_resource(ModelAPI, '/api/model/<model_id>')
+api.add_resource(ModelListAPI, PORTAL_BASE+'/api/models')
+api.add_resource(ModelAPI, PORTAL_BASE+'/api/model/<model_id>')
 
-api.add_resource(SolventsAPI, '/api/solvents')
+api.add_resource(SolventsAPI, PORTAL_BASE+'/api/solvents')
 
-api.add_resource(DownloadResultsAPI, '/api/download/<task_id>')
+api.add_resource(DownloadResultsAPI, PORTAL_BASE+'/api/download/<task_id>')
 
-api.add_resource(UploadFile, '/api/upload')
-api.add_resource(ParserAPI, '/api/parser')
+api.add_resource(UploadFile, PORTAL_BASE+'/api/upload')
+api.add_resource(ParserAPI, PORTAL_BASE+'/api/parser')
 
-api.add_resource(UsersAPI, '/api/users')
+api.add_resource(UsersAPI, PORTAL_BASE+'/api/users')
