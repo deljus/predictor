@@ -35,4 +35,4 @@ SEARCHING_DONE = 12
 
 UPLOAD_PATH = '/home/server/upload/'
 
-PORTAL_BASE = '/chemodeller'
+PORTAL_BASE = '/qspr'
