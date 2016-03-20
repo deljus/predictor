@@ -30,6 +30,24 @@ from utils.FEAR.CGR import CGR
 fear = CGR()
 
 
+class Reaction_checker(object):
+
+    def get(self, structure, mformat="mrv"):
+        data = {"structure": structure, "parameters": "smiles",
+                "filterChain": [{"filter": "clean", "parameters": {"dim": 2}},
+                                {"filter": "standardizer", "parameters": {"standardizerDefinition": STANDARD}},
+                                {"filter": "reactionConverter"}]}
+        res = chemaxpost('calculate/molExport', data)
+
+        if res:
+            res = json.loads(res)
+            if 'isReaction' in res:
+                return False
+            smiles = res['structure']
+        else:
+            return False
+
+
 def create_task_from_file(task):
     file_path = task['file']
     task_id = task['id']
@@ -113,7 +131,7 @@ def mapper(task):
                     os.remove(file_path)
                 else:
                     pass
-                        # todo: тут надо для молекул заморочиться.
+                    # todo: тут надо для молекул заморочиться.
 
                 data = {"structure": structure['structure'], "parameters": {"method": "DEHYDROGENIZE"}}
                 structure = chemaxpost('convert/hydrogenizer', data)
