@@ -24,10 +24,11 @@ import time
 
 from utils.config import INTERVAL, THREAD_LIMIT, REQ_MAPPING
 from utils.utils import gettask, getfiletask
-from utils.mappercore import mapper, create_task_from_file
+from utils.mappercore import Mapper
 
 
 TASKS = []
+MAPPER = Mapper()
 
 
 def run():
@@ -38,7 +39,7 @@ def run():
 
     while TASKS and threading.active_count() < THREAD_LIMIT:
         i = TASKS.pop(0)
-        taskthread = create_task_from_file if "file" in i else mapper
+        taskthread = MAPPER.parsefile if "file" in i else MAPPER.mapper
         t = threading.Thread(target=taskthread, args=([i]))
         t.start()
 
