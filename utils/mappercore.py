@@ -18,144 +18,108 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import os
-from utils.config import LOCK_MAPPING, STANDARD, MAPPING_DONE, UPLOAD_PATH, STANDARDIZER
-from utils.utils import getsolvents, chemaxpost, serverpost, serverput, serverget
+from utils.config import LOCK_MAPPING, STANDARD, MAPPING_DONE, MOLCONVERT
+from utils.utils import getsolvents, chemaxpost, serverpost, serverput, serverget, serverdel
 import subprocess as sp
 import xml.etree.ElementTree as ET
 import re
 import json
-from utils.FEAR.RDFread import RDFread
-from utils.FEAR.CGR import CGR
-fear = CGR()
 
 
-class Reaction_checker(object):
-
-    def get(self, structure, mformat="mrv"):
-        data = {"structure": structure, "parameters": "smiles",
-                "filterChain": [{"filter": "clean", "parameters": {"dim": 2}},
-                                {"filter": "standardizer", "parameters": {"standardizerDefinition": STANDARD}},
-                                {"filter": "reactionConverter"}]}
-        res = chemaxpost('calculate/molExport', data)
-
-        if res:
-            res = json.loads(res)
-            if 'isReaction' in res:
-                return False
-            smiles = res['structure']
-        else:
-            return False
+def remove_namespace(doc, namespace):
+    """Remove namespace in the passed document in place."""
+    ns = u'{%s}' % namespace
+    nsl = len(ns)
+    for elem in doc.getiterator():
+        if elem.tag.startswith(ns):
+            elem.tag = elem.tag[nsl:]
+    return doc
 
 
-def create_task_from_file(task):
-    file_path = task['file']
-    task_id = task['id']
-    tmp_file = '%stmp-%d.mrv' % (UPLOAD_PATH, task_id)
-    tmp_fear_file = '%stmp-%d.rxn' % (UPLOAD_PATH, task_id)
-    serverput("task_status/%s" % task_id, {'task_status': LOCK_MAPPING})
-    sp.call([STANDARDIZER, file_path, '-c', STANDARD, '-f', 'mrv', '-o', tmp_file])
-    solv = {x['name'].lower(): x['id'] for x in getsolvents()}
+class Mapper(object):
+    def parsefile(self, task):
+        if serverput("task_status/%s" % task['id'], {'task_status': LOCK_MAPPING}):
+            p = sp.Popen([MOLCONVERT, 'mrv', task['file']], stdout=sp.PIPE, stderr=sp.STDOUT)
+            try:
+                mrv = remove_namespace(ET.fromstring(p.communicate()[0].decode()), 'http://www.chemaxon.com')
 
-    with open(tmp_file, 'r') as file:
-        for mol in file:
-            if '<MDocument>' in mol:
-                try:
-                    tree = ET.fromstring(mol)
-                    prop = {x.get('title').lower(): x.find('scalar').text.lower().strip()
-                            for x in tree.iter('property')}
+                solv = {x['name'].lower(): x['id'] for x in getsolvents()}
+
+                for i in mrv.getchildren():
                     solvlist = {}
                     temp = 298
-                    for i, j in prop.items():
-                        if 'solvent.amount.' in i:
-                            k = re.split('[:=]', j)
-                            id = solv.get(k[0].strip())
-                            if id:
-                                if '%' in k[-1]:
-                                    v = k[-1].replace('%', '')
-                                    grader = 100
-                                else:
-                                    v = k[-1]
-                                    grader = 1
-                                try:
-                                    v = float(v) / grader
-                                except ValueError:
-                                    v = 1
-                                solvlist[id] = v
-                        elif 'temperature' == i:
+                    prop = {x.get('title').lower(): x.find('scalar').text.lower().strip() for x in i.iter('property')}
+                    for k, v in prop.items():
+                        if 'solvent.amount.' in k:
                             try:
-                                temp = float(j)
+                                sname, *_, samount = re.split('[:=]', v)
+                                sid = solv.get(sname.strip())
+                                if sid:
+                                    if '%' in samount:
+                                        v = samount.replace('%', '')
+                                        grader = 100
+                                    else:
+                                        v = samount
+                                        grader = 1
+
+                                    solvlist[sid] = float(v) / grader
+                            except:
+                                pass
+                        elif 'temperature' == k:
+                            try:
+                                temp = float(v)
                             except ValueError:
                                 temp = 298
 
-                    data = {"structure": mol.rstrip(), "parameters": {"method": "DEHYDROGENIZE"}}
-                    structure = chemaxpost('convert/hydrogenizer', data)
-                    if structure:
-                        data = dict(task_id=task_id, structure=structure, solvents=json.dumps(solvlist),
-                                    temperature=temp)
+                    standardized = self.standardize(ET.tostring(i, encoding='utf8', method='xml'))
+                    if standardized:
+                        data = dict(task_id=task['id'], structure=standardized['structure'],
+                                    solvents=json.dumps(solvlist), temperature=temp, status=standardized['status'])
                         q = serverpost('parser', data)
-                        if q.isdigit(): # проверка на корректный ответ. по сути не нужна. но да пох.
-                            data = {"structure": mol, "parameters": "rxn"}
-                            structure = chemaxpost('calculate/stringMolExport', data)
-                            if '$RXN' in structure:
-                                with open(tmp_fear_file, 'w') as tmp:
-                                    tmp.write(structure)
-                                FEAR(tmp_fear_file, int(q))
-                                os.remove(tmp_fear_file)
-                            else:
-                                pass
-                                # todo: тут надо для молекул заморочиться.
-                except:
-                    pass
-    os.remove(tmp_file)
-    serverput("task_status/%s" % task_id, {'task_status': MAPPING_DONE})
+                        if q.isdigit():
+                            serverpost("reaction/%s" % int(q), {'models': ','.join(standardized['models'])})
+            except:
+                pass
 
+            if serverput("task_status/%s" % task['id'], {'task_status': MAPPING_DONE}):
+                return True
+        return False
 
-def mapper(task):
-    if serverput("task_status/%s" % (task['id']), {'task_status': LOCK_MAPPING}):
-        chemicals = serverget("task_reactions/%s" % (task['id']), None)
-        for j in chemicals:
-            structure = serverget("reaction_structure/%s" % (j['reaction_id']), None)
-            data = {"structure": structure, "parameters": "rxn",
-                    "filterChain": [{"filter": "clean", "parameters": {"dim": 2}},
-                                    {"filter": "standardizer", "parameters": {"standardizerDefinition": STANDARD}}]}
-            structure = chemaxpost('calculate/molExport', data)
-            if structure:
-                structure = json.loads(structure)
-                file_path = '%stmp-%d.rxn' % (UPLOAD_PATH, task['id'])
-
-                if 'isReaction' in structure:
-                    with open(file_path, 'w') as tmp:
-                        tmp.write(structure['structure'])
-                    FEAR(file_path, j['reaction_id'])
-                    os.remove(file_path)
+    def mapper(self, task):
+        if serverput("task_status/%s" % (task['id']), {'task_status': LOCK_MAPPING}):
+            chemicals = serverget("task_reactions/%s" % (task['id']), None)
+            for j in chemicals:
+                structure = serverget("reaction_structure/%s" % (j['reaction_id']), None)
+                standardized = self.standardize(structure)
+                if standardized:
+                    serverpost("reaction_structure/%s" % (j['reaction_id']),
+                               {'reaction_structure': standardized['structure'],
+                                'status': standardized['status']})
+                    serverpost("reaction/%s" % j['reaction_id'], {'models': ','.join(standardized['models'])})
                 else:
-                    pass
-                    # todo: тут надо для молекул заморочиться.
+                    serverdel("reaction/%s" % (j['reaction_id']), None)
 
-                data = {"structure": structure['structure'], "parameters": {"method": "DEHYDROGENIZE"}}
-                structure = chemaxpost('convert/hydrogenizer', data)
-                if structure:
-                    serverpost("reaction_structure/%s" % (j['reaction_id']), {'reaction_structure': structure})
+            if serverput("task_status/%s" % task['id'], {'task_status': MAPPING_DONE}):
+                return True
+        return False
+
+    def standardize(self, structure):
+        data = {"structure": structure, "parameters": "mrv",
+                "filterChain": [{"filter": "standardizer", "parameters": {"standardizerDefinition": STANDARD}},
+                                {"filter": "clean", "parameters": {"dim": 2}}]}
+        structure = chemaxpost('calculate/molExport', data)
+        models = []
+        status = 0
+        if structure:
+            structure = json.loads(structure)
+
+            if 'isReaction' in structure:
+                pass
+                # get reaction hashes etc
             else:
-                serverpost("reaction_structure/%s" % (j['reaction_id']), {'reaction_structure': ' '})
+                pass
+                # todo: тут надо для молекул заморочиться. mb
 
-    serverput("task_status/%s" % (task['id']), {'task_status': MAPPING_DONE})
-
-
-def FEAR(file_path, reaction_id):
-    fearinput = RDFread(file_path)
-    try:
-        fearinput = next(fearinput.readdata())
-        res = fear.firstcgr(fearinput)
-        if not res:
-            models = set()
-            for x, y in fearinput['meta'].items():
-                if '!reaction_center_hash' in x:
-                    rhash = y.split("'")[0][5:]
-                    mset = serverget("models", {'hash': rhash})
-                    models.update([str(z['id']) for z in mset])
-            # todo: переписать вьюшку на нормальные грабли.
-            serverpost("reaction/%s" % reaction_id, {'models': ','.join(models)})
-    except:
-        pass
+            return dict(structure=structure['structure'], models=models, status=status)
+        else:
+            return False

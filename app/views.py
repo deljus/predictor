@@ -163,6 +163,7 @@ class UploadFile(Resource):
 """
 ReactionParserparser = reqparse.RequestParser()
 ReactionParserparser.add_argument('task_id', type=int)
+ReactionParserparser.add_argument('status', type=int, default=0)
 ReactionParserparser.add_argument('structure', type=str)
 ReactionParserparser.add_argument('temperature', type=float)
 ReactionParserparser.add_argument('solvents', type=lambda x: json.loads(x))
@@ -179,7 +180,8 @@ class ParserAPI(Resource):
     def post(self):
         args = ReactionParserparser.parse_args()
         reaction_id = pdb.insert_reaction(task_id=args['task_id'], reaction_structure=args['structure'],
-                                          solvent=args['solvents'], temperature=args['temperature'])
+                                          solvent=args['solvents'], temperature=args['temperature'],
+                                          status=args['status'])
         if reaction_id:
             return reaction_id, 201
         else:
@@ -188,6 +190,7 @@ class ParserAPI(Resource):
 
 parser = reqparse.RequestParser()
 parser.add_argument('reaction_structure', type=str)
+parser.add_argument('status', type=int, default=0)
 parser.add_argument('task_type', type=str)
 parser.add_argument('temperature', type=str)
 parser.add_argument('solvent', type=str)
@@ -204,7 +207,7 @@ class ReactionStructureAPI(Resource):
 
     def post(self, reaction_id):
         args = parser.parse_args()
-        pdb.update_reaction_structure(reaction_id, args['reaction_structure'])
+        pdb.update_reaction_structure(reaction_id, args['reaction_structure'], status=args['status'])
         return reaction_id, 201
 
 
@@ -242,6 +245,10 @@ class ReactionAPI(Resource):
             s = s.split(',')
         pdb.update_reaction_conditions(reaction_id, temperature=t, solvent=s, models=m)
         return reaction_id, 201
+
+    def delete(self, reaction_id):
+        pdb.delete_reaction(reaction_id)
+        return '', 201
 
 
 class ReactionListAPI(Resource):

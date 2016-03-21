@@ -238,7 +238,7 @@ class PredictorDataBase:
             return False
 
     @db_session
-    def insert_reaction(self, task_id, reaction_structure, solvent=None, temperature=None, structurekey=None):
+    def insert_reaction(self, task_id, reaction_structure, solvent=None, temperature=None, status=0):
         '''
         функция добавляет в таблицу новую реакцию с заданными параметрами
         :param task_id(str): ID задачи
@@ -251,7 +251,7 @@ class PredictorDataBase:
         if t:
             structure = Structures(structure=reaction_structure)
             commit()
-            chem = Chemicals(task=t, structure=structure, temperature=temperature)
+            chem = Chemicals(task=t, structure=structure, temperature=temperature, status=status)
             commit()
             if solvent:
                 for k, v in solvent.items():
@@ -309,6 +309,18 @@ class PredictorDataBase:
                             models={m.id: m.name for m in r.models},
                             solvents={s.solvent.id: s.amount for s in r.solvents}))
         return arr
+
+    @db_session
+    def delete_reaction(self, reaction_id):
+        c = Chemicals.get(id=reaction_id)
+        if c:
+            structure = c.structure
+            c.delete()
+
+            if not structure.chemicals:
+                structure.delete()
+            return True
+        return False
 
     @db_session
     def update_reaction_structure(self, reaction_id, structure, status=None):
