@@ -22,6 +22,7 @@ import os
 
 SERVER = "https://cimm.kpfu.ru"
 PORT = 443
+PORTAL_BASE = '/qspr'
 CHEMAXON = "%s/webservices" % SERVER
 JCHEMBIN = '/home/stsouko/ChemAxon/JChem/bin'
 UPLOAD_PATH = '/tmp'
