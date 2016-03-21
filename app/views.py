@@ -163,7 +163,7 @@ class UploadFile(Resource):
 """
 ReactionParserparser = reqparse.RequestParser()
 ReactionParserparser.add_argument('task_id', type=int)
-ReactionParserparser.add_argument('status', type=int, default=0)
+ReactionParserparser.add_argument('status', type=str, default=None)
 ReactionParserparser.add_argument('structure', type=str)
 ReactionParserparser.add_argument('temperature', type=float)
 ReactionParserparser.add_argument('solvents', type=lambda x: json.loads(x))
@@ -190,7 +190,7 @@ class ParserAPI(Resource):
 
 parser = reqparse.RequestParser()
 parser.add_argument('reaction_structure', type=str)
-parser.add_argument('status', type=int, default=0)
+parser.add_argument('status', type=str, default=None)
 parser.add_argument('task_type', type=str)
 parser.add_argument('temperature', type=str)
 parser.add_argument('solvent', type=str)

@@ -69,7 +69,8 @@ class Tasks(db.Entity):
 
 class Chemicals(db.Entity):
     id = PrimaryKey(int, auto=True)
-    status = Required(int, default=0)
+    status = Required(str, default='{}')
+    isreaction = Required(bool, default=False)
     temperature = Optional(float)
     solvents = Set("Solventsets")
     task = Required(Tasks)
@@ -238,7 +239,7 @@ class PredictorDataBase:
             return False
 
     @db_session
-    def insert_reaction(self, task_id, reaction_structure, solvent=None, temperature=None, status=0):
+    def insert_reaction(self, task_id, reaction_structure, solvent=None, temperature=None, status=None):
         '''
         функция добавляет в таблицу новую реакцию с заданными параметрами
         :param task_id(str): ID задачи
@@ -251,7 +252,9 @@ class PredictorDataBase:
         if t:
             structure = Structures(structure=reaction_structure)
             commit()
-            chem = Chemicals(task=t, structure=structure, temperature=temperature, status=status)
+            chem = Chemicals(task=t, structure=structure, temperature=temperature)
+            if status:
+                chem.status = status
             commit()
             if solvent:
                 for k, v in solvent.items():
