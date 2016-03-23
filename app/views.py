@@ -164,6 +164,7 @@ class UploadFile(Resource):
 ReactionParserparser = reqparse.RequestParser()
 ReactionParserparser.add_argument('task_id', type=int)
 ReactionParserparser.add_argument('status', type=str, default=None)
+ReactionParserparser.add_argument('isreaction', type=bool, default=False)
 ReactionParserparser.add_argument('structure', type=str)
 ReactionParserparser.add_argument('temperature', type=float)
 ReactionParserparser.add_argument('solvents', type=lambda x: json.loads(x))
@@ -181,7 +182,7 @@ class ParserAPI(Resource):
         args = ReactionParserparser.parse_args()
         reaction_id = pdb.insert_reaction(task_id=args['task_id'], reaction_structure=args['structure'],
                                           solvent=args['solvents'], temperature=args['temperature'],
-                                          status=args['status'])
+                                          status=args['status'], isreaction=args['isreaction'])
         if reaction_id:
             return reaction_id, 201
         else:
@@ -191,6 +192,7 @@ class ParserAPI(Resource):
 parser = reqparse.RequestParser()
 parser.add_argument('reaction_structure', type=str)
 parser.add_argument('status', type=str, default=None)
+parser.add_argument('isreaction', type=bool, default=False)
 parser.add_argument('task_type', type=str)
 parser.add_argument('temperature', type=str)
 parser.add_argument('solvent', type=str)
@@ -207,7 +209,8 @@ class ReactionStructureAPI(Resource):
 
     def post(self, reaction_id):
         args = parser.parse_args()
-        pdb.update_reaction_structure(reaction_id, args['reaction_structure'], status=args['status'])
+        pdb.update_reaction_structure(reaction_id, args['reaction_structure'],
+                                      status=args['status'], isreaction=args['isreaction'])
         return reaction_id, 201
 
 
