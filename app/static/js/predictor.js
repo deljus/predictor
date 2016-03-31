@@ -614,6 +614,7 @@ function display_task_reactions(reactions, models)
     var reaction_ids = '';
     var first_reaction_id = '';
     var _temperature = '';
+    var _status = '';
     var _solvent_id = '';
     var reaction_models = [];
     var reaction_model_ids = '';
@@ -628,6 +629,12 @@ function display_task_reactions(reactions, models)
             _temperature = _reaction.temperature;
             if (isEmpty(_temperature))
                 _temperature = '';
+        }catch(err){}
+
+        try {
+            _status = _reaction.status;
+            if (isEmpty(_status))
+                _status = '';
         }catch(err){}
 
         try {
@@ -664,6 +671,7 @@ function display_task_reactions(reactions, models)
 
         str+='<td><select role="solvent" name="solvent_'+_r_id+'" solvent="'+_solvent_id+'" ></select></td>';
         str+='<td><input  class="temperature" name="temperature_'+_r_id+'" type="text" value="'+_temperature+'" /></td>';
+        str+='<td>'+_status+'</td>';
         str+='</tr>';
 
         if (reaction_ids=='')

@@ -15,7 +15,7 @@ function getDefaultServicesPrefix() {
 
 function getApiUrl()
 {
-	return '/cimm/api';
+	return '/qspr/api';
 }
 
 function getDefaultServices() {
