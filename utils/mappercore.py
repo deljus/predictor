@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2015 Ramil Nugmanov <stsouko@live.ru>
+# Copyright 2015, 2016 Ramil Nugmanov <stsouko@live.ru>
 # This file is part of PREDICTOR.
 #
 # PREDICTOR is free software; you can redistribute it and/or modify
@@ -111,7 +111,7 @@ class Mapper(object):
                                 {"filter": "clean", "parameters": {"dim": 2}}]}
         structure = chemaxpost('calculate/molExport', data)
         models = []
-        status = None  # ???????????????????????????????????
+        status = None
         isreaction = False
         if structure:
             structure = json.loads(structure)
