@@ -159,4 +159,6 @@ class Mapper(object):
                     if ss.intersection(ps):
                         return 'tautomerized and neutralized part of reagents equal to part of products'
 
+                    return 'all checks passed'
+
         return 'reaction check failed'
