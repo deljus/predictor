@@ -21,7 +21,6 @@
 import os
 import subprocess as sp
 from itertools import count
-
 import numpy as np
 import pandas as pd
 from modeler.structprepare import ISIDAatommarker, StandardizeDragos
@@ -46,14 +45,13 @@ class Fragmentor(object):
                  useformalcharge=False, atompairs=False, fragmentstrict=False, getatomfragment=False,
                  overwrite=True, header=None, extention=None, marker_rules=None, standardize=None,
                  cgr_type=None, cgr_stereo=False, cgr_balance=0, cgr_b_templates=None,
-                 cgr_map_repair=False, cgr_e_rules=None, cgr_c_rules=None):
+                 cgr_e_rules=None, cgr_c_rules=None):
 
         self.__marker = ISIDAatommarker(marker_rules, workpath) if marker_rules else None
         self.__standardize = StandardizeDragos(standardize) if standardize else None
 
         self.__cgr = CGRWrapper(type=cgr_type, stereo=cgr_stereo, balance=int(cgr_balance),
                                 b_templates=open(cgr_b_templates) if cgr_b_templates else None,
-                                map_repair=cgr_map_repair,
                                 e_rules=open(cgr_e_rules) if cgr_e_rules else None,
                                 c_rules=open(cgr_c_rules) if cgr_c_rules else None) if cgr_type else None
 

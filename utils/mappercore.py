@@ -20,6 +20,11 @@
 #
 from utils.config import LOCK_MAPPING, STANDARD, MAPPING_DONE, MOLCONVERT
 from utils.utils import getsolvents, chemaxpost, serverpost, serverput, serverget, serverdel
+from io import StringIO
+from CGRtools.FEAR import FEAR
+from CGRtools.CGRcore import CGRcore
+from CGRtools.RDFread import RDFread
+from CGRtools.RDFwrite import RDFwrite
 import subprocess as sp
 import xml.etree.ElementTree as ET
 import re
@@ -37,6 +42,13 @@ def remove_namespace(doc, namespace):
 
 
 class Mapper(object):
+    def __init__(self, stereo=False, b_templates=None, e_rules=None, c_rules=None):
+        self.__cgr = CGRcore(type='0', stereo=stereo, balance=1,
+                             b_templates=open(b_templates) if b_templates else None,
+                             e_rules=open(e_rules) if e_rules else None,
+                             c_rules=open(c_rules) if c_rules else None)
+        self.__fear = FEAR(isotop=False, stereo=False, hyb=False, element=True, deep=0)
+
     def parsefile(self, task):
         if serverput("task_status/%s" % task['id'], {'task_status': LOCK_MAPPING}):
             p = sp.Popen([MOLCONVERT, 'mrv', task['file']], stdout=sp.PIPE, stderr=sp.STDOUT)
@@ -106,27 +118,50 @@ class Mapper(object):
         return False
 
     def standardize(self, structure):
-        data = {"structure": structure, "parameters": "mrv",
+        data = {"structure": structure, "parameters": "mol",
                 "filterChain": [{"filter": "standardizer", "parameters": {"standardizerDefinition": STANDARD}},
                                 {"filter": "clean", "parameters": {"dim": 2}}]}
         structure = chemaxpost('calculate/molExport', data)
-        models = []
+        models = set()
         status = None
         isreaction = False
         if structure:
             structure = json.loads(structure)
-
             if 'isReaction' in structure:
                 isreaction = True
-                status = self.chkreaction(structure['structure'])
+                print('!! std reaction')
+                try:
+                    out = StringIO()
+                    g = self.__cgr.getCGR(next(RDFread(StringIO(structure['structure'])).readdata()))
+                    status = g.graph.get('CGR_REPORT')
+
+                    *_, hashes = self.__fear.chkreaction(g, gennew=True)
+                    RDFwrite(out).writedata(self.__cgr.dissCGR(g))
+                    mol = out.getvalue()
+
+                    models.update(str(y['id']) for x in hashes for y in serverget("models", {'hash': x[2]}))
+                except Exception as e:
+                    print(e)
+                    mol = structure['structure']
+
+                chk = self.chkreaction(mol)
+                if chk:
+                    if status:
+                        status = '%s, %s' % (status, chk)
+                    else:
+                        status = chk
                 # todo: get reaction hashes etc
             else:
-                pass
+                print('!! std molecule')
+                mol = structure['structure']
                 # todo: тут надо для молекул заморочиться. mb
 
-            return dict(structure=structure['structure'], models=models, status=status, isreaction=isreaction)
-        else:
-            return False
+            structure = chemaxpost('calculate/molExport', {"structure": mol, "parameters": "mrv"})
+            if structure:
+                structure = json.loads(structure)
+                return dict(structure=structure['structure'], models=models, status=status, isreaction=isreaction)
+
+        return False
 
     @staticmethod
     def chkreaction(structure):
@@ -159,6 +194,6 @@ class Mapper(object):
                     if ss.intersection(ps):
                         return 'tautomerized and neutralized part of reagents equal to part of products'
 
-                    return 'all checks passed'
+                    return None
 
         return 'reaction check failed'
