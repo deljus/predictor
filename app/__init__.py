@@ -33,7 +33,6 @@ def create_app(configfile=None):
     AppConfig(app, configfile)
     Bootstrap(app)
     login_manager.init_app(app)
-    #bcrypt = Bcrypt(app)
     login_manager.login_view = 'login'
 
     return app

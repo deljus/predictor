@@ -23,8 +23,9 @@ import os
 import re
 import sys
 import json
+import uuid
+
 from .config import UPLOAD_PATH, REQ_MAPPING, LOCK_SEARCHING, PORTAL_BASE, ALLOWED_EXTENSIONS
-from werkzeug import secure_filename
 from app import app
 from app import pdb
 from flask.ext.restful import reqparse, Api, Resource
@@ -132,6 +133,7 @@ def registration():
             return redirect(url_for('predictor'))
     return render_template('registration.html', form=form)
 
+
 @app.route(PORTAL_BASE+'/search', methods=['GET'])
 def search():
     return render_template("search.html", user_data=get_cur_user())
@@ -153,7 +155,7 @@ class UploadFile(Resource):
         if args['file.path']:  # костыль. если не найдет этого в аргументах, то мы без NGINX сидим тащемта.
             reaction_file = args['file.path']
         elif request.files['file'] and allowed_file(request.files['file'].filename):
-            reaction_file = os.path.join(UPLOAD_PATH, secure_filename(request.files['file'].filename))
+            reaction_file = os.path.join(UPLOAD_PATH, str(uuid.uuid4()))
             request.files['file'].save(reaction_file)
 
         if reaction_file:

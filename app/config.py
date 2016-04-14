@@ -34,6 +34,6 @@ LOCK_SEARCHING = 11
 SEARCHING_DONE = 12
 
 UPLOAD_PATH = '/home/www/predictor/upload/'
-ALLOWED_EXTENSIONS = {'rdf', 'sdf', 'mol', 'mrv', 'smi', 'smiles', 'rxn'}
+ALLOWED_EXTENSIONS = ('rdf', 'sdf', 'mol', 'mrv', 'smi', 'smiles', 'rxn')
 
 PORTAL_BASE = '/qspr'
