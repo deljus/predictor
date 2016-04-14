@@ -19,13 +19,12 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+import os
 import re
 import sys
 import json
-
-from .config import UPLOAD_PATH, REQ_MAPPING, LOCK_SEARCHING, PORTAL_BASE
+from .config import UPLOAD_PATH, REQ_MAPPING, LOCK_SEARCHING, PORTAL_BASE, ALLOWED_EXTENSIONS
 from werkzeug import secure_filename
-
 from app import app
 from app import pdb
 from flask.ext.restful import reqparse, Api, Resource
@@ -36,7 +35,6 @@ from flask import request, render_template, flash
 from app.forms import Registration, Login
 from app.logins import User
 from flask_login import login_user, login_required, logout_user, current_user
-
 from utils.utils import chemaxpost
 
 
@@ -143,19 +141,27 @@ UploadFileParser.add_argument('file.path', type=str)
 FILEList = {}
 
 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+
+
 class UploadFile(Resource):
     def post(self):
+        reaction_file = None
         args = UploadFileParser.parse_args()
 
-        if not args['file.path']:  # костыль. если не найдет этого в аргументах, то мы без NGINX сидим тащемта.
-            f = request.files['file']
-            reaction_file = UPLOAD_PATH + secure_filename(f.filename)
-            f.save(reaction_file)
-        else:
+        if args['file.path']:  # костыль. если не найдет этого в аргументах, то мы без NGINX сидим тащемта.
             reaction_file = args['file.path']
-        task_id = pdb.insert_task()
-        FILEList[task_id] = reaction_file
-        return str(task_id), 201
+        elif request.files['file'] and allowed_file(request.files['file'].filename):
+            reaction_file = os.path.join(UPLOAD_PATH, secure_filename(request.files['file'].filename))
+            request.files['file'].save(reaction_file)
+
+        if reaction_file:
+            task_id = pdb.insert_task()
+            FILEList[task_id] = reaction_file
+            return str(task_id), 201
+        else:
+            return None, 403
 
 
 """
@@ -174,7 +180,7 @@ class ParserAPI(Resource):
     def get(self):
         if FILEList:
             task_id, file = FILEList.popitem()
-            return dict(id=task_id, file=file), 201
+            return dict(id=task_id, file=file), 201  # не заработает если файл на другом компе.
         else:
             return None, 201
 
