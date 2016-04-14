@@ -84,11 +84,13 @@ class Mapper(object):
                         except ValueError:
                             temp = 298
 
-                standardized = self.standardize(ET.tostring(i, encoding='utf8', method='xml'))
+                standardized = self.standardize(ET.tostring(i, encoding='utf8', method='xml').decode())
+                print(standardized)
                 if standardized:
                     data = dict(task_id=task['id'], structure=standardized['structure'],
                                 isreaction=standardized['isreaction'],
                                 solvents=json.dumps(solvlist), temperature=temp, status=standardized['status'])
+                    print(data)
                     q = serverpost('parser', data)
                     if q.isdigit():
                         serverpost("reaction/%s" % int(q), {'models': ','.join(standardized['models'])})
@@ -119,10 +121,12 @@ class Mapper(object):
         return False
 
     def standardize(self, structure):
+        print(structure)
         data = {"structure": structure, "parameters": "mol",
                 "filterChain": [{"filter": "standardizer", "parameters": {"standardizerDefinition": STANDARD}},
                                 {"filter": "clean", "parameters": {"dim": 2}}]}
         structure = chemaxpost('calculate/molExport', data)
+        print(structure,data)
         models = set()
         status = None
         isreaction = False
