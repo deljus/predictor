@@ -24,4 +24,4 @@ for i in ${workdir}/*; do
 done
 
 # remove tmp
-rm -rf ${workdir}
+#rm -rf ${workdir}

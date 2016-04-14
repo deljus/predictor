@@ -197,3 +197,4 @@ class Mapper(object):
                     return None
 
         return 'reaction check failed'
+
