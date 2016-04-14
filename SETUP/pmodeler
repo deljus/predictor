@@ -7,4 +7,4 @@ VIRTUALENV_DIR=$WDIR
 source $VIRTUALENV_DIR/bin/activate
 
 cd $WDIR
-python mapper.py
+python modeler.py
