@@ -50,9 +50,9 @@ class Mapper(object):
         self.__fear = FEAR(isotop=False, stereo=False, hyb=False, element=True, deep=0)
 
     def parsefile(self, task):
-        print(task)
         if serverput("task_status/%s" % task['id'], {'task_status': LOCK_MAPPING}):
             p = sp.Popen([MOLCONVERT, 'mrv', task['file']], stdout=sp.PIPE, stderr=sp.STDOUT)
+<<<<<<< HEAD
             #try:
             mrv = remove_namespace(ET.fromstring(p.communicate()[0].decode()), 'http://www.chemaxon.com')
             print(mrv)
@@ -96,6 +96,48 @@ class Mapper(object):
                         serverpost("reaction/%s" % int(q), {'models': ','.join(standardized['models'])})
             #except:
             #    pass
+=======
+            try:
+                mrv = remove_namespace(ET.fromstring(p.communicate()[0].decode()), 'http://www.chemaxon.com')
+                solv = {x['name'].lower(): x['id'] for x in getsolvents()}
+
+                for i in mrv.getchildren():
+                    solvlist = {}
+                    temp = 298
+                    prop = {x.get('title').lower(): x.find('scalar').text.lower().strip() for x in i.iter('property')}
+                    for k, v in prop.items():
+                        if 'solvent.amount.' in k:
+                            try:
+                                sname, *_, samount = re.split('[:=]', v)
+                                sid = solv.get(sname.strip())
+                                if sid:
+                                    if '%' in samount:
+                                        v = samount.replace('%', '')
+                                        grader = 100
+                                    else:
+                                        v = samount
+                                        grader = 1
+
+                                    solvlist[sid] = float(v) / grader
+                            except:
+                                pass
+                        elif 'temperature' == k:
+                            try:
+                                temp = float(v)
+                            except ValueError:
+                                temp = 298
+
+                    standardized = self.standardize(ET.tostring(i, encoding='utf8', method='xml').decode())
+                    if standardized:
+                        data = dict(task_id=task['id'], structure=standardized['structure'],
+                                    isreaction=standardized['isreaction'],
+                                    solvents=json.dumps(solvlist), temperature=temp, status=standardized['status'])
+                        q = serverpost('parser', data)
+                        if q.isdigit():
+                            serverpost("reaction/%s" % int(q), {'models': ','.join(standardized['models'])})
+            except:
+                pass
+>>>>>>> bdf10ec7b462e2358ba26577c324dbb137513aa0
 
             if serverput("task_status/%s" % task['id'], {'task_status': MAPPING_DONE}):
                 return True
