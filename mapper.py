@@ -28,7 +28,6 @@ from utils.mappercore import Mapper
 
 
 TASKS = []
-MAPPER = Mapper()
 
 
 def run():
@@ -39,7 +38,7 @@ def run():
 
     while TASKS and threading.active_count() < THREAD_LIMIT:
         i = TASKS.pop(0)
-        taskthread = MAPPER.parsefile if "file" in i else MAPPER.mapper
+        taskthread = Mapper().parsefile if "file" in i else Mapper().mapper
         t = threading.Thread(target=taskthread, args=([i]))
         t.start()
 

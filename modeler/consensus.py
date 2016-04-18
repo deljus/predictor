@@ -23,8 +23,8 @@ import numpy as np
 
 
 class ConsensusDragos(object):
-    def __init__(self):
-        self.__TRUST = 5
+    def __init__(self, trust=5):
+        self.__TRUST = trust
         self.__INlist = []
         self.__ALLlist = []
 

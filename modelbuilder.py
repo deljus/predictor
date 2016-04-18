@@ -82,7 +82,7 @@ class Modelbuilder(object):
                           for x, y in zip(self.__descgens, e)]
 
                 # todo: удалять совсем плохие фрагментации. добавлять описание модели.
-                pickle.dump(dict(models=models, config={}, structure_prepare=None),
+                pickle.dump(dict(models=models, config={}),
                             gzip.open(self.__options['model'], 'wb'))
             else:
                 print('path for model saving not writable')

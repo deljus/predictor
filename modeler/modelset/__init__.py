@@ -20,16 +20,25 @@
 #
 import os
 import pkgutil
+from importlib import reload, import_module
 
 MODELS = {}
+imports = {}
 
 
 def register_model(name, model, init=None):
     MODELS[name] = (model, init)
 
-for mloader, pname, ispkg in pkgutil.iter_modules([os.path.dirname(__file__)]):
-    try:
-        print('import model ', pname)
-        __import__('modelset.%s' % pname)
-    except Exception:
-        pass
+
+def find_models():
+    for mloader, pname, ispkg in pkgutil.iter_modules([os.path.dirname(__file__)]):
+        try:
+            print('found model: ', pname)
+            if pname in imports:
+                print('reload existing model')
+                reload(imports[pname])
+            else:
+                print('import new model')
+                imports[pname] = import_module('modeler.modelset.%s' % pname)
+        except Exception:
+            pass

@@ -99,6 +99,7 @@ class Model(object):
 
         self.__n_jobs = n_jobs
         self.__crossval(svmparams)
+        self.delworkpath()
 
     __estimators = dict(svr=SVR, svc=SVC)
 
@@ -131,6 +132,8 @@ class Model(object):
         fcount = 0
         depindex = []
         maxdep = []
+        print('list of svm params:')
+        print(pd.DataFrame(list(svmparams)))
         for param in svmparams:
             di = {}
             md = 0
@@ -180,9 +183,8 @@ class Model(object):
 
         if self.__repetitions > self.__rep_boost:
             bestmodel = self.__fit(bestmodel['params'], self.__repetitions)
-        print('========================================\n'
-              'SVM params %(params)s\n' +
-              self.__scorereporter % bestmodel)
+        print('========================================\n' +
+              ('SVM params %(params)s\n' + self.__scorereporter) % bestmodel)
         print('========================================\n%s variants checked' % fcount)
         self.__model = bestmodel
 

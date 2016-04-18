@@ -85,20 +85,9 @@ def run():
         t.start()
 
 
-class PeriodicScheduler(object):
-    def __init__(self):
-        self.scheduler = sched.scheduler(time.time, time.sleep)
-
-    def setup(self, interval, action, actionargs=()):
-        action(*actionargs)
-        self.scheduler.enter(interval, 1, self.setup, (interval, action, actionargs))
-
-    def run(self):
-        self.scheduler.run()
-
-
-def main():
+def spider():
     registeredmodels = {x['name']: x['id'] for x in serverget("models", None)}
+    models.find_models()
 
     todelete = set(registeredmodels).difference(models.MODELS)
     toattach = set(models.MODELS).difference(registeredmodels)
@@ -117,10 +106,27 @@ def main():
             except Exception:
                 print(traceback.format_exc())
                 pass
-        del model
 
     for x in todelete:
         serverdel("models", {'id': registeredmodels[x]})
+
+
+class PeriodicScheduler(object):
+    def __init__(self):
+        self.scheduler = sched.scheduler(time.time, time.sleep)
+
+    def setup(self, interval, action, actionargs=()):
+        action(*actionargs)
+        self.scheduler.enter(interval, 1, self.setup, (interval, action, actionargs))
+
+    def run(self):
+        self.scheduler.run()
+
+
+def main():
+    periodic_model_finder = PeriodicScheduler()
+    periodic_model_finder.setup(60*5, spider)
+    periodic_model_finder.run()
 
     periodic_scheduler = PeriodicScheduler()
     periodic_scheduler.setup(INTERVAL, run)

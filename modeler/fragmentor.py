@@ -167,15 +167,16 @@ class Fragmentor(object):
 
     def get(self, inputfile=None, outputfile=None, inputstring=None, **kwargs):
         """
-        :param inputstring: sdf or rdf as string
+        :param inputstring: sdf, mol or rdf, rxn as string
         :param outputfile: output svm file
         :param inputfile: input sdf or rdf file
         """
 
         """ PMAPPER and Standardizer works only with molecules. NOT CGR!
         """
-        def splitter(f):
-            return ''.join(f.get(x + '$$$$\n') for x in (inputstring or open(inputfile).read()).split('$$$$\n'))
+        def splitter(f):  # MEMORY EATER
+            return ''.join(f.get(x.rstrip() + '\n$$$$\n') for x in ([inputstring.rstrip().rstrip('$$$$')] or
+                                                                    open(inputfile).read()).split('$$$$\n'))
 
         if self.__marker:
             inputstring = splitter(self.__marker)

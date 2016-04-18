@@ -337,7 +337,7 @@ class ModelListAPI(Resource):
         args = ModelListparserpost.parse_args()
         data = {"structure": args['example'], "parameters": "mrv"}
         example = chemaxpost('calculate/stringMolExport', data)
-        model_id = pdb.insert_model(args['name'], args['desc'], example, args['is_reaction'], args['hashes'])
+        model_id = pdb.insert_model(args['name'], args['desc'], example or '', args['is_reaction'], args['hashes'])
         return model_id, 201
 
 
