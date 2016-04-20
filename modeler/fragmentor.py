@@ -233,8 +233,9 @@ class Fragmentor(object):
                 self.__dumpheader(outputfile + '.hdr')
                 self.__execparams.insert(self.__execparams.index('-t'), '-h')
                 self.__execparams.insert(self.__execparams.index('-t'), '')
+            print('parsing fragmentor output')
             X, Y, D = self.__parsefragmentoroutput(outputfile)
-
+            print('parsing done')
             if parser:
                 return pd.concat([X, extblock], axis=1), Y, D
             else:
