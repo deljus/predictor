@@ -155,7 +155,9 @@ class Mapper(object):
                 mol = structure['structure']
                 # todo: тут надо для молекул заморочиться. mb
 
-            structure = chemaxpost('calculate/molExport', {"structure": mol, "parameters": "mrv"})
+            structure = chemaxpost('calculate/molExport', {"structure": mol, "parameters": "mrv",
+                                                           "filterChain": [{"filter": "clean",
+                                                                            "parameters": {"dim": 2}}]})
             if structure:
                 structure = json.loads(structure)
                 return dict(structure=structure['structure'], models=models, status=status, isreaction=isreaction)
