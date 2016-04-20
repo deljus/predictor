@@ -18,10 +18,9 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import sched
 import threading
 import time
-
+import schedule
 from utils.config import INTERVAL, THREAD_LIMIT, REQ_MAPPING
 from utils.utils import gettask, getfiletask
 from utils.mappercore import Mapper
@@ -36,29 +35,20 @@ def run():
     if ft:
         TASKS.append(ft)
 
-    while TASKS and threading.active_count() < THREAD_LIMIT:
+    if TASKS and threading.active_count() < THREAD_LIMIT:
         i = TASKS.pop(0)
+        print("map task", i)
         taskthread = Mapper().parsefile if "file" in i else Mapper().mapper
         t = threading.Thread(target=taskthread, args=([i]))
         t.start()
 
 
-class PeriodicScheduler(object):
-    def __init__(self):
-        self.scheduler = sched.scheduler(time.time, time.sleep)
-
-    def setup(self, interval, action, actionargs=()):
-        action(*actionargs)
-        self.scheduler.enter(interval, 1, self.setup, (interval, action, actionargs))
-
-    def run(self):
-        self.scheduler.run()
-
-
 def main():
-    periodic_scheduler = PeriodicScheduler()
-    periodic_scheduler.setup(INTERVAL, run)
-    periodic_scheduler.run()
+    schedule.every(INTERVAL).seconds.do(run)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
 
 if __name__ == '__main__':
     main()

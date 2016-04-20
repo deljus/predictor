@@ -20,12 +20,12 @@
 #
 import traceback
 import json
-import sched
 import threading
 import time
 import modeler.modelset as models
 from utils.utils import serverget, serverput, serverpost, serverdel, gettask
-from utils.config import INTERVAL, THREAD_LIMIT, REQ_MODELLING, LOCK_MODELLING, MODELLING_DONE, WORK_PATH
+from utils.config import INTERVAL, THREAD_LIMIT, REQ_MODELLING, LOCK_MODELLING, MODELLING_DONE, WORK_PATH, MODEL_REFRESH
+import schedule
 
 TASKS = []
 LOSE = []
@@ -79,7 +79,7 @@ def run():
             if tmp or not serverput(*LOSE[i][1]):
                 LOSE[i] = (tmp, LOSE[i][1])
 
-    while TASKS and threading.active_count() < THREAD_LIMIT:
+    if TASKS and threading.active_count() < THREAD_LIMIT:
         i = TASKS.pop(0)
         t = threading.Thread(target=taskthread, args=([i['id']]))
         t.start()
@@ -111,26 +111,14 @@ def spider():
         serverdel("models", {'id': registeredmodels[x]})
 
 
-class PeriodicScheduler(object):
-    def __init__(self):
-        self.scheduler = sched.scheduler(time.time, time.sleep)
-
-    def setup(self, interval, action, actionargs=()):
-        action(*actionargs)
-        self.scheduler.enter(interval, 1, self.setup, (interval, action, actionargs))
-
-    def run(self):
-        self.scheduler.run()
-
-
 def main():
-    periodic_model_finder = PeriodicScheduler()
-    periodic_model_finder.setup(60*5, spider)
-    periodic_model_finder.run()
+    spider()
+    schedule.every(MODEL_REFRESH).minutes.do(spider)
+    schedule.every(INTERVAL).seconds.do(run)
 
-    periodic_scheduler = PeriodicScheduler()
-    periodic_scheduler.setup(INTERVAL, run)
-    periodic_scheduler.run()
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
 
 if __name__ == '__main__':
     main()

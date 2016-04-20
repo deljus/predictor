@@ -37,7 +37,7 @@ def serverget(url, params):
             else:
                 continue
     else:
-        return []
+        return False
 
 
 def serverput(url, params):
@@ -102,7 +102,7 @@ def chemaxpost(url, data):
 
 
 def gettask(status):
-    return serverget('tasks', {'task_status': status})
+    return serverget('tasks', {'task_status': status}) or []
 
 
 def getfiletask():
@@ -111,5 +111,3 @@ def getfiletask():
 
 def getsolvents():
     return serverget('solvents', None)
-
-
