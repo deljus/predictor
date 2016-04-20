@@ -260,9 +260,9 @@ class Fragmentor(object):
                     else:
                         ad[-1] = False
                         break
-                vector.append(pd.DataFrame([tmp], columns=self.__headcolumns))
+                vector.append(tmp)
 
-        return pd.concat(vector, ignore_index=True).fillna(0), pd.Series(prop), pd.Series(ad)
+        return pd.DataFrame(vector, columns=self.__headcolumns).fillna(0), pd.Series(prop), pd.Series(ad)
 
     def __savesvm(self, outputfile, X, Y):
         k2nd = {}

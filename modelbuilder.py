@@ -221,7 +221,6 @@ class Modelbuilder(object):
             ext, *file = e.split(':')
             if file:
                 v = pd.read_csv(file[0])
-                print(v)
                 k = v.pop('EXTKEY')
                 record = dict(key=k, value=v.rename(columns=lambda x: '%s.%s' % (ext, x)))
             extdata[ext] = record
