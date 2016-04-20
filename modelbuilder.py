@@ -52,6 +52,8 @@ class Modelbuilder(object):
         self.__descgens = [g(extention=extdata, **x)
                            for g, x, _ in descgenerator]
 
+        description = self.__parsemodeldescription()
+
         if not self.__options['output']:
             ests = []
             svm = {'svr', 'svc'}.intersection(self.__options['estimator']).pop()
@@ -82,7 +84,7 @@ class Modelbuilder(object):
                           for x, y in zip(self.__descgens, e)]
 
                 # todo: удалять совсем плохие фрагментации. добавлять описание модели.
-                pickle.dump(dict(models=models, config={}),
+                pickle.dump(dict(models=models, config=description),
                             gzip.open(self.__options['model'], 'wb'))
             else:
                 print('path for model saving not writable')
@@ -133,7 +135,7 @@ class Modelbuilder(object):
                                           formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         rawopts.add_argument("--workpath", "-w", type=str, default='.', help="work path")
 
-        rawopts.add_argument("--input", "-i", type=str, default='input.sdf', help="input SDF ")
+        rawopts.add_argument("--input", "-i", type=str, default='input.sdf', help="input SDF")
 
         rawopts.add_argument("--dragosmolstd", action='store_true',
                              help="prepare molecules with Dragos approach [NOT for REACTIONS]")
@@ -153,6 +155,8 @@ class Modelbuilder(object):
                              help="extention data files. -e extname:filename [-e extname2:filename2]")
 
         rawopts.add_argument("--fragments", "-f", type=str, default=None, help="ISIDA Fragmentor keys file")
+
+        rawopts.add_argument("--description", "-ds", type=str, default='model.dsc', help="model description file")
 
         rawopts.add_argument("--svm", "-s", action='append', type=str, default=None,
                              help="SVM params. use Dragos Genetics if don't set."
@@ -182,6 +186,20 @@ class Modelbuilder(object):
         rawopts.add_argument("--smartcv", "-S", action='store_true', help="smart crossvalidation [NOT implemented]")
 
         return vars(rawopts.parse_args())
+
+    def __parsemodeldescription(self):
+        tmp = {}
+        with open(self.__options['description']) as f:
+            for line in f:
+                k, v = line.split(':=')
+                k = k.strip()
+                v.strip()
+                if k == 'hashes':
+                    v = v.split()
+                elif k == 'is_reaction':
+                    v = True if v.lower() == 'true' else False
+                tmp[k] = v
+        return tmp
 
     def __parsefragmentoropts(self, file):
         params = []

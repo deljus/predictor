@@ -18,29 +18,27 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+import json
 import os
-import time
-import subprocess as sp
+from utils.utils import chemaxpost
 import pickle
 import gzip
-from utils.utils import chemaxpost
 from modeler.modelset import register_model
 from modeler.consensus import ConsensusDragos
 script_path = os.path.dirname(__file__)
 
 
-class Model(ConsensusDragos, StandardizeDragos, ISIDAatommarker):
+class Model(ConsensusDragos):
     def __init__(self, workpath, file):
-        self.__models, self.__conf = pickle.load(gzip.open(file, 'rb'))
+        tmp = pickle.load(gzip.open(file, 'rb'))
+        self.__models = tmp['models']
+        self.__conf = tmp['config']
         self.__workpath = workpath
 
         self.Nlim = self.__conf.get('nlim', 0)
         self.TOL = self.__conf.get('tol', 1000000)
 
-        StandardizeDragos.__init__()
-        ConsensusDragos.__init__()
-        if 'markerrule' in self.__conf:
-            ISIDAatommarker.__init__(self.__conf.get('markerrule'), self.__workpath)
+        ConsensusDragos.__init__(self, trust=self.__conf.get('trust', 5))
 
         self.__unit = self.__conf.get('report_units', None)
 
@@ -61,50 +59,27 @@ class Model(ConsensusDragos, StandardizeDragos, ISIDAatommarker):
 
     def getresult(self, chemical):
         structure = chemical['structure']
+        solvents = chemical['solvents'][0]['name'] if chemical['solvents'] else 'Water'
+        # [dict(id=y.solvent.id, name=y.solvent.name, amount=y.amount)]
+        temperature = chemical['temperature']
 
         if structure != ' ':
-            fixtime = int(time.time())
-            temp_file_mol = "structure-%d.sdf" % fixtime
-            temp_file_mol_path = os.path.join(self.__workpath, temp_file_mol)
+            q = chemaxpost('calculate/molExport', {"structure": structure, "parameters": "mol"})
+            if q:
+                structure = json.loads(q)['structure']
+                res = [dict(type='structure', attrib='used structure', value=structure)]
+                for model in self.__models:
+                    model.setworkpath(self.__workpath)
+                    pred = model.predict(structure, temperature=temperature, solvent=solvents)
+                    # dict(prediction=pd.concat(pred, axis=1),
+                    #      domain=pd.concat(dom, axis=1), y_domain=pd.concat(ydom, axis=1))
+                    model.delworkpath()
+                    print(pred)
+                    for P, AD in zip((x for x in pred['prediction'].loc[0, :]),
+                                     (x for x in pred['domain'].loc[0, :])):
+                        self.cumulate(P, AD)
 
-            """
-            self.standardize() method prepares structure for modeling and return True if OK else False
-            """
-            if not self.is_reation():
-                stdmol = self.standardize(structure, mformat='sdf')
-                if stdmol:
-                    """
-                    self.markatoms() create atom marking 7th column in SDF based on pmapper.
-                    need self.markerrule var with path to config.xml
-                    work like Utils/HBMap + map2markedatom.pl
-                    """
-                    if 'markerrule' in self.__conf:
-                        stdmol = self.markatoms(stdmol)
-                        structure = dict(type='structure', attrib='used structure', value=stdmol)
-            else:
-                stdmol = # get cgr
-
-            for model in self.__models:
-                model.setworkpath(self.__workpath)
-                model.predict(stdmol)
-
-
-                            with open(temp_file_res_path, 'r') as f:
-                                for line in f:
-                                    P = float(line)
-                                    self.cumulate(P, AD)
-                        except:
-                            print('modeling results files broken or don\'t exist. skipped')
-
-                files = os.listdir(self.__modelpath)
-                for x in files:
-                    if 'structure-%d' % fixtime in x:
-                        try:
-                            os.remove(os.path.join(self.__modelpath, x))
-                        except:
-                            print('something is very bad. file %s undeletable' % x)
-
-                return [structure] + self.report(units=self.__unit)
+                return res + self.report(units=self.__unit)
             else:
                 return False
         else:
@@ -112,9 +87,12 @@ class Model(ConsensusDragos, StandardizeDragos, ISIDAatommarker):
 
 files = os.listdir(script_path)
 for i in files:
-    if os.path.splitext(i)[1] == '.model':
+    if os.path.splitext(i)[1] == '.modelbuilder':
         try:
-            model = Model('.', i)
-            register_model(model.getname(), Model, init=i)
+            print('try to use:', i)
+            model = Model('.', os.path.join(script_path, i))
+            print('model name:', model.getname())
+            register_model(model.getname(), Model, init=os.path.join(script_path, i))
+            del model
         except:
             pass

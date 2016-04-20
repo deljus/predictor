@@ -561,7 +561,7 @@ def import_solvents():
     file = open(os.path.join(os.path.dirname(__file__), "import_data/solvents.txt"), "r")
     for _line in file.readlines():
         try:
-            solvent_name = _line.strip(' \t\n\r')
+            solvent_name = _line.strip()
             s = Solvents.get(name=solvent_name)
             if not s:
                   Solvents(name=solvent_name)
@@ -578,7 +578,7 @@ def import_models():
     example =  ""
     Models(name=name, description=desc, example=example)
 
-#import_solvents()
+import_solvents()
 
 # загрузим модели
 #import_models()

@@ -1,68 +1,40 @@
-Pentane
-Petroleum ether
-Hexane
-Heptane
-Diethyl amine
-Diethyl ether
-Triethyl amine
-Tert-butyl methyl ether
-Cyclohexane
-Tert-butyl alcohol
-Isopropanol
-Acetonitrile
-Ethanol
-Acetone
-Methanol
-Methyl isobutyl ketone
-Isobutyl alcohol
-1-Propanol
-Methyl ethyl ketone
-2-Butanol
-Isoamyl alcohol
-1-Butanol
-Diethyl ketone
-1-Octanol
-p-Xylene
-m-Xylene
-Toluene
-Dimethoxyethane
-Benzene
-Butyl acetate
-1-Chlorobutane
-Tetrahydrofuran
-Ethyl acetate
-o-Xylene
-Hexamethylphosphorus triamide
-2-Ethoxyethyl ether
-N,N-Dimethylacetamide
-Diethylene glycol dimethyl ether
-N,N-Dimethylformamide
-2-Methoxyethanol
-Pyridine
-Propanoic acid
 Water
-2-Methoxyethyl acetate
-Benzonitrile
-1-Methyl-2-pyrrolidinone
+Methanol
+Ethanol
+1-Propanol
+1-Butanol
+1-Pentanol
+1-Hexanol
+1-Heptanol
+1-Octanol
+2-Propanol
+3-Methyl-1-butanol
+2-Methyl-2-propanol
+2-methylbutan-2-ol
+2-butanol
+Benzilic Alcohol
+1,2-Ethandiol
+Acetone
+Butanone
+ethyl acetate
+N,N-Dimethylformamide
 Hexamethylphosphoramide
-1,4-Dioxane
-Acetic acid
-Acetic anhydride
-Dimethyl sulfoxide
-Chlorobenzene
-Deuterium oxide
-Ethylene glycol
-Diethylene glycol
-Propylene carbonate
-Formic acid
-1,2-Dichloroethane
-Glycerin
-Carbon disulfide
-1,2-Dichlorobenzene
-Methylene chloride
+Acetonitrile
+Propionitrile
+Diethyl ether
+Tetrahydrofuran
+1,4-Dioxan
 Nitromethane
-2,2,2-Trifluoroethanol
-Chloroform
-1,1,2-Trichlorotrifluoroethane
-Carbon tetrachloride
-Tetrachloroethylene
+Nitrobenzene
+DMSO
+Sulfolane
+Hexane
+Cyclohexane
+Benzene
+Toluene
+m-xylene
+Dichloromethane
+Chlorophorm
+Tetracloromethane
+Chlorobenzene
+4-Butyrolactone
