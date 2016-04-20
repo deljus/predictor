@@ -87,8 +87,9 @@ class Model(object):
         self.__nfold = nfold
         self.__repetitions = repetitions
         self.__rep_boost = ceil(repetitions * (rep_boost % 100) / 100)
-
+        print("Descriptors generation start")
         self.__x, self.__y, *_ = descriptorgen.get(**kwargs)
+        print("Descriptors generated")
 
         self.__normalize = normalize
         self.__dispcoef = dispcoef
