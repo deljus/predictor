@@ -175,8 +175,8 @@ class Fragmentor(object):
         """ PMAPPER and Standardizer works only with molecules. NOT CGR!
         """
         def splitter(f):  # MEMORY EATER
-            return ''.join(f.get(x.rstrip() + '\n$$$$\n') for x in ([inputstring.rstrip().rstrip('$$$$')] or
-                                                                    open(inputfile).read()).split('$$$$\n'))
+            return ''.join(f.get(x + '\n$$$$\n') for x in
+                           (inputstring or open(inputfile).read()).rstrip('$\n ').split('\n$$$$\n'))
 
         if self.__marker:
             inputstring = splitter(self.__marker)

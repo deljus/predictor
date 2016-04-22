@@ -85,6 +85,8 @@ class Modelbuilder(object):
                           for x, y in zip(self.__descgens, e)]
 
                 # todo: удалять совсем плохие фрагментации. добавлять описание модели.
+                if 'tol' not in description:
+                    description['tol'] = models[0].getmodelstats()['dragostolerance']
                 pickle.dump(dict(models=models, config=description),
                             gzip.open(self.__options['model'], 'wb'))
             else:
@@ -139,7 +141,7 @@ class Modelbuilder(object):
                                           formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         rawopts.add_argument("--workpath", "-w", type=str, default='.', help="work path")
 
-        rawopts.add_argument("--input", "-i", type=str, default='input.sdf', help="input SDF")
+        rawopts.add_argument("--input", "-i", type=str, default='input.sdf', help="input SDF or RDF")
 
         rawopts.add_argument("--dragosmolstd", action='store_true',
                              help="prepare molecules with Dragos approach [NOT for REACTIONS]")
@@ -147,12 +149,6 @@ class Modelbuilder(object):
                              help="prepare molecules with JChem pmapper [NOT for REACTIONS]")
 
         rawopts.add_argument("--output", "-o", type=str, default=None, help="output SVM|HDR")
-
-        rawopts.add_argument("--descriptors", "-D", action='append', type=str, default=None,
-                             help="input SVM|HDR with precalculated descriptors for fitting. "
-                                  "-D filename{without .file extention} "
-                                  "[-D next filename if used more than 1 descriptor generator] "
-                                  "for multiset set files in next order: fragmentor, NOT_IMPLEMENTED")
 
         rawopts.add_argument("--model", "-m", type=str, default='output.model', help="output model")
         rawopts.add_argument("--extention", "-e", action='append', type=str, default=None,
@@ -202,6 +198,8 @@ class Modelbuilder(object):
                     v = v.split()
                 elif k == 'is_reaction':
                     v = True if v.lower() == 'true' else False
+                elif k in ('nlim', 'tol'):
+                    v = float(v)
                 tmp[k] = v
         return tmp
 

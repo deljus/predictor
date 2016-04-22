@@ -35,10 +35,10 @@ class Model(ConsensusDragos):
         self.__conf = tmp['config']
         self.__workpath = workpath
 
-        self.Nlim = self.__conf.get('nlim', 0)
-        self.TOL = self.__conf.get('tol', 1000000)
+        self.Nlim = self.__conf.get('nlim', 1)
+        self.TOL = self.__conf.get('tol', 1e10)
 
-        ConsensusDragos.__init__(self, trust=self.__conf.get('trust', 5))
+        ConsensusDragos.__init__(self)
 
         self.__unit = self.__conf.get('report_units', None)
 

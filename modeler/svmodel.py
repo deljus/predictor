@@ -114,7 +114,8 @@ class Model(object):
     def getmodelstats(self):
         stat = {x: self.__model[x] for x in self.__scorers}
         stat.update(dict(fitparams=self.__model['params'], repetitions=self.__repetitions,
-                         nfolds=self.__nfold, normalize=self.__normalize))
+                         nfolds=self.__nfold, normalize=self.__normalize,
+                         dragostolerance=sqrt((self.__y ** 2).mean() - self.__y.mean() ** 2)))
         return stat
 
     def __splitrange(self, param, dep=0):
@@ -230,11 +231,11 @@ class Model(object):
             for s, f in self.__scorers.items():
                 scorers[s].append(f(ky_test, ky_pred))
 
-            y_pred.append(ky_pred)
-            y_test.append(ky_test)
+            #y_pred.append(ky_pred)
+            #y_test.append(ky_test)
 
-        y_pred = pd.concat(y_pred, axis=1)
-        y_test = pd.concat(y_test, axis=1)
+        #y_pred = pd.concat(y_pred, axis=1)
+        #y_test = pd.concat(y_test, axis=1)
 
         res = dict(model=models, params=svmparams,)
         for s, v in scorers.items():

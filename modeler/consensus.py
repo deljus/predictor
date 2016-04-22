@@ -23,8 +23,8 @@ import numpy as np
 
 
 class ConsensusDragos(object):
-    def __init__(self, trust=5):
-        self.__TRUST = trust
+    def __init__(self):
+        self.__TRUST = 5
         self.__INlist = []
         self.__ALLlist = []
 
@@ -88,4 +88,3 @@ class ConsensusDragos(object):
                     zad='None of the local models have applicability domains covering this structure')
 
     __trustdesc = {5: 'Optimal', 4: 'Good', 3: 'Medium', 2: 'Low'}
-
