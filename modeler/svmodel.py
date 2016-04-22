@@ -115,7 +115,7 @@ class Model(object):
         stat = {x: self.__model[x] for x in self.__scorers}
         stat.update(dict(fitparams=self.__model['params'], repetitions=self.__repetitions,
                          nfolds=self.__nfold, normalize=self.__normalize,
-                         dragostolerance=sqrt((self.__y ** 2).mean() - self.__y.mean() ** 2)))
+                         dragostolerance=sqrt(self.__y.var())))
         return stat
 
     def __splitrange(self, param, dep=0):

@@ -43,12 +43,12 @@ class ConsensusDragos(object):
         ALLarr = np.array(self.__ALLlist)
 
         PavgALL = ALLarr.mean()
-        sigmaALL = sqrt((ALLarr ** 2).mean() - PavgALL ** 2)
+        sigmaALL = sqrt(ALLarr.var())
 
         if self.__INlist:
             PavgIN = INarr.mean()
-            sigmaIN = sqrt((INarr ** 2).mean() - PavgIN ** 2)
-            pavgdiff = PavgIN - PavgALL
+            sigmaIN = sqrt(INarr.var())
+            pavgdiff = abs(PavgIN - PavgALL)
             if pavgdiff > self.TOL:
                 reason.append(self.__errors.get('diff', '%.2f') % pavgdiff)
                 self.__TRUST -= 1
