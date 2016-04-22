@@ -20,6 +20,7 @@
 #
 import os
 import time
+from copy import deepcopy
 import pandas as pd
 from modeler.fragmentor import Fragmentor
 from modeler.svmodel import Model as SVM
@@ -100,7 +101,10 @@ class Modelbuilder(object):
             return False
 
         if len(estimatorparams) == 1:
-            estimatorparams *= len(self.__descgens)
+            tmp = []
+            for i in range(len(self.__descgens)):
+                tmp.append(deepcopy(estimatorparams[0]))
+            estimatorparams = tmp
         return estimatorparams
 
     def __gendesc(self, output):
