@@ -25,7 +25,7 @@ import pickle
 import gzip
 from modeler.modelset import register_model
 from modeler.consensus import ConsensusDragos
-script_path = os.path.dirname(__file__)
+script_path = os.path.join(os.path.dirname(__file__), 'modelbuilder')
 
 
 class Model(ConsensusDragos):
