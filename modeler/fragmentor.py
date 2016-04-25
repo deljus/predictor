@@ -41,7 +41,7 @@ class CGRWrapper(object):
 
 
 class Fragmentor(object):
-    def __init__(self, workpath='.', version='last', s_option=None, fragment_type='3', min_length='2', max_length='10',
+    def __init__(self, workpath='.', version=None, s_option=None, fragment_type='3', min_length='2', max_length='10',
                  colorname=None, marked_atom=None, cgr_dynbonds=None, xml=None, doallways=False,
                  useformalcharge=False, atompairs=False, fragmentstrict=False, getatomfragment=False,
                  overwrite=True, header=None, extention=None, marker_rules=None, standardize=None,
@@ -66,7 +66,7 @@ class Fragmentor(object):
         self.__headpath = None
 
         self.__workpath = workpath
-        self.__fragversion = version
+        self.__fragversion = ('-%s' % version) if version else ''
         tmp = ['-f', 'SVM']
         if s_option: tmp.extend(['-s', s_option])
         if header and os.path.exists(header):
@@ -91,7 +91,7 @@ class Fragmentor(object):
         self.__execparams = tmp
 
     def __fragmentor(self):
-        return '%s-%s' % (FRAGMENTOR, self.__fragversion)
+        return '%s%s' % (FRAGMENTOR, self.__fragversion)
 
     def __dumpheader(self, header):
         with open(header) as f:

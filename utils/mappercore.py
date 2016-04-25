@@ -164,8 +164,7 @@ class Mapper(object):
 
         return False
 
-    @staticmethod
-    def chkreaction(structure):
+    def chkreaction(self, structure):
         data = {"structure": structure, "parameters": "smiles:u",
                 "filterChain": [{"filter": "standardizer", "parameters": {"standardizerDefinition": "unmap"}}]}
         smiles = chemaxpost('calculate/molExport', data)
@@ -174,9 +173,9 @@ class Mapper(object):
             ss = set(s.split('.'))
             ps = set(p.split('.'))
             if ss == ps:
-                return 'reagents equal to products'
+                return self.__warnings['fe']
             if ss.intersection(ps):
-                return 'part of reagents equal to part of products'
+                return self.__warnings['pe']
 
             st = chemaxpost('calculate/chemicalTerms', {"structure": s, "parameters": "majorTautomer()"})
             pt = chemaxpost('calculate/chemicalTerms', {"structure": p, "parameters": "majorTautomer()"})
@@ -191,10 +190,15 @@ class Mapper(object):
                     sts = set(json.loads(st)['structure'].split('.'))
                     pts = set(json.loads(pt)['structure'].split('.'))
                     if sts == pts:
-                        return 'tautomerized and neutralized reagents equal to products'
+                        return self.__warnings['tfe']
                     if ss.intersection(ps):
-                        return 'tautomerized and neutralized part of reagents equal to part of products'
+                        return self.__warnings['tpe']
 
                     return None
 
         return 'reaction check failed'
+
+    __warnings = dict(fe='reagents equal to products',
+                      pe='part of reagents equal to part of products',
+                      tfe='tautomerized and neutralized reagents equal to products',
+                      tpe='tautomerized and neutralized part of reagents equal to part of products')
