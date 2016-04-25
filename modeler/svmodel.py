@@ -258,10 +258,10 @@ class Model(object):
         pred, dom, ydom = [], [], []
         for i, model in enumerate(self.__model['model']):
             x_t = pd.DataFrame(model['normal'].transform(d_x), columns=d_x.columns) if model['normal'] else d_x
-
             dom.append(((d_x - model['x_min']).min(axis=1) >= 0) & ((model['x_max'] - d_x).min(axis=1) >= 0) & d_ad)
             pred.append(pd.Series(model['model'].predict(x_t)))
-            ydom.append((model['y_min'] <= pred[-1]) & (pred[-1] <= model['y_max']))
+
+            ydom.append((pred[-1] >= model['y_min']) & (pred[-1] <= model['y_max']))
 
         res = dict(prediction=pd.concat(pred, axis=1),
                    domain=pd.concat(dom, axis=1), y_domain=pd.concat(ydom, axis=1))
