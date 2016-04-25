@@ -27,6 +27,7 @@ from modeler.structprepare import ISIDAatommarker, StandardizeDragos
 from CGRtools.main_condenser import condenser_core
 from io import StringIO
 from sklearn.feature_extraction import DictVectorizer
+from utils.config import FRAGMENTOR
 
 
 class CGRWrapper(object):
@@ -65,7 +66,7 @@ class Fragmentor(object):
         self.__headpath = None
 
         self.__workpath = workpath
-        self.__fragmentor = 'fragmentor-%s' % version
+        self.__fragmentor = '%s-%s' % (FRAGMENTOR, version)
         tmp = ['-f', 'SVM']
         if s_option: tmp.extend(['-s', s_option])
         if header and os.path.exists(header):

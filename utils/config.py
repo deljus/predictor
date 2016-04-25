@@ -47,3 +47,5 @@ CXCALC = os.path.join(JCHEMBIN, 'cxcalc')
 REACTOR = os.path.join(JCHEMBIN, 'react')
 JCSEARCH = os.path.join(JCHEMBIN, 'jcsearch')
 PMAPPER = os.path.join(JCHEMBIN, 'pmapper')
+
+FRAGMENTOR = '/opt/fragmentor/fragmentor'
