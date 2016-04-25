@@ -160,7 +160,7 @@ class Fragmentor(object):
         tmp = []
         for i, j in kwargs.items():
             if i in self.__extention:
-                data = self.__extention[i]['value'].loc[self.__extention[i]['key'] == i] if \
+                data = self.__extention[i]['value'].loc[self.__extention[i]['key'] == j] if \
                        self.__extention[i] else pd.DataFrame([{i: j}])
                 data.index = [0]
                 tmp.append(data)
