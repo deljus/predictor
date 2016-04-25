@@ -66,7 +66,7 @@ class Fragmentor(object):
         self.__headpath = None
 
         self.__workpath = workpath
-        self.__fragmentor = '%s-%s' % (FRAGMENTOR, version)
+        self.__fragversion = version
         tmp = ['-f', 'SVM']
         if s_option: tmp.extend(['-s', s_option])
         if header and os.path.exists(header):
@@ -89,6 +89,9 @@ class Fragmentor(object):
         if not overwrite: tmp.append('--Pipe')
 
         self.__execparams = tmp
+
+    def __fragmentor(self):
+        return '%s-%s' % (FRAGMENTOR, self.__fragversion)
 
     def __dumpheader(self, header):
         with open(header) as f:
@@ -223,7 +226,7 @@ class Fragmentor(object):
         if not self.__genheader:
             self.__prepareheader()
 
-        execparams = [self.__fragmentor, '-i', inputfile, '-o', outputfile]
+        execparams = [self.__fragmentor(), '-i', inputfile, '-o', outputfile]
         execparams.extend(self.__execparams)
         print(' '.join(execparams))
         exitcode = sp.call(execparams) == 0

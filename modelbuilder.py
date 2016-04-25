@@ -193,7 +193,7 @@ class Modelbuilder(object):
             for line in f:
                 k, v = line.split(':=')
                 k = k.strip()
-                v.strip()
+                v = v.strip()
                 if k == 'hashes':
                     v = v.split()
                 elif k == 'is_reaction':

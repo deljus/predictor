@@ -260,7 +260,10 @@ class Model(object):
             x_t = pd.DataFrame(model['normal'].transform(d_x), columns=d_x.columns) if model['normal'] else d_x
             dom.append(((d_x - model['x_min']).min(axis=1) >= 0) & ((model['x_max'] - d_x).min(axis=1) >= 0) & d_ad)
             pred.append(pd.Series(model['model'].predict(x_t)))
+<<<<<<< HEAD
 
+=======
+>>>>>>> 08a261ddeb7feb2e41ed33c1c93766245cfbefe3
             ydom.append((pred[-1] >= model['y_min']) & (pred[-1] <= model['y_max']))
 
         res = dict(prediction=pd.concat(pred, axis=1),
