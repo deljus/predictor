@@ -29,6 +29,7 @@ UPLOAD_PATH = '/tmp'
 WORK_PATH = '/tmp'
 
 INTERVAL = 3
+MODEL_REFRESH = 5
 THREAD_LIMIT = 5
 
 STANDARD = open(os.path.join(os.path.dirname(__file__), "std_rules.xml")).read()
