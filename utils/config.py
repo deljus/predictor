@@ -29,6 +29,7 @@ UPLOAD_PATH = '/tmp'
 WORK_PATH = '/tmp'
 
 INTERVAL = 3
+MODEL_REFRESH = 5
 THREAD_LIMIT = 5
 
 STANDARD = open(os.path.join(os.path.dirname(__file__), "std_rules.xml")).read()
@@ -46,3 +47,5 @@ CXCALC = os.path.join(JCHEMBIN, 'cxcalc')
 REACTOR = os.path.join(JCHEMBIN, 'react')
 JCSEARCH = os.path.join(JCHEMBIN, 'jcsearch')
 PMAPPER = os.path.join(JCHEMBIN, 'pmapper')
+
+FRAGMENTOR = '/opt/fragmentor/fragmentor'
