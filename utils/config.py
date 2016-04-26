@@ -20,6 +20,7 @@
 #
 import os
 
+# dynamic
 SERVER = "https://cimm.kpfu.ru"
 PORT = 443
 PORTAL_BASE = '/qspr'
@@ -27,19 +28,30 @@ CHEMAXON = "%s/webservices" % SERVER
 JCHEMBIN = '/opt/JChem/bin'
 UPLOAD_PATH = '/tmp'
 WORK_PATH = '/tmp'
+FRAGMENTOR = '/opt/fragmentor/fragmentor'
 
 INTERVAL = 3
 MODEL_REFRESH = 5
 THREAD_LIMIT = 5
 
-STANDARD = open(os.path.join(os.path.dirname(__file__), "std_rules.xml")).read()
+if not os.path.exists(os.path.join(os.path.dirname(__file__), "config.ini")):
+    with open(os.path.join(os.path.dirname(__file__), "config.ini"), 'w') as f:
+        f.write('\n'.join('%s = %s' % (x, y) for x, y in globals().items() if x[0] != '_' and x != 'os' and x != 'f'))
 
-REQ_MAPPING = 1
-LOCK_MAPPING = 2
-MAPPING_DONE = 3
-REQ_MODELLING = 4
-LOCK_MODELLING = 5
-MODELLING_DONE = 6
+with open(os.path.join(os.path.dirname(__file__), "config.ini")) as f:
+    for line in f:
+        try:
+            k, v = line.split('=')
+            k = k.strip()
+            v = v.strip()
+            if k in globals():
+                globals()[k] = int(v) if v.isdigit() else v
+        except:
+            pass
+
+# static
+with open(os.path.join(os.path.dirname(__file__), "std_rules.xml")) as f:
+    STANDARD = f.read()
 
 MOLCONVERT = os.path.join(JCHEMBIN, 'molconvert')
 STANDARDIZER = os.path.join(JCHEMBIN, 'standardize')
@@ -48,4 +60,9 @@ REACTOR = os.path.join(JCHEMBIN, 'react')
 JCSEARCH = os.path.join(JCHEMBIN, 'jcsearch')
 PMAPPER = os.path.join(JCHEMBIN, 'pmapper')
 
-FRAGMENTOR = '/opt/fragmentor/fragmentor'
+REQ_MAPPING = 1
+LOCK_MAPPING = 2
+MAPPING_DONE = 3
+REQ_MODELLING = 4
+LOCK_MODELLING = 5
+MODELLING_DONE = 6
