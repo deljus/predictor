@@ -50,11 +50,11 @@ class ConsensusDragos(object):
             sigmaIN = sqrt(INarr.var())
             pavgdiff = abs(PavgIN - PavgALL)
             if pavgdiff > self.TOL:
-                reason.append(self.__errors.get('diff', '%.2f') % pavgdiff)
+                reason.append(self.__errors['diff'] % pavgdiff)
                 self.__TRUST -= 1
         else:
             self.__TRUST -= 1
-            reason.append(self.__errors.get('zad', ''))
+            reason.append(self.__errors['zad'])
 
         proportion = len(self.__INlist) / len(self.__ALLlist)
         if proportion > self.Nlim:
@@ -65,18 +65,18 @@ class ConsensusDragos(object):
             Pavg = PavgALL
             self.__TRUST -= 1
             if self.__INlist:
-                reason.append(self.__errors.get('lad', '%d') % ceil(100 * proportion))
+                reason.append(self.__errors['lad'] % ceil(100 * proportion))
 
         proportion = sigma / self.TOL
         if proportion > 1:
             self.__TRUST -= int(proportion)
-            reason.append(self.__errors.get('stp', '%d') % (proportion * 100 - 100))
+            reason.append(self.__errors['stp'] % (proportion * 100 - 100))
 
         result.append(dict(type='text', attrib='predicted value ± sigma%s' % (' (%s)' % units if units else ''),
                            value='%.2f ± %.2f' % (Pavg, sigma)))
         result.append(dict(type='text', attrib='prediction trust', value=self.__trustdesc.get(self.__TRUST, 'None')))
         if reason:
-            result.append(dict(type='text', attrib='reason', value='<br>'.join(reason)))
+            result.append(dict(type='text', attrib='reason', value='. '.join(reason)))
 
         return result
 
