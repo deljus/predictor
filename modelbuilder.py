@@ -22,12 +22,16 @@ import os
 import time
 from copy import deepcopy
 import pandas as pd
+import sys
 from modeler.fragmentor import Fragmentor
 from modeler.svmodel import Model as SVM
 import argparse
 import pickle
 import gzip
 import subprocess as sp
+from CGRtools.FEAR import FEAR
+from CGRtools.CGRcore import CGRcore
+from CGRtools.RDFread import RDFread
 
 
 class DefaultList(list):
@@ -54,6 +58,11 @@ class Modelbuilder(object):
                            for g, x, _ in descgenerator]
 
         description = self.__parsemodeldescription()
+
+        if self.__options['isreaction']:
+            description['is_reaction'] = True
+            description['hashes'] = self.__gethashes(self.__options['input'])
+            print(description['hashes'])
 
         if not self.__options['output']:
             ests = []
@@ -87,6 +96,10 @@ class Modelbuilder(object):
                 # todo: удалять совсем плохие фрагментации. добавлять описание модели.
                 if 'tol' not in description:
                     description['tol'] = models[0].getmodelstats()['dragostolerance']
+                print('name', description['name'])
+                print('desc', description['desc'])
+                print('tol', description['tol'])
+                print('nlim', description['nlim'])
                 pickle.dump(dict(models=models, config=description),
                             gzip.open(self.__options['model'], 'wb'))
             else:
@@ -95,9 +108,24 @@ class Modelbuilder(object):
         else:
             self.__gendesc(self.__options['output'])
 
+    def __gethashes(self, inputfile, stereo=False, b_templates=None, e_rules=None, c_rules=None):
+        hashes = set()
+        _cgr = CGRcore(type='0', stereo=stereo, balance=1,
+                       b_templates=open(b_templates) if b_templates else None,
+                       e_rules=open(e_rules) if e_rules else None,
+                       c_rules=open(c_rules) if c_rules else None)
+        _fear = FEAR(isotop=False, stereo=False, hyb=False, element=True, deep=0)
+        with open(inputfile) as f:
+            for num, data in enumerate(RDFread(f).readdata(), start=1):
+                if num % 100 == 1:
+                    print("reaction: %d" % num, file=sys.stderr)
+                g = _cgr.getCGR(data)
+                hashes.update(x[1] for x in _fear.chkreaction(g, gennew=True)[-1])
+        return list(hashes)
+
     def __chkest(self, estimatorparams):
         if 1 < len(estimatorparams) < len(self.__descgens) or \
-               len(estimatorparams) > len(self.__descgens) or not estimatorparams:
+                        len(estimatorparams) > len(self.__descgens) or not estimatorparams:
             print('NUMBER of estimator params files SHOULD BE EQUAL to '
                   'number of descriptor generator params files or to 1')
             return False
@@ -143,14 +171,12 @@ class Modelbuilder(object):
 
         rawopts.add_argument("--input", "-i", type=str, default='input.sdf', help="input SDF or RDF")
 
-        rawopts.add_argument("--dragosmolstd", action='store_true',
-                             help="prepare molecules with Dragos approach [NOT for REACTIONS]")
-        rawopts.add_argument("--markatoms", type=str, default=None,
-                             help="prepare molecules with JChem pmapper [NOT for REACTIONS]")
-
         rawopts.add_argument("--output", "-o", type=str, default=None, help="output SVM|HDR")
 
         rawopts.add_argument("--model", "-m", type=str, default='output.model', help="output model")
+
+        rawopts.add_argument("--isreaction", "-ir", action='store_true', help="set as reaction model")
+
         rawopts.add_argument("--extention", "-e", action='append', type=str, default=None,
                              help="extention data files. -e extname:filename [-e extname2:filename2]")
 
@@ -180,7 +206,7 @@ class Modelbuilder(object):
                              help="crossval score for parameters fit. (should be in selected scorers)")
 
         rawopts.add_argument("--dispcoef", "-p", type=float, default=0,
-                             help="score parameter. mean(score) - dispcoef * sqrt(variance(score)). -score for rmse")
+                             help="score parameter. mean(score) - dispcoef * sqrt(variance(score)). [-score for rmse]")
 
         rawopts.add_argument("--normalize", "-N", action='store_true', help="normalize X vector to range(0, 1)")
         rawopts.add_argument("--smartcv", "-S", action='store_true', help="smart crossvalidation [NOT implemented]")
@@ -194,13 +220,10 @@ class Modelbuilder(object):
                 k, v = line.split(':=')
                 k = k.strip()
                 v = v.strip()
-                if k == 'hashes':
-                    v = v.split()
-                elif k == 'is_reaction':
-                    v = True if v.lower() == 'true' else False
-                elif k in ('nlim', 'tol'):
-                    v = float(v)
-                tmp[k] = v
+                if k in ('nlim', 'tol', 'name', 'example', 'desc', 'report_units'):
+                    if k in ('nlim', 'tol'):
+                        v = float(v)
+                    tmp[k] = v
         return tmp
 
     def __parsefragmentoropts(self, file):

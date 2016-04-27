@@ -49,7 +49,7 @@ class Fragmentor(object):
                  cgr_e_rules=None, cgr_c_rules=None):
 
         self.__marker = ISIDAatommarker(marker_rules, workpath) if marker_rules else None
-        self.__standardize = StandardizeDragos(standardize) if standardize else None
+        self.__standardize = StandardizeDragos(standardize) if standardize is not None else None
 
         self.__cgr = CGRWrapper(type=cgr_type, stereo=cgr_stereo, balance=int(cgr_balance),
                                 b_templates=open(cgr_b_templates) if cgr_b_templates else None,

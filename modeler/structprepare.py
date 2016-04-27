@@ -37,8 +37,8 @@ class StandardizeDragos(object):
 
     def __loadrules(self, rules):
         with open(rules or os.path.join(os.path.dirname(__file__), "standardrules_dragos.smarts")) as f:
-            rules = '..'.join([x.split()[0] for x in f])
-        return rules
+            ruless = '..'.join([x.split()[0] for x in f])
+        return ruless
 
     def __loadunwanted(self):
         return '(%s)' % '|'.join(open(os.path.join(os.path.dirname(__file__), "unwanted.elem")).read().split())
@@ -96,9 +96,12 @@ class StandardizeDragos(object):
 
 class ISIDAatommarker(object):
     def __init__(self, markerrule, workpath):
-        self.__markerrule = markerrule
+        self.__markerrule = self.__dumprules(markerrule)
         self.__workfile = os.path.join(workpath, 'iam')
         self.__loadrules()
+
+    def __dumprules(self, rules):
+        return open(rules).read()
 
     def setworkpath(self, workpath):
         self.__workfile = os.path.join(workpath, 'iam')
