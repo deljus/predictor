@@ -45,8 +45,8 @@ class Adhoc(object):
 
 
 class Fragmentor(object):
-    def __init__(self, workpath='.', version=None, s_option=None, fragment_type='3', min_length='2', max_length='10',
-                 colorname=None, marked_atom=None, cgr_dynbonds=None, xml=None, doallways=False,
+    def __init__(self, workpath='.', version=None, s_option=None, fragment_type=3, min_length=2, max_length=10,
+                 colorname=None, marked_atom=0, cgr_dynbonds=0, xml=None, doallways=False,
                  useformalcharge=False, atompairs=False, fragmentstrict=False, getatomfragment=False,
                  overwrite=True, headers=None, extention=None, marker_rules=None, standardize=None,
                  cgr_type=None, cgr_stereo=False, cgr_balance=0, cgr_b_templates=None,
@@ -83,7 +83,7 @@ class Fragmentor(object):
         else:
             self.__genheader = True
 
-        tmp.extend(['-t', fragment_type, '-l', min_length, '-u', max_length])
+        tmp.extend(['-t', str(fragment_type), '-l', str(min_length), '-u', str(max_length)])
 
         if colorname: tmp.extend(['-c', colorname])
         if marked_atom: tmp.extend(['-m', marked_atom])
