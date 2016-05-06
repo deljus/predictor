@@ -22,8 +22,12 @@ import json
 import os
 import re
 from subprocess import Popen, PIPE, STDOUT
+import sys
 from utils.config import PMAPPER
 from utils.utils import chemaxpost
+from CGRtools.CGRcore import CGRcore
+from CGRtools.RDFread import RDFread
+from io import StringIO
 
 
 class StandardizeDragos(object):
@@ -36,7 +40,7 @@ class StandardizeDragos(object):
         self.__maxmainsize = 101
 
     def __loadrules(self, rules):
-        with open(rules or os.path.join(os.path.dirname(__file__), "standardrules_dragos.smarts")) as f:
+        with open(rules or os.path.join(os.path.dirname(__file__), "standardrules_dragos.rules")) as f:
             ruless = '..'.join([x.split()[0] for x in f])
         return ruless
 
@@ -151,3 +155,36 @@ class ISIDAatommarker(object):
                     buffer[-k] = v
 
         return ''.join(buffer)
+
+
+class CGRatommarker(object):
+    def __init__(self, rules):
+        self.__stdrules = self.__loadrules(rules)
+
+    def __loadrules(self, rules):
+        with open(rules or os.path.join(os.path.dirname(__file__), "taut_marker.rules")) as f:
+            ruless = '..'.join([x.split()[0] for x in f])
+        return ruless
+
+    def get(self, structure, stereo=False, b_templates=None, e_rules=None, c_rules=None):
+        data = {"structure": structure, "parameters": "mol",
+                "filterChain": [{"filter": "standardizer", "parameters": {"standardizerDefinition": self.__stdrules}}]}
+        res = chemaxpost('calculate/molExport', data)
+
+        if res:
+            res = json.loads(res)
+            if 'isReaction' in res:
+                rxn = res['structure']
+                _cgr = CGRcore(type='0', stereo=stereo, balance=0,
+                               b_templates=open(b_templates) if b_templates else None,
+                               e_rules=open(e_rules) if e_rules else None,
+                               c_rules=open(c_rules) if c_rules else None)
+                for num, data in enumerate(RDFread(StringIO(rxn)).readdata(), start=1):
+                    if num % 10 == 1:
+                        print("reaction: %d" % num, file=sys.stderr)
+                    g = _cgr.getCGR(data)
+                    for n, m in g.edges():
+                        if (g.node[n]['element'] == 'H') != (g.node[m]['element'] == 'H'):
+                            pass
+
+        return False

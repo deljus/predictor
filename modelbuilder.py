@@ -21,7 +21,6 @@
 import os
 import time
 from copy import deepcopy
-import pandas as pd
 import sys
 from modeler.fragmentor import Fragmentor
 from modeler.svmodel import Model as SVM
@@ -32,6 +31,7 @@ import subprocess as sp
 from CGRtools.FEAR import FEAR
 from CGRtools.CGRcore import CGRcore
 from CGRtools.RDFread import RDFread
+from modeler.parsers import MBparser
 
 
 class DefaultList(list):
@@ -40,7 +40,7 @@ class DefaultList(list):
         return []
 
 
-class Modelbuilder(object):
+class Modelbuilder(MBparser):
     def __init__(self):
         self.__options = self.__argparser()
 
@@ -49,15 +49,15 @@ class Modelbuilder(object):
         descgenerator = []
         if self.__options['fragments']:
             descgenerator.extend([(Fragmentor, x, 'fragments') for x in
-                                  self.__parsefragmentoropts(self.__options['fragments'])])
+                                  self.parsefragmentoropts(self.__options['fragments'])])
         else:
             return
 
-        extdata = self.__parseext(self.__options['extention']) if self.__options['extention'] else {}
+        extdata = self.parseext(self.__options['extention']) if self.__options['extention'] else {}
         self.__descgens = [g(extention=extdata, **x)
                            for g, x, _ in descgenerator]
 
-        description = self.__parsemodeldescription()
+        description = self.parsemodeldescription(self.__options['description'])
 
         if self.__options['isreaction']:
             description['is_reaction'] = True
@@ -69,7 +69,7 @@ class Modelbuilder(object):
             svm = {'svr', 'svc'}.intersection(self.__options['estimator']).pop()
             if svm:
                 if self.__options['svm']:
-                    estparams = self.__getsvmparam(self.__options['svm'])
+                    estparams = self.getsvmparam(self.__options['svm'])
                 else:
                     estparams = self.__dragossvmfit(svm)
 
@@ -84,7 +84,7 @@ class Modelbuilder(object):
             if not os.path.isdir(self.__options['model']) and \
                     (os.path.exists(self.__options['model']) and os.access(self.__options['model'], os.W_OK) or
                      os.access(os.path.dirname(self.__options['model']), os.W_OK)):
-                models = [g(x, y.values(), inputfile=self.__options['input'], parsesdf=True,
+                models = [g(x, y.values(), open(self.__options['input']), parsesdf=True,
                             dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
                             scorers=self.__options['scorers'],
                             n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
@@ -99,7 +99,7 @@ class Modelbuilder(object):
                 print('name', description['name'])
                 print('desc', description['desc'])
                 print('tol', description['tol'])
-                print('nlim', description['nlim'])
+                print('nlim', description.get('nlim'))
                 pickle.dump(dict(models=models, config=description),
                             gzip.open(self.__options['model'], 'wb'))
             else:
@@ -139,8 +139,10 @@ class Modelbuilder(object):
 
     def __gendesc(self, output):
         for n, dgen in enumerate(self.__descgens, start=1):
-            if not dgen.get(inputfile=self.__options['input'], parsesdf=True,
-                            outputfile='%s.%d' % (output, n)):
+            dsc = dgen.convert(inputfile=self.__options['input'], parsesdf=True)
+            if dsc:
+                self.savesvm('%s.%d' % (output, n), *dsc[:2])
+            else:
                 print('BAD Descriptor generator params in %d line' % n)
                 return False
         return True
@@ -154,7 +156,7 @@ class Modelbuilder(object):
             """ parse descriptors for speedup
             """
             if sp.call(execparams) == 0:
-                svm = self.__getsvmparam(['%s.%d.result' % (files, x + 1) for x in range(len(self.__descgens))])
+                svm = self.getsvmparam(['%s.%d.result' % (files, x + 1) for x in range(len(self.__descgens))])
                 for x in range(len(self.__descgens)):
                     os.remove('%s.%d.svm' % (files, x + 1))
                     os.remove('%s.%d.hdr' % (files, x + 1))
@@ -212,133 +214,6 @@ class Modelbuilder(object):
         rawopts.add_argument("--smartcv", "-S", action='store_true', help="smart crossvalidation [NOT implemented]")
 
         return vars(rawopts.parse_args())
-
-    def __parsemodeldescription(self):
-        tmp = {}
-        with open(self.__options['description']) as f:
-            for line in f:
-                k, v = line.split(':=')
-                k = k.strip()
-                v = v.strip()
-                if k in ('nlim', 'tol', 'name', 'example', 'desc', 'report_units'):
-                    if k in ('nlim', 'tol'):
-                        v = float(v)
-                    tmp[k] = v
-        return tmp
-
-    def __parsefragmentoropts(self, file):
-        params = []
-        with open(file) as f:
-            for line in f:
-                opts = line.split()
-                tmp = {}
-                for x in opts:
-                    key, value = x.split('=')
-                    tmp[key.strip()] = value.strip()
-                params.append(tmp)
-        return params
-
-    @staticmethod
-    def __parseext(rawext):
-        extdata = {}
-        for e in rawext:
-            record = None
-            ext, *file = e.split(':')
-            if file:
-                v = pd.read_csv(file[0])
-                k = v.pop('EXTKEY')
-                record = dict(key=k, value=v.rename(columns=lambda x: '%s.%s' % (ext, x)))
-            extdata[ext] = record
-        return extdata
-
-    @staticmethod
-    def __drange(start, stop, step):
-        r = start
-        s = (stop - start) / (step - 1)
-        res = []
-        while r <= stop:
-            res.append(r)
-            r += s
-        return res
-
-    def __parsesvmopts(self, param, op, unpac=lambda x: x):
-        res = []
-        commaparam = param.split(',')
-        for i in commaparam:
-            ddotparam = i.split(':')
-            if len(ddotparam) == 1:
-                if i[0] == '^':
-                    res.append(unpac(op(i[1:])))
-                else:
-                    res.append(op(i))
-            elif len(ddotparam) >= 3:
-                if i[0] == '^':
-                    res.extend([unpac(x) for x in self.__drange(op(ddotparam[0][1:]),
-                                                                op(ddotparam[1]), int(ddotparam[2]))])
-                else:
-                    res.extend([x for x in self.__drange(op(ddotparam[0]), op(ddotparam[1]), int(ddotparam[2]))])
-
-        return res
-
-    @staticmethod
-    def __pow10(x):
-        return pow(10, x)
-
-    __kernel = {'0': 'linear', '1': 'poly', '2': 'rbf', '3': 'sigmoid'}
-
-    def __getsvmparam(self, files):
-        res = []
-        repl = {'-t': ('kernel', lambda x: [self.__kernel[i] for i in x.split(',')]),
-                '-c': ('C', lambda x: self.__parsesvmopts(x, float, unpac=self.__pow10)),
-                '-d': ('degree', lambda x: self.__parsesvmopts(x, int)),
-                '-e': ('tol', lambda x: self.__parsesvmopts(x, float, unpac=self.__pow10)),
-                '-p': ('epsilon', lambda x: self.__parsesvmopts(x, float, unpac=self.__pow10)),
-                '-g': ('gamma', lambda x: self.__parsesvmopts(x, float, unpac=self.__pow10)),
-                '-r': ('coef0', lambda x: self.__parsesvmopts(x, float))}
-        for file in files:
-            svm = {}
-            with open(file) as f:
-                for line in f:
-                    opts = line.split()
-                    tmp = dict(kernel=['rbf'], C=[1.0], epsilon=[.1], tol=[.001], degree=[3], gamma=[0], coef0=[0])
-                    for x, y in zip(opts[::2], opts[1::2]):
-                        z = repl.get(x)
-                        if z:
-                            tmp[z[0]] = z[1](y)
-
-                    for i in tmp['kernel']:
-                        if i == 'linear':  # u'*v
-                            if svm.get('linear'):
-                                for k in ('C', 'epsilon', 'tol'):
-                                    svm['linear'][k].extend(tmp[k])
-                            else:
-                                svm['linear'] = dict(kernel='linear', C=tmp['C'], epsilon=tmp['epsilon'],
-                                                     tol=tmp['tol'])
-                        elif i == 'rbf':  # exp(-gamma*|u-v|^2)
-                            if svm.get('rbf'):
-                                for k in ('C', 'epsilon', 'tol', 'gamma'):
-                                    svm['rbf'][k].extend(tmp[k])
-                            else:
-                                svm['rbf'] = dict(kernel='rbf', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
-                                                  gamma=tmp['gamma'])
-                        elif i == 'sigmoid':  # tanh(gamma*u'*v + coef0)
-                            if svm.get('sigmoid'):
-                                for k in ('C', 'epsilon', 'tol', 'gamma', 'coef0'):
-                                    svm['sigmoid'][k].extend(tmp[k])
-                            else:
-                                svm['sigmoid'] = dict(kernel='sigmoid', C=tmp['C'], epsilon=tmp['epsilon'],
-                                                      tol=tmp['tol'], gamma=tmp['gamma'], coef0=tmp['coef0'])
-                        elif i == 'poly':  # (gamma*u'*v + coef0)^degree
-                            if svm.get('poly'):
-                                for k in ('C', 'epsilon', 'tol', 'gamma', 'coef0', 'degree'):
-                                    svm['poly'][k].extend(tmp[k])
-                            else:
-                                svm['poly'] = dict(kernel='poly', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
-                                                   gamma=tmp['gamma'], coef0=tmp['coef0'], degree=tmp['degree'])
-            if svm:
-                res.append(svm)
-        return res
-
 
 if __name__ == '__main__':
     main = Modelbuilder()

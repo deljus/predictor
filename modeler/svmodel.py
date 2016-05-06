@@ -72,7 +72,7 @@ def _balance_acc(y_test, y_pred):
 
 
 class Model(object):
-    def __init__(self, descriptorgen, svmparams, nfold=5, repetitions=1, rep_boost=25, dispcoef=0,
+    def __init__(self, descriptorgen, svmparams, structures, nfold=5, repetitions=1, rep_boost=25, dispcoef=0,
                  fit='rmse', estimator='svr', scorers=('rmse', 'r2'), workpath='.',
                  normalize=False, n_jobs=2, smartcv=False, **kwargs):
         _scorers = dict(rmse=_rmse,
@@ -88,7 +88,8 @@ class Model(object):
         self.__repetitions = repetitions
         self.__rep_boost = ceil(repetitions * (rep_boost % 100) / 100)
         print("Descriptors generation start")
-        self.__x, self.__y, *_ = descriptorgen.get(**kwargs)
+        self.__x, self.__y, *_ = descriptorgen.get(structures, **kwargs)
+        print(self.__x.columns)
         print("Descriptors generated")
 
         self.__normalize = normalize
@@ -252,8 +253,8 @@ class Model(object):
             shuffled = shuffle(setindexes, random_state=seed)
         return shuffled
 
-    def predict(self, structure, **kwargs):
-        d_x, _, d_ad = self.__descriptorgen.get(inputstring=structure, **kwargs)
+    def predict(self, structures, **kwargs):
+        d_x, _, d_ad = self.__descriptorgen.get(structures, **kwargs)
 
         pred, dom, ydom = [], [], []
         for i, model in enumerate(self.__model['model']):
