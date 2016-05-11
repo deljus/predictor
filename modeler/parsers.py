@@ -157,7 +157,7 @@ class MBparser(object):
         return extdata
 
     @staticmethod
-    def savesvm(outputfile, X, Y):
+    def savesvm(outputfile, X, Y, header=True):
         k2nd = {}
         k2nc = count(1)
 
@@ -167,9 +167,13 @@ class MBparser(object):
                 n = next(k2nc)
                 k2nd[k] = n
             return n
-
+# BUUUUUUUUUUUUUUUUUUUUGGY
         with open(outputfile + '.svm', 'w') as f:
             f.write(' '.join(['Property'] + ['%s:%s' % (k2n(i), i) for i in X.T.to_dict()[0]]) + '\n')
             for i, j in zip(X.T.to_dict().values(), Y.tolist()):
                 f.write(' '.join(['%s ' % j] + ['%s:%s' % (k2n(k), v) for k, v in i.items()]) + '\n')
         return True
+
+    @staticmethod
+    def savecsv(outputfile, X, Y, header=True):
+        pd.concat([Y, X], axis=1).to_csv(outputfile + '.csv', index=False, header=header)

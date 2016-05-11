@@ -313,4 +313,5 @@ class Fragmentor(object):
                         break
                 vector.append(tmp)
 
-        return pd.DataFrame(vector, columns=self.__headcolumns[n]).fillna(0), pd.Series(prop), pd.Series(ad)
+        return (pd.DataFrame(vector, columns=self.__headcolumns[n]).fillna(0),
+                pd.Series(prop, name='Property'), pd.Series(ad))

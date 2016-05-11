@@ -106,7 +106,7 @@ class Modelbuilder(MBparser):
                 print('path for model saving not writable')
 
         else:
-            self.__gendesc(self.__options['output'])
+            self.__gendesc(self.__options['output'], fformat=self.__options['format'], header=True)
 
     def __gethashes(self, inputfile, stereo=False, b_templates=None, e_rules=None, c_rules=None):
         hashes = set()
@@ -137,12 +137,15 @@ class Modelbuilder(MBparser):
             estimatorparams = tmp
         return estimatorparams
 
-    def __gendesc(self, output):
+    def __gendesc(self, output, fformat='svm', header=False):
         for n, dgen in enumerate(self.__descgens, start=1):
             with open(self.__options['input']) as f:
                 dsc = dgen.get(structures=f, parsesdf=True)
                 if dsc:
-                    self.savesvm('%s.%d' % (output, n), *dsc[:2])
+                    if fformat == 'svm':
+                        self.savesvm('%s.%d' % (output, n), *dsc[:2], header=header)
+                    else:
+                        self.savecsv('%s.%d' % (output, n), *dsc[:2], header=header)
                 else:
                     print('BAD Descriptor generator params in %d line' % n)
                     return False
@@ -174,7 +177,8 @@ class Modelbuilder(MBparser):
 
         rawopts.add_argument("--input", "-i", type=str, default='input.sdf', help="input SDF or RDF")
 
-        rawopts.add_argument("--output", "-o", type=str, default=None, help="output SVM|HDR")
+        rawopts.add_argument("--output", "-o", type=str, default=None, help="output SVM|CSV")
+        rawopts.add_argument("--format", "-of", type=str, default='svm', choices=['svm', 'csv'], help="output format")
 
         rawopts.add_argument("--model", "-m", type=str, default='output.model', help="output model")
 
