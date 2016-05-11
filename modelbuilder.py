@@ -139,12 +139,13 @@ class Modelbuilder(MBparser):
 
     def __gendesc(self, output):
         for n, dgen in enumerate(self.__descgens, start=1):
-            dsc = dgen.get(inputfile=self.__options['input'], parsesdf=True)
-            if dsc:
-                self.savesvm('%s.%d' % (output, n), *dsc[:2])
-            else:
-                print('BAD Descriptor generator params in %d line' % n)
-                return False
+            with open(self.__options['input']) as f:
+                dsc = dgen.get(structures=f, parsesdf=True)
+                if dsc:
+                    self.savesvm('%s.%d' % (output, n), *dsc[:2])
+                else:
+                    print('BAD Descriptor generator params in %d line' % n)
+                    return False
         return True
 
     def __dragossvmfit(self, tasktype):
