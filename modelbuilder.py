@@ -139,7 +139,7 @@ class Modelbuilder(MBparser):
 
     def __gendesc(self, output):
         for n, dgen in enumerate(self.__descgens, start=1):
-            dsc = dgen.convert(inputfile=self.__options['input'], parsesdf=True)
+            dsc = dgen.get(inputfile=self.__options['input'], parsesdf=True)
             if dsc:
                 self.savesvm('%s.%d' % (output, n), *dsc[:2])
             else:

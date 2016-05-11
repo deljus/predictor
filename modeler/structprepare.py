@@ -158,33 +158,40 @@ class ISIDAatommarker(object):
 
 
 class CGRatommarker(object):
-    def __init__(self, rules):
-        self.__stdrules = self.__loadrules(rules)
+    def __init__(self, prepare_rules, rules, stereo=False):
+        self.__stdrules = self.__loadrules(prepare_rules)
+        self.__rules = rules
+        self.__cgr = CGRcore(type='0', stereo=stereo, balance=0, b_templates=None, e_rules=None, c_rules=None)
 
     def __loadrules(self, rules):
-        with open(rules or os.path.join(os.path.dirname(__file__), "taut_marker.rules")) as f:
-            ruless = '..'.join([x.split()[0] for x in f])
+        if rules:
+            with open(rules) as f:
+                ruless = '..'.join([x.split()[0] for x in f])
+        else:
+            ruless = None
         return ruless
 
-    def get(self, structure, stereo=False, b_templates=None, e_rules=None, c_rules=None):
-        data = {"structure": structure, "parameters": "mol",
-                "filterChain": [{"filter": "standardizer", "parameters": {"standardizerDefinition": self.__stdrules}}]}
-        res = chemaxpost('calculate/molExport', data)
+    def get(self, structure):
+        if self.__stdrules:
+            data = {"structure": structure, "parameters": "mol",
+                    "filterChain": [{"filter": "standardizer", "parameters": {"standardizerDefinition": self.__stdrules}}]}
+            res = chemaxpost('calculate/molExport', data)
 
-        if res:
-            res = json.loads(res)
-            if 'isReaction' in res:
+            if res:
+                res = json.loads(res)
+                if 'isReaction' not in res:
+                    return False
                 rxn = res['structure']
-                _cgr = CGRcore(type='0', stereo=stereo, balance=0,
-                               b_templates=open(b_templates) if b_templates else None,
-                               e_rules=open(e_rules) if e_rules else None,
-                               c_rules=open(c_rules) if c_rules else None)
-                for num, data in enumerate(RDFread(StringIO(rxn)).readdata(), start=1):
-                    if num % 10 == 1:
-                        print("reaction: %d" % num, file=sys.stderr)
-                    g = _cgr.getCGR(data)
-                    for n, m in g.edges():
-                        if (g.node[n]['element'] == 'H') != (g.node[m]['element'] == 'H'):
-                            pass
+            else:
+                return False
+        else:
+            rxn = structure
+
+        data = next(RDFread(StringIO(rxn)).readdata(), None)
+        if data:
+            g = self.__cgr.getCGR(data)
+            for n, m, eattr in g.edges(data=True):
+                if (g.node[n]['element'] == 'H') != (g.node[m]['element'] == 'H'):
+                    pass
 
         return False

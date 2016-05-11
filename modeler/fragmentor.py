@@ -24,7 +24,7 @@ import subprocess as sp
 import numpy as np
 import pandas as pd
 from functools import reduce
-from modeler.structprepare import ISIDAatommarker, StandardizeDragos
+from modeler.structprepare import ISIDAatommarker, StandardizeDragos, CGRatommarker
 from CGRtools.main_condenser import condenser_core
 from sklearn.feature_extraction import DictVectorizer
 from utils.config import FRAGMENTOR
@@ -49,6 +49,7 @@ class Fragmentor(object):
                  colorname=None, marked_atom=0, cgr_dynbonds=0, xml=None, doallways=False,
                  useformalcharge=False, atompairs=False, fragmentstrict=False, getatomfragment=False,
                  overwrite=True, headers=None, extention=None, marker_rules=None, standardize=None,
+                 cgr_marker=None, cgr_marker_rules=None,
                  cgr_type=None, cgr_stereo=False, cgr_balance=0, cgr_b_templates=None,
                  cgr_e_rules=None, cgr_c_rules=None):
 
@@ -59,6 +60,8 @@ class Fragmentor(object):
                                 b_templates=open(cgr_b_templates) if cgr_b_templates else None,
                                 e_rules=open(cgr_e_rules) if cgr_e_rules else None,
                                 c_rules=open(cgr_c_rules) if cgr_c_rules else None) if cgr_type else None
+
+        self.__cgr_marker = CGRatommarker(cgr_marker_rules, cgr_marker, stereo=cgr_stereo) if cgr_marker else None
 
         self.__sparse = DictVectorizer(sparse=False)
 
@@ -201,6 +204,17 @@ class Fragmentor(object):
                         w.write(res)
             return flag
 
+        def rsplitter():
+            buffer = None
+            for line in structures:
+                if "$RXN" in line[0:4]:
+                    if buffer:
+                        yield ''.join(buffer)
+                    buffer = [line]
+                elif buffer:
+                    buffer.append(line)
+
+
         adhoc = Adhoc()
 
         workfiles = [os.path.join(self.__workpath, "frg.sdf")]
@@ -222,6 +236,10 @@ class Fragmentor(object):
                         return False
             else:
                 workfiles[0] = tmpfile
+
+        elif self.__cgr_marker:
+
+            return
 
         else:
             with open(workfiles[0], 'w') as f:
