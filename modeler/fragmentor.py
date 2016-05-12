@@ -285,7 +285,6 @@ class Fragmentor(object):
 
                 print('parsing fragmentor output')
                 X, Y, D = self.__parsefragmentoroutput(n, outputfile)
-                print('parsing done')
                 tX.append(X)
                 tY = Y
                 tD.append(D)

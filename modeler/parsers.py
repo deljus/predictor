@@ -21,7 +21,6 @@
 #  MA 02110-1301, USA.
 #
 import pandas as pd
-from itertools import count
 
 
 class MBparser(object):
@@ -158,21 +157,12 @@ class MBparser(object):
 
     @staticmethod
     def savesvm(outputfile, X, Y, header=True):
-        k2nd = {}
-        k2nc = count(1)
-
-        def k2n(k):
-            n = k2nd.get(k)
-            if n is None:
-                n = next(k2nc)
-                k2nd[k] = n
-            return n
-# BUUUUUUUUUUUUUUUUUUUUGGY
         with open(outputfile + '.svm', 'w') as f:
-            f.write(' '.join(['Property'] + ['%s:%s' % (k2n(i), i) for i in X.T.to_dict()[0]]) + '\n')
-            for i, j in zip(X.T.to_dict().values(), Y.tolist()):
-                f.write(' '.join(['%s ' % j] + ['%s:%s' % (k2n(k), v) for k, v in i.items()]) + '\n')
-        return True
+            if header:
+                f.write(' '.join(['Property'] + ['%s:%s' % i for i in enumerate(X.columns, start=1)]) + '\n')
+
+            for i, j in zip(X.values, Y):
+                f.write(' '.join(['%s ' % j] + ['%s:%s' % x for x in enumerate(i, start=1) if x[1] != 0]) + '\n')
 
     @staticmethod
     def savecsv(outputfile, X, Y, header=True):
