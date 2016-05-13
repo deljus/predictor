@@ -159,6 +159,7 @@ class ISIDAatommarker(object):
 
 class CGRatommarker(object):
     def __init__(self, prepare_rules, rules, stereo=False):
+        self.__count = 1
         self.__stdrules = self.__loadrules(prepare_rules)
         self.__rules = rules
         self.__cgr = CGRcore(type='0', stereo=stereo, balance=0, b_templates=None, e_rules=None, c_rules=None)
@@ -171,10 +172,14 @@ class CGRatommarker(object):
             ruless = None
         return ruless
 
+    def getcount(self):
+        return self.__count
+
     def get(self, structure):
         if self.__stdrules:
             data = {"structure": structure, "parameters": "mol",
-                    "filterChain": [{"filter": "standardizer", "parameters": {"standardizerDefinition": self.__stdrules}}]}
+                    "filterChain": [{"filter": "standardizer",
+                                     "parameters": {"standardizerDefinition": self.__stdrules}}]}
             res = chemaxpost('calculate/molExport', data)
 
             if res:

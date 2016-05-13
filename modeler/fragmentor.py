@@ -44,6 +44,27 @@ class Adhoc(object):
         return structure
 
 
+class openFiles(object):
+    def __init__(self, files, flags):
+        if isinstance(files, str):
+            files = [files]
+        if isinstance(flags, str):
+            flags = [flags]
+        assert len(flags) == len(files)
+        self.files = files
+        self.flags = flags
+
+    def __enter__(self):
+        self.fhs = []
+        for f, fl in zip(self.files, self.flags):
+            self.fhs.append(open(f, fl))
+        return self.fhs
+
+    def __exit__(self, type, value, traceback):
+        for f in self.fhs:
+            f.close()
+
+
 class Fragmentor(object):
     def __init__(self, workpath='.', version=None, s_option=None, fragment_type=3, min_length=2, max_length=10,
                  colorname=None, marked_atom=0, cgr_dynbonds=0, xml=None, doallways=False,
@@ -185,35 +206,48 @@ class Fragmentor(object):
         :param structures: opened file or string io in sdf, mol or rdf, rxn formats
         rdf, rxn work only in CGR or reagent marked atoms mode
         """
-        def splitter(func, output):  # for mol or sdf only!
+        def ssplitter(func, output):  # for mol or sdf only!
             flag = False
-            with open(output, 'w') as w:
-                buffer = []
-                for line in structures:
-                    buffer.append(line)
-                    if '$$$$' in line[:4]:
-                        res = func.get(''.join(buffer))
-                        if res:
-                            flag = True
-                            w.write(res)
-                        buffer = []
-                if buffer:
-                    res = func.get(''.join(buffer).rstrip('\n$ ') + '\n$$$$\n')
+            buffer = []
+            for line in structures:
+                buffer.append(line)
+                if '$$$$' in line[:4]:
+                    res = func.get(''.join(buffer))
                     if res:
                         flag = True
-                        w.write(res)
+                        for w, d in zip(output, [res] if isinstance(res, str) else res):
+                            w.write(d)
+                    buffer = []
+            if buffer:
+                res = func.get(''.join(buffer).rstrip('\n$ ') + '\n$$$$\n')
+                if res:
+                    flag = True
+                    for w, d in zip(output, [res] if isinstance(res, str) else res):
+                        w.write(d)
             return flag
 
-        def rsplitter():
+        def rsplitter(func, output):
             buffer = None
+            flag = False
             for line in structures:
                 if "$RXN" in line[0:4]:
                     if buffer:
-                        yield ''.join(buffer)
+                        res = func.get(''.join(buffer))
+                        if res:
+                            flag = True
+                            for w, d in zip(output, [res] if isinstance(res, str) else res):
+                                w.write(d)
                     buffer = [line]
                 elif buffer:
                     buffer.append(line)
+            if buffer:
+                res = func.get(''.join(buffer))
+                if res:
+                    flag = True
+                    for w, d in zip(output, [res] if isinstance(res, str) else res):
+                        w.write(d)
 
+            return flag
 
         adhoc = Adhoc()
 
@@ -226,24 +260,28 @@ class Fragmentor(object):
 
         elif self.__standardize:
             tmpfile = os.path.join(self.__workpath, "tmp.sdf")
-            with open(tmpfile, 'w') as f:
-                if not splitter(self.__standardize, f):
+            with openFiles(tmpfile, 'w') as f:
+                if not ssplitter(self.__standardize, f):
                     return False
 
             if self.__marker:
-                with open(workfiles[0], 'w') as f, open(tmpfile) as structures:
-                    if not splitter(self.__marker, f):
+                with openFiles(workfiles[0], 'w') as f, open(tmpfile) as structures:
+                    if not ssplitter(self.__marker, f):
                         return False
             else:
                 workfiles[0] = tmpfile
 
         elif self.__cgr_marker:
+            workfiles.extend([os.path.join(self.__workpath, "frg_%d.sdf" % x)
+                              for x in range(self.__cgr_marker.getcount() - 1)])
 
-            return
+            with openFiles(workfiles, ['w'] * len(workfiles)) as f:
+                if not rsplitter(self.__cgr_marker, f):
+                    return False
 
         else:
-            with open(workfiles[0], 'w') as f:
-                if not splitter(adhoc, f):
+            with openFiles(workfiles, ['w'] * len(workfiles)) as f:
+                if not ssplitter(adhoc, f):
                     return False
 
         if self.__extention:

@@ -93,7 +93,7 @@ class Modelbuilder(MBparser):
                             normalize=self.__options['normalize']) for g, e in ests
                           for x, y in zip(self.__descgens, e)]
 
-                # todo: удалять совсем плохие фрагментации. добавлять описание модели.
+                # todo: удалять совсем плохие фрагментации.
                 if 'tol' not in description:
                     description['tol'] = models[0].getmodelstats()['dragostolerance']
                 print('name', description['name'])
