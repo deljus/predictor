@@ -7,11 +7,6 @@ REQ_MODELLING   = 4
 LOCK_MODELLING  = 5
 MODELLING_DONE  = 6
 
-// для поиска делаем отдельные статусы
-SEARCH_TASK_CREATED = 10
-LOCK_SEARCHING = 11
-SEARCHING_DONE = 12
-
 var TIMER_INTERVAL = 5000;
 var MOL_FORMAT = 'mrv';
 
@@ -543,7 +538,7 @@ function check_searching_task_status(task_id)
 
     get_task_status(task_id).done(function (data, textStatus, jqXHR){
 
-		if (data==SEARCHING_DONE)
+		if (data==MODELLING_DONE)
 		{
 			reset_timer();
 			load_searching_results(task_id);

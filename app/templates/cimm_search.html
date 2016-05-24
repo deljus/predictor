@@ -1,0 +1,221 @@
+{% extends "cimm_layout.html" %}
+
+    {% block heading %}
+
+	<script src="{{ url_for('static', filename='js/webservices.js') }}"></script>
+    <script src="{{ url_for('static', filename='gui/lib/promise-1.0.0.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/marvinjslauncher.js') }}"></script>
+
+    <script src="{{ url_for('static', filename='js/predictor.js') }}"></script>
+
+<script>
+    $(document).ready(function handleDocumentReady (e) {
+        initControl();
+        MarvinJSUtil.getEditor("#sketch").then(function (sketcherInstance) {
+            marvinSketcherInstance = sketcherInstance;
+
+        },function (error) {});
+
+        MarvinJSUtil.getPackage("#sketch").then(function (marvinNameSpace) {
+            marvinNameSpace.onReady(function () {
+                marvin = marvinNameSpace;
+            });
+        }, function () {
+            alert("Cannot retrieve marvin instance from iframe");
+        });
+
+
+    });
+
+    Progress.done = function(){
+	clearInterval(this.timer_id);
+    $("#search-btn").show();
+    $("#img-loader").hide();
+
+}
+
+function start_search_task(search_request)
+{
+    $("#editor-div").hide();
+    $("#search-btn").hide();
+    $("#img-loader").show();
+
+    var task_parameters = {};
+    task_parameters.search_type = $("input[name=search_type]").val();
+
+    var data = JSON.stringify({"reaction_structure": search_request, "task_type":"search","task_parameters":task_parameters});
+    log_log(data);
+
+    $.ajax({
+            "url": API_BASE+"/tasks"
+            ,"type": "POST"
+            ,"dataType": "json"
+            ,"contentType": "application/json"
+            ,"data": data
+    }).done(function (task_id, textStatus, jqXHR) {
+
+        $("#task_id").val(task_id);
+        start_task_searching(task_id);
+
+    }).fail(handleRequestError);
+}
+
+
+
+function click_search_btn()
+{
+    var data = "";
+    if ($("#editor-div").is(":visible") )
+    {
+        marvinSketcherInstance.exportStructure("smiles").then(function(source) {
+            if (source!='')
+            {
+                start_search_task(source);
+            }
+        }, function(error) {
+                alert("Molecule export failed:"+error);
+        });
+    }
+    else
+        start_search_task( $("#search_input").val() );
+}
+
+function click_editor_toogle()
+{
+    var jEditor = $("#editor-div");
+    if (jEditor.is(":visible"))
+        jEditor.hide(200);
+    else
+        jEditor.show(200);
+}
+
+function blur_search_input()
+{
+    console.log('blur_search_input->');
+    var s = $("#search_input").val();
+    try {
+        if (s!='')
+            marvinSketcherInstance.importStructure("smiles", s);
+    }
+    catch (err){}
+
+}
+
+function click_search_input()
+{
+    console.log('click_search_input->');
+    var s = $("#search_input").val();
+
+    marvinSketcherInstance.exportStructure("smiles").then(function(source) {
+
+        if (source!='')
+                $("#search_input").val(source);
+
+		}, function(error) {
+			alert("Molecule export failed:"+error);
+    });
+}
+
+
+
+function click_settings_toogle()
+{
+        var jSet = $("#settings-div");
+        if (jSet.is(":visible"))
+            jSet.hide(200);
+        else
+            jSet.show(200);
+}
+
+</script>
+
+        <form name="main_form">
+        <input type="hidden" name="task_id" id="task_id" value="">
+        </form>
+
+        <div id="openModal" class="modalDialog">
+            <div>
+                <a href="#" title="Close" class="close" onclick="$('#openModal').hide();return false;">X</a>
+                <img id="modal-img" src="{{ url_for('static', filename='images/ajax-loader-big.gif') }}" alt="image not enabled" width="100%">
+            </div>
+        </div>
+
+    {% endblock %}
+    {% block body %}
+
+
+
+		<div class="row">
+
+			<section class="col-md-24">
+                    <div class="row">
+                        <div id="search-pnl" style=";width: 100%;">
+                            <div style="margin-top: 100px;width:80%;">
+                               <a href="#" onclick="return click_settings_toogle()">
+                                    <img height="30px" src="{{ url_for('static', filename='images/s3.png ') }}">
+                                </a>
+                                <a href="#" onclick="return click_editor_toogle()">
+                                    <img height="50px" src="{{ url_for('static', filename='images/chemaxon1.png ') }}">
+                                </a>
+                            <input id="search_input" type="text" style="width: 70%;height:30px;"   onblur="return blur_search_input()" onclick="return click_search_input()">&nbsp;<button id="search-btn" class="btn btn-info" onclick="return click_search_btn()">Search</button>
+                                <img id="img-loader" src="{{ url_for('static', filename='images/ajax-loader.gif') }}" style="display: none" >
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div id="settings-div" style="margin-left:50px;display:none">
+                            <h3>Settings</h3>
+
+                                <div>
+                                    <label>
+                                        <input type="radio" id="search_type1" name="search_type" value="identity" checked="checked" />&nbsp;Full structure
+                                    </label><br>
+                                    <label>
+                                        <input type="radio" id="search_type2" name="search_type" value="similar" />&nbsp;Similarity search
+                                    </label><br>
+                                    <label>
+                                        <input type="radio" id="search_type3" name="search_type" value="substructure" />&nbsp;Substructure search
+                                    </label><br>
+                                </div>
+                        </div>
+					</div>
+
+                   <div class="row">
+
+                            <div class="resizable"  id="editor-div" style="margin-top:5px; display:none" >
+
+                                <iframe src="{{ url_for('static', filename='editorws.html') }}" id="sketch" data-toolbars="reaction" class="sketcher-frame" ></iframe>
+
+                            </div>
+
+
+                    </div>
+
+                    <div class="row">
+                        <div id="results-div" style="display:none">
+                            <h3>Search results</h3>
+                            <table class="table table-striped table-bordered" id="results-tbl">
+                                <thead>
+                                    <tr>
+                                        <th>Reaction</th>
+                                        <th>Parameter</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="results-tbody"></tbody>
+                            </table>
+                            <div style="text-align:center">
+                                <button onclick="download_results('xls')" class="btn btn-primary">Export (MS Excel)</button>
+                                <button onclick="download_results('csv')" class="btn btn-primary">Export (CSV)</button>
+
+                            </div>
+                        </div>
+					</div>
+
+
+
+
+			</section>
+		</div>
+	{% endblock %}

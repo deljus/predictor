@@ -25,7 +25,7 @@ import sys
 import json
 import uuid
 
-from .config import UPLOAD_PATH, REQ_MAPPING, LOCK_SEARCHING, PORTAL_BASE, ALLOWED_EXTENSIONS
+from .config import UPLOAD_PATH, REQ_MAPPING, LOCK_MODELLING, PORTAL_BASE, ALLOWED_EXTENSIONS
 from app import app
 from app import pdb
 from flask.ext.restful import reqparse, Api, Resource
@@ -56,6 +56,10 @@ def predictor():
 @app.route(PORTAL_BASE+'/cimm_predictor', methods=['GET'])
 def cimm_predictor():
     return render_template("cimm_predictor.html", user_data=get_cur_user())
+
+@app.route(PORTAL_BASE+'/cimm_search', methods=['GET'])
+def cimm_search():
+    return render_template("cimm_search.html", user_data=get_cur_user())
 
 
 @app.route(PORTAL_BASE+'/home', methods=['GET'])
@@ -277,14 +281,16 @@ class TaskListAPI(Resource):
             email = current_user.get_email()
         else:
             email = None
-        task_id = pdb.insert_task(email=email)
         args = parser.parse_args()
-        pdb.insert_reaction(task_id, reaction_structure=args['reaction_structure'])
+
         task_type = args['task_type']
+        task_id = pdb.insert_task(email=email, task_type=task_type)
+        pdb.insert_reaction(task_id, reaction_structure=args['reaction_structure'])
+
         if task_type == 'model':
             pdb.update_task_status(task_id, REQ_MAPPING)
         elif task_type == 'search':
-            pdb.update_task_status(task_id, LOCK_SEARCHING)
+            pdb.update_task_status(task_id, LOCK_MODELLING)
         return task_id, 201
 
 

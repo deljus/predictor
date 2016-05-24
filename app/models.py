@@ -41,13 +41,7 @@ STATUS_ARRAY = ["Task created",         #0
                 "Mapping is done",      #3
                 "Modelling required",   #4
                 "Modelling processing", #5
-                "Modelling is done",    #6
-                "",                     #7
-                "",                     #8
-                "",                     #9
-                "Search task created",  #10
-                "Searching required",   #11
-                "Searching is done"     #12
+                "Modelling is done"     #6
                 ]
 
 
@@ -65,6 +59,14 @@ class Tasks(db.Entity):
     chemicals = Set("Chemicals")
     status = Required(int, default=0)
     create_date = Required(int)
+    task_type = Required(str, default="model")
+    parameters = Set("TaskParameters")
+
+class TaskParameters(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    task = Required(Tasks)
+    name = Required(str)
+    value = Required(str)
 
 
 class Chemicals(db.Entity):
@@ -194,7 +196,7 @@ class PredictorDataBase:
 
 
     @db_session
-    def insert_task(self, email=None):
+    def insert_task(self, email=None, task_type=None):
         '''
         функция добавляет в таблицу новую задачу
         :param email: мыло если есть.
@@ -207,7 +209,7 @@ class PredictorDataBase:
         else:
             user = None
 
-        task = Tasks(user=user, create_date=int(time.time()))
+        task = Tasks(user=user, task_type=task_type, create_date=int(time.time()))
         commit()
         return task.id
 
