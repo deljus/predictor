@@ -213,7 +213,8 @@ parser.add_argument('model_id', type=int)
 parser.add_argument('param', type=str)
 parser.add_argument('value', type=float)
 parser.add_argument('models', type=str)
-
+#parser.add_argument('task_parameters',  type=lambda x: json.loads(x))
+parser.add_argument('task_parameters', type=dict, default = "", location = 'json')
 
 class ReactionStructureAPI(Resource):
     def get(self, reaction_id):
@@ -285,6 +286,9 @@ class TaskListAPI(Resource):
 
         task_type = args['task_type']
         task_id = pdb.insert_task(email=email, task_type=task_type)
+        params = args['task_parameters']
+        pdb.task_parameters(task_id=task_id, parameters=params)
+
         pdb.insert_reaction(task_id, reaction_structure=args['reaction_structure'])
 
         if task_type == 'model':

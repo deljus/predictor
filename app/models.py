@@ -241,6 +241,28 @@ class PredictorDataBase:
             return False
 
     @db_session
+    def task_parameters(self, task_id, parameters=None):
+        '''
+        если не переданы параметры - функция возвращает параметры заадачи
+        если параметры переданы - они добавляются в таблицу
+        если какой-то параметр уже существует, то новый параметр не создается - переписывается только значение
+        :param task_id:
+        :param parameters:
+        :return:
+        '''
+        if not task_id:
+            return None
+
+        if parameters:
+            for n,v in parameters.items():
+                if not TaskParameters.get(task=task_id, name=n):
+                    TaskParameters(task=task_id, name=n, value=v)
+
+        return TaskParameters.get(task=task_id)
+
+
+
+    @db_session
     def insert_reaction(self, task_id, reaction_structure, solvent=None, temperature=None,
                         status=None, isreaction=False):
         '''
