@@ -22,11 +22,11 @@ import json
 import os
 import re
 from subprocess import Popen, PIPE, STDOUT
-import sys
 from utils.config import PMAPPER
 from utils.utils import chemaxpost
 from CGRtools.CGRcore import CGRcore
 from CGRtools.RDFread import RDFread
+from CGRtools.SDFwrite import SDFwrite
 from io import StringIO
 
 
@@ -98,21 +98,21 @@ class StandardizeDragos(object):
         return biggest
 
 
-class ISIDAatommarker(object):
+class Pharmacophoreatommarker(object):
     def __init__(self, markerrule, workpath):
         self.__markerrule = self.__dumprules(markerrule)
-        self.__workfile = os.path.join(workpath, 'iam')
+        self.__config = os.path.join(workpath, 'iam')
         self.__loadrules()
 
     def __dumprules(self, rules):
         return open(rules).read()
 
     def setworkpath(self, workpath):
-        self.__workfile = os.path.join(workpath, 'iam')
+        self.__config = os.path.join(workpath, 'iam')
         self.__loadrules()
 
     def __loadrules(self):
-        with open(self.__workfile, 'w') as f:
+        with open(self.__config, 'w') as f:
             f.write(self.__markerrule)
 
     def get(self, structure):
@@ -122,7 +122,7 @@ class ISIDAatommarker(object):
         :type structure: str
         """
 
-        p = Popen([PMAPPER, '-c', self.__workfile], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+        p = Popen([PMAPPER, '-c', self.__config], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
         pout = p.communicate(input=structure.encode())[0]
 
         marks = []
@@ -158,13 +158,14 @@ class ISIDAatommarker(object):
 
 
 class CGRatommarker(object):
-    def __init__(self, prepare_rules, rules, stereo=False):
-        self.__count = 1
-        self.__stdrules = self.__loadrules(prepare_rules)
-        self.__rules = rules
+    def __init__(self, patterns, prepare=None, postprocess=None, stereo=False):
         self.__cgr = CGRcore(type='0', stereo=stereo, balance=0, b_templates=None, e_rules=None, c_rules=None)
+        self.__stdprerules = self.__loadrules(prepare)
+        self.__stdpostrules = self.__loadrules(postprocess)
+        self.__patterns = self.__loadpatterns(patterns)
 
-    def __loadrules(self, rules):
+    @staticmethod
+    def __loadrules(rules):
         if rules:
             with open(rules) as f:
                 ruless = '..'.join([x.split()[0] for x in f])
@@ -172,31 +173,58 @@ class CGRatommarker(object):
             ruless = None
         return ruless
 
+    def __loadpatterns(self, patterns):
+        rules = []
+        for i in patterns:
+            with open(i) as f:
+                rules.append(self.__cgr.searchtemplate(self.__cgr.gettemplates(f), speed=False))
+        return rules
+
     def getcount(self):
-        return self.__count
+        return len(self.__patterns)
 
     def get(self, structure):
-        if self.__stdrules:
+        if self.__stdprerules:
             data = {"structure": structure, "parameters": "mol",
                     "filterChain": [{"filter": "standardizer",
-                                     "parameters": {"standardizerDefinition": self.__stdrules}}]}
+                                     "parameters": {"standardizerDefinition": self.__stdprerules}}]}
             res = chemaxpost('calculate/molExport', data)
 
             if res:
                 res = json.loads(res)
                 if 'isReaction' not in res:
                     return False
-                rxn = res['structure']
+                structure = res['structure']
             else:
                 return False
-        else:
-            rxn = structure
 
-        data = next(RDFread(StringIO(rxn)).readdata(), None)
-        if data:
-            g = self.__cgr.getCGR(data)
-            for n, m, eattr in g.edges(data=True):
-                if (g.node[n]['element'] == 'H') != (g.node[m]['element'] == 'H'):
-                    pass
+        print(structure)
+        data = next(RDFread(StringIO(structure)).readdata(), None)
+        if not data:
+            return False
 
-        return False
+        g = self.__cgr.getCGR(data)
+        marks = []
+        for i in self.__patterns:
+            tmp = set()
+            for match in i(g):
+                tmp.add(list(match['products'].nodes())[0])
+            marks.append(tmp)
+
+        print(marks)
+        with StringIO() as f:
+            SDFwrite(f).writedata(g)
+            structure = f.getvalue()
+
+        if self.__stdpostrules:
+            data = {"structure": structure, "parameters": "sdf",
+                    "filterChain": [{"filter": "standardizer",
+                                     "parameters": {"standardizerDefinition": self.__stdpostrules}}]}
+            res = chemaxpost('calculate/molExport', data)
+
+            if res:
+                structure = json.load(res)['structure']
+            else:
+                return False
+
+        return structure
