@@ -41,13 +41,7 @@ STATUS_ARRAY = ["Task created",         #0
                 "Mapping is done",      #3
                 "Modelling required",   #4
                 "Modelling processing", #5
-                "Modelling is done",    #6
-                "",                     #7
-                "",                     #8
-                "",                     #9
-                "Search task created",  #10
-                "Searching required",   #11
-                "Searching is done"     #12
+                "Modelling is done"     #6
                 ]
 
 
@@ -65,6 +59,14 @@ class Tasks(db.Entity):
     chemicals = Set("Chemicals")
     status = Required(int, default=0)
     create_date = Required(int)
+    task_type = Required(str, default="model")
+    parameters = Set("TaskParameters")
+
+class TaskParameters(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    task = Required(Tasks)
+    name = Required(str)
+    value = Required(str)
 
 
 class Chemicals(db.Entity):
@@ -194,7 +196,7 @@ class PredictorDataBase:
 
 
     @db_session
-    def insert_task(self, email=None):
+    def insert_task(self, email=None, task_type=None):
         '''
         функция добавляет в таблицу новую задачу
         :param email: мыло если есть.
@@ -207,7 +209,7 @@ class PredictorDataBase:
         else:
             user = None
 
-        task = Tasks(user=user, create_date=int(time.time()))
+        task = Tasks(user=user, task_type=task_type, create_date=int(time.time()))
         commit()
         return task.id
 
@@ -237,6 +239,28 @@ class PredictorDataBase:
             return True
         else:
             return False
+
+    @db_session
+    def task_parameters(self, task_id, parameters=None):
+        '''
+        если не переданы параметры - функция возвращает параметры заадачи
+        если параметры переданы - они добавляются в таблицу
+        если какой-то параметр уже существует, то новый параметр не создается - переписывается только значение
+        :param task_id:
+        :param parameters:
+        :return:
+        '''
+        if not task_id:
+            return None
+
+        if parameters:
+            for n,v in parameters.items():
+                if not TaskParameters.get(task=task_id, name=n):
+                    TaskParameters(task=task_id, name=n, value=v)
+
+        return TaskParameters.get(task=task_id)
+
+
 
     @db_session
     def insert_reaction(self, task_id, reaction_structure, solvent=None, temperature=None,
