@@ -27,7 +27,9 @@ from utils.utils import chemaxpost
 from CGRtools.CGRcore import CGRcore
 from CGRtools.RDFread import RDFread
 from CGRtools.SDFwrite import SDFwrite
+from CGRtools.RDFwrite import RDFwrite
 from io import StringIO
+import networkx as nx
 
 
 class StandardizeDragos(object):
@@ -168,7 +170,7 @@ class CGRatommarker(object):
     def __loadrules(rules):
         if rules:
             with open(rules) as f:
-                ruless = '..'.join([x.split()[0] for x in f])
+                ruless = f.read().rstrip()
         else:
             ruless = None
         return ruless
@@ -185,10 +187,10 @@ class CGRatommarker(object):
 
     def get(self, structure):
         if self.__stdprerules:
-            data = {"structure": structure, "parameters": "mol",
-                    "filterChain": [{"filter": "standardizer",
-                                     "parameters": {"standardizerDefinition": self.__stdprerules}}]}
-            res = chemaxpost('calculate/molExport', data)
+            res = chemaxpost('calculate/molExport',
+                             {"structure": structure, "parameters": "mol",
+                              "filterChain": [{"filter": "standardizer",
+                                               "parameters": {"standardizerDefinition": self.__stdprerules}}]})
 
             if res:
                 res = json.loads(res)
@@ -198,7 +200,6 @@ class CGRatommarker(object):
             else:
                 return False
 
-        print(structure)
         data = next(RDFread(StringIO(structure)).readdata(), None)
         if not data:
             return False
@@ -211,20 +212,33 @@ class CGRatommarker(object):
                 tmp.add(list(match['products'].nodes())[0])
             marks.append(tmp)
 
-        print(marks)
-        with StringIO() as f:
-            SDFwrite(f).writedata(g)
-            structure = f.getvalue()
-
         if self.__stdpostrules:
-            data = {"structure": structure, "parameters": "sdf",
-                    "filterChain": [{"filter": "standardizer",
-                                     "parameters": {"standardizerDefinition": self.__stdpostrules}}]}
-            res = chemaxpost('calculate/molExport', data)
+            with StringIO() as f:
+                RDFwrite(f).writedata(data)
+                structure = f.getvalue()
+
+            res = chemaxpost('calculate/molExport',
+                             {"structure": structure, "parameters": "mol",
+                              "filterChain": [{"filter": "standardizer",
+                                               "parameters": {"standardizerDefinition": self.__stdpostrules}}]})
 
             if res:
-                structure = json.load(res)['structure']
+                data = next(RDFread(StringIO(json.loads(res)['structure'])).readdata(remap=False), None)
+                if not data:
+                    return False
             else:
                 return False
 
+        print(marks)
+        structure = nx.union_all(data['substrats'])
+        for i in marks:
+            tmp = structure.copy()
+            for j in i:
+                tmp.node[j]['mark'] = 1
+
+            with StringIO() as f:
+                SDFwrite(f).writedata(tmp)
+                tmp = f.getvalue()
+
+            print(tmp)
         return structure
