@@ -191,7 +191,6 @@ class CGRatommarker(object):
                              {"structure": structure, "parameters": "mol",
                               "filterChain": [{"filter": "standardizer",
                                                "parameters": {"standardizerDefinition": self.__stdprerules}}]})
-
             if res:
                 res = json.loads(res)
                 if 'isReaction' not in res:
@@ -209,7 +208,7 @@ class CGRatommarker(object):
         for i in self.__patterns:
             tmp = set()
             for match in i(g):
-                tmp.add(list(match['products'].nodes())[0])
+                tmp.add(tuple(sorted(match['products'].nodes())))
             marks.append(tmp)
 
         if self.__stdpostrules:
@@ -221,7 +220,6 @@ class CGRatommarker(object):
                              {"structure": structure, "parameters": "mol",
                               "filterChain": [{"filter": "standardizer",
                                                "parameters": {"standardizerDefinition": self.__stdpostrules}}]})
-
             if res:
                 data = next(RDFread(StringIO(json.loads(res)['structure'])).readdata(remap=False), None)
                 if not data:
@@ -231,6 +229,7 @@ class CGRatommarker(object):
 
         print(marks)
         structure = nx.union_all(data['substrats'])
+        result = []
         for i in marks:
             tmp = structure.copy()
             for j in i:
@@ -238,7 +237,6 @@ class CGRatommarker(object):
 
             with StringIO() as f:
                 SDFwrite(f).writedata(tmp)
-                tmp = f.getvalue()
+                result.append(f.getvalue())
 
-            print(tmp)
-        return structure
+        return result
