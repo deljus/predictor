@@ -206,10 +206,13 @@ class CGRatommarker(object):
         g = self.__cgr.getCGR(data)
         marks = []
         for i in self.__patterns:
-            tmp = set()
+            patterns = set()
             for match in i(g):
-                tmp.add(tuple(sorted(match['products'].nodes())))
-            marks.append(tmp)
+                patterns.add(tuple(sorted(match['products'].nodes())))
+            marks.append(patterns)
+
+        if 0 == len(set(len(x) for x in marks)) > 1:
+            return False
 
         if self.__stdpostrules:
             with StringIO() as f:
@@ -230,13 +233,17 @@ class CGRatommarker(object):
         print(marks)
         structure = nx.union_all(data['substrats'])
         result = []
-        for i in marks:
-            tmp = structure.copy()
-            for j in i:
-                tmp.node[j]['mark'] = 1
-
+        for pattern in marks:
             with StringIO() as f:
-                SDFwrite(f).writedata(tmp)
+                sdf = SDFwrite(f)
+
+                for match in pattern:
+                    tmp = structure.copy()
+                    for atom in match:
+                        tmp.node[atom]['mark'] = '1'
+
+                    sdf.writedata(tmp)
+
                 result.append(f.getvalue())
 
         return result
