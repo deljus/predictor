@@ -209,8 +209,13 @@ class Fragmentor(object):
         :param structures: opened file or string io in sdf, mol or rdf, rxn formats
         rdf, rxn work only in CGR or reagent marked atoms mode
         """
-        workfiles = [os.path.join(self.__workpath, "frg.sdf")]
+        workfiles = [os.path.join(self.__workpath, "frg_%d.sdf" % x)
+                     for x in range(self.__cgr_marker.getcount() if self.__cgr_marker
+                                    else self.__dragos_marker.getcount() if self.__dragos_marker else 1)]
         outputfile = os.path.join(self.__workpath, "frg")
+
+        with openFiles(workfiles, ['w']*len(workfiles)) as f:
+            writers = [SDFwrite(x) for x in f]
 
         if self.__prepocess:
             reader = RDFread(structures) if self.__cgr or self.__cgr_marker else SDFread(structures)
@@ -228,8 +233,6 @@ class Fragmentor(object):
                     data = self.__cgr.getCGR(data)
 
                 elif self.__cgr_marker:
-                    workfiles.extend([os.path.join(self.__workpath, "frg_%d.sdf" % x)
-                                      for x in range(1, self.__cgr_marker.getcount())])
                     data = self.__cgr_marker.get(data)
 
                 elif self.__dragos_marker:
@@ -238,10 +241,9 @@ class Fragmentor(object):
                 if not data:
                     return False
 
-                with openFiles(workfiles, ['w']*len(workfiles)) as f:
-                    writers = [SDFwrite(x) for x in f]
-                    for w, d in zip(writers, data if isinstance(data, list) else [data]):
-                        w.writedata(d)
+                for w, d in zip(writers, data if isinstance(data, list) else [data]):
+                    for x in (d if isinstance(d, list) else [d]):
+                        w.writedata(x)
 
         else:
             with open(workfiles[0], 'w') as f:
