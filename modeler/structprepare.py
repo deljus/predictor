@@ -21,8 +21,8 @@
 import json
 import os
 import re
-from subprocess import Popen, PIPE, STDOUT
-from utils.config import PMAPPER
+from subprocess import Popen, PIPE, STDOUT, call
+from utils.config import PMAPPER, STANDARDIZER
 from utils.utils import chemaxpost
 from CGRtools.CGRcore import CGRcore
 from CGRtools.RDFread import RDFread
@@ -185,12 +185,15 @@ class CGRatommarker(object):
     def getcount(self):
         return len(self.__patterns)
 
+    def __getchemax(self, structure, rules):
+        return ('calculate/molExport',
+                {"structure": structure, "parameters": "rdf",
+                 "filterChain": [{"filter": "standardizer",
+                                  "parameters": {"standardizerDefinition": rules}}]})
+
     def get(self, structure):
         if self.__stdprerules:
-            res = chemaxpost('calculate/molExport',
-                             {"structure": structure, "parameters": "mol",
-                              "filterChain": [{"filter": "standardizer",
-                                               "parameters": {"standardizerDefinition": self.__stdprerules}}]})
+            res = chemaxpost(*self.__getchemax(structure, self.__stdprerules))
             if res:
                 res = json.loads(res)
                 if 'isReaction' not in res:
@@ -219,10 +222,7 @@ class CGRatommarker(object):
                 RDFwrite(f).writedata(data)
                 structure = f.getvalue()
 
-            res = chemaxpost('calculate/molExport',
-                             {"structure": structure, "parameters": "mol",
-                              "filterChain": [{"filter": "standardizer",
-                                               "parameters": {"standardizerDefinition": self.__stdpostrules}}]})
+            res = chemaxpost(*self.__getchemax(structure, self.__stdpostrules))
             if res:
                 data = next(RDFread(StringIO(json.loads(res)['structure'])).readdata(remap=False), None)
                 if not data:
@@ -230,8 +230,9 @@ class CGRatommarker(object):
             else:
                 return False
 
-        print(marks)
         structure = nx.union_all(data['substrats'])
+        structure.graph['meta'] = data['meta'].copy()
+
         result = []
         for pattern in marks:
             with StringIO() as f:
@@ -247,3 +248,11 @@ class CGRatommarker(object):
                 result.append(f.getvalue())
 
         return result
+
+
+class Colorize(object):
+    def __init__(self, starter):
+        self.__starter = starter
+
+    def get(self, structure):
+        return

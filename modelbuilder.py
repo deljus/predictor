@@ -57,14 +57,13 @@ class Modelbuilder(MBparser):
         self.__descgens = [g(extention=extdata, **x)
                            for g, x, _ in descgenerator]
 
-        description = self.parsemodeldescription(self.__options['description'])
-
-        if self.__options['isreaction']:
-            description['is_reaction'] = True
-            description['hashes'] = self.__gethashes(self.__options['input'])
-            print(description['hashes'])
-
         if not self.__options['output']:
+            description = self.parsemodeldescription(self.__options['description'])
+            if self.__options['isreaction']:
+                description['is_reaction'] = True
+                description['hashes'] = self.__gethashes(self.__options['input'])
+                print(description['hashes'])
+
             ests = []
             svm = {'svr', 'svc'}.intersection(self.__options['estimator']).pop()
             if svm:
@@ -147,7 +146,7 @@ class Modelbuilder(MBparser):
                     else:
                         self.savecsv('%s.%d' % (output, n), *dsc[:2], header=header)
                 else:
-                    print('BAD Descriptor generator params in %d line' % n)
+                    print('BAD Descriptor generator params in line %d' % n)
                     return False
         return True
 

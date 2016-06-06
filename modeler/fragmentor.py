@@ -24,18 +24,13 @@ import subprocess as sp
 import numpy as np
 import pandas as pd
 from functools import reduce
-from modeler.structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker
-from CGRtools.main_condenser import condenser_core
+from modeler.structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker, Colorize
+from CGRtools.CGRcore import CGRcore
+from CGRtools.SDFread import SDFread
+from CGRtools.SDFwrite import SDFwrite
+from CGRtools.RDFread import RDFread
 from sklearn.feature_extraction import DictVectorizer
 from utils.config import FRAGMENTOR
-
-
-class CGRWrapper(object):
-    def __init__(self, **kwargs):
-        self.__kwargs = kwargs
-
-    def convert(self, structures, output):
-        return condenser_core(input=structures, output=output, **self.__kwargs)
 
 
 class Adhoc(object):
@@ -69,21 +64,28 @@ class Fragmentor(object):
     def __init__(self, workpath='.', version=None, s_option=None, fragment_type=3, min_length=2, max_length=10,
                  colorname=None, marked_atom=0, cgr_dynbonds=0, xml=None, doallways=False,
                  useformalcharge=False, atompairs=False, fragmentstrict=False, getatomfragment=False,
-                 overwrite=True, headers=None, extention=None, marker_rules=None, standardize=None,
+                 overwrite=True, headers=None, extention=None,
+                 marker_rules=None, standardize=None,
                  cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None,
                  cgr_type=None, cgr_stereo=False, cgr_balance=0, cgr_b_templates=None,
-                 cgr_e_rules=None, cgr_c_rules=None):
+                 cgr_e_rules=None, cgr_c_rules=None, do_color=None):
+
+        self.__prepocess = any(x is not None for x in (marker_rules, standardize, cgr_type, cgr_marker, do_color))
 
         self.__dragos_marker = Pharmacophoreatommarker(marker_rules, workpath) if marker_rules else None
-        self.__dragos_std = StandardizeDragos(standardize) if standardize is not None or marker_rules else None
 
-        self.__cgr = CGRWrapper(type=cgr_type, stereo=cgr_stereo, balance=int(cgr_balance),
-                                b_templates=open(cgr_b_templates) if cgr_b_templates else None,
-                                e_rules=open(cgr_e_rules) if cgr_e_rules else None,
-                                c_rules=open(cgr_c_rules) if cgr_c_rules else None) if cgr_type else None
+        self.__cgr = CGRcore(type=cgr_type, stereo=cgr_stereo, balance=int(cgr_balance),
+                             b_templates=open(cgr_b_templates) if cgr_b_templates else None,
+                             e_rules=open(cgr_e_rules) if cgr_e_rules else None,
+                             c_rules=open(cgr_c_rules) if cgr_c_rules else None) if cgr_type is not None else None
 
-        self.__cgr_marker = CGRatommarker(cgr_marker, prepare=cgr_marker_prepare, postprocess=cgr_marker_postprocess,
+        self.__cgr_marker = CGRatommarker(cgr_marker, prepare=cgr_marker_prepare,
+                                          postprocess=cgr_marker_postprocess,
                                           stereo=cgr_stereo) if cgr_marker else None
+
+        self.__dragos_std = StandardizeDragos(standardize) if marker_rules and not (self.__cgr or
+                                                                                    self.__cgr_marker) else None
+        self.__do_color = Colorize(do_color) if do_color else None
 
         self.__sparse = DictVectorizer(sparse=False)
 
@@ -111,8 +113,8 @@ class Fragmentor(object):
         tmp.extend(['-t', str(fragment_type), '-l', str(min_length), '-u', str(max_length)])
 
         if colorname: tmp.extend(['-c', colorname])
-        if marked_atom: tmp.extend(['-m', marked_atom])
-        if cgr_dynbonds: tmp.extend(['-d', cgr_dynbonds])
+        if marked_atom: tmp.extend(['-m', str(marked_atom)])
+        if cgr_dynbonds: tmp.extend(['-d', str(cgr_dynbonds)])
         if xml: tmp.extend(['-x', xml])
         if doallways: tmp.append('--DoAllWays')
         if atompairs: tmp.append('--AtomPairs')
@@ -207,84 +209,44 @@ class Fragmentor(object):
         :param structures: opened file or string io in sdf, mol or rdf, rxn formats
         rdf, rxn work only in CGR or reagent marked atoms mode
         """
-        def ssplitter(func, output):  # for mol or sdf only!
-            flag = False
-            buffer = []
-            for line in structures:
-                buffer.append(line)
-                if '$$$$' in line[:4]:
-                    res = func.get(''.join(buffer))
-                    if res:
-                        flag = True
-                        for w, d in zip(output, [res] if isinstance(res, str) else res):
-                            w.write(d)
-                    buffer = []
-            if buffer:
-                res = func.get(''.join(buffer).rstrip('\n$ ') + '\n$$$$\n')
-                if res:
-                    flag = True
-                    for w, d in zip(output, [res] if isinstance(res, str) else res):
-                        w.write(d)
-            return flag
-
-        def rsplitter(func, output):
-            buffer = None
-            flag = False
-            for line in structures:
-                if "$RXN" in line[0:4]:
-                    if buffer:
-                        res = func.get(''.join(buffer))
-                        if res:
-                            flag = True
-                            for w, d in zip(output, [res] if isinstance(res, str) else res):
-                                w.write(d)
-                    buffer = [line]
-                elif buffer:
-                    buffer.append(line)
-            if buffer:
-                res = func.get(''.join(buffer))
-                if res:
-                    flag = True
-                    for w, d in zip(output, [res] if isinstance(res, str) else res):
-                        w.write(d)
-
-            return flag
-
-        adhoc = Adhoc()
-
         workfiles = [os.path.join(self.__workpath, "frg.sdf")]
         outputfile = os.path.join(self.__workpath, "frg")
 
-        if self.__cgr:
-            with open(workfiles[0], 'w') as f:
-                if self.__cgr.convert(structures, f) == 2:
+        if self.__prepocess:
+            reader = RDFread(structures) if self.__cgr or self.__cgr_marker else SDFread(structures)
+            for data in reader.readdata():
+                if self.__dragos_std:
+                    data = self.__dragos_std.get(data)
+
+                if self.__do_color:
+                    if self.__cgr or self.__cgr_marker:
+                        data.update({i: [self.__do_color.get(x) for x in data[i]] for i in ('substrats', 'products')})
+                    else:
+                        data = self.__do_color.get(data)
+
+                if self.__cgr:
+                    data = self.__cgr.getCGR(data)
+
+                elif self.__cgr_marker:
+                    workfiles.extend([os.path.join(self.__workpath, "frg_%d.sdf" % x)
+                                      for x in range(1, self.__cgr_marker.getcount())])
+                    data = self.__cgr_marker.get(data)
+
+                elif self.__dragos_marker:
+                    data = self.__dragos_marker.get(data)
+
+                if not data:
                     return False
 
-        elif self.__dragos_std:
-            tmpfile = os.path.join(self.__workpath, "tmp.sdf")
-            with openFiles(tmpfile, 'w') as f:
-                if not ssplitter(self.__dragos_std, f):
-                    return False
-
-            if self.__dragos_marker:  # todo: надо мультиметки добавить
-                with openFiles(workfiles[0], 'w') as f, open(tmpfile) as structures:
-                    if not ssplitter(self.__dragos_marker, f):
-                        return False
-            else:
-                workfiles[0] = tmpfile
-
-        elif self.__cgr_marker:
-            workfiles.extend([os.path.join(self.__workpath, "frg_%d.sdf" % x)
-                              for x in range(1, self.__cgr_marker.getcount())])
-
-            with openFiles(workfiles, ['w'] * len(workfiles)) as f:
-                if not rsplitter(self.__cgr_marker, f):
-                    return False
+                with openFiles(workfiles, ['w']*len(workfiles)) as f:
+                    writers = [SDFwrite(x) for x in f]
+                    for w, d in zip(writers, data if isinstance(data, list) else [data]):
+                        w.writedata(d)
 
         else:
-            with openFiles(workfiles, ['w'] * len(workfiles)) as f:
-                if not ssplitter(adhoc, f):
-                    return False
+            with open(workfiles[0], 'w') as f:
+                for i in structures:
+                    f.write(i)
 
         if self.__extention:
             if kwargs.get('parsesdf'):
@@ -342,9 +304,7 @@ class Fragmentor(object):
                 ad.append(True)
                 tmp = {}  # X vector
                 for i in x:
-                    k, v = i.split(':')
-                    k = int(k)
-                    v = int(v)
+                    k, v = (int(x) for x in i.split(':'))
                     if k <= self.__headsize[n]:
                         tmp[self.__headdict[n][k]] = v
                     else:

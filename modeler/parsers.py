@@ -117,9 +117,7 @@ class MBparser(object):
         tmp = {}
         with open(file) as f:
             for line in f:
-                k, v = line.split(':=')
-                k = k.strip()
-                v = v.strip()
+                k, v = (x.strip() for x in line.split(':='))
                 if k in ('nlim', 'tol', 'name', 'example', 'desc', 'report_units'):
                     if k in ('nlim', 'tol'):
                         v = float(v)
@@ -134,11 +132,11 @@ class MBparser(object):
                 opts = line.split()
                 tmp = {}
                 for x in opts:
-                    key, value = x.split('=')
-                    if 'header' in key:
-                        tmp['headers'] = [x.strip() for x in value.split('|')]
+                    key, value = (x.strip() for x in x.split('='))
+                    if key in ['header', 'cgr_marker']:
+                        tmp[key] = [x.strip() for x in value.split('|')]
                     else:
-                        tmp[key.strip()] = value.strip()
+                        tmp[key] = value
                 params.append(tmp)
         return params
 
