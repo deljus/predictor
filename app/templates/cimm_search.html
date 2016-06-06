@@ -152,10 +152,10 @@ function click_settings_toogle()
                         <div id="search-pnl" style=";width: 100%;">
                             <div style="margin-top: 100px;width:80%;">
                                <a href="#" onclick="return click_settings_toogle()">
-                                    <img height="30px" src="{{ url_for('static', filename='images/s3.png ') }}">
+                                    <img height="30px" src="{{ url_for('static', filename='images/s3.png') }}">
                                 </a>
                                 <a href="#" onclick="return click_editor_toogle()">
-                                    <img height="50px" src="{{ url_for('static', filename='images/chemaxon1.png ') }}">
+                                    <img height="50px" src="{{ url_for('static', filename='images/chemaxon1.png') }}">
                                 </a>
                             <input id="search_input" type="text" style="width: 70%;height:30px;"   onblur="return blur_search_input()" onclick="return click_search_input()">&nbsp;<button id="search-btn" class="btn btn-info" onclick="return click_search_btn()">Search</button>
                                 <img id="img-loader" src="{{ url_for('static', filename='images/ajax-loader.gif') }}" style="display: none" >
