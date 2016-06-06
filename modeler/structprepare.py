@@ -26,6 +26,7 @@ from utils.config import PMAPPER, STANDARDIZER
 from utils.utils import chemaxpost
 from CGRtools.CGRcore import CGRcore
 from CGRtools.RDFread import RDFread
+from CGRtools.SDFread import SDFread
 from CGRtools.SDFwrite import SDFwrite
 from CGRtools.RDFwrite import RDFwrite
 from io import StringIO
@@ -251,8 +252,21 @@ class CGRatommarker(object):
 
 
 class Colorize(object):
-    def __init__(self, starter):
+    def __init__(self, starter, workpath):
         self.__starter = starter
+        self.setworkpath(workpath)
+
+    def setworkpath(self, workpath):
+        self.__inputfile = os.path.join(workpath, 'colorin.sdf')
+        self.__outfile = os.path.join(workpath, 'colorout.sdf')
 
     def get(self, structure):
-        return
+        if os.path.exists(self.__outfile):
+            os.remove(self.__outfile)
+        with open(self.__inputfile, 'w') as f:
+            SDFwrite(f).writedata(structure)
+
+        if call([self.__starter, self.__inputfile, self.__outfile]) == 0:
+            with open(self.__outfile) as f:
+                return next(SDFread(f).readdata(), False)
+        return False

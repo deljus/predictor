@@ -140,6 +140,8 @@ class Fragmentor(object):
         self.__workpath = workpath
         if self.__dragos_marker:
             self.__dragos_marker.setworkpath(workpath)
+        if self.__do_color:
+            self.__do_color.setworkpath(workpath)
 
     def __prepareheader(self, n):
         header = os.path.join(self.__workpath, "model.hdr")
