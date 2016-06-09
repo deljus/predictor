@@ -68,9 +68,9 @@ class Fragmentor(object):
                  marker_rules=None, standardize=None,
                  cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None,
                  cgr_type=None, cgr_stereo=False, cgr_balance=0, cgr_b_templates=None,
-                 cgr_e_rules=None, cgr_c_rules=None, do_color=None):
+                 cgr_e_rules=None, cgr_c_rules=None, docolor=None):
 
-        self.__prepocess = any(x is not None for x in (marker_rules, standardize, cgr_type, cgr_marker, do_color))
+        self.__prepocess = any(x is not None for x in (marker_rules, standardize, cgr_type, cgr_marker, docolor))
 
         self.__dragos_marker = Pharmacophoreatommarker(marker_rules, workpath) if marker_rules else None
 
@@ -85,7 +85,7 @@ class Fragmentor(object):
 
         self.__dragos_std = StandardizeDragos(standardize) if marker_rules and not (self.__cgr or
                                                                                     self.__cgr_marker) else None
-        self.__do_color = Colorize(do_color) if do_color else None
+        self.__do_color = Colorize(docolor, workpath) if docolor else None
 
         self.__sparse = DictVectorizer(sparse=False)
 
@@ -216,36 +216,45 @@ class Fragmentor(object):
                                     else self.__dragos_marker.getcount() if self.__dragos_marker else 1)]
         outputfile = os.path.join(self.__workpath, "frg")
 
-        with openFiles(workfiles, ['w']*len(workfiles)) as f:
-            writers = [SDFwrite(x) for x in f]
-
         if self.__prepocess:
-            reader = RDFread(structures) if self.__cgr or self.__cgr_marker else SDFread(structures)
-            for data in reader.readdata():
-                if self.__dragos_std:
-                    data = self.__dragos_std.get(data)
+            with openFiles(workfiles, ['w']*len(workfiles)) as f:
+                writers = [SDFwrite(x) for x in f]
+                reader = RDFread(structures) if self.__cgr or self.__cgr_marker else SDFread(structures)
+                for data in reader.readdata():
+                    if self.__dragos_std:
+                        data = self.__dragos_std.get(data)
 
-                if self.__do_color:
-                    if self.__cgr or self.__cgr_marker:
-                        data.update({i: [self.__do_color.get(x) for x in data[i]] for i in ('substrats', 'products')})
-                    else:
-                        data = self.__do_color.get(data)
+                    if self.__do_color:
+                        if self.__cgr or self.__cgr_marker:
+                            for i in ('substrats', 'products'):
+                                mols = []
+                                for x in data[i]:
+                                    colored = self.__do_color.get(x)
+                                    if not colored:
+                                        return False
+                                    mols.append(colored)
+                                data[i] = mols
+                        else:
+                            data = self.__do_color.get(data)
 
-                if self.__cgr:
-                    data = self.__cgr.getCGR(data)
+                    if not data:
+                        return False
 
-                elif self.__cgr_marker:
-                    data = self.__cgr_marker.get(data)
+                    if self.__cgr:
+                        data = self.__cgr.getCGR(data)
 
-                elif self.__dragos_marker:
-                    data = self.__dragos_marker.get(data)
+                    elif self.__cgr_marker:
+                        data = self.__cgr_marker.get(data)
 
-                if not data:
-                    return False
+                    elif self.__dragos_marker:
+                        data = self.__dragos_marker.get(data)
 
-                for w, d in zip(writers, data if isinstance(data, list) else [data]):
-                    for x in (d if isinstance(d, list) else [d]):
-                        w.writedata(x)
+                    if not data:
+                        return False
+
+                    for w, d in zip(writers, data if isinstance(data, list) else [data]):
+                        for x in (d if isinstance(d, list) else [d]):
+                            w.writedata(x)
 
         else:
             with open(workfiles[0], 'w') as f:

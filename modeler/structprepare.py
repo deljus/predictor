@@ -21,7 +21,7 @@
 import json
 import os
 import re
-from subprocess import Popen, PIPE, STDOUT, call
+from subprocess import Popen, PIPE, STDOUT, call, check_call, check_output
 from utils.config import PMAPPER, STANDARDIZER
 from utils.utils import chemaxpost
 from CGRtools.CGRcore import CGRcore
@@ -186,67 +186,59 @@ class CGRatommarker(object):
     def getcount(self):
         return len(self.__patterns)
 
-    def __getchemax(self, structure, rules):
-        return ('calculate/molExport',
-                {"structure": structure, "parameters": "rdf",
-                 "filterChain": [{"filter": "standardizer",
-                                  "parameters": {"standardizerDefinition": rules}}]})
+    @staticmethod
+    def __processor(structure, rules, remap=True):
+        with StringIO() as f:
+            RDFwrite(f).writedata(structure)
+            structure = f.getvalue()
+        res = chemaxpost('calculate/molExport',
+                         {"structure": structure, "parameters": "rdf",
+                          "filterChain": [{"filter": "standardizer",
+                                           "parameters": {"standardizerDefinition": rules}}]})
+        if res:
+            res = json.loads(res)
+            if 'isReaction' in res:
+                structure = next(RDFread(StringIO(res['structure'])).readdata(remap=remap), None)
+                if structure:
+                    return structure
+        return False
 
     def get(self, structure):
         if self.__stdprerules:
-            res = chemaxpost(*self.__getchemax(structure, self.__stdprerules))
-            if res:
-                res = json.loads(res)
-                if 'isReaction' not in res:
-                    return False
-                structure = res['structure']
-            else:
+            structure = self.__processor(structure, self.__stdprerules)
+            if not structure:
                 return False
 
-        data = next(RDFread(StringIO(structure)).readdata(), None)
-        if not data:
-            return False
-
-        g = self.__cgr.getCGR(data)
+        g = self.__cgr.getCGR(structure)
         marks = []
         for i in self.__patterns:
-            patterns = set()
+            pattern = set()
             for match in i(g):
-                patterns.add(tuple(sorted(match['products'].nodes())))
-            marks.append(patterns)
+                pattern.add(tuple(sorted(match['products'].nodes())))
+            marks.append(pattern)
 
         if 0 == len(set(len(x) for x in marks)) > 1:
             return False
 
         if self.__stdpostrules:
-            with StringIO() as f:
-                RDFwrite(f).writedata(data)
-                structure = f.getvalue()
-
-            res = chemaxpost(*self.__getchemax(structure, self.__stdpostrules))
-            if res:
-                data = next(RDFread(StringIO(json.loads(res)['structure'])).readdata(remap=False), None)
-                if not data:
-                    return False
-            else:
+            structure = self.__processor(structure, self.__stdpostrules, remap=False)
+            if not structure:
                 return False
 
-        structure = nx.union_all(data['substrats'])
-        structure.graph['meta'] = data['meta'].copy()
+        meta = structure['meta'].copy()
+        structure = nx.union_all(structure['substrats'])
+        structure.graph['meta'] = meta
 
         result = []
         for pattern in marks:
-            with StringIO() as f:
-                sdf = SDFwrite(f)
+            hits = []
+            for match in pattern:
+                tmp = structure.copy()
+                for atom in match:
+                    tmp.node[atom]['mark'] = '1'
+                hits.append(tmp)
 
-                for match in pattern:
-                    tmp = structure.copy()
-                    for atom in match:
-                        tmp.node[atom]['mark'] = '1'
-
-                    sdf.writedata(tmp)
-
-                result.append(f.getvalue())
+            result.append(hits)
 
         return result
 
@@ -268,5 +260,5 @@ class Colorize(object):
 
         if call([self.__starter, self.__inputfile, self.__outfile]) == 0:
             with open(self.__outfile) as f:
-                return next(SDFread(f).readdata(), False)
+                return next(SDFread(f).readdata(remap=False), False)
         return False
