@@ -19,6 +19,7 @@
 #  MA 02110-1301, USA.
 #
 import os
+import threading
 import time
 from copy import deepcopy
 import sys
@@ -27,6 +28,7 @@ from modeler.svmodel import Model as SVM
 import argparse
 import pickle
 import gzip
+import tempfile
 import subprocess as sp
 from CGRtools.FEAR import FEAR
 from CGRtools.CGRcore import CGRcore
@@ -38,6 +40,17 @@ class DefaultList(list):
     @staticmethod
     def __copy__():
         return []
+
+
+def descstarter(func, in_file, out_file, n, fformat, header):
+    with open(in_file) as f:
+        dsc = func(structures=f, parsesdf=True)
+        if dsc:
+            fformat('%s.%d' % (out_file, n), *dsc[:2], header=header)
+        else:
+            print('BAD Descriptor generator params in line %d' % n)
+            return False
+    return True
 
 
 class Modelbuilder(MBparser):
@@ -137,17 +150,20 @@ class Modelbuilder(MBparser):
         return estimatorparams
 
     def __gendesc(self, output, fformat='svm', header=False):
-        for n, dgen in enumerate(self.__descgens, start=1):
-            with open(self.__options['input']) as f:
-                dsc = dgen.get(structures=f, parsesdf=True)
-                if dsc:
-                    if fformat == 'svm':
-                        self.savesvm('%s.%d' % (output, n), *dsc[:2], header=header)
-                    else:
-                        self.savecsv('%s.%d' % (output, n), *dsc[:2], header=header)
-                else:
-                    print('BAD Descriptor generator params in line %d' % n)
-                    return False
+        queue = enumerate(self.__descgens, start=1)
+
+        while True:
+            if threading.active_count() < 13:
+                tmp = next(queue, None)
+                if tmp:
+                    n, dgen = tmp
+                    dgen.setworkpath(tempfile.mkdtemp(dir='.'))
+                    t = threading.Thread(target=descstarter,
+                                         args=[dgen.get, self.__options['input'], output, n,
+                                               (self.savesvm if fformat == 'svm' else self.savecsv), header])
+                    t.start()
+            time.sleep(5)
+
         return True
 
     def __dragossvmfit(self, tasktype):
