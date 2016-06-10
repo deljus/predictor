@@ -153,7 +153,7 @@ class Modelbuilder(MBparser):
         queue = enumerate(self.__descgens, start=1)
 
         while True:
-            if threading.active_count() < 13:
+            if threading.active_count() < self.__options['n_jobs']:
                 tmp = next(queue, None)
                 if tmp:
                     n, dgen = tmp
@@ -162,6 +162,8 @@ class Modelbuilder(MBparser):
                                          args=[dgen.get, self.__options['input'], output, n,
                                                (self.savesvm if fformat == 'svm' else self.savecsv), header])
                     t.start()
+                else:
+                    break
             time.sleep(5)
 
         return True

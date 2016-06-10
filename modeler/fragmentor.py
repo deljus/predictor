@@ -21,6 +21,7 @@
 import operator
 import os
 import subprocess as sp
+from itertools import tee
 import numpy as np
 import pandas as pd
 from functools import reduce
@@ -58,6 +59,13 @@ class openFiles(object):
     def __exit__(self, type, value, traceback):
         for f in self.fhs:
             f.close()
+
+
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
 
 
 class Fragmentor(object):
@@ -220,39 +228,44 @@ class Fragmentor(object):
             with openFiles(workfiles, ['w']*len(workfiles)) as f:
                 writers = [SDFwrite(x) for x in f]
                 reader = RDFread(structures) if self.__cgr or self.__cgr_marker else SDFread(structures)
-                for data in reader.readdata():
-                    if self.__dragos_std:
-                        data = self.__dragos_std.get(data)
+                data = list(reader.readdata())
+                if self.__dragos_std:
+                    data = self.__dragos_std.get(data)
 
-                    if self.__do_color:
-                        if self.__cgr or self.__cgr_marker:
-                            for i in ('substrats', 'products'):
-                                mols = []
-                                for x in data[i]:
-                                    colored = self.__do_color.get(x)
-                                    if not colored:
-                                        return False
-                                    mols.append(colored)
-                                data[i] = mols
-                        else:
-                            data = self.__do_color.get(data)
+                if self.__do_color:
+                    if self.__cgr or self.__cgr_marker:
+                        for i in ('substrats', 'products'):
+                            mols, shifts = [], [0]
+                            for x in data:
+                                shifts.append(len(x[i]) + shifts[-1])
+                                mols.extend(x[i])
 
-                    if not data:
-                        return False
+                            colored = self.__do_color.get(mols)
+                            if not colored:
+                                return False
 
-                    if self.__cgr:
-                        data = self.__cgr.getCGR(data)
+                            for (y, z), x in zip(pairwise(shifts), data):
+                                x[i] = colored[y: z]
+                    else:
+                        data = self.__do_color.get(data)
+                print(data)
+                if not data:
+                    return False
 
-                    elif self.__cgr_marker:
-                        data = self.__cgr_marker.get(data)
+                if self.__cgr:
+                    data = [self.__cgr.getCGR(x) for x in data]
 
-                    elif self.__dragos_marker:
-                        data = self.__dragos_marker.get(data)
+                elif self.__cgr_marker:
+                    data = self.__cgr_marker.get(data)
 
-                    if not data:
-                        return False
+                elif self.__dragos_marker:
+                    data = self.__dragos_marker.get(data)
 
-                    for w, d in zip(writers, data if isinstance(data, list) else [data]):
+                if not data:
+                    return False
+
+                for s in data:
+                    for w, d in zip(writers, s if isinstance(s, list) else [s]):
                         for x in (d if isinstance(d, list) else [d]):
                             w.writedata(x)
 

@@ -187,7 +187,7 @@ class CGRatommarker(object):
         return len(self.__patterns)
 
     @staticmethod
-    def __processor(structure, rules, remap=True):
+    def __processor_s(structure, rules, remap=True):
         with StringIO() as f:
             RDFwrite(f).writedata(structure)
             structure = f.getvalue()
@@ -203,44 +203,56 @@ class CGRatommarker(object):
                     return structure
         return False
 
+    @staticmethod
+    def __processor_m(structure, rules, remap=True):
+        return
+
     def get(self, structure):
         if self.__stdprerules:
-            structure = self.__processor(structure, self.__stdprerules)
+            structure = self.__processor_m(structure, self.__stdprerules) if isinstance(structure, list) \
+                else self.__processor_s(structure, self.__stdprerules)
             if not structure:
                 return False
 
-        g = self.__cgr.getCGR(structure)
-        marks = []
-        for i in self.__patterns:
-            pattern = set()
-            for match in i(g):
-                pattern.add(tuple(sorted(match['products'].nodes())))
-            marks.append(pattern)
+        markslist = []
+        gs = [self.__cgr.getCGR(x) for x in (structure if isinstance(structure, list) else [structure])]
+        for g in gs:
+            marks = []
+            for i in self.__patterns:
+                pattern = set()
+                for match in i(g):
+                    pattern.add(tuple(sorted(match['products'].nodes())))
+                marks.append(pattern)
 
-        if 0 == len(set(len(x) for x in marks)) > 1:
-            return False
+            if 0 == len(set(len(x) for x in marks)) > 1:
+                return False
+            markslist.append(marks)
 
         if self.__stdpostrules:
-            structure = self.__processor(structure, self.__stdpostrules, remap=False)
+            structure = self.__processor_m(structure, self.__stdpostrules, remap=False) if isinstance(structure, list) \
+                else self.__processor_s(structure, self.__stdpostrules, remap=False)
+
             if not structure:
                 return False
 
-        meta = structure['meta'].copy()
-        structure = nx.union_all(structure['substrats'])
-        structure.graph['meta'] = meta
+        output = []
+        for s, marks in zip(structure if isinstance(structure, list) else [structure], markslist):
+            ss = nx.union_all(s['substrats'])
+            ss.graph['meta'] =  s['meta'].copy()
 
-        result = []
-        for pattern in marks:
-            hits = []
-            for match in pattern:
-                tmp = structure.copy()
-                for atom in match:
-                    tmp.node[atom]['mark'] = '1'
-                hits.append(tmp)
+            result = []
+            for pattern in marks:
+                hits = []
+                for match in pattern:
+                    tmp = ss.copy()
+                    for atom in match:
+                        tmp.node[atom]['mark'] = '1'
+                    hits.append(tmp)
 
-            result.append(hits)
+                result.append(hits)
+            output.append(result)
 
-        return result
+        return output
 
 
 class Colorize(object):
@@ -256,9 +268,13 @@ class Colorize(object):
         if os.path.exists(self.__outfile):
             os.remove(self.__outfile)
         with open(self.__inputfile, 'w') as f:
-            SDFwrite(f).writedata(structure)
+            for i in (structure if isinstance(structure, list) else [structure]):
+                SDFwrite(f).writedata(i)
 
         if call([self.__starter, self.__inputfile, self.__outfile]) == 0:
             with open(self.__outfile) as f:
-                return next(SDFread(f).readdata(remap=False), False)
+                res = list(SDFread(f).readdata(remap=False))
+                if res:
+                    return res if isinstance(structure, list) else res[0]
+
         return False
