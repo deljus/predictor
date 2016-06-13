@@ -21,7 +21,7 @@
 import json
 import os
 import re
-from subprocess import Popen, PIPE, STDOUT, call, check_call, check_output
+from subprocess import Popen, PIPE, STDOUT, call
 from utils.config import PMAPPER, STANDARDIZER
 from utils.utils import chemaxpost
 from CGRtools.CGRcore import CGRcore
@@ -203,9 +203,17 @@ class CGRatommarker(object):
                     return structure
         return False
 
-    @staticmethod
-    def __processor_m(structure, rules, remap=True):
-        return
+    def __processor_m(self, structure, rules, remap=True):
+        p = Popen([STANDARDIZER, '-c', rules, '-f', 'sdf'], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+        with StringIO as f:
+            tmp = RDFwrite(f)
+            for x in structure:
+                tmp.writedata(x)
+
+            res = p.communicate(input=f.getvalue().encode())[0].decode()
+            if p.returncode == 0:
+                return list(SDFread(StringIO(res)).readdata(remap=remap))
+        return False
 
     def get(self, structure):
         if self.__stdprerules:
