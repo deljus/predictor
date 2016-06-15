@@ -91,8 +91,8 @@ class Fragmentor(object):
                                           postprocess=cgr_marker_postprocess,
                                           stereo=cgr_stereo) if cgr_marker else None
 
-        self.__dragos_std = StandardizeDragos(standardize) if marker_rules and not (self.__cgr or
-                                                                                    self.__cgr_marker) else None
+        self.__dragos_std = StandardizeDragos(standardize) if standardize and not (self.__cgr or
+                                                                                   self.__cgr_marker) else None
         self.__do_color = Colorize(docolor, workpath) if docolor else None
 
         self.__sparse = DictVectorizer(sparse=False)
@@ -248,7 +248,7 @@ class Fragmentor(object):
                                 x[i] = colored[y: z]
                     else:
                         data = self.__do_color.get(data)
-                print(data)
+
                 if not data:
                     return False
 

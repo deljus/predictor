@@ -118,46 +118,30 @@ class Pharmacophoreatommarker(object):
         with open(self.__config, 'w') as f:
             f.write(self.__markerrule)
 
+    def getcount(self):
+        return 1
+
     def get(self, structure):
         """
         marks atoms in 7th col of sdf.
         if molecule has atom mapping - will be used mapping.
-        :type structure: str
+        :type structure: nx.Graph or list(nx.Graph)
         """
-
         p = Popen([PMAPPER, '-c', self.__config], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
-        pout = p.communicate(input=structure.encode())[0]
+        with StringIO() as f:
+            tmp = SDFwrite(f)
+            for x in (structure if isinstance(structure, list) else [structure]):
+                tmp.writedata(x)
 
-        marks = []
-        flag = 0
-        manual = False
-        buffer = []
+            marks = p.communicate(input=f.getvalue().encode())[0].decode().split()
 
-        for x in pout.decode().split():
-            marks.extend(x.split(';'))
-
-        marksg = (n for n in marks)
-
-        for line in structure.splitlines(True):
-            if '999 V2000' in line:
-                flag = int(line[:3])
-                b1 = {}
-            elif flag:
-                if line[60:63] != '  0':
-                    manual = True
-                    line = line[:51] + '  1' + line[54:]
-                elif 'A' in next(marksg):
-                    b1[flag] = line
-                    line = line[:51] + '  1' + line[54:60] + '  1' + line[63:]
-                flag -= 1
-
-            buffer.append(line)
-            if manual and not flag:
-                manual = False
-                for k, v in b1.items():
-                    buffer[-k] = v
-
-        return ''.join(buffer)
+        if p.returncode == 0:
+            for s, mark in zip((structure if isinstance(structure, list) else [structure]), marks):
+                for n, m in zip(s.nodes(), mark.split(';')):
+                    if m:
+                        s.node[n]['mark'] = '1'
+            return structure
+        return False
 
 
 class CGRatommarker(object):
@@ -204,15 +188,15 @@ class CGRatommarker(object):
         return False
 
     def __processor_m(self, structure, rules, remap=True):
-        p = Popen([STANDARDIZER, '-c', rules, '-f', 'sdf'], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
-        with StringIO as f:
+        p = Popen([STANDARDIZER, '-c', rules, '-f', 'rdf'], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+        with StringIO() as f:
             tmp = RDFwrite(f)
             for x in structure:
                 tmp.writedata(x)
 
             res = p.communicate(input=f.getvalue().encode())[0].decode()
             if p.returncode == 0:
-                return list(SDFread(StringIO(res)).readdata(remap=remap))
+                return list(RDFread(StringIO(res)).readdata(remap=remap))
         return False
 
     def get(self, structure):
@@ -221,7 +205,6 @@ class CGRatommarker(object):
                 else self.__processor_s(structure, self.__stdprerules)
             if not structure:
                 return False
-
         markslist = []
         gs = [self.__cgr.getCGR(x) for x in (structure if isinstance(structure, list) else [structure])]
         for g in gs:
