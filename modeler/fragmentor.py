@@ -137,7 +137,7 @@ class Fragmentor(object):
         return '%s%s' % (FRAGMENTOR, self.__fragversion)
 
     def __dumpheader(self, n, header):
-        with open(header) as f:
+        with open(header, encoding='utf-8') as f:
             self.__headdump[n] = f.read()
             lines = self.__headdump[n].splitlines()
             self.__headsize[n] = len(lines)
@@ -153,7 +153,7 @@ class Fragmentor(object):
 
     def __prepareheader(self, n):
         header = os.path.join(self.__workpath, "model.hdr")
-        with open(header, 'w') as f:
+        with open(header, 'w', encoding='utf-8') as f:
             f.write(self.__headdump[n])
         self.__execparams[self.__execparams.index('-h') + 1] = header
 
