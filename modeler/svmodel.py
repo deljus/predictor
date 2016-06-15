@@ -89,7 +89,6 @@ class Model(object):
         self.__rep_boost = ceil(repetitions * (rep_boost % 100) / 100)
         print("Descriptors generation start")
         self.__x, self.__y, *_ = descriptorgen.get(structures, **kwargs)
-        print(self.__x.columns)
         print("Descriptors generated")
 
         self.__normalize = normalize
