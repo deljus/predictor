@@ -34,12 +34,6 @@ from sklearn.feature_extraction import DictVectorizer
 from utils.config import FRAGMENTOR
 
 
-class Adhoc(object):
-    @staticmethod
-    def get(structure):
-        return structure
-
-
 class openFiles(object):
     def __init__(self, files, flags):
         if isinstance(files, str):
@@ -72,7 +66,7 @@ class Fragmentor(object):
     def __init__(self, workpath='.', version=None, s_option=None, fragment_type=3, min_length=2, max_length=10,
                  colorname=None, marked_atom=0, cgr_dynbonds=0, xml=None, doallways=False,
                  useformalcharge=False, atompairs=False, fragmentstrict=False, getatomfragment=False,
-                 overwrite=True, headers=None, extention=None,
+                 overwrite=True, headers=None,
                  marker_rules=None, standardize=None,
                  cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None,
                  cgr_type=None, cgr_stereo=False, cgr_balance=0, cgr_b_templates=None,
@@ -96,10 +90,6 @@ class Fragmentor(object):
         self.__do_color = Colorize(docolor, workpath) if docolor else None
 
         self.__sparse = DictVectorizer(sparse=False)
-
-        self.__extention = extention
-        if extention:
-            self.__prepareextheader()
 
         self.__headdump = {}
         self.__headsize = {}
@@ -157,64 +147,7 @@ class Fragmentor(object):
             f.write(self.__headdump[n])
         self.__execparams[self.__execparams.index('-h') + 1] = header
 
-    def __prepareextheader(self):
-        tmp = []
-        for i, j in self.__extention.items():
-            if j:
-                tmp.extend(j['value'].columns)
-            else:
-                tmp.append(i)
-        self.__extheader = tmp
-
-    def parsesdf(self, inputfile):
-        extblock = []
-        flag = False
-        tmp = []
-        with open(inputfile) as f:
-            for i in f:
-                if '>  <' in i[:4]:
-                    key = i.strip()[4:-1]
-                    if key in self.__extention:
-                        flag = key
-                elif flag:
-                    data = self.__extention[flag]['value'].loc[self.__extention[flag]['key'] == i.strip()] if \
-                        self.__extention[flag] else pd.DataFrame([{flag: float(i.strip())}])
-                    data.index = [0]
-                    tmp.append(data)
-                    flag = False
-                elif '$$$$' in i:
-                    extblock.append(pd.concat(tmp, axis=1) if tmp else pd.DataFrame([{}]))
-                    tmp = []
-
-        return pd.DataFrame(pd.concat(extblock, ignore_index=True), columns=self.__extheader)
-
-    def __parseadditions0(self, **kwargs):
-        extblock = []
-        for i, j in kwargs.items():
-            if i in self.__extention:
-                for n, k in enumerate(j) if isinstance(j, list) else j.items():
-                    data = self.__extention[i]['value'].loc[self.__extention[i]['key'] == k] if \
-                        self.__extention[i] else pd.DataFrame([{i: k}])
-                    data.index = [0]
-                    if len(extblock) > n:
-                        extblock[n].append(data)
-                    else:
-                        extblock.extend([[] for _ in range(n - len(extblock))] + [data])
-
-        return pd.DataFrame(pd.concat([pd.concat(x, axis=1) if x else pd.DataFrame([{}]) for x in extblock],
-                                      ignore_index=True), columns=self.__extheader)
-
-    def __parseadditions1(self, **kwargs):
-        tmp = []
-        for i, j in kwargs.items():
-            if i in self.__extention:
-                data = self.__extention[i]['value'].loc[self.__extention[i]['key'] == j] if \
-                       self.__extention[i] else pd.DataFrame([{i: j}])
-                data.index = [0]
-                tmp.append(data)
-        return pd.DataFrame(pd.concat(tmp, axis=1) if tmp else pd.DataFrame([{}]), columns=self.__extheader)
-
-    def get(self, structures, **kwargs):
+    def get(self, structures):
         """ PMAPPER and Standardizer works only with molecules. NOT CGR!
         :param structures: opened file or string io in sdf, mol or rdf, rxn formats
         rdf, rxn work only in CGR or reagent marked atoms mode
@@ -274,22 +207,6 @@ class Fragmentor(object):
                 for i in structures:
                     f.write(i)
 
-        if self.__extention:
-            if kwargs.get('parsesdf'):
-                extblock = self.parsesdf(workfiles[0])
-
-            elif all(isinstance(x, list) or isinstance(x, dict) for y, x in kwargs.items() if y in self.__extention):
-                extblock = self.__parseadditions0(**kwargs)
-
-            elif not any(isinstance(x, list) or isinstance(x, dict) for y, x in kwargs.items() if y in self.__extention):
-                extblock = self.__parseadditions1(**kwargs)
-
-            else:
-                print('WHAT DO YOU WANT? use correct extentions params')
-                return False
-        else:
-            extblock = pd.DataFrame()
-
         """ prepare header if exist (normally true). run fragmentor.
         """
         tX, tY, tD = [], None, []
@@ -319,7 +236,7 @@ class Fragmentor(object):
             else:
                 return False
 
-        return pd.concat(tX + [extblock], axis=1), tY, reduce(operator.mul, tD)
+        return pd.concat(tX, axis=1), tY, reduce(operator.mul, tD)
 
     def __parsefragmentoroutput(self, n, outputfile):
         prop, vector, ad = [], [], []
