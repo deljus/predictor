@@ -21,6 +21,7 @@
 import json
 import os
 import re
+from itertools import product
 from subprocess import Popen, PIPE, STDOUT, call
 from utils.config import PMAPPER, STANDARDIZER
 from utils.utils import chemaxpost
@@ -31,6 +32,8 @@ from CGRtools.SDFwrite import SDFwrite
 from CGRtools.RDFwrite import RDFwrite
 from io import StringIO
 import networkx as nx
+import xml.etree.ElementTree as ET
+from utils.mappercore import remove_namespace
 
 
 class StandardizeDragos(object):
@@ -103,12 +106,16 @@ class StandardizeDragos(object):
 
 class Pharmacophoreatommarker(object):
     def __init__(self, markerrule, workpath):
-        self.__markerrule = self.__dumprules(markerrule)
+        self.__markerrule, self.__markers = self.__dumprules(markerrule)
         self.__config = os.path.join(workpath, 'iam')
         self.__loadrules()
 
-    def __dumprules(self, rules):
-        return open(rules).read()
+    @staticmethod
+    def __dumprules(rules):
+        rules = open(rules).read()
+        marks = list(set(x.get('Symbol') for x in remove_namespace(ET.fromstring(rules),
+                                                                   'http://www.chemaxon.com').iter('AtomSet')))
+        return rules, marks
 
     def setworkpath(self, workpath):
         self.__config = os.path.join(workpath, 'iam')
@@ -119,7 +126,7 @@ class Pharmacophoreatommarker(object):
             f.write(self.__markerrule)
 
     def getcount(self):
-        return 1
+        return len(self.__markers)
 
     def get(self, structure):
         """
@@ -136,11 +143,26 @@ class Pharmacophoreatommarker(object):
             marks = p.communicate(input=f.getvalue().encode())[0].decode().split()
 
         if p.returncode == 0:
+            output = []
             for s, mark in zip((structure if isinstance(structure, list) else [structure]), marks):
+                found = [[] for _ in range(self.getcount())]
                 for n, m in zip(s.nodes(), mark.split(';')):
                     if m:
-                        s.node[n]['mark'] = '1'
-            return structure
+                        tmp = s.copy()
+                        tmp.node[n]['mark'] = '1'
+                        found[self.__markers.index(m)].append(tmp)
+
+                for x in found:
+                    if not x:
+                        x.append(s)
+
+                result = [[] for _ in range(self.getcount())]
+                for x in product(*found):
+                    for y, z in zip(result, x):
+                        y.append(z)
+
+                output.append(result)
+            return output
         return False
 
 
@@ -187,7 +209,8 @@ class CGRatommarker(object):
                     return structure
         return False
 
-    def __processor_m(self, structure, rules, remap=True):
+    @staticmethod
+    def __processor_m(structure, rules, remap=True):
         p = Popen([STANDARDIZER, '-c', rules, '-f', 'rdf'], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
         with StringIO() as f:
             tmp = RDFwrite(f)
@@ -229,20 +252,19 @@ class CGRatommarker(object):
         output = []
         for s, marks in zip(structure if isinstance(structure, list) else [structure], markslist):
             ss = nx.union_all(s['substrats'])
-            ss.graph['meta'] =  s['meta'].copy()
+            ss.graph['meta'] = s['meta'].copy()
 
             result = []
             for pattern in marks:
-                hits = []
+                marked_graphs = []
                 for match in pattern:
                     tmp = ss.copy()
                     for atom in match:
                         tmp.node[atom]['mark'] = '1'
-                    hits.append(tmp)
+                    marked_graphs.append(tmp)
 
-                result.append(hits)
+                result.append(marked_graphs)
             output.append(result)
-
         return output
 
 

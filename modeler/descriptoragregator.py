@@ -23,6 +23,15 @@ from CGRtools.SDFread import SDFread
 from CGRtools.RDFread import RDFread
 
 
+class Descriptorchain(object):
+    def __init__(self, *args):
+        self.__gens = args
+
+    def get(self, structure, **kwargs):
+
+        return dict(X=pd.concat(tX, axis=1), Y=tY, AD=reduce(operator.mul, tD), )
+
+
 class Descriptorsdict(object):
     def __init__(self, data, isreaction=False):
         self.__isreaction = isreaction
@@ -36,14 +45,14 @@ class Descriptorsdict(object):
                 tmp.extend(j['value'].columns)
             else:
                 tmp.append(i)
-
         return tmp
 
     def __parsefile(self, structures):
-        extblock, tmp = [], []
+        extblock = []
         reader = RDFread(structures) if self.__isreaction else SDFread(structures)
         for i in reader.readdata():
             meta = i['meta'] if self.__isreaction else i.graph['meta']
+            tmp = []
             for key, value in meta.items():
                 if key in self.__extention:
                     data = self.__extention[key]['value'].loc[self.__extention[key]['key'] == value] if \
@@ -51,10 +60,11 @@ class Descriptorsdict(object):
                     data.index = [0]
                     tmp.append(data)
             extblock.append(pd.concat(tmp, axis=1) if tmp else pd.DataFrame([{}]))
+        res = pd.DataFrame(pd.concat(extblock), columns=self.__extheader)
+        res.index = range(len(res.index))
+        return res
 
-        return pd.DataFrame(pd.concat(extblock, ignore_index=True), columns=self.__extheader)
-
-    def __parseadditions0(self, **kwargs):
+    def __parseadditions0(self, **kwargs):  # buggy???
         extblock = []
         for i, j in kwargs.items():
             if i in self.__extention:
@@ -65,10 +75,11 @@ class Descriptorsdict(object):
                     if len(extblock) > n:
                         extblock[n].append(data)
                     else:
-                        extblock.extend([[] for _ in range(n - len(extblock))] + [data])
-
-        return pd.DataFrame(pd.concat([pd.concat(x, axis=1) if x else pd.DataFrame([{}]) for x in extblock],
-                                      ignore_index=True), columns=self.__extheader)
+                        extblock.extend([[] for _ in range(n - len(extblock))] + [[data]])
+        res = pd.DataFrame(pd.concat([pd.concat(x, axis=1) if x else pd.DataFrame([{}]) for x in extblock]),
+                           columns=self.__extheader)
+        res.index = range(len(res.index))
+        return res
 
     def __parseadditions1(self, **kwargs):
         tmp = []
@@ -80,20 +91,19 @@ class Descriptorsdict(object):
                 tmp.append(data)
         return pd.DataFrame(pd.concat(tmp, axis=1) if tmp else pd.DataFrame([{}]), columns=self.__extheader)
 
-    def get(self):
-        if self.__extention:
-            if kwargs.get('parsesdf'):
-                extblock = self.parsesdf(workfiles[0])
+    def get(self, structure=None, **kwargs):
+        if kwargs.get('parsesdf'):
+            extblock = self.__parsefile(structure)
 
-            elif all(isinstance(x, list) or isinstance(x, dict) for y, x in kwargs.items() if y in self.__extention):
-                extblock = self.__parseadditions0(**kwargs)
+        elif all(isinstance(x, list) or isinstance(x, dict) for y, x in kwargs.items() if y in self.__extention):
+            extblock = self.__parseadditions0(**kwargs)
 
-            elif not any(isinstance(x, list) or isinstance(x, dict) for y, x in kwargs.items() if
-                         y in self.__extention):
-                extblock = self.__parseadditions1(**kwargs)
+        elif not any(isinstance(x, list) or isinstance(x, dict) for y, x in kwargs.items() if
+                     y in self.__extention):
+            extblock = self.__parseadditions1(**kwargs)
 
-            else:
-                print('WHAT DO YOU WANT? use correct extentions params')
-                return False
         else:
-            extblock = pd.DataFrame()
+            print('WHAT DO YOU WANT? use correct extentions params')
+            return False
+
+        return dict(X=extblock, AD=-extblock.isnull().any(axis=1))

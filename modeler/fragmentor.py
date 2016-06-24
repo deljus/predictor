@@ -236,7 +236,7 @@ class Fragmentor(object):
             else:
                 return False
 
-        return pd.concat(tX, axis=1), tY, reduce(operator.mul, tD)
+        return dict(X=pd.concat(tX, axis=1), Y=tY, AD=reduce(operator.mul, tD), )
 
     def __parsefragmentoroutput(self, n, outputfile):
         prop, vector, ad = [], [], []
