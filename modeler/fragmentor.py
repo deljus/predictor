@@ -158,7 +158,7 @@ class Fragmentor(object):
         outputfile = os.path.join(self.__workpath, "frg")
 
         if self.__prepocess:
-            with openFiles(workfiles, ['w']*len(workfiles)) as f:
+            with openFiles(workfiles, ['w'] * len(workfiles)) as f:
                 writers = [SDFwrite(x) for x in f]
                 reader = RDFread(structures) if self.__cgr or self.__cgr_marker else SDFread(structures)
                 data = list(reader.readdata())
@@ -197,12 +197,21 @@ class Fragmentor(object):
                 if not data:
                     return False
 
-                for s in data:
-                    for w, d in zip(writers, s if isinstance(s, list) else [s]):
-                        for x in (d if isinstance(d, list) else [d]):
-                            w.writedata(x)
+                doubles = []
+                for s_numb, s in enumerate(data):
+                    if isinstance(s, list):
+                        for d in s:
+                            tmp = [s_numb]
+                            for w, x in zip(writers, d):
+                                w.writedata(x[1])
+                                tmp.append(x[0])
+                            doubles.append(tmp)
+                    else:
+                        writers[0].writedata(s)
+                        doubles.append([s_numb])
 
         else:
+            doubles = list(range(len(structures)))
             with open(workfiles[0], 'w') as f:
                 for i in structures:
                     f.write(i)
@@ -236,7 +245,14 @@ class Fragmentor(object):
             else:
                 return False
 
-        return dict(X=pd.concat(tX, axis=1), Y=tY, AD=reduce(operator.mul, tD), )
+        res = dict(X=pd.concat(tX, axis=1, keys=range(len(tX))), AD=reduce(operator.and_, tD), Y=tY)
+        if self.__cgr_marker or self.__dragos_marker:
+            i = pd.MultiIndex.from_tuples(doubles, names=['structure'] + ['c.%d' % x for x in range(len(workfiles))])
+        else:
+            i = pd.Index(doubles, name='structure')
+
+        res['X'].index = res['AD'].index = res['Y'].index = i
+        return res
 
     def __parsefragmentoroutput(self, n, outputfile):
         prop, vector, ad = [], [], []
