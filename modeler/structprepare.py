@@ -283,5 +283,5 @@ class Colorize(object):
             with open(self.__outfile) as f:
                 res = list(SDFread(f).readdata(remap=False))
                 if res:
-                    return res if isinstance(structure, list) else res[0]
+                    return res if len(res) > 1 else res[0]
         return False

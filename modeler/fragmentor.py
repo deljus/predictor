@@ -22,6 +22,7 @@ import operator
 import os
 import subprocess as sp
 from itertools import tee
+import sys
 import numpy as np
 import pandas as pd
 from functools import reduce
@@ -198,7 +199,7 @@ class Fragmentor(object):
                     return False
 
                 doubles = []
-                for s_numb, s in enumerate(data):
+                for s_numb, s in enumerate(data if isinstance(data, list) else [data]):
                     if isinstance(s, list):
                         for d in s:
                             tmp = [s_numb]
@@ -226,7 +227,7 @@ class Fragmentor(object):
 
             execparams = [self.__fragmentor(), '-i', workfile, '-o', outputfile]
             execparams.extend(self.__execparams)
-            print(' '.join(execparams))
+            print(' '.join(execparams), file=sys.stderr)
             exitcode = sp.call(execparams) == 0
 
             if exitcode and os.path.exists(outputfile + '.svm') and os.path.exists(outputfile + '.hdr'):
@@ -237,7 +238,7 @@ class Fragmentor(object):
                         self.__execparams.insert(self.__execparams.index('-t'), '-h')
                         self.__execparams.insert(self.__execparams.index('-t'), '')
 
-                print('parsing fragmentor output')
+                print('parsing fragmentor output', file=sys.stderr)
                 X, Y, D = self.__parsefragmentoroutput(n, outputfile)
                 tX.append(X)
                 tY = Y
