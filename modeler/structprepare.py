@@ -20,8 +20,8 @@
 #
 import json
 import os
-import re
 from itertools import product
+from operator import itemgetter
 from subprocess import Popen, PIPE, STDOUT, call
 from utils.config import PMAPPER, STANDARDIZER
 from utils.utils import chemaxpost
@@ -47,61 +47,68 @@ class StandardizeDragos(object):
 
     def __loadrules(self, rules):
         with open(rules or os.path.join(os.path.dirname(__file__), "standardrules_dragos.rules")) as f:
-            ruless = '..'.join([x.split()[0] for x in f])
+            ruless = f.read()
         return ruless
 
     def __loadunwanted(self):
-        return '(%s)' % '|'.join(open(os.path.join(os.path.dirname(__file__), "unwanted.elem")).read().split())
+        return set(open(os.path.join(os.path.dirname(__file__), "unwanted.elem")).read().split())
 
-    def get(self, structure, mformat="sdf"):
+    def __processor_m(self, structure):
+        p = Popen([STANDARDIZER, '-c', self.__stdrules, '-f', 'SDF'], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+        with StringIO() as f:
+            tmp = SDFwrite(f)
+            for x in structure:
+                tmp.writedata(x)
+
+            res = p.communicate(input=f.getvalue().encode())[0].decode()
+
+        if p.returncode == 0:
+            with StringIO(res) as f:
+                return list(SDFread(f).readdata())
+        return False
+
+    def __processor_s(self, structure):
+        data = {"structure": structure, "parameters": "smiles",
+                "filterChain": [{"filter": "standardizer",
+                                 "parameters": {"standardizerDefinition": self.__stdrules}}]}
+        res = chemaxpost('calculate/molExport', data)
+        if res:
+            res = json.loads(res)
+            if 'isReaction' not in res:
+                with StringIO(res['structure']) as f:
+                    return list(SDFread(f).readdata())
+        return False
+
+    def get(self, structure):
         """
         step 1. canonical smiles, dearomatized & dealkalinized
         neutralize all species, except for FOUR-LEGGED NITROGEN, which has to be positive for else chemically incorrect
         Automatically represent N-oxides, incl. nitros, as N+-O-.
         generate major tautomer & aromatize
-        :param mformat: mol return format
-        :param structure: chemaxon recognizable structure
         """
 
-        data = {"structure": structure, "parameters": "smiles",
-                "filterChain": [{"filter": "standardizer", "parameters": {"standardizerDefinition": self.__stdrules}}]}
-        res = chemaxpost('calculate/molExport', data)
+        structure = self.__processor_m(structure) if isinstance(structure, list) else self.__processor_s(structure)
+        if structure:
+            """
+            step 2. check for bizzare salts or mixtures
+            strip mixtures
+            """
+            output = []
+            for s in structure:
+                species = sorted(((len([n for n, d in x.nodes(data=True) if d['element'] != 'H']), x) for x in
+                                  nx.connected_component_subgraphs(s)), key=itemgetter(0))
+                if species[-1][0] <= self.__maxmainsize \
+                        and (len(species) == 1 or
+                             (species[-1][0] / species[-2][0] >= self.__minratio and
+                              species[-2][0] <= self.__maxionsize and
+                              species[-1][0] >= self.__minmainsize)) \
+                        and not self.__unwanted.intersection(species[-1][1]):
+                    output.append(species[-1][1])
+                else:
+                    return False
 
-        if res:
-            res = json.loads(res)
-            if 'isReaction' in res:
-                return False
-            smiles = res['structure']
-        else:
-            return False
-
-        """
-        step 2. check for bizzare salts or mixtures
-        strip mixtures
-        regex search any atom in aromatic and aliphatic forms exclude H
-        """
-        regex = re.compile('(\[[A-Z][a-z]?!H|\[as|\[se|C|c|N|n|P|p|O|o|S|s|F|Br|I)')
-        species = sorted([(len(regex.findall(x)), x) for x in smiles.split('.')], key=lambda x: x[0])
-        if (len(species) == 1 or len(species) > 1 and species[-1][0] / species[-2][0] > self.__minratio and species[-2][0] <= self.__maxionsize and species[-1][0] > self.__minmainsize) and species[-1][0] < self.__maxmainsize:
-            biggest = species[-1][1]
-        else:
-            return False
-
-        # false if element in unwanted list
-        if re.search(self.__unwanted, biggest):
-            return False
-
-        if mformat != 'smiles':
-            data = {"structure": biggest, "parameters": mformat,
-                    "filterChain": [{"filter": "clean", "parameters": {"dim": 2}}]}
-            res = chemaxpost('calculate/molExport', data)
-            if res:
-                res = json.loads(res)
-                biggest = res['structure']
-            else:
-                return False
-
-        return biggest
+            return output if len(output) > 1 else output[0]
+        return False
 
 
 class Pharmacophoreatommarker(object):
@@ -150,19 +157,14 @@ class Pharmacophoreatommarker(object):
                     if m:
                         tmp = s.copy()
                         tmp.node[n]['mark'] = '1'
-                        found[self.__markers.index(m)].append(tmp)
+                        found[self.__markers.index(m)].append([n, tmp])
 
                 for x in found:
                     if not x:
-                        x.append(s)
+                        x.append([None, s])
 
-                result = [[] for _ in range(self.getcount())]
-                for x in product(*found):
-                    for y, z in zip(result, x):
-                        y.append(z)
-
-                output.append(result)
-            return output
+                output.append(list(list(x) for x in product(*found)))
+            return output if len(output) > 1 else output[0]
         return False
 
 
@@ -204,9 +206,7 @@ class CGRatommarker(object):
         if res:
             res = json.loads(res)
             if 'isReaction' in res:
-                structure = next(RDFread(StringIO(res['structure'])).readdata(remap=remap), None)
-                if structure:
-                    return structure
+                return list(RDFread(StringIO(res['structure'])).readdata(remap=remap))
         return False
 
     @staticmethod
@@ -231,15 +231,10 @@ class CGRatommarker(object):
         markslist = []
         gs = [self.__cgr.getCGR(x) for x in (structure if isinstance(structure, list) else [structure])]
         for g in gs:
-            marks = []
+            marks = []  # list of list of tuples(atom, mark) of matched centers
             for i in self.__patterns:
-                pattern = set()
                 for match in i(g):
-                    pattern.add(tuple(sorted(match['products'].nodes())))
-                marks.append(pattern)
-
-            if 0 == len(set(len(x) for x in marks)) > 1:
-                return False
+                    marks.append([(x, y['mark']) for x, y in match['products'].nodes(data=True)])
             markslist.append(marks)
 
         if self.__stdpostrules:
@@ -250,22 +245,22 @@ class CGRatommarker(object):
                 return False
 
         output = []
-        for s, marks in zip(structure if isinstance(structure, list) else [structure], markslist):
+        for s, marks in zip((structure if isinstance(structure, list) else [structure]), markslist):
             ss = nx.union_all(s['substrats'])
             ss.graph['meta'] = s['meta'].copy()
 
             result = []
-            for pattern in marks:
-                marked_graphs = []
-                for match in pattern:
-                    tmp = ss.copy()
-                    for atom in match:
-                        tmp.node[atom]['mark'] = '1'
-                    marked_graphs.append(tmp)
+            for match in marks:
+                tmp = []
+                for atom, a_mark in match:
+                    ssc = ss.copy()
+                    ssc.node[atom]['mark'] = '1'
+                    tmp.append([a_mark, atom, ssc])
 
-                result.append(marked_graphs)
+                result.append([[x, y] for _, x, y in sorted(tmp)])
+
             output.append(result)
-        return output
+        return output if len(output) > 1 else output[0]
 
 
 class Colorize(object):
@@ -289,5 +284,4 @@ class Colorize(object):
                 res = list(SDFread(f).readdata(remap=False))
                 if res:
                     return res if isinstance(structure, list) else res[0]
-
         return False
