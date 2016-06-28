@@ -18,6 +18,9 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+from collections import defaultdict
+from functools import reduce
+import operator
 import pandas as pd
 from CGRtools.SDFread import SDFread
 from CGRtools.RDFread import RDFread
@@ -25,11 +28,21 @@ from CGRtools.RDFread import RDFread
 
 class Descriptorchain(object):
     def __init__(self, *args):
-        self.__gens = args
+        self.__generators = args
 
     def get(self, structure, **kwargs):
+        res = defaultdict(list)
 
-        return dict(X=pd.concat(tX, axis=1), Y=tY, AD=reduce(operator.mul, tD), )
+        def merge_wrap(x, y):
+            return pd.merge(x, y, how='outer', left_index=True, right_index=True)
+
+        for gen in self.__generators:
+            for k, v in gen.get(structure, **kwargs).items():
+                res[k].append(v)
+
+        res['X'] = reduce(merge_wrap, res['X'])
+        res['AD'] = None
+        return dict(res)
 
 
 class Descriptorsdict(object):
@@ -61,7 +74,7 @@ class Descriptorsdict(object):
                     tmp.append(data)
             extblock.append(pd.concat(tmp, axis=1) if tmp else pd.DataFrame([{}]))
         res = pd.DataFrame(pd.concat(extblock), columns=self.__extheader)
-        res.index = range(len(res.index))
+        res.index = pd.Index(range(len(res.index)), name='structure')
         return res
 
     def __parseadditions0(self, **kwargs):  # buggy???
@@ -71,14 +84,14 @@ class Descriptorsdict(object):
                 for n, k in enumerate(j) if isinstance(j, list) else j.items():
                     data = self.__extention[i]['value'].loc[self.__extention[i]['key'] == k] if \
                         self.__extention[i] else pd.DataFrame([{i: k}])
-                    data.index = [0]
+                    data.index = pd.Index([0], name='structure')
                     if len(extblock) > n:
                         extblock[n].append(data)
                     else:
                         extblock.extend([[] for _ in range(n - len(extblock))] + [[data]])
         res = pd.DataFrame(pd.concat([pd.concat(x, axis=1) if x else pd.DataFrame([{}]) for x in extblock]),
                            columns=self.__extheader)
-        res.index = range(len(res.index))
+        res.index = pd.Index(range(len(res.index)), name='structure')
         return res
 
     def __parseadditions1(self, **kwargs):
@@ -89,7 +102,8 @@ class Descriptorsdict(object):
                        self.__extention[i] else pd.DataFrame([{i: j}])
                 data.index = [0]
                 tmp.append(data)
-        return pd.DataFrame(pd.concat(tmp, axis=1) if tmp else pd.DataFrame([{}]), columns=self.__extheader)
+        return pd.DataFrame(pd.concat(tmp, axis=1) if tmp else pd.DataFrame([{}]), columns=self.__extheader,
+                            index=pd.Index([0], name='structure'))
 
     def get(self, structure=None, **kwargs):
         if kwargs.get('parsesdf'):
