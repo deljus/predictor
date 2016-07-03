@@ -31,6 +31,19 @@ class Descriptorchain(object):
         self.__generators = args
 
     def get(self, structure, **kwargs):
+        """
+
+        :param structure: opened structure file or stringio
+        :param kwargs: generators specific arguments
+        :return: dict(X=DataFrame, AD=Series)
+        >>> from modeler.fragmentor import Fragmentor
+        >>> f = Fragmentor(workpath='tests',version='last', s_option='shift', fragment_type=1, min_length=2, max_length=11, \
+        marked_atom=3, marker_rules='tests/test.xml')
+        >>> d = Descriptorsdict({'CdId': None, 'Formula': {'key': pd.Series(['H3O4P']), \
+        'value': pd.DataFrame([{'form':2.}])}})
+        >>> r = Descriptorchain(f, d).get(open('tests/test.sdf'), parsesdf=True)
+        >>> print(r) # надо дописать
+        """
         res = defaultdict(list)
 
         def merge_wrap(x, y):
@@ -39,9 +52,10 @@ class Descriptorchain(object):
         for gen in self.__generators:
             for k, v in gen.get(structure, **kwargs).items():
                 res[k].append(v)
+            structure.seek(0)
 
         res['X'] = reduce(merge_wrap, res['X'])
-        res['AD'] = None
+        res['AD'] = reduce(operator.mul, sorted(res['AD'], key=lambda x: len(x.index), reverse=True))
         return dict(res)
 
 
@@ -51,7 +65,15 @@ class Descriptorsdict(object):
         self.__extention = data
         self.__extheader = self.__prepareextheader(data)
 
-    def __prepareextheader(self, data):
+    @staticmethod
+    def __prepareextheader(data):
+        """
+        :param data: dict
+        :return: list of strings. descriptors header
+         >>> sorted(Descriptorsdict({})._Descriptorsdict__prepareextheader({'1': None, '2': \
+         {'value': pd.DataFrame([{'3':1}])}}))
+         ['1', '3']
+        """
         tmp = []
         for i, j in data.items():
             if j:
@@ -61,6 +83,16 @@ class Descriptorsdict(object):
         return tmp
 
     def __parsefile(self, structures):
+        """
+        parse SDF or RDF on known keys-headers.
+        :param structures: opened file
+        :return: DataFrame of descriptors. indexes is the numbers of structures in file, columns - names of descriptors
+         >>> s = Descriptorsdict({'CdId': None, 'Formula': {'key': pd.Series(['H3O4P']), \
+         'value': pd.DataFrame([{'3':1.}])}})._Descriptorsdict__parsefile(open('tests/test_1.sdf'))
+         >>> r = pd.DataFrame([{'3': 1., 'CdId': 1.0}], index=pd.Index([0], name='structure'), columns=s.columns)
+         >>> s.equals(r)
+         True
+        """
         extblock = []
         reader = RDFread(structures) if self.__isreaction else SDFread(structures)
         for i in reader.readdata():
@@ -70,25 +102,27 @@ class Descriptorsdict(object):
                 if key in self.__extention:
                     data = self.__extention[key]['value'].loc[self.__extention[key]['key'] == value] if \
                         self.__extention[key] else pd.DataFrame([{key: float(value)}])
-                    data.index = [0]
-                    tmp.append(data)
+                    if not data.empty:
+                        data.index = [0]
+                        tmp.append(data)
             extblock.append(pd.concat(tmp, axis=1) if tmp else pd.DataFrame([{}]))
         res = pd.DataFrame(pd.concat(extblock), columns=self.__extheader)
         res.index = pd.Index(range(len(res.index)), name='structure')
         return res
 
-    def __parseadditions0(self, **kwargs):  # buggy???
+    def __parseadditions0(self, **kwargs):
         extblock = []
         for i, j in kwargs.items():
             if i in self.__extention:
                 for n, k in enumerate(j) if isinstance(j, list) else j.items():
                     data = self.__extention[i]['value'].loc[self.__extention[i]['key'] == k] if \
                         self.__extention[i] else pd.DataFrame([{i: k}])
-                    data.index = pd.Index([0], name='structure')
-                    if len(extblock) > n:
-                        extblock[n].append(data)
-                    else:
-                        extblock.extend([[] for _ in range(n - len(extblock))] + [[data]])
+                    if not data.empty:
+                        data.index = [0]
+                        if len(extblock) > n:
+                            extblock[n].append(data)
+                        else:
+                            extblock.extend([[] for _ in range(n - len(extblock))] + [[data]])
         res = pd.DataFrame(pd.concat([pd.concat(x, axis=1) if x else pd.DataFrame([{}]) for x in extblock]),
                            columns=self.__extheader)
         res.index = pd.Index(range(len(res.index)), name='structure')
@@ -100,8 +134,9 @@ class Descriptorsdict(object):
             if i in self.__extention:
                 data = self.__extention[i]['value'].loc[self.__extention[i]['key'] == j] if \
                        self.__extention[i] else pd.DataFrame([{i: j}])
-                data.index = [0]
-                tmp.append(data)
+                if not data.empty:
+                    data.index = [0]
+                    tmp.append(data)
         return pd.DataFrame(pd.concat(tmp, axis=1) if tmp else pd.DataFrame([{}]), columns=self.__extheader,
                             index=pd.Index([0], name='structure'))
 
@@ -121,3 +156,7 @@ class Descriptorsdict(object):
             return False
 
         return dict(X=extblock, AD=-extblock.isnull().any(axis=1))
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod()

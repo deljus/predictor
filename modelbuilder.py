@@ -24,6 +24,7 @@ import time
 from copy import deepcopy
 import sys
 from modeler.fragmentor import Fragmentor
+from modeler.descriptoragregator import Descriptorsdict
 from modeler.svmodel import Model as SVM
 import argparse
 import pickle
@@ -42,11 +43,11 @@ class DefaultList(list):
         return []
 
 
-def descstarter(func, in_file, out_file, n, fformat, header):
+def descstarter(func, in_file, out_file, fformat, header):
     with open(in_file) as f:
-        dsc = func(structures=f, parsesdf=True)
+        dsc = func(structures=f)
         if dsc:
-            fformat('%s.%d' % (out_file, n), *dsc[:2], header=header)
+            fformat(out_file, dsc['X'], dsc['Y'], header=header)
         else:
             print('BAD Descriptor generator params in line %d' % n)
             return False
@@ -63,12 +64,12 @@ class Modelbuilder(MBparser):
         if self.__options['fragments']:
             descgenerator.extend([(Fragmentor, x, 'fragments') for x in
                                   self.parsefragmentoropts(self.__options['fragments'])])
-        else:
-            return
 
-        extdata = self.parseext(self.__options['extention']) if self.__options['extention'] else {}
-        self.__descgens = [g(extention=extdata, **x)
-                           for g, x, _ in descgenerator]
+        if self.__options['extention']:
+            Descriptorsdict(self.parseext(self.__options['extention']), isreaction=self.__options['isreaction'])
+
+        #extdata =
+        self.__descgens = [g(**x) for g, x, _ in descgenerator]
 
         if not self.__options['output']:
             description = self.parsemodeldescription(self.__options['description'])
@@ -159,7 +160,7 @@ class Modelbuilder(MBparser):
                     n, dgen = tmp
                     dgen.setworkpath(tempfile.mkdtemp(dir='.'))
                     t = threading.Thread(target=descstarter,
-                                         args=[dgen.get, self.__options['input'], output, n,
+                                         args=[dgen.get, self.__options['input'], '%s.%d' % (output, n),
                                                (self.savesvm if fformat == 'svm' else self.savecsv), header])
                     t.start()
                 else:

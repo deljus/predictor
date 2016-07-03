@@ -107,7 +107,7 @@ class StandardizeDragos(object):
                 else:
                     return False
 
-            return output if len(output) > 1 else output[0]
+            return output
         return False
 
 
@@ -163,8 +163,8 @@ class Pharmacophoreatommarker(object):
                     if not x:
                         x.append([None, s])
 
-                output.append(list(list(x) for x in product(*found)))
-            return output if len(output) > 1 else output[0]
+                output.append([list(x) for x in product(*found)])
+            return output
         return False
 
 
@@ -173,7 +173,7 @@ class CGRatommarker(object):
         self.__cgr = CGRcore(type='0', stereo=stereo, balance=0, b_templates=None, e_rules=None, c_rules=None)
         self.__stdprerules = self.__loadrules(prepare)
         self.__stdpostrules = self.__loadrules(postprocess)
-        self.__patterns = self.__loadpatterns(patterns)
+        self.__patterns, self.__marks = self.__loadpatterns(patterns)
 
     @staticmethod
     def __loadrules(rules):
@@ -186,13 +186,16 @@ class CGRatommarker(object):
 
     def __loadpatterns(self, patterns):
         rules = []
+        marks = 0
         for i in patterns:
             with open(i) as f:
-                rules.append(self.__cgr.searchtemplate(self.__cgr.gettemplates(f), speed=False))
-        return rules
+                templates = self.__cgr.gettemplates(f)
+                rules.append(self.__cgr.searchtemplate(templates, speed=False))
+                marks = len(templates[0]['products'])
+        return rules, marks
 
     def getcount(self):
-        return len(self.__patterns)
+        return self.__marks
 
     @staticmethod
     def __processor_s(structure, rules, remap=True):
@@ -234,7 +237,7 @@ class CGRatommarker(object):
             marks = []  # list of list of tuples(atom, mark) of matched centers
             for i in self.__patterns:
                 for match in i(g):
-                    marks.append([(x, y['mark']) for x, y in match['products'].nodes(data=True)])
+                    marks.append([[x, y['mark']] for x, y in match['products'].nodes(data=True)])
             markslist.append(marks)
 
         if self.__stdpostrules:
@@ -259,8 +262,8 @@ class CGRatommarker(object):
 
                 result.append([[x, y] for _, x, y in sorted(tmp)])
 
-            output.append(result)
-        return output if len(output) > 1 else output[0]
+            output.append(result if result else [[[None, ss]] * self.getcount()])
+        return output
 
 
 class Colorize(object):
@@ -283,5 +286,5 @@ class Colorize(object):
             with open(self.__outfile) as f:
                 res = list(SDFread(f).readdata(remap=False))
                 if res:
-                    return res if len(res) > 1 else res[0]
+                    return res
         return False

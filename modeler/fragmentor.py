@@ -148,7 +148,7 @@ class Fragmentor(object):
             f.write(self.__headdump[n])
         self.__execparams[self.__execparams.index('-h') + 1] = header
 
-    def get(self, structures):
+    def get(self, structures, **kwargs):
         """ PMAPPER and Standardizer works only with molecules. NOT CGR!
         :param structures: opened file or string io in sdf, mol or rdf, rxn formats
         rdf, rxn work only in CGR or reagent marked atoms mode
@@ -199,7 +199,7 @@ class Fragmentor(object):
                     return False
 
                 doubles = []
-                for s_numb, s in enumerate(data if isinstance(data, list) else [data]):
+                for s_numb, s in enumerate(data):
                     if isinstance(s, list):
                         for d in s:
                             tmp = [s_numb]
