@@ -29,6 +29,8 @@ JCHEMBIN = '/opt/JChem/bin'
 UPLOAD_PATH = '/tmp'
 WORK_PATH = '/tmp'
 FRAGMENTOR = '/opt/fragmentor/fragmentor'
+EED = '/opt/dragos/eedstart'
+COLOR = '/opt/dragos/colorstart'
 
 INTERVAL = 3
 MODEL_REFRESH = 5
