@@ -27,11 +27,11 @@ from CGRtools.SDFwrite import SDFwrite
 from CGRtools.RDFread import RDFread
 from subprocess import Popen, PIPE, STDOUT
 from utils.config import CXCALC
-import os
+import pandas as pd
 
 
 class Pkab(object):
-    def __init__(self, workpath='.', marker_rules=None, standardize=None,
+    def __init__(self, workpath='.', marker_rules=None, standardize=None, acid=True, base=True,
                  cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None, cgr_stereo=False):
         self.__dragos_marker = Pharmacophoreatommarker(marker_rules, workpath) if marker_rules else None
 
@@ -41,6 +41,8 @@ class Pkab(object):
 
         self.__dragos_std = StandardizeDragos(standardize) if standardize and not self.__cgr_marker else None
         self.__workpath = workpath
+        self.__acid = acid
+        self.__base = base
 
     def setworkpath(self, workpath):
         self.__workpath = workpath
@@ -67,57 +69,67 @@ class Pkab(object):
             return False
 
         doubles = []
-
+        p = Popen([CXCALC] + 'pka -x 30 -a 8 -b 8 -P dynamic -m micro'.split(), stdout=PIPE, stdin=PIPE, stderr=STDOUT)
         with StringIO() as f:
             writer = SDFwrite(f)
             for s_numb, s in enumerate(data):
-                d = s[0][1] if isinstance(s, list) else s
-                writer.writedata(d)
-                    doubles.append([s_numb])
-
-        p = Popen([CXCALC], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
-        with StringIO() as f:
-            tmp = SDFwrite(f)
-            for x in structure:
-                tmp.writedata(x)
+                if self.__cgr_marker:
+                    for d in s:
+                        tmp = [s_numb]
+                        for x in d:
+                            writer.writedata(x[1])
+                            tmp.append(x[0])
+                        doubles.extend([tmp] * len(d))
+                elif self.__dragos_marker:
+                    writer.writedata(s[0][0][1])
+                    doubles.append([[s_numb] + [x[0] for x in y] for y in s])
+                else:
+                    writer.writedata(s)
+                    doubles.append(s_numb)
 
             res = p.communicate(input=f.getvalue().encode())[0].decode()
-            if p.returncode == 0:
-                return list(RDFread(StringIO(res)).readdata(remap=remap))
 
-        with StringIO() as f:
-            writer = SDFwrite(f)
+        if p.returncode == 0:
+            pk = []
+            with StringIO(res) as f:
+                f.readline()
+                for i in f:
+                    ii = i.rstrip().split('\t')
+                    key = iter(ii[-1].split(','))
+                    val = ii[1: -1]
+                    pk.append([{int(next(key)): float(x.replace(',', '.')) for x in v if x}
+                               for v in [val[:8], val[8:]]])
 
-        for n, workfile in enumerate(workfiles):
-            if not self.__genheader:
-                self.__prepareheader(n)
-
-            execparams = [self.__fragmentor(), '-i', workfile, '-o', outputfile]
-            execparams.extend(self.__execparams)
-            print(' '.join(execparams), file=sys.stderr)
-            exitcode = sp.call(execparams) == 0
-
-            if exitcode and os.path.exists(outputfile + '.svm') and os.path.exists(outputfile + '.hdr'):
-                if self.__genheader:  # dump header if don't set on first run
-                    self.__dumpheader(n, outputfile + '.hdr')
-                    if n + 1 == len(workfiles):  # disable header generation
-                        self.__genheader = False
-                        self.__execparams.insert(self.__execparams.index('-t'), '-h')
-                        self.__execparams.insert(self.__execparams.index('-t'), '')
-
-                print('parsing fragmentor output', file=sys.stderr)
-                X, Y, D = self.__parsefragmentoroutput(n, outputfile)
-                tX.append(X)
-                tY = Y
-                tD.append(D)
+            new_doubles = []
+            if self.__cgr_marker:
+                old_k = None
+                for k, v in zip(doubles, pk):
+                    if k == old_k and self.__base:
+                        new_doubles[-1][1].append(v[c].get(k[c + 1]))
+                        c += 1
+                    else:
+                        old_k = k
+                        c = 1
+                        new_doubles.append([k, [v[0].get(k[1])] if self.__acid else []])
+            elif self.__dragos_marker:
+                pass
             else:
-                return False
+                for k, v in zip(doubles, pk):
+                    new_doubles.append([k, ([min(v[0].values())] if self.__acid else []) +
+                                           ([max(v[1].values())] if self.__base else [])])
 
-        res = dict(X=pd.concat(tX, axis=1, keys=range(len(tX))), AD=reduce(operator.and_, tD), Y=tY)
-        if self.__cgr_marker or self.__dragos_marker:
-            i = pd.MultiIndex.from_tuples(doubles, names=['structure'] + ['c.%d' % x for x in range(len(workfiles))])
-        else:
-            i = pd.Index(doubles, name='structure')
+            X = pd.DataFrame([x[1] for x in new_doubles],
+                             columns=(['pka'] if self.__acid else []) + (['pkb'] if self.__base else []))
 
-        res['X'].index = res['AD'].index = res['Y'].index = i
-        return res
+            res = dict(X=X, AD=-X.isnull().any(axis=1))
+            if self.__cgr_marker or self.__dragos_marker:
+                i = pd.MultiIndex.from_tuples([x[0] for x in new_doubles],
+                                              names=['structure'] +
+                                                    ['c.%d' % x for x in range(self.__acid + self.__base)])
+            else:
+                i = pd.Index(doubles, name='structure')
+
+            res['X'].index = res['AD'].index = i
+            return res
+
+        return False

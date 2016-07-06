@@ -256,7 +256,7 @@ class CGRatommarker(object):
             for match in marks:
                 tmp = []
                 for atom, a_mark in match:
-                    ssc = ss.copy()
+                    ssc = ss.copy()  # todo: сплиттить молекулы. ибо кемаксон косячит.
                     ssc.node[atom]['mark'] = '1'
                     tmp.append([a_mark, atom, ssc])
 
