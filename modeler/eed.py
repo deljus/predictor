@@ -24,7 +24,7 @@ from io import StringIO
 from CGRtools.SDFread import SDFread
 from CGRtools.SDFwrite import SDFwrite
 from CGRtools.RDFread import RDFread
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import Popen, PIPE
 from utils.config import EED
 import pandas as pd
 from functools import reduce

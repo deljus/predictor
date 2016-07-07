@@ -107,11 +107,10 @@ class Pkab(object):
                 for lk, v in zip(doubles, pk):
                     for k in (lk if self.__dragos_marker else [lk]):
                         if k == old_k and self.__base:
-                            new_doubles[-1][1].append(v[1].get(k[2]))
+                            new_doubles[-1][1].append(v[1].get(k[1 if self.__reverse else 2]))
                         else:
                             old_k = k
-                            new_doubles.append([(k[:1]+k[-1:0:-1] if self.__reverse else k),
-                                                ([v[0].get(k[1])] if self.__acid else [])])
+                            new_doubles.append([k, ([v[0].get(k[2 if self.__reverse else 1])] if self.__acid else [])])
 
             else:
                 for k, v in zip(doubles, pk):

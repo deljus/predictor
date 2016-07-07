@@ -24,7 +24,9 @@ import time
 from copy import deepcopy
 import sys
 from modeler.fragmentor import Fragmentor
-from modeler.descriptoragregator import Descriptorsdict
+from modeler.descriptoragregator import Descriptorsdict, Descriptorchain
+from modeler.eed import Eed
+from modeler.cxcalc import Pkab
 from modeler.svmodel import Model as SVM
 import argparse
 import pickle
@@ -49,7 +51,7 @@ def descstarter(func, in_file, out_file, fformat, header):
         if dsc:
             fformat(out_file, dsc['X'], dsc['Y'], header=header)
         else:
-            print('BAD Descriptor generator params in line %d' % n)
+            print('BAD Descriptor generator params')
             return False
     return True
 
@@ -60,16 +62,22 @@ class Modelbuilder(MBparser):
 
         """ Descriptor generator Block
         """
-        descgenerator = []
+        descgenerator = {}
         if self.__options['fragments']:
-            descgenerator.extend([(Fragmentor, x, 'fragments') for x in
-                                  self.parsefragmentoropts(self.__options['fragments'])])
+            descgenerator['fragments'] = [Fragmentor(**x) for x in
+                                          self.parsefragmentoropts(self.__options['fragments'])]
 
         if self.__options['extention']:
-            Descriptorsdict(self.parseext(self.__options['extention']), isreaction=self.__options['isreaction'])
+            descgenerator['extention'] = [Descriptorsdict(self.parseext(self.__options['extention']),
+                                                          isreaction=self.__options['isreaction'])]
 
-        #extdata =
-        self.__descgens = [g(**x) for g, x, _ in descgenerator]
+        if self.__options['eed']:
+            descgenerator['eed'] = [Eed(**x) for x in self.parsefragmentoropts(self.__options['eed'])]
+
+        if self.__options['pka']:
+            descgenerator['pka'] = [Pkab(**x) for x in self.parsefragmentoropts(self.__options['pka'])]
+
+        self.__descgens = []
 
         if not self.__options['output']:
             description = self.parsemodeldescription(self.__options['description'])
@@ -206,6 +214,14 @@ class Modelbuilder(MBparser):
                              help="extention data files. -e extname:filename [-e extname2:filename2]")
 
         rawopts.add_argument("--fragments", "-f", type=str, default=None, help="ISIDA Fragmentor keys file")
+
+        rawopts.add_argument("--eed", type=str, default=None, help="DRAGOS EED keys file")
+
+        rawopts.add_argument("--pka", type=str, default=None, help="CXCALC pka keys file")
+
+        rawopts.add_argument("--chains", "-c", action='append', type=str, default=None,
+                             help="descriptors chains. where F-fragmentor, D-eed, E-extention, P-pka. "
+                                  "-c F:E [-c E:D:P]")
 
         rawopts.add_argument("--description", "-ds", type=str, default='model.dsc', help="model description file")
 

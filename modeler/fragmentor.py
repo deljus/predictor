@@ -69,7 +69,7 @@ class Fragmentor(object):
                  useformalcharge=False, atompairs=False, fragmentstrict=False, getatomfragment=False,
                  overwrite=True, headers=None,
                  marker_rules=None, standardize=None,
-                 cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None,
+                 cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None, cgr_reverse=False,
                  cgr_type=None, cgr_stereo=False, cgr_balance=0, cgr_b_templates=None,
                  cgr_e_rules=None, cgr_c_rules=None, docolor=None):
 
@@ -84,7 +84,7 @@ class Fragmentor(object):
 
         self.__cgr_marker = CGRatommarker(cgr_marker, prepare=cgr_marker_prepare,
                                           postprocess=cgr_marker_postprocess,
-                                          stereo=cgr_stereo) if cgr_marker else None
+                                          stereo=cgr_stereo, reverse=cgr_reverse) if cgr_marker else None
 
         self.__dragos_std = StandardizeDragos(standardize) if standardize and not (self.__cgr or
                                                                                    self.__cgr_marker) else None
