@@ -31,16 +31,17 @@ import pandas as pd
 
 
 class Pkab(object):
-    def __init__(self, workpath='.', marker_rules=None, standardize=None, acid=True, base=True,
+    def __init__(self, workpath='.', marker_rules=None, standardize=None, acid=True, base=True, cgr_reverse=False,
                  cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None, cgr_stereo=False):
         self.__dragos_marker = Pharmacophoreatommarker(marker_rules, workpath) if marker_rules else None
 
         self.__cgr_marker = CGRatommarker(cgr_marker, prepare=cgr_marker_prepare,
                                           postprocess=cgr_marker_postprocess,
-                                          stereo=cgr_stereo) if cgr_marker else None
+                                          stereo=cgr_stereo, reverse=cgr_reverse) if cgr_marker else None
 
         self.__dragos_std = StandardizeDragos(standardize) if standardize and not self.__cgr_marker else None
         self.__workpath = workpath
+        self.__reverse = cgr_reverse
         self.__acid = acid
         self.__base = base
 
@@ -82,7 +83,7 @@ class Pkab(object):
                         doubles.extend([tmp] * len(d))
                 elif self.__dragos_marker:
                     writer.writedata(s[0][0][1])
-                    doubles.append([[s_numb] + [x[0] for x in y] for y in s])
+                    doubles.append([([s_numb] + [x[0] for x in y]) for y in s])
                 else:
                     writer.writedata(s)
                     doubles.append(s_numb)
@@ -101,18 +102,17 @@ class Pkab(object):
                                for v in [val[:8], val[8:]]])
 
             new_doubles = []
-            if self.__cgr_marker:
+            if self.__cgr_marker or self.__dragos_marker:
                 old_k = None
-                for k, v in zip(doubles, pk):
-                    if k == old_k and self.__base:
-                        new_doubles[-1][1].append(v[c].get(k[c + 1]))
-                        c += 1
-                    else:
-                        old_k = k
-                        c = 1
-                        new_doubles.append([k, [v[0].get(k[1])] if self.__acid else []])
-            elif self.__dragos_marker:
-                pass
+                for lk, v in zip(doubles, pk):
+                    for k in (lk if self.__dragos_marker else [lk]):
+                        if k == old_k and self.__base:
+                            new_doubles[-1][1].append(v[1].get(k[2]))
+                        else:
+                            old_k = k
+                            new_doubles.append([(k[:1]+k[-1:0:-1] if self.__reverse else k),
+                                                ([v[0].get(k[1])] if self.__acid else [])])
+
             else:
                 for k, v in zip(doubles, pk):
                     new_doubles.append([k, ([min(v[0].values())] if self.__acid else []) +

@@ -169,11 +169,12 @@ class Pharmacophoreatommarker(object):
 
 
 class CGRatommarker(object):
-    def __init__(self, patterns, prepare=None, postprocess=None, stereo=False):
+    def __init__(self, patterns, prepare=None, postprocess=None, stereo=False, reverse=False):
         self.__cgr = CGRcore(type='0', stereo=stereo, balance=0, b_templates=None, e_rules=None, c_rules=None)
         self.__stdprerules = self.__loadrules(prepare)
         self.__stdpostrules = self.__loadrules(postprocess)
         self.__patterns, self.__marks = self.__loadpatterns(patterns)
+        self.__reverse = reverse
 
     @staticmethod
     def __loadrules(rules):
@@ -249,14 +250,19 @@ class CGRatommarker(object):
 
         output = []
         for s, marks in zip((structure if isinstance(structure, list) else [structure]), markslist):
-            ss = nx.union_all(s['substrats'])
+            ss = nx.union_all(s['products'] if self.__reverse else s['substrats'])
             ss.graph['meta'] = s['meta'].copy()
+            ps = []
+            for x in (s['products'] if self.__reverse else s['substrats']):
+                tmp = x.copy()
+                tmp.graph['meta'] = s['meta'].copy()
+                ps.append(tmp)
 
             result = []
             for match in marks:
                 tmp = []
                 for atom, a_mark in match:
-                    ssc = ss.copy()  # todo: сплиттить молекулы. ибо кемаксон косячит.
+                    ssc = next(x for x in ps if atom in x).copy()
                     ssc.node[atom]['mark'] = '1'
                     tmp.append([a_mark, atom, ssc])
 

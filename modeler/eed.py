@@ -1,3 +1,4 @@
+#!/usr/bin/env python3.4
 # -*- coding: utf-8 -*-
 #
 # Copyright 2016 Ramil Nugmanov <stsouko@live.ru>
@@ -25,17 +26,19 @@ from CGRtools.SDFwrite import SDFwrite
 from CGRtools.RDFread import RDFread
 from subprocess import Popen, PIPE, STDOUT
 from utils.config import EED
-import os
+import pandas as pd
+from functools import reduce
+import operator
 
 
 class Eed(object):
-    def __init__(self, workpath='.', marker_rules=None, standardize=None,
+    def __init__(self, workpath='.', marker_rules=None, standardize=None, cgr_reverse=False,
                  cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None, cgr_stereo=False):
         self.__dragos_marker = Pharmacophoreatommarker(marker_rules, workpath) if marker_rules else None
 
         self.__cgr_marker = CGRatommarker(cgr_marker, prepare=cgr_marker_prepare,
                                           postprocess=cgr_marker_postprocess,
-                                          stereo=cgr_stereo) if cgr_marker else None
+                                          stereo=cgr_stereo, reverse=cgr_reverse) if cgr_marker else None
 
         self.__dragos_std = StandardizeDragos(standardize) if standardize and not self.__cgr_marker else None
         self.__workpath = workpath
@@ -66,10 +69,10 @@ class Eed(object):
 
         doubles = []
 
-        writers = [SDFwrite(StringIO()) for _ in
-                   range(self.__cgr_marker.getcount() if self.__cgr_marker
-                         else self.__dragos_marker.getcount() if self.__dragos_marker else 1)]
-
+        workfiles = [StringIO() for _ in range(self.__cgr_marker.getcount() if self.__cgr_marker
+                                               else self.__dragos_marker.getcount() if self.__dragos_marker else 1)]
+        writers = [SDFwrite(x) for x in workfiles]
+        tX, tD = [], []
         for s_numb, s in enumerate(data):
             if isinstance(s, list):
                 for d in s:
@@ -82,18 +85,40 @@ class Eed(object):
                 writers[0].writedata(s)
                 doubles.append([s_numb])
 
-        p = Popen([EED], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
-        with StringIO() as f:
-            tmp = SDFwrite(f)
-            for x in structure:
-                tmp.writedata(x)
-
+        for n, f in enumerate(workfiles):
+            p = Popen([EED], stdout=PIPE, stdin=PIPE)
             res = p.communicate(input=f.getvalue().encode())[0].decode()
-            if p.returncode == 0:
-                return list(RDFread(StringIO(res)).readdata(remap=remap))
 
-        with StringIO() as f:
-            writer = SDFwrite(f)
+            if p.returncode != 0:
+                return False
 
-        return
+            X, D = self.__parseeedoutput(res)
+            tX.append(X)
+            tD.append(D)
 
+        res = dict(X=pd.concat(tX, axis=1, keys=range(len(tX))), AD=reduce(operator.and_, tD))
+        if self.__cgr_marker or self.__dragos_marker:
+            i = pd.MultiIndex.from_tuples(doubles, names=['structure'] + ['c.%d' % x for x in range(len(workfiles))])
+        else:
+            i = pd.Index(doubles, name='structure')
+
+        res['X'].index = res['AD'].index = i
+        return res
+
+    @staticmethod
+    def __parseeedoutput(output):
+        vector, ad = [], []
+        for frag in StringIO(output):
+            _, *x = frag.split()
+            ad.append(True)
+            tmp = {}  # X vector
+            for i in x:
+                k, v = i.split(':')
+                tmp[int(k)] = float(v.replace(',', '.'))
+            if len(tmp) == 1:
+                ad[-1] = False
+            vector.append(tmp)
+
+        x = pd.DataFrame(vector).fillna(0)
+        x.columns = ['eed.%d' % x for x in range(1, 641)]
+        return x, pd.Series(ad)
