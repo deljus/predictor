@@ -77,7 +77,11 @@ class Modelbuilder(MBparser):
         if self.__options['pka']:
             descgenerator['pka'] = [Pkab(**x) for x in self.parsefragmentoropts(self.__options['pka'])]
 
-        self.__descgens = []
+        if self.__options['chains']:
+            for x in self.__options['chains']:
+                combo = x.split(':')
+        else:
+            self.__descgens = [y for x in descgenerator.values() for y in x]
 
         if not self.__options['output']:
             description = self.parsemodeldescription(self.__options['description'])
