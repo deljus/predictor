@@ -37,6 +37,8 @@ from CGRtools.FEAR import FEAR
 from CGRtools.CGRcore import CGRcore
 from CGRtools.RDFread import RDFread
 from modeler.parsers import MBparser
+from collections import Counter
+from itertools import product
 
 
 class DefaultList(list):
@@ -64,22 +66,33 @@ class Modelbuilder(MBparser):
         """
         descgenerator = {}
         if self.__options['fragments']:
-            descgenerator['fragments'] = [Fragmentor(**x) for x in
+            descgenerator['F'] = [Fragmentor(**x) for x in
                                           self.parsefragmentoropts(self.__options['fragments'])]
 
         if self.__options['extention']:
-            descgenerator['extention'] = [Descriptorsdict(self.parseext(self.__options['extention']),
+            descgenerator['E'] = [Descriptorsdict(self.parseext(self.__options['extention']),
                                                           isreaction=self.__options['isreaction'])]
 
         if self.__options['eed']:
-            descgenerator['eed'] = [Eed(**x) for x in self.parsefragmentoropts(self.__options['eed'])]
+            descgenerator['D'] = [Eed(**x) for x in self.parsefragmentoropts(self.__options['eed'])]
 
         if self.__options['pka']:
-            descgenerator['pka'] = [Pkab(**x) for x in self.parsefragmentoropts(self.__options['pka'])]
+            descgenerator['P'] = [Pkab(**x) for x in self.parsefragmentoropts(self.__options['pka'])]
 
         if self.__options['chains']:
+            self.__descgens = []
             for x in self.__options['chains']:
-                combo = x.split(':')
+                combo = []
+                count = Counter(x.split(':'))
+                for k, v in count.items():
+                    if v > 1:
+                        if len(descgenerator[k]) != v:
+                            return
+                        combo.append([descgenerator[k]])
+                    else:
+                        combo.append(descgenerator[k])
+
+                self.__descgens.extend([Descriptorchain(*[g for gs in c for g in (gs if isinstance(gs, list) else [gs])]) for c in product(*combo)])
         else:
             self.__descgens = [y for x in descgenerator.values() for y in x]
 

@@ -30,10 +30,14 @@ class Descriptorchain(object):
     def __init__(self, *args):
         self.__generators = args
 
-    def get(self, structure, **kwargs):
-        """
+    def setworkpath(self, workpath):
+        for i in self.__generators:
+            if hasattr(i, 'setworkpath'):
+                i.setworkpath(workpath)
 
-        :param structure: opened structure file or stringio
+    def get(self, structures, **kwargs):
+        """
+        :param structures: opened structure file or stringio
         :param kwargs: generators specific arguments
         :return: dict(X=DataFrame, AD=Series)
         >>> from modeler.fragmentor import Fragmentor
@@ -50,13 +54,30 @@ class Descriptorchain(object):
             return pd.merge(x, y, how='outer', left_index=True, right_index=True)
 
         for gen in self.__generators:
-            for k, v in gen.get(structure, **kwargs).items():
+            for k, v in gen.get(structures, **kwargs).items():
                 res[k].append(v)
-            structure.seek(0)
+            structures.seek(0)
 
         res['X'] = reduce(merge_wrap, res['X'])
         res['AD'] = reduce(operator.mul, sorted(res['AD'], key=lambda x: len(x.index), reverse=True))
+        res['Y'] = res['Y'][0]  # ВРЕМЕННО
         return dict(res)
+
+
+class Propertyextractor(object):
+    def __init__(self, name, isreaction=False):
+        self.__isreaction = isreaction
+        self.__name = name
+
+    def get(self, structures):
+        reader = RDFread(structures) if self.__isreaction else SDFread(structures)
+        data = []
+        for i in reader.readdata():
+            meta = i['meta'] if self.__isreaction else i.graph['meta']
+            data.append(meta.get(self.__name))
+        res = pd.Series(data, name='Property')
+        res.index = pd.Index(res.index, name='structure')
+        return res
 
 
 class Descriptorsdict(object):
@@ -140,9 +161,9 @@ class Descriptorsdict(object):
         return pd.DataFrame(pd.concat(tmp, axis=1) if tmp else pd.DataFrame([{}]), columns=self.__extheader,
                             index=pd.Index([0], name='structure'))
 
-    def get(self, structure=None, **kwargs):
+    def get(self, structures=None, **kwargs):
         if kwargs.get('parsesdf'):
-            extblock = self.__parsefile(structure)
+            extblock = self.__parsefile(structures)
 
         elif all(isinstance(x, list) or isinstance(x, dict) for y, x in kwargs.items() if y in self.__extention):
             extblock = self.__parseadditions0(**kwargs)

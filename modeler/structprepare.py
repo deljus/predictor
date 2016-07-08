@@ -23,7 +23,7 @@ import os
 from itertools import product
 from operator import itemgetter
 from subprocess import Popen, PIPE, STDOUT, call
-from utils.config import PMAPPER, STANDARDIZER
+from utils.config import PMAPPER, STANDARDIZER, COLOR
 from utils.utils import chemaxpost
 from CGRtools.CGRcore import CGRcore
 from CGRtools.RDFread import RDFread
@@ -273,8 +273,8 @@ class CGRatommarker(object):
 
 
 class Colorize(object):
-    def __init__(self, starter, workpath):
-        self.__starter = starter
+    def __init__(self, standardize, workpath):
+        self.__standardize = standardize
         self.setworkpath(workpath)
 
     def setworkpath(self, workpath):
@@ -288,7 +288,7 @@ class Colorize(object):
             for i in (structure if isinstance(structure, list) else [structure]):
                 SDFwrite(f).writedata(i)
 
-        if call([self.__starter, self.__inputfile, self.__outfile]) == 0:
+        if call([COLOR, self.__inputfile, self.__outfile, self.__standardize]) == 0:
             with open(self.__outfile) as f:
                 res = list(SDFread(f).readdata(remap=False))
                 if res:
