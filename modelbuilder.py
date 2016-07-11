@@ -66,12 +66,11 @@ class Modelbuilder(MBparser):
         """
         descgenerator = {}
         if self.__options['fragments']:
-            descgenerator['F'] = [Fragmentor(**x) for x in
-                                          self.parsefragmentoropts(self.__options['fragments'])]
+            descgenerator['F'] = [Fragmentor(**x) for x in self.parsefragmentoropts(self.__options['fragments'])]
 
         if self.__options['extention']:
             descgenerator['E'] = [Descriptorsdict(self.parseext(self.__options['extention']),
-                                                          isreaction=self.__options['isreaction'])]
+                                                  isreaction=self.__options['isreaction'])]
 
         if self.__options['eed']:
             descgenerator['D'] = [Eed(**x) for x in self.parsefragmentoropts(self.__options['eed'])]

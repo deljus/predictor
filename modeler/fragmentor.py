@@ -185,6 +185,7 @@ class Fragmentor(object):
 
                 if not data:
                     return False
+                print(data)
 
                 if self.__cgr:
                     data = [self.__cgr.getCGR(x) for x in data]
@@ -197,7 +198,8 @@ class Fragmentor(object):
 
                 if not data:
                     return False
-
+                print('='*30)
+                print(data)
                 doubles = []
                 for s_numb, s in enumerate(data):
                     if isinstance(s, list):

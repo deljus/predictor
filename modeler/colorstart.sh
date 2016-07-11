@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
-export SETUP_DIR=/home/stsouko/Utils
+UTILS_DIR=/home/stsouko
+CHMXN_DIR=/home/stsouko/ChemAxon
+export SETUP_DIR=${UTILS_DIR}/Utils
 export FORCEFIELD=${SETUP_DIR}/cvffTemplates.xml
-export CHMXN_DIR=/home/stsouko/ChemAxon
-export CLASSPATH=${CHMXN_DIR}/JChem/lib/jchem.jar:/home/stsouko:
+export CLASSPATH=${CHMXN_DIR}/JChem/lib/jchem.jar:${UTILS_DIR}:
 
 java Utils/CA_Prop_Map2011 -f $1 -o $2 -stdoptions $3
