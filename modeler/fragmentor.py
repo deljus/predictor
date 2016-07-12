@@ -185,7 +185,6 @@ class Fragmentor(object):
 
                 if not data:
                     return False
-                print(data)
 
                 if self.__cgr:
                     data = [self.__cgr.getCGR(x) for x in data]
@@ -198,8 +197,6 @@ class Fragmentor(object):
 
                 if not data:
                     return False
-                print('='*30)
-                print(data)
                 doubles = []
                 for s_numb, s in enumerate(data):
                     if isinstance(s, list):
@@ -211,10 +208,10 @@ class Fragmentor(object):
                             doubles.append(tmp)
                     else:
                         writers[0].writedata(s)
-                        doubles.append([s_numb])
+                        doubles.append(s_numb)
 
         else:
-            doubles = list(range(len(structures)))
+            doubles = None
             with open(workfiles[0], 'w') as f:
                 for i in structures:
                     f.write(i)
@@ -252,7 +249,7 @@ class Fragmentor(object):
         if self.__cgr_marker or self.__dragos_marker:
             i = pd.MultiIndex.from_tuples(doubles, names=['structure'] + ['c.%d' % x for x in range(len(workfiles))])
         else:
-            i = pd.Index(doubles, name='structure')
+            i = pd.Index(doubles if doubles is not None else res['X'].index, name='structure')
 
         res['X'].index = res['AD'].index = res['Y'].index = i
         return res

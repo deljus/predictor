@@ -49,7 +49,7 @@ class DefaultList(list):
 
 def descstarter(func, in_file, out_file, fformat, header):
     with open(in_file) as f:
-        dsc = func(structures=f)
+        dsc = func(structures=f, parsesdf=True)
         if dsc:
             fformat(out_file, dsc['X'], dsc['Y'], header=header)
         else:
@@ -147,7 +147,7 @@ class Modelbuilder(MBparser):
 
     def __gethashes(self, inputfile, stereo=False, b_templates=None, e_rules=None, c_rules=None):
         hashes = set()
-        _cgr = CGRcore(type='0', stereo=stereo, balance=1,
+        _cgr = CGRcore(type='0', stereo=stereo, balance=0,
                        b_templates=open(b_templates) if b_templates else None,
                        e_rules=open(e_rules) if e_rules else None,
                        c_rules=open(c_rules) if c_rules else None)
