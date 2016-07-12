@@ -86,7 +86,8 @@ class Descriptorsdict(object):
         self.__extention = data
         self.__extheader = self.__prepareextheader(data)
 
-    def setworkpath(self, workpath):
+    @staticmethod
+    def setworkpath(_):
         return True
 
     @staticmethod

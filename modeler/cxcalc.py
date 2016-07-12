@@ -106,8 +106,9 @@ class Pkab(object):
                 old_k = None
                 for lk, v in zip(doubles, pk):
                     for k in (lk if self.__dragos_marker else [lk]):
-                        if k == old_k and self.__base:
-                            new_doubles[-1][1].append(v[1].get(k[1 if self.__reverse else 2]))
+                        if k == old_k:
+                            if self.__base:
+                                new_doubles[-1][1].append(v[1].get(k[1 if self.__reverse else 2]))
                         else:
                             old_k = k
                             new_doubles.append([k, ([v[0].get(k[2 if self.__reverse else 1])] if self.__acid else [])])
@@ -122,9 +123,7 @@ class Pkab(object):
 
             res = dict(X=X, AD=-X.isnull().any(axis=1))
             if self.__cgr_marker or self.__dragos_marker:
-                i = pd.MultiIndex.from_tuples([x[0] for x in new_doubles],
-                                              names=['structure'] +
-                                                    ['c.%d' % x for x in range(self.__acid + self.__base)])
+                i = pd.MultiIndex.from_tuples([x[0] for x in new_doubles], names=['structure', 'c.0', 'c.1'])
             else:
                 i = pd.Index(doubles, name='structure')
 
