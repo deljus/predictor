@@ -20,7 +20,7 @@
 #
 import os
 import threading
-import time
+from utils.config import GACONF
 from copy import deepcopy
 import sys
 from modeler.fragmentor import Fragmentor
@@ -29,9 +29,10 @@ from modeler.eed import Eed
 from modeler.cxcalc import Pkab
 from modeler.svmodel import Model as SVM
 import argparse
-import pickle
+import dill as pickle
 import gzip
 import tempfile
+import time
 import subprocess as sp
 from CGRtools.FEAR import FEAR
 from CGRtools.CGRcore import CGRcore
@@ -104,6 +105,7 @@ class Modelbuilder(MBparser):
 
             ests = []
             svm = {'svr', 'svc'}.intersection(self.__options['estimator']).pop()
+            # rf = {'rf'}.intersection(self.__options['estimator']).pop()
             if svm:
                 if self.__options['svm']:
                     estparams = self.getsvmparam(self.__options['svm'])
@@ -115,7 +117,17 @@ class Modelbuilder(MBparser):
                     return
                 ests.append((lambda *vargs, **kwargs: SVM(*vargs, estimator=svm, **kwargs),
                              estparams))
-            else:
+            elif False:  # rf:  # todo: not implemented
+                if self.__options['rf']:
+                    estparams = None
+                    estparams = self.__chkest(estparams)
+                    if not estparams:
+                        ests.append((lambda *vargs, **kwargs: None,
+                                    estparams))
+                else:
+                    return
+
+            if not ests:
                 return
 
             if not os.path.isdir(self.__options['model']) and \
@@ -127,7 +139,7 @@ class Modelbuilder(MBparser):
                             n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
                             smartcv=self.__options['smartcv'], rep_boost=self.__options['rep_boost'],
                             repetitions=self.__options['repetition'],
-                            normalize=self.__options['normalize']) for g, e in ests
+                            normalize='scale' in y or self.__options['normalize']) for g, e in ests
                           for x, y in zip(self.__descgens, e)]
 
                 # todo: удалять совсем плохие фрагментации.
@@ -161,8 +173,8 @@ class Modelbuilder(MBparser):
         return list(hashes)
 
     def __chkest(self, estimatorparams):
-        if 1 < len(estimatorparams) < len(self.__descgens) or \
-                        len(estimatorparams) > len(self.__descgens) or not estimatorparams:
+        if not estimatorparams or 1 < len(estimatorparams) < len(self.__descgens) or \
+                        len(estimatorparams) > len(self.__descgens):
             print('NUMBER of estimator params files SHOULD BE EQUAL to '
                   'number of descriptor generator params files or to 1')
             return False
@@ -182,7 +194,7 @@ class Modelbuilder(MBparser):
                 tmp = next(queue, None)
                 if tmp:
                     n, dgen = tmp
-                    dgen.setworkpath(tempfile.mkdtemp(dir='.'))
+                    dgen.setworkpath(tempfile.mkdtemp(dir=self.__options['workpath']))
                     t = threading.Thread(target=descstarter,
                                          args=[dgen.get, self.__options['input'], '%s.%d' % (output, n),
                                                (self.savesvm if fformat == 'svm' else self.savecsv), header])
@@ -196,18 +208,33 @@ class Modelbuilder(MBparser):
     def __dragossvmfit(self, tasktype):
         """ files - basename for descriptors.
         """
-        files = os.path.join(self.__options['workpath'], "dragos-%d" % int(time.time()))
-        execparams = ['dragosgfstarter', files, tasktype]
+        workpath = tempfile.mkdtemp(dir=self.__options['workpath'])
+        files = os.path.join(workpath, 'drag')
+        dragos_work = os.path.join(workpath, 'work')
+
+        execparams = [GACONF, workpath, tasktype]
         if self.__gendesc(files):
-            """ parse descriptors for speedup
-            """
             if sp.call(execparams) == 0:
-                svm = self.getsvmparam(['%s.%d.result' % (files, x + 1) for x in range(len(self.__descgens))])
-                for x in range(len(self.__descgens)):
-                    os.remove('%s.%d.svm' % (files, x + 1))
-                    os.remove('%s.%d.hdr' % (files, x + 1))
-                    os.remove('%s.%d.result' % (files, x + 1))
-                return svm
+                best = {}
+                with open(os.path.join(dragos_work, 'best_pop')) as f:
+                    for line in f:
+                        dset, normal, *_, attempt, _, _ = line.split()
+                        best.setdefault(int(dset[5:]), (normal, attempt))
+
+                cleared, svmpar, scale = [], [], []
+                for k, (nv, av) in best.items():
+                    cleared.append(self.__descgens[k - 1])
+                    svmpar.append(os.path.join(dragos_work, av, 'svm.pars'))
+                    scale.append(nv)
+
+                self.__descgens = cleared
+
+                svm = []
+                svmpar = self.getsvmparam(svmpar)
+                if len(svmpar) == len(scale):
+                    for x, y in zip(svmpar, scale):
+                        svm.append({'scale' if y == 'scaled' else 'orig': list(x.values())[0]})
+                    return svm
         return []
 
     @staticmethod

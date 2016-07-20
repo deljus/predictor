@@ -31,6 +31,7 @@ WORK_PATH = '/tmp'
 FRAGMENTOR = '/opt/fragmentor/fragmentor'
 EED = '/opt/dragos/eedstart'
 COLOR = '/opt/dragos/colorstart'
+GACONF = '/op/dragos/gaconfstart'
 
 INTERVAL = 3
 MODEL_REFRESH = 5

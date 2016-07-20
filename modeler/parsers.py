@@ -156,7 +156,7 @@ class MBparser(object):
 
     @staticmethod
     def savesvm(outputfile, X, Y, header=True):
-        with open(outputfile + '.svm', 'w') as f:
+        with open(outputfile + '.svm', 'w', encoding='utf-8') as f:
             if header:
                 f.write(' '.join(['Property'] + ['%s:%s' % i for i in enumerate(X.columns, start=1)]) + '\n')
 

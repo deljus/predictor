@@ -34,8 +34,8 @@ import numpy as np
 
 
 def _kfold(est, x, y, train, test, svmparams, normalize):
-    x_train, y_train = x.loc[train], y[train]
-    x_test, y_test = x.loc[test], y[test]
+    x_train, y_train = x.iloc[train], y.iloc[train]
+    x_test, y_test = x.iloc[test], y.iloc[test]
     x_min = x_train.min()
     x_max = x_train.max()
     y_min = y_train.min()
@@ -50,7 +50,7 @@ def _kfold(est, x, y, train, test, svmparams, normalize):
 
     model = est(**svmparams)
     model.fit(x_train, y_train)
-    y_pred = pd.Series(model.predict(x_test), index=test)
+    y_pred = pd.Series(model.predict(x_test), index=y_test.index)
     return dict(model=model, normal=normal, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max,
                 y_test=y_test, y_pred=y_pred)
 
@@ -215,7 +215,7 @@ class Model(object):
         scorers = defaultdict(list)
         parallel = Parallel(n_jobs=self.__n_jobs)
         kf = list(KFold(len(self.__y), n_folds=self.__nfold))
-        setindexes = np.arange(len(self.__y))
+        setindexes = np.arange(len(self.__y.index))
         folds = parallel(delayed(_kfold)(self.__estimator, self.__x, self.__y, s[train], s[test], svmparams, self.__normalize)
                          for s in (self.__shuffle(setindexes, i) for i in range(repetitions))
                          for train, test in kf)
