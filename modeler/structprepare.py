@@ -26,6 +26,7 @@ from subprocess import Popen, PIPE, STDOUT, call
 from utils.config import PMAPPER, STANDARDIZER, COLOR
 from utils.utils import chemaxpost
 from CGRtools.CGRcore import CGRcore
+from CGRtools.CGRpreparer import CGRPreparer
 from CGRtools.RDFread import RDFread
 from CGRtools.SDFread import SDFread
 from CGRtools.SDFwrite import SDFwrite
@@ -168,12 +169,12 @@ class Pharmacophoreatommarker(object):
         return False
 
 
-class CGRatommarker(object):
+class CGRatommarker(CGRcore):
     def __init__(self, patterns, prepare=None, postprocess=None, stereo=False, reverse=False):
-        self.__cgr = CGRcore(type='0', stereo=stereo, balance=0, b_templates=None, e_rules=None, c_rules=None)
+        CGRcore.__init__(self, type='0', stereo=stereo, balance=0, b_templates=None, e_rules=None, c_rules=None)
         self.__stdprerules = self.__loadrules(prepare)
         self.__stdpostrules = self.__loadrules(postprocess)
-        self.__patterns, self.__marks = self.__loadpatterns(patterns)
+        self.__templates, self.__marks = self.__loadpatterns(patterns)
         self.__reverse = reverse
 
     @staticmethod
@@ -186,14 +187,10 @@ class CGRatommarker(object):
         return ruless
 
     def __loadpatterns(self, patterns):
-        rules = []
-        marks = 0
-        for i in patterns:
-            with open(i) as f:
-                templates = self.__cgr.gettemplates(f)
-                rules.append(self.__cgr.searchtemplate(templates, speed=False))
-                marks = len(templates[0]['products'])
-        return rules, marks
+        with open(patterns) as f:
+            templates = self.gettemplates(f)
+            marks = len(templates[0]['products'])
+        return templates, marks
 
     def getcount(self):
         return self.__marks
@@ -232,13 +229,14 @@ class CGRatommarker(object):
                 else self.__processor_s(structure, self.__stdprerules)
             if not structure:
                 return False
+
+        _patterns = self.searchtemplate(self.__templates, speed=False)
+
         markslist = []
-        gs = [self.__cgr.getCGR(x) for x in (structure if isinstance(structure, list) else [structure])]
+        gs = [self.getCGR(x) for x in (structure if isinstance(structure, list) else [structure])]
         for g in gs:
-            marks = []  # list of list of tuples(atom, mark) of matched centers
-            for i in self.__patterns:
-                for match in i(g):
-                    marks.append([[x, y['mark']] for x, y in match['products'].nodes(data=True)])
+            # list of list of tuples(atom, mark) of matched centers
+            marks = [[[x, y['mark']] for x, y in match['products'].nodes(data=True)] for match in _patterns(g)]
             markslist.append(marks)
 
         if self.__stdpostrules:

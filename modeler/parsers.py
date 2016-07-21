@@ -134,7 +134,7 @@ class MBparser(object):
                 for x in opts:
                     key, value = (x.strip() for x in x.split('='))
                     value = True if value == 'True' else False if value == 'False' else value
-                    if key in ['header', 'cgr_marker']:
+                    if key in ['header']:
                         tmp[key] = [x.strip() for x in value.split('|')]
                     else:
                         tmp[key] = value
