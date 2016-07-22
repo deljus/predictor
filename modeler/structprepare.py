@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2015 Ramil Nugmanov <stsouko@live.ru>
+# Copyright 2015, 2016 Ramil Nugmanov <stsouko@live.ru>
 # This file is part of PREDICTOR.
 #
 # PREDICTOR is free software; you can redistribute it and/or modify
@@ -26,7 +26,6 @@ from subprocess import Popen, PIPE, STDOUT, call
 from utils.config import PMAPPER, STANDARDIZER, COLOR
 from utils.utils import chemaxpost
 from CGRtools.CGRcore import CGRcore
-from CGRtools.CGRpreparer import CGRPreparer
 from CGRtools.RDFread import RDFread
 from CGRtools.SDFread import SDFread
 from CGRtools.SDFwrite import SDFwrite

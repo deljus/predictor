@@ -22,6 +22,7 @@ from collections import defaultdict
 from functools import reduce
 import operator
 import pandas as pd
+import numpy as np
 from CGRtools.SDFread import SDFread
 from CGRtools.RDFread import RDFread
 
@@ -60,7 +61,7 @@ class Descriptorchain(object):
 
         res['X'] = reduce(merge_wrap, res['X'])
         res['AD'] = reduce(operator.mul, sorted(res['AD'], key=lambda x: len(x.index), reverse=True))
-        res['Y'] = res['Y'][0]  # ВРЕМЕННО
+        res['Y'] = sorted(res['Y'], key=lambda x: len(x.index), reverse=True)[0]
         return dict(res)
 
 
@@ -69,12 +70,13 @@ class Propertyextractor(object):
         self.__isreaction = isreaction
         self.__name = name
 
-    def get(self, structures):
+    def get_property(self, structures):
         reader = RDFread(structures) if self.__isreaction else SDFread(structures)
         data = []
         for i in reader.readdata():
             meta = i['meta'] if self.__isreaction else i.graph['meta']
-            data.append(meta.get(self.__name))
+            prop = meta.get(self.__name)
+            data.append(float(prop) if prop else np.NaN)
         res = pd.Series(data, name='Property')
         res.index = pd.Index(res.index, name='structure')
         return res

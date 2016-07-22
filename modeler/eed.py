@@ -20,6 +20,7 @@
 #  MA 02110-1301, USA.
 #
 from modeler.structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker
+from modeler.descriptoragregator import Propertyextractor
 from io import StringIO
 from CGRtools.SDFread import SDFread
 from CGRtools.SDFwrite import SDFwrite
@@ -31,9 +32,10 @@ from functools import reduce
 import operator
 
 
-class Eed(object):
-    def __init__(self, workpath='.', marker_rules=None, standardize=None, cgr_reverse=False,
+class Eed(Propertyextractor):
+    def __init__(self, workpath='.', s_option=None, marker_rules=None, standardize=None, cgr_reverse=False,
                  cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None, cgr_stereo=False):
+        Propertyextractor.__init__(self, s_option, isreaction=cgr_marker)
         self.__dragos_marker = Pharmacophoreatommarker(marker_rules, workpath) if marker_rules else None
 
         self.__cgr_marker = CGRatommarker(cgr_marker, prepare=cgr_marker_prepare,
@@ -51,6 +53,7 @@ class Eed(object):
     def get(self, structures, **kwargs):
         reader = RDFread(structures) if self.__cgr_marker else SDFread(structures)
         data = list(reader.readdata())
+        structures.seek(0)  # ad-hoc for rereading
 
         if self.__dragos_std:
             data = self.__dragos_std.get(data)
@@ -78,11 +81,11 @@ class Eed(object):
                 for d in s:
                     tmp = [s_numb]
                     for w, x in zip(writers, d):
-                        w.writedata(x[1])
+                        w.writedata(x[1], flushmap=True)
                         tmp.append(x[0])
                     doubles.append(tmp)
             else:
-                writers[0].writedata(s)
+                writers[0].writedata(s, flushmap=True)
                 doubles.append([s_numb])
 
         for n, f in enumerate(workfiles):
@@ -102,6 +105,7 @@ class Eed(object):
         else:
             i = pd.Index(doubles, name='structure')
 
+        res['Y'] = self.get_property(structures) * pd.Series(1, index=i)
         res['X'].index = res['AD'].index = i
         return res
 
@@ -115,10 +119,10 @@ class Eed(object):
             for i in x:
                 k, v = i.split(':')
                 tmp[int(k)] = float(v.replace(',', '.'))
-            if len(tmp) == 1:
+            if len(tmp) == 2:
                 ad[-1] = False
             vector.append(tmp)
 
-        x = pd.DataFrame(vector).fillna(0)
-        x.columns = ['eed.%d' % x for x in range(1, 641)]
+        x = pd.DataFrame(vector, columns=range(1, 705)).fillna(0)
+        x.columns = ['eed.%d' % x for x in range(1, 705)]
         return x, pd.Series(ad)

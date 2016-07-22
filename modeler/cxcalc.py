@@ -21,6 +21,7 @@
 #  MA 02110-1301, USA.
 #
 from modeler.structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker
+from modeler.descriptoragregator import Propertyextractor
 from io import StringIO
 from CGRtools.SDFread import SDFread
 from CGRtools.SDFwrite import SDFwrite
@@ -30,9 +31,12 @@ from utils.config import CXCALC
 import pandas as pd
 
 
-class Pkab(object):
-    def __init__(self, workpath='.', marker_rules=None, standardize=None, acid=True, base=True, cgr_reverse=False,
+class Pkab(Propertyextractor):
+    def __init__(self, workpath='.', s_option=None, marker_rules=None, standardize=None, acid=True, base=True,
+                 cgr_reverse=False,
                  cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None, cgr_stereo=False):
+        Propertyextractor.__init__(self, s_option, isreaction=cgr_marker)
+
         self.__dragos_marker = Pharmacophoreatommarker(marker_rules, workpath) if marker_rules else None
 
         self.__cgr_marker = CGRatommarker(cgr_marker, prepare=cgr_marker_prepare,
@@ -53,6 +57,7 @@ class Pkab(object):
     def get(self, structures, **kwargs):
         reader = RDFread(structures) if self.__cgr_marker else SDFread(structures)
         data = list(reader.readdata())
+        structures.seek(0)  # ad-hoc for rereading
 
         if self.__dragos_std:
             data = self.__dragos_std.get(data)
@@ -127,6 +132,7 @@ class Pkab(object):
             else:
                 i = pd.Index(doubles, name='structure')
 
+            res['Y'] = self.get_property(structures) * pd.Series(1, index=i)
             res['X'].index = res['AD'].index = i
             return res
 
