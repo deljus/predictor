@@ -92,70 +92,82 @@ class Modelbuilder(MBparser):
                     else:
                         combo.append(descgenerator[k])
 
-                self.__descgens.extend([Descriptorchain(*[g for gs in c for g in (gs if isinstance(gs, list) else [gs])]) for c in product(*combo)])
+                self.__descgens.extend(
+                    [Descriptorchain(*[g for gs in c for g in (gs if isinstance(gs, list) else [gs])]) for c in
+                     product(*combo)])
         else:
             self.__descgens = [y for x in descgenerator.values() for y in x]
 
         if not self.__options['output']:
-            description = self.parsemodeldescription(self.__options['description'])
-            if self.__options['isreaction']:
-                description['is_reaction'] = True
-                description['hashes'] = self.__gethashes(self.__options['input'])
-                print(description['hashes'])
-
-            ests = []
-            svm = {'svr', 'svc'}.intersection(self.__options['estimator']).pop()
-            # rf = {'rf'}.intersection(self.__options['estimator']).pop()
-            if svm:
-                if self.__options['svm']:
-                    estparams = self.getsvmparam(self.__options['svm'])
-                else:
-                    estparams = self.__dragossvmfit(svm)
-
-                estparams = self.__chkest(estparams)
-                if not estparams:
-                    return
-                ests.append((lambda *vargs, **kwargs: SVM(*vargs, estimator=svm, **kwargs),
-                             estparams))
-            elif False:  # rf:  # todo: not implemented
-                if self.__options['rf']:
-                    estparams = None
-                    estparams = self.__chkest(estparams)
-                    if not estparams:
-                        ests.append((lambda *vargs, **kwargs: None,
-                                    estparams))
-                else:
-                    return
-
-            if not ests:
+            if os.path.isdir(self.__options['model']) or \
+               not (os.path.exists(self.__options['model']) and os.access(self.__options['model'], os.W_OK)) or \
+               not (self.__options['reload'] or os.path.exists(self.__options['model'] + '.save') and
+                    os.access(self.__options['model'] + '.save', os.W_OK)) or \
+               not os.access(os.path.dirname(self.__options['model']), os.W_OK):
+                print('path for model saving not writable')
                 return
 
-            if not os.path.isdir(self.__options['model']) and \
-                    (os.path.exists(self.__options['model']) and os.access(self.__options['model'], os.W_OK) or
-                     os.access(os.path.dirname(self.__options['model']), os.W_OK)):
-                models = [g(x, y.values(), open(self.__options['input']), parsesdf=True,
-                            dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
-                            scorers=self.__options['scorers'],
-                            n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
-                            smartcv=self.__options['smartcv'], rep_boost=self.__options['rep_boost'],
-                            repetitions=self.__options['repetition'],
-                            normalize='scale' in y or self.__options['normalize']) for g, e in ests
-                          for x, y in zip(self.__descgens, e)]
-
-                # todo: удалять совсем плохие фрагментации.
-                if 'tol' not in description:
-                    description['tol'] = models[0].getmodelstats()['dragostolerance']
-                print('name', description['name'])
-                print('desc', description['desc'])
-                print('tol', description['tol'])
-                print('nlim', description.get('nlim'))
-                pickle.dump(dict(models=models, config=description),
-                            gzip.open(self.__options['model'], 'wb'))
+            if self.__options['reload']:
+                ests, description, self.__descgens = pickle.load(gzip.open(self.__options['reload'], 'rb'))
             else:
-                print('path for model saving not writable')
+                description = self.parsemodeldescription(self.__options['description'])
+                if self.__options['isreaction']:
+                    description['is_reaction'] = True
+                    description['hashes'] = self.__gethashes(self.__options['input'])
+                    print(description['hashes'])
 
+                ests = []
+                svm = {'svr', 'svc'}.intersection(self.__options['estimator']).pop()
+                # rf = {'rf'}.intersection(self.__options['estimator']).pop()
+                if svm:
+                    if self.__options['svm']:
+                        estparams = self.getsvmparam(self.__options['svm'])
+                    else:
+                        estparams = self.__dragossvmfit(svm)
+
+                    estparams = self.__chkest(estparams)
+                    if not estparams:
+                        return
+                    ests.append((lambda *vargs, **kwargs: SVM(*vargs, estimator=svm, **kwargs),
+                                 estparams))
+                elif False:  # rf:  # todo: not implemented
+                    if self.__options['rf']:
+                        estparams = None
+                        estparams = self.__chkest(estparams)
+                        if not estparams:
+                            ests.append((lambda *vargs, **kwargs: None,
+                                         estparams))
+                    else:
+                        return
+
+                if not ests:
+                    return
+
+                pickle.dump((ests, description, self.__descgens), gzip.open(self.__options['model'] + '.save', 'wb'))
+
+            self.fit(ests, description)
         else:
             self.__gendesc(self.__options['output'], fformat=self.__options['format'], header=True)
+
+    def fit(self, ests, description):
+        models = [g(x, y.values(), open(self.__options['input']), parsesdf=True,
+                    dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
+                    scorers=self.__options['scorers'],
+                    n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
+                    smartcv=self.__options['smartcv'], rep_boost=self.__options['rep_boost'],
+                    repetitions=self.__options['repetition'],
+                    normalize='scale' in y or self.__options['normalize']) for g, e in ests
+                  for x, y in zip(self.__descgens, e)]
+
+        # todo: удалять совсем плохие фрагментации.
+        if 'tol' not in description:
+            description['tol'] = models[0].getmodelstats()['dragostolerance']
+        print('name', description['name'])
+        print('desc', description['desc'])
+        print('tol', description['tol'])
+        print('nlim', description.get('nlim'))
+        pickle.dump(dict(models=models, config=description),
+                    gzip.open(self.__options['model'], 'wb'))
 
     def __gethashes(self, inputfile, stereo=False, b_templates=None, e_rules=None, c_rules=None):
         hashes = set()
@@ -245,9 +257,10 @@ class Modelbuilder(MBparser):
         rawopts.add_argument("--workpath", "-w", type=str, default='.', help="work path")
 
         rawopts.add_argument("--input", "-i", type=str, default='input.sdf', help="input SDF or RDF")
-
         rawopts.add_argument("--output", "-o", type=str, default=None, help="output SVM|CSV")
         rawopts.add_argument("--format", "-of", type=str, default='svm', choices=['svm', 'csv'], help="output format")
+
+        rawopts.add_argument("--reload", type=str, default=None, help="saved state before fitting")
 
         rawopts.add_argument("--model", "-m", type=str, default='output.model', help="output model")
 
@@ -296,6 +309,7 @@ class Modelbuilder(MBparser):
         rawopts.add_argument("--smartcv", "-S", action='store_true', help="smart crossvalidation [NOT implemented]")
 
         return vars(rawopts.parse_args())
+
 
 if __name__ == '__main__':
     main = Modelbuilder()
