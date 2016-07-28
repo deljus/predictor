@@ -75,7 +75,8 @@ class Pkab(Propertyextractor):
             return False
 
         doubles = []
-        p = Popen([CXCALC] + 'pka -x 30 -a 8 -b 8 -P dynamic -m micro'.split(), stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+        p = Popen([CXCALC] + 'pka -x 50 -i -50 -a 8 -b 8 -P dynamic -m micro'.split(),
+                  stdout=PIPE, stdin=PIPE, stderr=STDOUT)
         with StringIO() as f:
             writer = SDFwrite(f)
             for s_numb, s in enumerate(data):
