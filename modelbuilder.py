@@ -100,9 +100,10 @@ class Modelbuilder(MBparser):
 
         if not self.__options['output']:
             if os.path.isdir(self.__options['model']) or \
-               not (os.path.exists(self.__options['model']) and os.access(self.__options['model'], os.W_OK)) or \
-               not (self.__options['reload'] or os.path.exists(self.__options['model'] + '.save') and
-                    os.access(self.__options['model'] + '.save', os.W_OK)) or \
+               (os.path.exists(self.__options['model']) and not os.access(self.__options['model'], os.W_OK)) or \
+               (os.path.exists(self.__options['model'] + '.save') and
+                    not (os.access(self.__options['model'] + '.save', os.W_OK) or
+                         self.__options['model'] + '.save' == self.__options['reload'])) or \
                not os.access(os.path.dirname(self.__options['model']), os.W_OK):
                 print('path for model saving not writable')
                 return
