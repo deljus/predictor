@@ -28,12 +28,12 @@ from flask_restful import reqparse, Resource, fields, marshal
 from pony.orm import db_session, select, commit, left_join, delete, count
 from app.models import Tasks, Structures, Results, Additiveset, Additives, Models, Users
 from werkzeug import datastructures
+from itertools import count as counter
 
 redis = Queue(connection=Redis(), default_timeout=3600)
 
 parser = reqparse.RequestParser()
 parser.add_argument('task', type=int, required=True)
-parser.add_argument('auth', type=int, required=True)
 
 
 def collectadditives(task):
@@ -61,7 +61,7 @@ class ModelingResult(Resource):
         with db_session:
             task = Tasks.get(id=args['task'])
             if not task:
-                return dict(message=dict(task='invalid id or access denied')), 400
+                return dict(message=dict(task='invalid id')), 400
 
             structures = select(s for s in Structures if s.task == task)
             resulsts = left_join((s.id, r.attrib, r.value, r.type, m.name)
@@ -86,98 +86,81 @@ class ModelingResult(Resource):
 taskstructurefields = dict(sid=fields.Integer, structure=fields.String, temperature=fields.Float, pressure=fields.Float,
                            additives=fields.List(fields.Nested(dict(aid=fields.Integer, amount=fields.Float))),
                            models=fields.List(fields.Integer))
-taskstructure = parser.copy()
-taskstructure.add_argument('structures', type=lambda x: marshal(json.loads(x), taskstructurefields))
-taskstructure.add_argument('operation', type=int, choices=[0, 1])  # 0 - insert, 1 - update
+ps_get = reqparse.RequestParser()
+ps_get.add_argument('task', type=str, required=True)
+ps_post = ps_get.copy()
+ps_post.add_argument('structures', type=lambda x: marshal(json.loads(x), taskstructurefields),  required=True)
 
 
-class TaskStructure(Resource):
+class PrepareStructure(Resource):
     def get(self):
-        args = taskstructure.parse_args()
-        try:
-            job = redis.fetch_job(args['task'])
-            if job.is_finished:
-                pass
-            else:
-                return dict(message=dict(task='not ready')), 400
-        except:
-            return dict(message=dict(task='invalid id or access denied')), 400
+        args = ps_get.parse_args()
+        job = next((redis.fetch_job(x) for x in redis.job_ids() if x == args['task']), None)
+        if not job:
+            return dict(message=dict(task='invalid id')), 400
 
-                structures = select(s for s in Structures if s.task == task)
-                models = left_join((s.id, m.id, m.name, m.description, m.model_type)
-                                   for s in Structures for m in s.models if s.task == task)
-
-                tmp1 = collectadditives(task)
-                tmp2 = {}
-                for s, mid, mn, md, mt in models:
-                    tmp2.setdefault(s, []).append(dict(mid=mid, name=mn, description=md, type=mt))
-
-            return dict(tid=task.id, status=task.status, date=task.create_date.timestamp(), type=task.task_type,
-                        uid=task.user.id if task.user else None,
-                        structures=[dict(sid=s.id, structure=s.structure, is_reaction=s.isreaction,
-                                         temperature=s.temperature, pressure=s.pressure, status=s.status,
-                                         additives=tmp1[s.id], models=tmp2[s.id]) for s in structures])
+        if job.is_finished:
+            result = job.result
+            result['tid'] = args['task']
+            return result
+        else:
+            return dict(message=dict(task='not ready')), 400
 
     def post(self):
-        args = taskstructure.parse_args()
-        r = redis.enqueue_call('', args=(args,), result_ttl=86400)
-        print(args)
-        if not args['structures']:
-            return dict(message=dict(structure='structures missing')), 400
+        args = ps_post.parse_args()
+
+        job = next((redis.fetch_job(x) for x in redis.job_ids() if x == args['task']), None)
+        if not job:
+            return dict(message=dict(task='invalid id')), 400
+
+        if not job.is_finished:
+            return dict(message=dict(task='not ready')), 400
+
+        structures = args['structures'] if isinstance(args['structures'], list) else [args['structures']]
+        tmp = {x['sid']: x for x in structures if x['sid']}
+
+        result = job.result
+        pure = {x['sid']: x for x in result['structures']}
 
         with db_session:
-            task = Tasks.get(id=args['task'])
-            if not task:
-                return dict(message=dict(task='invalid id or access denied')), 400
+            additives = {a.id: dict(aid=a.id, name=a.name, structure=a.structure, type=a.type)
+                         for a in select(a for a in Additives)}
+            models = {m.id: dict(mid=m.id, name=m.name, description=m.description, type=m.type)
+                      for m in select(m for m in Models)}
 
-            _s = args['structures'] if isinstance(args['structures'], list) else [args['structures']]
-            if args['operation'] == 0:
-                pairs = ((Structures(task=task), x) for x in _s)
-            elif args['operation'] == 1:
-                tmp1 = {x['sid']: x for x in _s}
-                pairs = ((s, tmp1[s.id]) for s in
-                         select(s for s in Structures if s.task == task and s.id in tmp1.keys()))
-            else:
-                return dict(message=dict(operation='invalid operation')), 400
+        report = []
+        for s, d in tmp.items():
+            if s in pure:
+                alist = []
+                for a in d.get('additives') or []:
+                    if a['aid'] in additives and 0 < a['amount'] < 1:
+                        a.update(additives[a['aid']])
+                        alist.append(a)
+                pure[s]['additives'] = alist
 
-            report = []
-            for s, d in pairs:
-                if d.get('additives'):
-                    s.additives.clear()
-                    for a in d['additives']:
-                        _a = Additives.get(id=a['aid'])
-                        if _a:
-                            Additiveset(additive=_a, structure=s, amount=a['amount'])
-                elif d.get('models') and task.task_type == 0:
-                    s.models.clear()
-                    for m in d['models']:
-                        _m = Models.get(id=m)
-                        if _m and s.isreaction == _m.model_type % 2:
-                            s.models.add(_m)
-                elif d.get('structure'):
-                    s.status = 3
-                    s.structure = d['structure']
-                    # todo: start machine recheck for tmp1[s.id].get('structure')
-                elif d.get('temperature'):
-                    s.temperature = d['temperature']
-                elif d.get('pressure'):
-                    s.pressure = d['pressure']
-                report.append(s.id)
-            return dict(message=dict(structures=dict(updated=report))) if report else (
-                dict(message=dict(structures='invalid structures id')), 400)
+                if result['type'] == 0:
+                    pure[s]['models'] = [models[m] for m in d.get('models') or []
+                                         if m in models and pure[s]['is_reaction'] == models[m]['type'] % 2]
 
-    def delete(self):
-        args = taskstructure.parse_args()
-        with db_session:
-            task = Tasks.get(id=args['task'])
-            if not task:
-                return dict(message=dict(task='invalid id or access denied')), 400
+                if d.get('structure'):
+                    pure[s]['structure'] = d['structure']
 
-            sid = [x['sid'] for x in
-                   (args['structures'] if isinstance(args['structures'], list) else [args['structures']])]
-            report = delete(s for s in Structures if s.task == task and s.id in sid)
-            return dict(message=dict(structures=dict(deleted=report))) if report else (
-                dict(message=dict(structures='invalid structures id')), 400)
+                if d.get('temperature'):
+                    pure[s]['temperature'] = d['temperature']
+
+                if d.get('pressure'):
+                    pure[s]['pressure'] = d['pressure']
+
+                report.append(s)
+
+        if report:
+            result['structures'] = list(pure.values())
+            newjob = redis.enqueue_call('redis_examp.test', args=(result,), result_ttl=86400)
+
+            return dict(tid=newjob.id, status=result['status'], date=newjob.created_at.timestamp(), type=result['type'],
+                        uid=result['uid'])
+        else:
+            dict(message=dict(structures='invalid data')), 400
 
 ''' ===================================================
     task status api.

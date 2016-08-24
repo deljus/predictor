@@ -25,7 +25,7 @@ from flask_login import LoginManager
 from flask.ext.restful import Api
 from app.config import PORTAL_BASE
 from app.models import PredictorDataBase as pdb
-from app.api import ModelingResult, TaskStructure, CreateTask, TaskStatus
+from app.api import ModelingResult, PrepareStructure, CreateTask, TaskStatus
 
 
 login_manager = LoginManager()
@@ -43,4 +43,4 @@ login_manager.login_view = 'login'
 pdb = pdb()
 from app import views
 
-api.add_resource(TaskStructure, '/testing')
+api.add_resource(PrepareStructure, '/testing')
