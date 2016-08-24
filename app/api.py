@@ -25,28 +25,21 @@ from redis import Redis
 from rq import Queue
 from app.config import UPLOAD_PATH
 from flask_restful import reqparse, Resource, fields, marshal
-from pony.orm import db_session, select, commit, left_join, delete, count
+from pony.orm import db_session, select, left_join
 from app.models import Tasks, Structures, Results, Additiveset, Additives, Models, Users
 from werkzeug import datastructures
-from itertools import count as counter
+
 
 redis = Queue(connection=Redis(), default_timeout=3600)
 
 parser = reqparse.RequestParser()
 parser.add_argument('task', type=int, required=True)
 
-
-def collectadditives(task):
-    additives = left_join((s.id, a.amount, p.id, p.name, p.type, p.structure)
-                          for s in Structures for a in s.additives for p in a.additive
-                          if s.task == task)
-    tmp = {}
-    for s, aa, aid, an, at, af in additives:
-        if aid:
-            tmp.setdefault(s, []).append(dict(aid=aid, name=an, structure=af, type=at, amount=aa))
-        else:
-            tmp[s] = []
-    return tmp
+taskstructurefields = dict(sid=fields.Integer, structure=fields.String, temperature=fields.Float(298),
+                           pressure=fields.Float(1),
+                           todelete=fields.Boolean(default=False),
+                           additives=fields.List(fields.Nested(dict(aid=fields.Integer, amount=fields.Float))),
+                           models=fields.List(fields.Integer))
 
 ''' ===================================================
     collector of modeled tasks (individually). return json
@@ -67,10 +60,20 @@ class ModelingResult(Resource):
             resulsts = left_join((s.id, r.attrib, r.value, r.type, m.name)
                                  for s in Structures for r in s.results for m in r.model
                                  if s.task == task)
+            additives = left_join((s.id, a.amount, p.id, p.name, p.type, p.structure)
+                                  for s in Structures for a in s.additives for p in a.additive
+                                  if s.task == task)
 
-            tmp1, tmp2 = {}, collectadditives(task)
+            tmp1, tmp2 = {}, {}
+
             for s, ra, rv, rt, m in resulsts:
                 tmp1.setdefault(s, {}).setdefault(m, []).append(dict(param=ra, value=rv, type=rt))
+
+            for s, aa, aid, an, at, af in additives:
+                if aid:
+                    tmp2.setdefault(s, []).append(dict(aid=aid, name=an, structure=af, type=at, amount=aa))
+                else:
+                    tmp2[s] = []
 
             return dict(tid=task.id, status=task.status, date=task.create_date.timestamp(), type=task.task_type,
                         uid=task.user.id if task.user else None,
@@ -80,37 +83,37 @@ class ModelingResult(Resource):
                                          additives=tmp2[s.id]) for s in structures])
 
 ''' ===================================================
-    task get and update api.
+    api for task preparation.
     ===================================================
 '''
-taskstructurefields = dict(sid=fields.Integer, structure=fields.String, temperature=fields.Float, pressure=fields.Float,
-                           additives=fields.List(fields.Nested(dict(aid=fields.Integer, amount=fields.Float))),
-                           models=fields.List(fields.Integer))
-ps_get = reqparse.RequestParser()
-ps_get.add_argument('task', type=str, required=True)
-ps_post = ps_get.copy()
-ps_post.add_argument('structures', type=lambda x: marshal(json.loads(x), taskstructurefields),  required=True)
+pt_get = reqparse.RequestParser()
+pt_get.add_argument('task', type=str, required=True)
+pt_post = pt_get.copy()
+pt_post.add_argument('structures', type=lambda x: marshal(json.loads(x), taskstructurefields),  required=True)
 
 
-class PrepareStructure(Resource):
+class PrepareTask(Resource):
     def get(self):
-        args = ps_get.parse_args()
-        job = next((redis.fetch_job(x) for x in redis.job_ids() if x == args['task']), None)
-        if not job:
+        args = pt_get.parse_args()
+
+        try:
+            job = redis.fetch_job(args['task'])
+        except:
             return dict(message=dict(task='invalid id')), 400
 
-        if job.is_finished:
-            result = job.result
-            result['tid'] = args['task']
-            return result
-        else:
+        if not job.is_finished:
             return dict(message=dict(task='not ready')), 400
 
-    def post(self):
-        args = ps_post.parse_args()
+        result = job.result
+        result['tid'] = args['task']
+        return result
 
-        job = next((redis.fetch_job(x) for x in redis.job_ids() if x == args['task']), None)
-        if not job:
+    def post(self):
+        args = pt_post.parse_args()
+
+        try:
+            job = redis.fetch_job(args['task'])
+        except:
             return dict(message=dict(task='invalid id')), 400
 
         if not job.is_finished:
@@ -119,92 +122,67 @@ class PrepareStructure(Resource):
         structures = args['structures'] if isinstance(args['structures'], list) else [args['structures']]
         tmp = {x['sid']: x for x in structures if x['sid']}
 
-        result = job.result
-        pure = {x['sid']: x for x in result['structures']}
+        task = job.result
+        pure = {x['sid']: x for x in task['structures']}
 
         with db_session:
             additives = {a.id: dict(aid=a.id, name=a.name, structure=a.structure, type=a.type)
                          for a in select(a for a in Additives)}
-            models = {m.id: dict(mid=m.id, name=m.name, description=m.description, type=m.type)
+            models = {m.id: dict(mid=m.id, name=m.name, description=m.description, type=m.model_type)
                       for m in select(m for m in Models)}
 
-        report = []
+        report = False
         for s, d in tmp.items():
             if s in pure:
-                alist = []
-                for a in d.get('additives') or []:
-                    if a['aid'] in additives and 0 < a['amount'] < 1:
-                        a.update(additives[a['aid']])
-                        alist.append(a)
-                pure[s]['additives'] = alist
+                report = True
+                if d['todelete']:
+                    pure.pop(s)
+                else:
+                    if d['additives'] is not None:
+                        alist = []
+                        for a in d['additives']:
+                            if a['aid'] in additives and 0 < a['amount'] < 1:
+                                a.update(additives[a['aid']])
+                                alist.append(a)
+                        pure[s]['additives'] = alist
 
-                if result['type'] == 0:
-                    pure[s]['models'] = [models[m] for m in d.get('models') or []
-                                         if m in models and pure[s]['is_reaction'] == models[m]['type'] % 2]
+                    if task['type'] == 0 and d['models'] is not None:
+                        pure[s]['models'] = [models[m] for m in d['models']
+                                             if m in models and pure[s]['is_reaction'] == models[m]['type'] % 2]
 
-                if d.get('structure'):
-                    pure[s]['structure'] = d['structure']
+                    if d['structure']:
+                        pure[s]['structure'] = d['structure']
+                        pure[s]['status'] = 0
 
-                if d.get('temperature'):
-                    pure[s]['temperature'] = d['temperature']
+                    if d['temperature']:
+                        pure[s]['temperature'] = d['temperature']
 
-                if d.get('pressure'):
-                    pure[s]['pressure'] = d['pressure']
-
-                report.append(s)
+                    if d['pressure']:
+                        pure[s]['pressure'] = d['pressure']
 
         if report:
-            result['structures'] = list(pure.values())
-            newjob = redis.enqueue_call('redis_examp.test', args=(result,), result_ttl=86400)
+            task['structures'] = list(pure.values())
+            newjob = redis.enqueue_call('redis_examp.prep', args=(task,), result_ttl=86400)
 
-            return dict(tid=newjob.id, status=result['status'], date=newjob.created_at.timestamp(), type=result['type'],
-                        uid=result['uid'])
+            return dict(tid=newjob.id, status=task['status'], date=newjob.created_at.timestamp(), type=task['type'],
+                        uid=task['uid'])
         else:
-            dict(message=dict(structures='invalid data')), 400
+            return dict(message=dict(structures='invalid data')), 400
 
 ''' ===================================================
-    task status api.
+    api for task creation.
     ===================================================
 '''
-taskststatus = parser.copy()
-
-
-class TaskStatus(Resource):
-    def get(self):
-        args = taskststatus.parse_args()
-        with db_session:
-            task = Tasks.get(id=args['task'])
-            if task:
-                return dict(tid=task.id, status=task.status, date=task.create_date.timestamp(), type=task.task_type,
-                            uid=task.user.id if task.user else None)
-        return dict(message=dict(task='invalid id or access denied')), 400
-
-    def put(self):
-        """ switch task status to 'ready for modeling' if task populated and contains only machine checked structures
-        """
-        args = taskststatus.parse_args()
-        with db_session:
-            task = Tasks.get(id=args['task'])
-            if task and task.status == 1 and count(s for s in Structures if s.task == task and s.status != 1) == 0:
-                task.status = 2
-                return dict(message=dict(task='updated'))
-        return dict(message=dict(task='invalid id or access denied')), 400
-
-''' ===================================================
-    structure or file upload api.
-    ===================================================
-'''
-createtask = reqparse.RequestParser()
-createtask.add_argument('auth', type=int, required=True)
-createtask.add_argument('type', type=int, required=True)
-createtask.add_argument('file.path', type=str)
-createtask.add_argument('file', type=datastructures.FileStorage, location='files')
-createtask.add_argument('structures', type=lambda x: marshal(json.loads(x), taskstructurefields))
+ct_post = reqparse.RequestParser()
+ct_post.add_argument('type', type=int, required=True)
+ct_post.add_argument('file.path', type=str)
+ct_post.add_argument('file', type=datastructures.FileStorage, location='files')
+ct_post.add_argument('structures', type=lambda x: marshal(json.loads(x), taskstructurefields))
 
 
 class CreateTask(Resource):
     def post(self):
-        args = createtask.parse_args()
+        args = ct_post.parse_args()
 
         file_path = None
         if args['file.path']:  # костыль. если не найдет этого в аргументах, то мы без NGINX сидим тащемта.
@@ -214,10 +192,36 @@ class CreateTask(Resource):
             args['file'].save(file_path)
 
         if file_path:
-            with db_session:
-                task = Tasks(task_type=args['type'])
-                # todo: populate task
-            return dict(tid=task.id, status=task.status, date=task.create_date.timestamp(), type=task.task_type,
-                        uid=task.user.id if task.user else None)
+            task = dict(status=0, type=args['type'], uid=None, structures=file_path)
+            newjob = redis.enqueue_call('redis_examp.file', args=(task,), result_ttl=86400)
 
-        return dict(message='invalid file or access denied'), 400
+        elif args['structures']:
+            with db_session:
+                additives = {a.id: dict(aid=a.id, name=a.name, structure=a.structure, type=a.type)
+                             for a in select(a for a in Additives)}
+
+            structures = args['structures'] if isinstance(args['structures'], list) else [args['structures']]
+
+            data = []
+            for s, d in enumerate(structures, start=1):
+                if d['structure']:
+                    alist = []
+                    for a in d['additives'] or []:
+                        if a['aid'] in additives and 0 < a['amount'] < 1:
+                            a.update(additives[a['aid']])
+                            alist.append(a)
+
+                    data.append(dict(sid=s, structure=d['structure'], status=0, pressure=d['pressure'],
+                                     temperature=d['temperature'], additives=alist))
+
+            if not data:
+                return dict(message='invalid data'), 400
+
+            task = dict(status=0, type=args['type'], uid=None, structures=data)
+            newjob = redis.enqueue_call('redis_examp.prep', args=(task,), result_ttl=86400)
+
+        else:
+            return dict(message='invalid data'), 400
+
+        return dict(tid=newjob.id, status=0, date=newjob.created_at.timestamp(), type=args['type'], uid=None)
+

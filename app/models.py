@@ -67,7 +67,7 @@ class Structures(db.Entity):
     additives = Set("Additiveset")
 
     task = Required(Tasks)
-    status = Required(int, default=0)  # 0 - raw, 1 - machine checks suc, 2 - machine checks err, 3 - human checked
+    status = Required(int, default=0)  # 0 - raw, 1 - machine checks suc, 2 - machine checks err
     results = Set("Results")
     models = Set("Models")
 
