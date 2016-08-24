@@ -19,21 +19,107 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from pony.orm import *
-from collections import defaultdict
-
+from pony.orm import Database, sql_debug, db_session, PrimaryKey, Required, Optional, Set, select, commit
+from datetime import datetime
 import time
+#import bcrypt
 import os
 import sys
-from app import app
+from app.config import DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER
 
-#todo: вернуть базу на postgres перед заливкой в svn
-if app.config.get("DEBUG"):
+
+if DEBUG:
     db = Database("sqlite", "database.sqlite", create_db=True)
     sql_debug(True)
 else:
-    db = Database('postgres', user=app.config.get("DB_USER"), password=app.config.get("DB_PASS"),
-                  host=app.config.get("DB_HOST"), database=app.config.get("DB_NAME"))
+    db = Database('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST, database=DB_NAME)
+
+
+class Users(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    email = Required(str, unique=True)
+    password = Optional(str)
+    active = Required(bool, default=True)
+    tasks = Set("Tasks")
+
+#    def hash_password(self, password):
+#        self.passwd = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+#
+#    def verify_password(self, password):
+#        return bcrypt.hashpw(password.encode(), self.passwd.encode()) == self.passwd.encode()
+
+
+class Tasks(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    user = Optional(Users)
+    structures = Set("Structures")
+    status = Required(int, default=0)  # 0 - new, 1 - populated, 2 - ready for modeling, 3 - done
+    create_date = Required(datetime, default=datetime.now())
+    task_type = Required(int, default=0)  # 0 - common models, 1,2,... - searches
+
+
+class Structures(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    structure = Optional(str)
+    isreaction = Required(bool, default=False)
+    temperature = Optional(float)
+    pressure = Optional(float)
+    additives = Set("Additiveset")
+
+    task = Required(Tasks)
+    status = Required(int, default=0)  # 0 - raw, 1 - machine checks suc, 2 - machine checks err, 3 - human checked
+    results = Set("Results")
+    models = Set("Models")
+
+
+class Results(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    structure = Required(Structures)
+    model = Required("Models")
+
+    attrib = Required(str)
+    value = Required(str)
+    type = Required(int)
+
+
+class AppDomains(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    hash = Required(str, unique=True)
+    models = Set("Models")
+
+
+class Models(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    name = Required(str)
+    description = Required(str)
+    example = Optional(str)
+    model_type = Required(int, default=0)  # нечетные для реакций, четные и 0 для молекул.
+    app_domains = Set(AppDomains)
+
+    structures = Set(Structures)
+    results = Set(Results)
+
+
+class Additives(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    structure = Optional(str)
+    name = Required(str, unique=True)
+    type = Required(int, default=0)
+    additivesets = Set("Additiveset")
+
+
+class Additiveset(db.Entity):
+    amount = Required(float, default=1)
+    additive = Required(Additives)
+    structure = Required(Structures)
+
+
+db.generate_mapping(create_tables=True)
+
+
+
+
+
 
 STATUS_ARRAY = ["Task created",         #0
                 "Mapping required",     #1
@@ -45,105 +131,22 @@ STATUS_ARRAY = ["Task created",         #0
                 ]
 
 
-class Users(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    email = Required(str, 128, unique=True)
-    password = Required(str)
-    active = Required(bool, default=True)
-    tasks = Set("Tasks")
-
-
-class Tasks(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    user = Optional(Users)
-    chemicals = Set("Chemicals")
-    status = Required(int, default=0)
-    create_date = Required(int)
-    task_type = Required(str, default="model")
-    parameters = Set("TaskParameters")
-
-class TaskParameters(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    task = Required(Tasks)
-    name = Required(str)
-    value = Required(str)
-
-
-class Chemicals(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    status = Optional(str)
-    isreaction = Required(bool, default=False)
-    temperature = Optional(float)
-    solvents = Set("Solventsets")
-    task = Required(Tasks)
-    structure = Required("Structures")
-    results = Set("Results")
-    models = Set("Models")
-
-
-class Structures(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    key = Optional(str)
-    structure = Required(str)
-    chemicals = Set(Chemicals)
-
-
-class Results(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    chemical = Required(Chemicals)
-    attrib = Required(str)
-    value = Required(str)
-    type = Required(int)
-    model = Required("Models")
-
-
-class AppDomains(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    hash = Required(str)
-    models = Set("Models")
-
-
-class Models(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    name = Required(str)
-    description = Required(str)
-    chemicals = Set(Chemicals)
-    results = Set(Results)
-    example = Optional(str)
-    is_reaction = Required(bool, default=False)
-    app_domains = Set("AppDomains")
-
-
-class Solvents(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    smiles = Optional(str)
-    name = Required(str, unique=True)
-    solventsets = Set("Solventsets")
-
-
-class Solventsets(db.Entity):
-    amount = Required(float, default=1)
-    solvent = Required(Solvents)
-    chemical = Required(Chemicals)
-
-
-
-db.generate_mapping(create_tables=True)
-
 
 class PredictorDataBase:
 
     @db_session
     def get_user(self, user_id=None, email=None):
-        user = None
-        if user_id:
+        if user_id is not None:
             user = Users.get(id=user_id)
+        elif email is not None:
+            user = Users.get(email=email)
         else:
-            if email:
-                user = Users.get(email=email)
+            user = None
+
         if user:
-            return dict(id=user.id, email=user.email, password=user.password, active=user.active)
-        return user
+            return user.to_dict(id=user.id, email=user.email, password=user.password, active=user.active)
+
+        return None
 
 
     @db_session
@@ -152,7 +155,7 @@ class PredictorDataBase:
             tasks = select(x for x in Tasks if x.status == status)
         else:
             tasks = select(x for x in Tasks)    # удалить в продакшене
-
+        tasks.filter(lambda x: x.status == status)
         arr = []
         for t in tasks:
             if t.user:
@@ -466,23 +469,7 @@ class PredictorDataBase:
                                 results=result_arr))
         return out
 
-    @db_session
-    def get_reaction_results(self, reaction_id):
-        '''
-        функция возвращает результаты моделирования для заданной реакции
-        :param reaction_id(str): ID реакции
-        :return: Результаты моделирования
-        '''
 
-        result_arr = []
-        r = Chemicals.get(id=reaction_id)
-        if r:
-            for res in r.results:
-                result_arr.append(dict(reaction_id=r.id,
-                                       model=res.model.name,
-                                       param=res.attrib,
-                                       value=res.value))
-        return result_arr
 
 
     @db_session

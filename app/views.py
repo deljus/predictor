@@ -30,7 +30,7 @@ from app import app
 from app import pdb
 from flask.ext.restful import reqparse, Api, Resource
 from flask import redirect, url_for
-from flask.ext import excel
+#from flask.ext import excel
 import pyexcel.ext.xls
 from flask import request, render_template, flash
 from app.forms import Registration, Login
@@ -39,7 +39,7 @@ from flask_login import login_user, login_required, logout_user, current_user
 from utils.utils import chemaxpost
 
 
-api = Api(app)
+from app import api
 
 def get_cur_user():
     user_data = None
@@ -77,9 +77,9 @@ def model_example(model=0):
     return render_template("predictor.html", model=model, user_data=get_cur_user())
 
 
-@app.route(PORTAL_BASE+'/predictor/download', methods=['GET'])
-def download_file():
-    return excel.make_response_from_array([[1, 2], [3, 4]], "xls")
+#@app.route(PORTAL_BASE+'/predictor/download', methods=['GET'])
+#def download_file():
+#    return excel.make_response_from_array([[1, 2], [3, 4]], "xls")
 
 
 @app.route(PORTAL_BASE+'/predictor/solvents', methods=['GET'])
@@ -147,85 +147,6 @@ UploadFileParser.add_argument('file.path', type=str)
 FILEList = {}
 
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
-
-
-class UploadFile(Resource):
-    def post(self):
-        reaction_file = None
-        args = UploadFileParser.parse_args()
-
-        if args['file.path']:  # костыль. если не найдет этого в аргументах, то мы без NGINX сидим тащемта.
-            reaction_file = args['file.path']
-        elif request.files['file'] and allowed_file(request.files['file'].filename):
-            reaction_file = os.path.join(UPLOAD_PATH, str(uuid.uuid4()))
-            request.files['file'].save(reaction_file)
-
-        if reaction_file:
-            task_id = pdb.insert_task()
-            FILEList[task_id] = reaction_file
-            return str(task_id), 201
-        else:
-            return None, 403
-
-
-"""
-метод добавляет новые реакции в существующий таск и отдает файлы на парсер.
-"""
-ReactionParserparser = reqparse.RequestParser()
-ReactionParserparser.add_argument('task_id', type=int)
-ReactionParserparser.add_argument('status', type=str, default=None)
-ReactionParserparser.add_argument('isreaction', type=bool, default=False)
-ReactionParserparser.add_argument('structure', type=str)
-ReactionParserparser.add_argument('temperature', type=float)
-ReactionParserparser.add_argument('solvents', type=lambda x: json.loads(x))
-
-
-class ParserAPI(Resource):
-    def get(self):
-        if FILEList:
-            task_id, file = FILEList.popitem()
-            return dict(id=task_id, file=file), 201  # не заработает если файл на другом компе.
-        else:
-            return None, 201
-
-    def post(self):
-        args = ReactionParserparser.parse_args()
-        reaction_id = pdb.insert_reaction(task_id=args['task_id'], reaction_structure=args['structure'],
-                                          solvent=args['solvents'], temperature=args['temperature'],
-                                          status=args['status'], isreaction=args['isreaction'])
-        if reaction_id:
-            return reaction_id, 201
-        else:
-            return None, 201
-
-
-parser = reqparse.RequestParser()
-parser.add_argument('reaction_structure', type=str)
-parser.add_argument('status', type=str, default=None)
-parser.add_argument('isreaction', type=bool, default=False)
-parser.add_argument('task_type', type=str)
-parser.add_argument('temperature', type=str)
-parser.add_argument('solvent', type=str)
-parser.add_argument('task_status', type=int)
-parser.add_argument('model_id', type=int)
-parser.add_argument('param', type=str)
-parser.add_argument('value', type=float)
-parser.add_argument('models', type=str)
-#parser.add_argument('task_parameters',  type=lambda x: json.loads(x))
-parser.add_argument('task_parameters', type=dict, default = "", location = 'json')
-
-class ReactionStructureAPI(Resource):
-    def get(self, reaction_id):
-        return pdb.get_reaction_structure(reaction_id), 201
-
-    def post(self, reaction_id):
-        args = parser.parse_args()
-        pdb.update_reaction_structure(reaction_id, args['reaction_structure'],
-                                      status=args['status'], isreaction=args['isreaction'])
-        return reaction_id, 201
-
 
 """
 modeling results updater
@@ -266,52 +187,6 @@ class ReactionAPI(Resource):
         pdb.delete_reaction(reaction_id)
         return '', 201
 
-
-class ReactionListAPI(Resource):
-    def get(self):
-        return pdb.get_reactions(), 201
-
-
-class TaskListAPI(Resource):
-    def get(self):
-        args = parser.parse_args()
-        return pdb.get_tasks(status=args['task_status']), 201
-
-    def post(self):
-        if current_user.is_authenticated:
-            email = current_user.get_email()
-        else:
-            email = None
-        args = parser.parse_args()
-
-        task_type = args['task_type']
-        task_id = pdb.insert_task(email=email, task_type=task_type)
-        params = args['task_parameters']
-        pdb.task_parameters(task_id=task_id, parameters=params)
-
-        pdb.insert_reaction(task_id, reaction_structure=args['reaction_structure'])
-
-        if task_type == 'model':
-            pdb.update_task_status(task_id, REQ_MAPPING)
-        elif task_type == 'search':
-            pdb.update_task_status(task_id, LOCK_MODELLING)
-        return task_id, 201
-
-
-class TaskStatusAPI(Resource):
-    def get(self, task_id):
-        return pdb.get_task_status(task_id), 201
-
-    def put(self, task_id):
-        args = parser.parse_args()
-        task_status = args['task_status']
-        pdb.update_task_status(task_id, task_status)
-        return task_id, 201
-
-
-class TaskReactionsAPI(Resource):
-    def get(self, task_id):
-        return pdb.get_reactions_by_task(task_id), 201
 
 
 """
@@ -360,43 +235,6 @@ class UsersAPI(Resource):
         return pdb.get_users(), 201
 
 
-class TaskModellingAPI(Resource):
-    def get(self, task_id):
-        return pdb.get_results_by_task(task_id), 201
-
-    def post(self, task_id):
-        _parser = reqparse.RequestParser()
-        _parser.add_argument('task_reaction_ids', type=str)
-        args = _parser.parse_args()
-        reaction_ids = args['task_reaction_ids']
-        for r_id in reaction_ids.split(','):
-            try:
-                _m = 'model_' + r_id
-                _s = 'solvent_' + r_id
-                _t = 'temperature_' + r_id
-                _parser.add_argument(_m, type=str)
-                _parser.add_argument(_s, type=str)
-                _parser.add_argument(_t, type=str)
-                args = _parser.parse_args()
-                _m = args[_m]
-                _s = args[_s]
-                _t = args[_t]
-
-                if _m:
-                    _m = _m.split(',')
-                if _s:
-                    _s = _s.split(',')
-
-                pdb.update_reaction_conditions(r_id, solvent=_s, temperature=_t, models=_m)
-                _parser.remove_argument(_m)
-                _parser.remove_argument(_s)
-                _parser.remove_argument(_t)
-            except:
-                print('TaskModellingAPI->PUT->', sys.exc_info()[0])
-                pass
-        return 'OK', 201
-
-
 class ModelAPI(Resource):
     def get(self, model_id):
         return pdb.get_model(model_id), 201
@@ -429,30 +267,30 @@ class DownloadResultsAPI(Resource):
 ##
 ## Actually setup the Api resource routing here
 ##
-api.add_resource(ReactionListAPI, PORTAL_BASE+'/api/reactions')
-
-api.add_resource(ReactionAPI, PORTAL_BASE+'/api/reaction/<reaction_id>')
-api.add_resource(ReactionStructureAPI, PORTAL_BASE+'/api/reaction_structure/<reaction_id>')
-api.add_resource(ReactionResultAPI, PORTAL_BASE+'/api/reaction_result/<reaction_id>')
-
-# работа со статусами задач
-api.add_resource(TaskStatusAPI, PORTAL_BASE+'/api/task_status/<task_id>')
-
-# получение задач
-api.add_resource(TaskListAPI, PORTAL_BASE+'/api/tasks')
-
-api.add_resource(TaskReactionsAPI, PORTAL_BASE+'/api/task_reactions/<task_id>')
-
-api.add_resource(TaskModellingAPI, PORTAL_BASE+'/api/task_modelling/<task_id>')
-
-api.add_resource(ModelListAPI, PORTAL_BASE+'/api/models')
-api.add_resource(ModelAPI, PORTAL_BASE+'/api/model/<model_id>')
-
-api.add_resource(SolventsAPI, PORTAL_BASE+'/api/solvents')
-
-api.add_resource(DownloadResultsAPI, PORTAL_BASE+'/api/download/<task_id>')
-
-api.add_resource(UploadFile, PORTAL_BASE+'/api/upload')
-api.add_resource(ParserAPI, PORTAL_BASE+'/api/parser')
-
-api.add_resource(UsersAPI, PORTAL_BASE+'/api/users')
+# api.add_resource(ReactionListAPI, PORTAL_BASE+'/api/reactions')
+#
+# api.add_resource(ReactionAPI, PORTAL_BASE+'/api/reaction/<reaction_id>')
+# api.add_resource(ReactionStructureAPI, PORTAL_BASE+'/api/reaction_structure/<reaction_id>')
+# api.add_resource(ReactionResultAPI, PORTAL_BASE+'/api/reaction_result/<reaction_id>')
+#
+# # работа со статусами задач
+# api.add_resource(TaskStatusAPI, PORTAL_BASE+'/api/task_status/<task_id>')
+#
+# # получение задач
+# api.add_resource(TaskListAPI, PORTAL_BASE+'/api/tasks')
+#
+# api.add_resource(TaskReactionsAPI, PORTAL_BASE+'/api/task_reactions/<task_id>')
+#
+# api.add_resource(TaskModellingAPI, PORTAL_BASE+'/api/task_modelling/<task_id>')
+#
+# api.add_resource(ModelListAPI, PORTAL_BASE+'/api/models')
+# api.add_resource(ModelAPI, PORTAL_BASE+'/api/model/<model_id>')
+#
+# api.add_resource(SolventsAPI, PORTAL_BASE+'/api/solvents')
+#
+# api.add_resource(DownloadResultsAPI, PORTAL_BASE+'/api/download/<task_id>')
+#
+# api.add_resource(UploadFile, PORTAL_BASE+'/api/upload')
+# api.add_resource(ParserAPI, PORTAL_BASE+'/api/parser')
+#
+# api.add_resource(UsersAPI, PORTAL_BASE+'/api/users')

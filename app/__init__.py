@@ -21,26 +21,26 @@
 #
 from flask import Flask
 from flask_bootstrap import Bootstrap
-from flask_appconfig import AppConfig
 from flask_login import LoginManager
+from flask.ext.restful import Api
+from app.config import PORTAL_BASE
+from app.models import PredictorDataBase as pdb
+from app.api import ModelingResult, TaskStructure, CreateTask, TaskStatus
+
 
 login_manager = LoginManager()
-from .config import PORTAL_BASE
 
 
-def create_app(configfile=None):
-    app = Flask(__name__, static_url_path=PORTAL_BASE+'/static', static_folder="static")
-    AppConfig(app, configfile)
-    Bootstrap(app)
-    login_manager.init_app(app)
-    login_manager.login_view = 'login'
+app = Flask(__name__, static_url_path=PORTAL_BASE+'/static', static_folder="static")
+api = Api(app)
 
-    return app
+Bootstrap(app)
 
-app = create_app(configfile='config.ini')
+login_manager.init_app(app)
+login_manager.login_view = 'login'
 
 
-from app.models import PredictorDataBase as pdb
 pdb = pdb()
-
 from app import views
+
+api.add_resource(TaskStructure, '/testing')

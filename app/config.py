@@ -33,7 +33,20 @@ SEARCH_TASK_CREATED = 10
 LOCK_SEARCHING = 11
 SEARCHING_DONE = 12
 
-UPLOAD_PATH = '/home/www/predictor/upload/'
+UPLOAD_PATH = './upload/'
 ALLOWED_EXTENSIONS = ('rdf', 'sdf', 'mol', 'mrv', 'smi', 'smiles', 'rxn')
 
 PORTAL_BASE = '/qspr'
+
+
+UPLOAD_FOLDER = '/upload/'
+
+SECRET_KEY = 'development key'
+DEBUG = True
+HOST = '0.0.0.0'
+PORT = 5000
+
+DB_USER = 'postgres'
+DB_PASS = 'jyvt0n3'
+DB_HOST = 'localhost'
+DB_NAME = 'predictor'

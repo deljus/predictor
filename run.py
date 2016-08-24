@@ -21,6 +21,7 @@
 #  MA 02110-1301, USA.
 #
 from app import app
+from app.config import HOST, DEBUG, PORT
 
 if __name__ == "__main__":
-    app.run(app.config.get("HOST", "localhost"), port=app.config.get("PORT", 5000), debug=app.config.get("DEBUG"))
+    app.run(HOST, port=PORT, debug=DEBUG)

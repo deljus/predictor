@@ -61,7 +61,7 @@ class Mapper(object):
                     temp = 298
                     prop = {x.get('title').lower(): x.find('scalar').text.lower().strip() for x in i.iter('property')}
                     for k, v in prop.items():
-                        if 'solvent.amount.' in k:
+                        if 'additive.amount.' in k:
                             try:
                                 sname, *_, samount = re.split('[:=]', v)
                                 sid = solv.get(sname.strip())
