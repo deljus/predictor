@@ -175,12 +175,46 @@ class PrepareTask(Resource):
 '''
 ct_post = reqparse.RequestParser()
 ct_post.add_argument('type', type=int, required=True)
-ct_post.add_argument('file.path', type=str)
-ct_post.add_argument('file', type=datastructures.FileStorage, location='files')
-ct_post.add_argument('structures', type=lambda x: marshal(json.loads(x), taskstructurefields))
+ct_post.add_argument('structures', type=lambda x: marshal(json.loads(x), taskstructurefields), required=True)
 
 
 class CreateTask(Resource):
+    def post(self):
+        args = ct_post.parse_args()
+
+        with db_session:
+            additives = {a.id: dict(aid=a.id, name=a.name, structure=a.structure, type=a.type)
+                         for a in select(a for a in Additives)}
+
+        structures = args['structures'] if isinstance(args['structures'], list) else [args['structures']]
+
+        data = []
+        for s, d in enumerate(structures, start=1):
+            if d['structure']:
+                alist = []
+                for a in d['additives'] or []:
+                    if a['aid'] in additives and 0 < a['amount'] < 1:
+                        a.update(additives[a['aid']])
+                        alist.append(a)
+
+                data.append(dict(sid=s, structure=d['structure'], status=0, pressure=d['pressure'],
+                                 temperature=d['temperature'], additives=alist))
+
+        if not data:
+            return dict(message=dict(structures='invalid data')), 400
+
+        task = dict(status=0, type=args['type'], uid=None, structures=data)
+        newjob = redis.enqueue_call('redis_examp.prep', args=(task,), result_ttl=86400)
+
+        return dict(tid=newjob.id, status=0, date=newjob.created_at.timestamp(), type=args['type'], uid=None)
+
+uf_post = reqparse.RequestParser()
+uf_post.add_argument('type', type=int, required=True)
+ct_post.add_argument('file.path', type=str)
+ct_post.add_argument('structures', type=datastructures.FileStorage, location='files')
+
+
+class UploadFile(Resource):
     def post(self):
         args = ct_post.parse_args()
 
@@ -191,37 +225,10 @@ class CreateTask(Resource):
             file_path = os.path.join(UPLOAD_PATH, str(uuid.uuid4()))
             args['file'].save(file_path)
 
-        if file_path:
-            task = dict(status=0, type=args['type'], uid=None, structures=file_path)
-            newjob = redis.enqueue_call('redis_examp.file', args=(task,), result_ttl=86400)
+        if not file_path:
+            return dict(message=dict(structures='invalid data')), 400
 
-        elif args['structures']:
-            with db_session:
-                additives = {a.id: dict(aid=a.id, name=a.name, structure=a.structure, type=a.type)
-                             for a in select(a for a in Additives)}
-
-            structures = args['structures'] if isinstance(args['structures'], list) else [args['structures']]
-
-            data = []
-            for s, d in enumerate(structures, start=1):
-                if d['structure']:
-                    alist = []
-                    for a in d['additives'] or []:
-                        if a['aid'] in additives and 0 < a['amount'] < 1:
-                            a.update(additives[a['aid']])
-                            alist.append(a)
-
-                    data.append(dict(sid=s, structure=d['structure'], status=0, pressure=d['pressure'],
-                                     temperature=d['temperature'], additives=alist))
-
-            if not data:
-                return dict(message='invalid data'), 400
-
-            task = dict(status=0, type=args['type'], uid=None, structures=data)
-            newjob = redis.enqueue_call('redis_examp.prep', args=(task,), result_ttl=86400)
-
-        else:
-            return dict(message='invalid data'), 400
+        task = dict(status=0, type=args['type'], uid=None, structures=file_path)
+        newjob = redis.enqueue_call('redis_examp.file', args=(task,), result_ttl=86400)
 
         return dict(tid=newjob.id, status=0, date=newjob.created_at.timestamp(), type=args['type'], uid=None)
-
