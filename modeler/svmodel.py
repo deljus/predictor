@@ -41,6 +41,8 @@ def _kfold(est, x, y, train, test, svmparams, normalize):
     y_min = y_train.min()
     y_max = y_train.max()
 
+    x_ad = ((x_test - x_min).min(axis=1) >= 0) * ((x_max - x_test).min(axis=1) >= 0)  # & in 0.18.1 is buggy
+
     if normalize:
         normal = MinMaxScaler()
         x_train = pd.DataFrame(normal.fit_transform(x_train), columns=x_train.columns)
@@ -51,8 +53,11 @@ def _kfold(est, x, y, train, test, svmparams, normalize):
     model = est(**svmparams)
     model.fit(x_train, y_train)
     y_pred = pd.Series(model.predict(x_test), index=y_test.index)
+
+    y_ad = (y_pred >= y_min) * (y_pred <= y_max)  # & in 0.18.1 is buggy
+
     return dict(model=model, normal=normal, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max,
-                y_test=y_test, y_pred=y_pred)
+                y_test=y_test, y_pred=y_pred, x_ad=x_ad, y_ad=y_ad)
 
 
 def _rmse(y_test, y_pred):
@@ -115,10 +120,16 @@ class Model(object):
 
     def getmodelstats(self):
         stat = {x: self.__model[x] for x in self.__scorers}
+        stat.update({'%s_var' % x: self.__model['v%s' % x] for x in self.__scorers})
+
         stat.update(dict(fitparams=self.__model['params'], repetitions=self.__repetitions,
                          nfolds=self.__nfold, normalize=self.__normalize,
                          dragostolerance=sqrt(self.__y.var())))
         return stat
+
+    def getfitpredictions(self):
+        return dict(property=self.__y, prediction=self.__model['y_pred'], y_domain=self.__model['y_ad'],
+                    domain=self.__model['x_ad'])
 
     def __splitrange(self, param, dep=0):
         tmp = {}
@@ -211,39 +222,47 @@ class Model(object):
         return tmp
 
     def __fit(self, svmparams, repetitions):
-        models, y_test, y_pred = [], [], []
-        scorers = defaultdict(list)
+        models, y_pred, y_ad, x_ad = [], [], [], []
+        fold_scorers = defaultdict(list)
         parallel = Parallel(n_jobs=self.__n_jobs)
         kf = list(KFold(len(self.__y), n_folds=self.__nfold))
         setindexes = np.arange(len(self.__y.index))
-        folds = parallel(delayed(_kfold)(self.__estimator, self.__x, self.__y, s[train], s[test], svmparams, self.__normalize)
+        folds = parallel(delayed(_kfold)(self.__estimator, self.__x, self.__y, s[train], s[test],
+                                         svmparams, self.__normalize)
                          for s in (self.__shuffle(setindexes, i) for i in range(repetitions))
                          for train, test in kf)
-        # todo: запилить анализ аутов. y_index - indexes of test elements
+
         #  street magic. split folds to repetitions
         for kfold in zip(*[iter(folds)] * self.__nfold):
-            ky_pred, ky_test = [], []
+            ky_pred, ky_test, ky_ad, kx_ad = [], [], [], []
             for fold in kfold:
                 ky_pred.append(fold.pop('y_pred'))
                 ky_test.append(fold.pop('y_test'))
+                ky_ad.append(fold.pop('y_ad'))
+                kx_ad.append(fold.pop('x_ad'))
                 models.append(fold)
 
             ky_pred = pd.concat(ky_pred)
             ky_test = pd.concat(ky_test)
+            ky_ad = pd.concat(ky_ad)
+            kx_ad = pd.concat(kx_ad)
+
             for s, f in self.__scorers.items():
-                scorers[s].append(f(ky_test, ky_pred))
+                fold_scorers[s].append(f(ky_test, ky_pred))
 
-            #y_pred.append(ky_pred)
-            #y_test.append(ky_test)
+            y_pred.append(ky_pred)
+            y_ad.append(ky_ad)
+            x_ad.append(kx_ad)
 
-        #y_pred = pd.concat(y_pred, axis=1)
-        #y_test = pd.concat(y_test, axis=1)
+        y_pred = pd.concat(y_pred, axis=1)
+        y_ad = pd.concat(y_ad, axis=1)
+        x_ad = pd.concat(x_ad, axis=1)
 
-        res = dict(model=models, params=svmparams,)
-        for s, v in scorers.items():
-            m, v = np.mean(v), sqrt(np.var(v))
+        res = dict(model=models, params=svmparams, y_pred=y_pred, y_ad=y_ad, x_ad=x_ad)
+        for s, _v in fold_scorers.items():
+            m, v = np.mean(_v), sqrt(np.var(_v))
             c = (1 if s in ('rmse',) else -1) * m + self.__dispcoef * v
-            res.update({s: m, 'C' + s: c, 'v' + s: v})
+            res.update({s: m, 'C%s' % s: c, 'v%s' % s: v})
 
         return res
 
@@ -255,16 +274,19 @@ class Model(object):
         return shuffled
 
     def predict(self, structures, **kwargs):
-        d_x, _, d_ad = self.__descriptorgen.get(structures, **kwargs)
+        res = self.__descriptorgen.get(structures, **kwargs)
+        d_x, d_ad = res['X'], res['AD']
 
-        pred, dom, ydom = [], [], []
+        pred, x_ad, y_ad = [], [], []
         for i, model in enumerate(self.__model['model']):
             x_t = pd.DataFrame(model['normal'].transform(d_x), columns=d_x.columns) if model['normal'] else d_x
-            dom.append(((d_x - model['x_min']).min(axis=1) >= 0) & ((model['x_max'] - d_x).min(axis=1) >= 0) & d_ad)
-            pred.append(pd.Series(model['model'].predict(x_t)))
-            ydom.append((pred[-1] >= model['y_min']) & (pred[-1] <= model['y_max']))
+            y_p = pd.Series(model['model'].predict(x_t), index=d_x.index)
+            pred.append(y_p)
+
+            y_ad.append((y_p >= model['y_min']) * (y_p <= model['y_max']))
+            x_ad.append(((d_x - model['x_min']).min(axis=1) >= 0) * ((model['x_max'] - d_x).min(axis=1) >= 0) * d_ad)
 
         res = dict(prediction=pd.concat(pred, axis=1),
-                   domain=pd.concat(dom, axis=1), y_domain=pd.concat(ydom, axis=1))
+                   domain=pd.concat(x_ad, axis=1), y_domain=pd.concat(y_ad, axis=1))
 
         return res

@@ -73,7 +73,7 @@ class MBparser(object):
             with open(file) as f:
                 for line in f:
                     opts = line.split()
-                    tmp = dict(kernel=['rbf'], C=[1.0], epsilon=[.1], tol=[.001], degree=[3], gamma=[0], coef0=[0])
+                    tmp = dict(kernel=['rbf'], C=[1.0], epsilon=[.1], tol=[.001], degree=[3], gamma=[1.0], coef0=[0])
                     for x, y in zip(opts[::2], opts[1::2]):
                         z = repl.get(x)
                         if z:
