@@ -234,21 +234,20 @@ class Model(object):
 
         #  street magic. split folds to repetitions
         for kfold in zip(*[iter(folds)] * self.__nfold):
-            ky_pred, ky_test, ky_ad, kx_ad = [], [], [], []
+            ky_pred, ky_ad, kx_ad = [], [], []
             for fold in kfold:
                 ky_pred.append(fold.pop('y_pred'))
-                ky_test.append(fold.pop('y_test'))
                 ky_ad.append(fold.pop('y_ad'))
                 kx_ad.append(fold.pop('x_ad'))
+                fold.pop('y_test')
                 models.append(fold)
 
-            ky_pred = pd.concat(ky_pred)
-            ky_test = pd.concat(ky_test)
-            ky_ad = pd.concat(ky_ad)
-            kx_ad = pd.concat(kx_ad)
+            ky_pred = pd.concat(ky_pred).loc[self.__y.index]
+            ky_ad = pd.concat(ky_ad).loc[self.__y.index]
+            kx_ad = pd.concat(kx_ad).loc[self.__y.index]
 
             for s, f in self.__scorers.items():
-                fold_scorers[s].append(f(ky_test, ky_pred))
+                fold_scorers[s].append(f(self.__y, ky_pred))
 
             y_pred.append(ky_pred)
             y_ad.append(ky_ad)
