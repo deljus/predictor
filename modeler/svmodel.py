@@ -77,7 +77,7 @@ def _balance_acc(y_test, y_pred):
 
 
 class Model(object):
-    def __init__(self, descriptorgen, svmparams, structures, nfold=5, repetitions=1, rep_boost=25, dispcoef=0,
+    def __init__(self, descriptorgen, svmparams, structures, nfold=5, repetitions=1, rep_boost=100, dispcoef=0,
                  fit='rmse', estimator='svr', scorers=('rmse', 'r2'), workpath='.',
                  normalize=False, n_jobs=2, smartcv=False, **kwargs):
         _scorers = dict(rmse=_rmse,
@@ -91,7 +91,7 @@ class Model(object):
 
         self.__nfold = nfold
         self.__repetitions = repetitions
-        self.__rep_boost = ceil(repetitions * (rep_boost % 100) / 100)
+        self.__rep_boost = ceil(repetitions * (rep_boost % 100) / 100) or repetitions
         print("Descriptors generation start")
         xy = descriptorgen.get(structures, **kwargs)
         self.__x = xy['X']

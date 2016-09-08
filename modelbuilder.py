@@ -201,13 +201,15 @@ class Modelbuilder(MBparser):
 
     def __gendesc(self, output, fformat='svm', header=False):
         queue = enumerate(self.__descgens, start=1)
-
+        workpath = tempfile.mkdtemp(dir=self.__options['workpath'])
         while True:
             if threading.active_count() < self.__options['n_jobs']:
                 tmp = next(queue, None)
                 if tmp:
                     n, dgen = tmp
-                    dgen.setworkpath(tempfile.mkdtemp(dir=self.__options['workpath']))
+                    subworkpath = os.path.join(workpath, n)
+                    os.mkdir(subworkpath)
+                    dgen.setworkpath(subworkpath)
                     t = threading.Thread(target=descstarter,
                                          args=[dgen.get, self.__options['input'], '%s.%d' % (output, n),
                                                (self.savesvm if fformat == 'svm' else self.savecsv), header])
