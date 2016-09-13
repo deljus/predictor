@@ -207,7 +207,7 @@ class Modelbuilder(MBparser):
                 tmp = next(queue, None)
                 if tmp:
                     n, dgen = tmp
-                    subworkpath = os.path.join(workpath, n)
+                    subworkpath = os.path.join(workpath, str(n))
                     os.mkdir(subworkpath)
                     dgen.setworkpath(subworkpath)
                     t = threading.Thread(target=descstarter,
