@@ -74,19 +74,19 @@ class Eed(Propertyextractor):
 
         workfiles = [StringIO() for _ in range(self.__cgr_marker.getcount() if self.__cgr_marker
                                                else self.__dragos_marker.getcount() if self.__dragos_marker else 1)]
-        writers = [SDFwrite(x) for x in workfiles]
+        writers = [SDFwrite(x, flushmap=True) for x in workfiles]
         tX, tD = [], []
         for s_numb, s in enumerate(data):
             if isinstance(s, list):
                 for d in s:
                     tmp = [s_numb]
                     for w, x in zip(writers, d):
-                        w.writedata(x[1], flushmap=True)
+                        w.writedata(x[1])
                         tmp.append(x[0])
                     doubles.append(tmp)
             else:
-                writers[0].writedata(s, flushmap=True)
-                doubles.append([s_numb])
+                writers[0].writedata(s)
+                doubles.append(s_numb)
 
         for n, f in enumerate(workfiles):
             p = Popen([EED], stdout=PIPE, stdin=PIPE)
