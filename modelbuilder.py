@@ -39,7 +39,7 @@ from CGRtools.CGRcore import CGRcore
 from CGRtools.RDFread import RDFread
 from modeler.parsers import MBparser
 from collections import Counter
-from itertools import product
+from itertools import product, cycle
 
 
 class DefaultList(list):
@@ -80,17 +80,31 @@ class Modelbuilder(MBparser):
             descgenerator['P'] = [Pkab(**x) for x in self.parsefragmentoropts(self.__options['pka'])]
 
         if self.__options['chains']:
+            if self.__options['ad'] and len(self.__options['ad']) != len(self.__options['chains']):
+                print('number of generators chains should be equal to number of ad modifiers')
+                return
+
             self.__descgens = []
-            for x in self.__options['chains']:
+            for ch, ad in zip(self.__options['chains'], self.__options['ad'] or cycle([None])):
+                gen_chain = [x for x in ch.split(':') if x in descgenerator]
+                if ad:
+                    ad_marks = [x in ('y', 'Y', '1', 'True', 'true') for x in ad.split(':')]
+                    if len(ad_marks) != len(gen_chain):
+                        print('length of generators chain should be equal to length of ad modifier')
+                        return
+                else:
+                    ad_marks = cycle([True])
+
                 combo = []
-                count = Counter(x.split(':'))
-                for k, v in count.items():
+                count = Counter(zip(gen_chain, ad_marks))
+                for (k, a), v in count.items():
                     if v > 1:
                         if len(descgenerator[k]) != v:
+                            print('length of same generators chain should be equal to number of same generators')
                             return
-                        combo.append([descgenerator[k]])
+                        combo.append([(descgenerator[k], a)])
                     else:
-                        combo.append(descgenerator[k])
+                        combo.append((descgenerator[k], a))
 
                 self.__descgens.extend(
                     [Descriptorchain(*[g for gs in c for g in (gs if isinstance(gs, list) else [gs])]) for c in
@@ -281,6 +295,10 @@ class Modelbuilder(MBparser):
         rawopts.add_argument("--chains", "-c", action='append', type=str, default=None,
                              help="descriptors chains. where F-fragmentor, D-eed, E-extention, P-pka. "
                                   "-c F:E [-c E:D:P]")
+        rawopts.add_argument("-ad", action='append', type=str, default=None,
+                             help="consider descriptor generator AD in descriptors chains. "
+                                  "example: -ad y:n:y [True = y Y True true 1] for -c F:E:P [ignore extention AD] "
+                                  "number of -ad should be equal to number of --chains or skipped")
 
         rawopts.add_argument("--description", "-ds", type=str, default='model.dsc', help="model description file")
 

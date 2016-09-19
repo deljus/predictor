@@ -20,6 +20,7 @@
 #
 from collections import defaultdict
 from functools import reduce
+import sys
 import operator
 import pandas as pd
 import numpy as np
@@ -29,7 +30,15 @@ from CGRtools.RDFread import RDFread
 
 class Descriptorchain(object):
     def __init__(self, *args):
-        self.__generators = args
+        """
+        chaining multiple descriptor generators.
+        concatenate X vectors and merge AD
+        :param args: set of generators or set of list[generator, consider their AD {True|False}]
+        """
+        if isinstance(args[0], tuple):
+            self.__generators = args
+        else:
+            self.__generators = [(x, True) for x in args]
 
     def setworkpath(self, workpath):
         for i in self.__generators:
@@ -54,8 +63,10 @@ class Descriptorchain(object):
         def merge_wrap(x, y):
             return pd.merge(x, y, how='outer', left_index=True, right_index=True)
 
-        for gen in self.__generators:
+        for gen, ad in self.__generators:
             for k, v in gen.get(structures, **kwargs).items():
+                if k == 'AD' and not ad:
+                    continue
                 res[k].append(v)
             structures.seek(0)
 
@@ -179,7 +190,7 @@ class Descriptorsdict(object):
             extblock = self.__parseadditions1(**kwargs)
 
         else:
-            print('WHAT DO YOU WANT? use correct extentions params')
+            print('WHAT DO YOU WANT? use correct extentions params', file=sys.stderr)
             return False
 
         return dict(X=extblock, AD=-extblock.isnull().any(axis=1))
