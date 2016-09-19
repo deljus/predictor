@@ -266,7 +266,7 @@ class Fragmentor(object):
                     k, v = (int(x) for x in i.split(':'))
                     if k <= self.__headsize[n]:
                         tmp[self.__headdict[n][k]] = v
-                    else:
+                    elif v != 0:
                         ad[-1] = False
                         break
                 vector.append(tmp)
