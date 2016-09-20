@@ -119,7 +119,7 @@ class Eed(Propertyextractor):
             for i in x:
                 k, v = i.split(':')
                 tmp[int(k)] = float(v.replace(',', '.'))
-            if len(tmp) == 2:
+            if len(tmp) <= 2:
                 ad[-1] = False
             vector.append(tmp)
 

@@ -49,7 +49,7 @@ class Descriptorchain(object):
         """
         :param structures: opened structure file or stringio
         :param kwargs: generators specific arguments
-        :return: dict(X=DataFrame, AD=Series)
+        :return: dict(X=DataFrame, AD=Series, Y=Series, BOX=Series)
         >>> from modeler.fragmentor import Fragmentor
         >>> f = Fragmentor(workpath='tests',version='last', s_option='shift', fragment_type=1, min_length=2, max_length=11, \
         marked_atom=3, marker_rules='tests/test.xml')
@@ -65,14 +65,15 @@ class Descriptorchain(object):
 
         for gen, ad in self.__generators:
             for k, v in gen.get(structures, **kwargs).items():
-                if k == 'AD' and not ad:
-                    continue
                 res[k].append(v)
+            res['BOX'].append(pd.Series(ad, index=res['X'][-1].columns))
             structures.seek(0)
 
         res['X'] = reduce(merge_wrap, res['X'])
         res['AD'] = reduce(operator.mul, sorted(res['AD'], key=lambda x: len(x.index), reverse=True))
         res['Y'] = sorted(res['Y'], key=lambda x: len(x.index), reverse=True)[0]
+
+        res['BOX'] = pd.concat(res['BOX'])
         return dict(res)
 
 

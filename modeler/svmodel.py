@@ -33,15 +33,15 @@ from math import sqrt, ceil
 import numpy as np
 
 
-def _kfold(est, x, y, train, test, svmparams, normalize):
+def _kfold(est, x, y, train, test, svmparams, normalize, box):
     x_train, y_train = x.iloc[train], y.iloc[train]
     x_test, y_test = x.iloc[test], y.iloc[test]
-    x_min = x_train.min()
-    x_max = x_train.max()
+    x_min = x_train.min().loc[:, box]
+    x_max = x_train.max().loc[:, box]
     y_min = y_train.min()
     y_max = y_train.max()
 
-    x_ad = ((x_test - x_min).min(axis=1) >= 0) * ((x_max - x_test).min(axis=1) >= 0)  # & in 0.18.1 is buggy
+    x_ad = ((x_test.loc[:, box] - x_min).min(axis=1) >= 0) & ((x_max - x_test.loc[:, box]).min(axis=1) >= 0)
 
     if normalize:
         normal = MinMaxScaler()
@@ -54,7 +54,7 @@ def _kfold(est, x, y, train, test, svmparams, normalize):
     model.fit(x_train, y_train)
     y_pred = pd.Series(model.predict(x_test), index=y_test.index)
 
-    y_ad = (y_pred >= y_min) * (y_pred <= y_max)  # & in 0.18.1 is buggy
+    y_ad = (y_pred >= y_min) & (y_pred <= y_max)
 
     return dict(model=model, normal=normal, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max,
                 y_test=y_test, y_pred=y_pred, x_ad=x_ad, y_ad=y_ad)
@@ -96,6 +96,7 @@ class Model(object):
         xy = descriptorgen.get(structures, **kwargs)
         self.__x = xy['X']
         self.__y = xy['Y']
+        self.__box = xy.get('BOX', xy['X'].columns)
         print("Descriptors generated")
 
         self.__normalize = normalize
@@ -228,7 +229,7 @@ class Model(object):
         kf = list(KFold(len(self.__y), n_folds=self.__nfold))
         setindexes = np.arange(len(self.__y.index))
         folds = parallel(delayed(_kfold)(self.__estimator, self.__x, self.__y, s[train], s[test],
-                                         svmparams, self.__normalize)
+                                         svmparams, self.__normalize, self.__box)
                          for s in (self.__shuffle(setindexes, i) for i in range(repetitions))
                          for train, test in kf)
 
@@ -282,8 +283,9 @@ class Model(object):
             y_p = pd.Series(model['model'].predict(x_t), index=d_x.index)
             pred.append(y_p)
 
-            y_ad.append((y_p >= model['y_min']) * (y_p <= model['y_max']))
-            x_ad.append(((d_x - model['x_min']).min(axis=1) >= 0) * ((model['x_max'] - d_x).min(axis=1) >= 0) * d_ad)
+            y_ad.append((y_p >= model['y_min']) & (y_p <= model['y_max']))
+            x_ad.append(((d_x.loc[:, self.__box] - model['x_min']).min(axis=1) >= 0) &
+                        ((model['x_max'] - d_x.loc[:, self.__box]).min(axis=1) >= 0) & d_ad)
 
         res = dict(prediction=pd.concat(pred, axis=1),
                    domain=pd.concat(x_ad, axis=1), y_domain=pd.concat(y_ad, axis=1))
