@@ -36,8 +36,8 @@ import numpy as np
 def _kfold(est, x, y, train, test, svmparams, normalize, box):
     x_train, y_train = x.iloc[train], y.iloc[train]
     x_test, y_test = x.iloc[test], y.iloc[test]
-    x_min = x_train.min().loc[:, box]
-    x_max = x_train.max().loc[:, box]
+    x_min = x_train.min().loc[box]
+    x_max = x_train.max().loc[box]
     y_min = y_train.min()
     y_max = y_train.max()
 
