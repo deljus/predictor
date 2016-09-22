@@ -22,26 +22,33 @@
 from flask import Flask
 from flask_bootstrap import Bootstrap
 from flask_login import LoginManager
-from flask.ext.restful import Api
-from app.config import PORTAL_BASE
-from app.models import PredictorDataBase as pdb
-from app.api import ModelingResult, PrepareTask, CreateTask
-
+from flask_restful import Api
+from app.config import PORTAL_BASE, SECRET_KEY
+from app.api import ModelingResult, PrepareTask, CreateTask, UploadFile
+from app.logins import load_user
+from app import views
 
 login_manager = LoginManager()
 
 
 app = Flask(__name__, static_url_path=PORTAL_BASE+'/static', static_folder="static")
+app.config['SECRET_KEY'] = SECRET_KEY
 api = Api(app)
 
 Bootstrap(app)
 
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+login_manager.user_loader(load_user)
 
-
-pdb = pdb()
-from app import views
 
 api.add_resource(PrepareTask, '/prepare')
 api.add_resource(CreateTask, '/create')
+api.add_resource(UploadFile, '/upload')
+api.add_resource(ModelingResult, '/result')
+
+
+app.add_url_rule('/login', methods=['GET', 'POST'], view_func=views.login)
+app.add_url_rule('/register', methods=['GET', 'POST'], view_func=views.registration)
+app.add_url_rule('/logout', methods=['GET'], view_func=views.logout)
+app.add_url_rule('/index', methods=['GET'], view_func=views.index)

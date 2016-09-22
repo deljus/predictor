@@ -1,39 +1,69 @@
-__author__ = 'OV'
-from app import login_manager
-from app import pdb
+#!/usr/bin/env python3.4
+# -*- coding: utf-8 -*-
+#
+#  Copyright 2016 Ramil Nugmanov <stsouko@live.ru>
+#  This file is part of predictor.
+#
+#  predictor
+#  is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU Affero General Public License as published by
+#  the Free Software Foundation; either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU Affero General Public License for more details.
+#
+#  You should have received a copy of the GNU Affero General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+#  MA 02110-1301, USA.
+#
 from flask_login import UserMixin
+from pony.orm import db_session
+from app.models import Users
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired
+from app.config import SECRET_KEY, TOKEN_EXPIRES
 
 
-@login_manager.user_loader
-def load_user(user_id):
-    user = pdb.get_user(user_id=user_id)
-    if user:
-        return User(**user)
+tokenizer = Serializer(SECRET_KEY, expires_in=TOKEN_EXPIRES)
+
+
+def load_user(token):
+    print('load_user')
+    with db_session:
+        user = Users.get(token=token)
+        if user:
+            return User(user.to_dict())
 
     return None
 
 
 class User(UserMixin):
-    def __init__(self, **kwargs):
-        self.__id = kwargs['id']
-        self.__email = kwargs['email']
-        self.__active = kwargs['active']
+    def __init__(self, user):
+        self.__id = user['id']
+        self.__email = user['email']
+        self.__active = user['active']
+        self.__token = user['token']
 
     def is_active(self):
         return self.__active
 
-    def is_anonymous(self):
-        return False
-
-    def is_authenticated(self):
-        return True
-
-    def get_id(self):
-        return self.__id
-
     def get_email(self):
         return self.__email
 
+    def get_id(self):
+        """
+        Encode a secure token for cookie
+        """
+        print('get_token')
+        return self.__token
 
-
-
+    @staticmethod
+    def get(email, password):
+        with db_session:
+            user = Users.get(email=email)
+            if user and user.verify_password(password):
+                return User(user.to_dict())
+        return None

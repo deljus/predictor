@@ -22,7 +22,8 @@
 from pony.orm import Database, sql_debug, db_session, PrimaryKey, Required, Optional, Set, select, commit
 from datetime import datetime
 import time
-#import bcrypt
+import bcrypt
+import hashlib
 import os
 import sys
 from app.config import DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER
@@ -38,15 +39,21 @@ else:
 class Users(db.Entity):
     id = PrimaryKey(int, auto=True)
     email = Required(str, unique=True)
-    password = Optional(str)
+    password = Required(str)
     active = Required(bool, default=True)
+    token = Required(str)
     tasks = Set("Tasks")
 
-#    def hash_password(self, password):
-#        self.passwd = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-#
-#    def verify_password(self, password):
-#        return bcrypt.hashpw(password.encode(), self.passwd.encode()) == self.passwd.encode()
+    @staticmethod
+    def hash_password(password):
+        return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+    def verify_password(self, password):
+        return bcrypt.hashpw(password.encode(), self.password.encode()) == self.password.encode()
+
+    @staticmethod
+    def gen_token(password):
+        return hashlib.md5(password.encode()).hexdigest()
 
 
 class Tasks(db.Entity):
@@ -581,15 +588,15 @@ def import_solvents():
             pass
     file.close()
 
-@db_session
-def import_models():
-    name = "model 2"
-    desc = "desc out model"
-    #example = '<cml><MDocument><MChemicalStruct><molecule molID="m1"><atomArray><atom id="a1" elementType="C" x2="-6.979259999999252" y2="-5.251573345654082"/><atom id="a2" elementType="C" x2="-8.312806655997546" y2="-6.021573339494081"/><atom id="a3" elementType="C" x2="-8.312806655997546" y2="-7.561759993839255"/><atom id="a4" elementType="C" x2="-6.979259999999252" y2="-8.331759987679256"/><atom id="a5" elementType="C" x2="-5.645526677335788" y2="-7.561759993839255"/><atom id="a6" elementType="C" x2="-5.645526677335788" y2="-6.021573339494081"/><atom id="a7" elementType="C" x2="-1.020926666665918" y2="-4.543240012320746"/><atom id="a8" elementType="C" x2="-2.3544733226642123" y2="-5.313240006160745"/><atom id="a9" elementType="C" x2="-2.3544733226642123" y2="-6.853426660505919"/><atom id="a10" elementType="C" x2="-1.020926666665918" y2="-7.623426654345919"/><atom id="a11" elementType="C" x2="0.3128066559975464" y2="-6.853426660505919"/><atom id="a12" elementType="C" x2="0.3128066559975464" y2="-5.313240006160745"/><atom id="a13" elementType="C" x2="4.645740000000748" y2="-4.668240012320746"/><atom id="a14" elementType="C" x2="3.312193344002454" y2="-5.438240006160745"/><atom id="a15" elementType="C" x2="3.312193344002454" y2="-6.978426660505919"/><atom id="a16" elementType="C" x2="4.645740000000748" y2="-7.748426654345919"/><atom id="a17" elementType="C" x2="5.979473322664212" y2="-6.978426660505919"/><atom id="a18" elementType="C" x2="5.979473322664212" y2="-5.438240006160745"/></atomArray><bondArray><bond atomRefs2="a1 a2" order="2"/><bond atomRefs2="a2 a3" order="1"/><bond atomRefs2="a3 a4" order="2"/><bond atomRefs2="a4 a5" order="1"/><bond atomRefs2="a5 a6" order="2"/><bond atomRefs2="a6 a1" order="1"/><bond atomRefs2="a7 a8" order="2"/><bond atomRefs2="a8 a9" order="1"/><bond atomRefs2="a9 a10" order="2"/><bond atomRefs2="a10 a11" order="1"/><bond atomRefs2="a11 a12" order="2"/><bond atomRefs2="a12 a7" order="1"/><bond atomRefs2="a13 a14" order="2"/><bond atomRefs2="a14 a15" order="1"/><bond atomRefs2="a15 a16" order="2"/><bond atomRefs2="a16 a17" order="1"/><bond atomRefs2="a17 a18" order="2"/><bond atomRefs2="a18 a13" order="1"/><bond atomRefs2="a6 a8" order="1"/><bond atomRefs2="a11 a15" order="1"/></bondArray></molecule></MChemicalStruct></MDocument></cml>'
-    example =  ""
-    Models(name=name, description=desc, example=example)
+#@db_session
+#def import_models():
+#    name = "model 2"
+#    desc = "desc out model"
+#    #example = '<cml><MDocument><MChemicalStruct><molecule molID="m1"><atomArray><atom id="a1" elementType="C" x2="-6.979259999999252" y2="-5.251573345654082"/><atom id="a2" elementType="C" x2="-8.312806655997546" y2="-6.021573339494081"/><atom id="a3" elementType="C" x2="-8.312806655997546" y2="-7.561759993839255"/><atom id="a4" elementType="C" x2="-6.979259999999252" y2="-8.331759987679256"/><atom id="a5" elementType="C" x2="-5.645526677335788" y2="-7.561759993839255"/><atom id="a6" elementType="C" x2="-5.645526677335788" y2="-6.021573339494081"/><atom id="a7" elementType="C" x2="-1.020926666665918" y2="-4.543240012320746"/><atom id="a8" elementType="C" x2="-2.3544733226642123" y2="-5.313240006160745"/><atom id="a9" elementType="C" x2="-2.3544733226642123" y2="-6.853426660505919"/><atom id="a10" elementType="C" x2="-1.020926666665918" y2="-7.623426654345919"/><atom id="a11" elementType="C" x2="0.3128066559975464" y2="-6.853426660505919"/><atom id="a12" elementType="C" x2="0.3128066559975464" y2="-5.313240006160745"/><atom id="a13" elementType="C" x2="4.645740000000748" y2="-4.668240012320746"/><atom id="a14" elementType="C" x2="3.312193344002454" y2="-5.438240006160745"/><atom id="a15" elementType="C" x2="3.312193344002454" y2="-6.978426660505919"/><atom id="a16" elementType="C" x2="4.645740000000748" y2="-7.748426654345919"/><atom id="a17" elementType="C" x2="5.979473322664212" y2="-6.978426660505919"/><atom id="a18" elementType="C" x2="5.979473322664212" y2="-5.438240006160745"/></atomArray><bondArray><bond atomRefs2="a1 a2" order="2"/><bond atomRefs2="a2 a3" order="1"/><bond atomRefs2="a3 a4" order="2"/><bond atomRefs2="a4 a5" order="1"/><bond atomRefs2="a5 a6" order="2"/><bond atomRefs2="a6 a1" order="1"/><bond atomRefs2="a7 a8" order="2"/><bond atomRefs2="a8 a9" order="1"/><bond atomRefs2="a9 a10" order="2"/><bond atomRefs2="a10 a11" order="1"/><bond atomRefs2="a11 a12" order="2"/><bond atomRefs2="a12 a7" order="1"/><bond atomRefs2="a13 a14" order="2"/><bond atomRefs2="a14 a15" order="1"/><bond atomRefs2="a15 a16" order="2"/><bond atomRefs2="a16 a17" order="1"/><bond atomRefs2="a17 a18" order="2"/><bond atomRefs2="a18 a13" order="1"/><bond atomRefs2="a6 a8" order="1"/><bond atomRefs2="a11 a15" order="1"/></bondArray></molecule></MChemicalStruct></MDocument></cml>'
+#    example =  ""
+#    Models(name=name, description=desc, example=example)
 
-import_solvents()
+#import_solvents()
 
 # загрузим модели
 #import_models()

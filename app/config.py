@@ -42,6 +42,7 @@ PORTAL_BASE = '/qspr'
 UPLOAD_FOLDER = '/upload/'
 
 SECRET_KEY = 'development key'
+TOKEN_EXPIRES = 3600
 DEBUG = True
 HOST = '0.0.0.0'
 PORT = 5000

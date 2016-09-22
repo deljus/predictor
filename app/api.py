@@ -24,7 +24,7 @@ import json
 from redis import Redis
 from rq import Queue
 from app.config import UPLOAD_PATH
-from flask_restful import reqparse, Resource, fields, marshal
+from flask_restful import reqparse, Resource, fields, marshal, abort
 from pony.orm import db_session, select, left_join
 from app.models import Tasks, Structures, Results, Additiveset, Additives, Models, Users
 from werkzeug import datastructures
@@ -33,7 +33,8 @@ from werkzeug import datastructures
 redis = Queue(connection=Redis(), default_timeout=3600)
 
 parser = reqparse.RequestParser()
-parser.add_argument('task', type=int, required=True)
+parser.add_argument('auth-token', type=lambda x: Users.verify_auth_token(x), location='headers', required=True,
+                    dest='user')
 
 taskstructurefields = dict(sid=fields.Integer, structure=fields.String, temperature=fields.Float(298),
                            pressure=fields.Float(1),
@@ -45,12 +46,13 @@ taskstructurefields = dict(sid=fields.Integer, structure=fields.String, temperat
     collector of modeled tasks (individually). return json
     ===================================================
 '''
-modelingresult = parser.copy()
+mr_get = parser.copy()
+mr_get.add_argument('task', type=int, location='args', required=True)
 
 
 class ModelingResult(Resource):
     def get(self):
-        args = modelingresult.parse_args()
+        args = mr_get.parse_args()
         with db_session:
             task = Tasks.get(id=args['task'])
             if not task:
@@ -75,8 +77,8 @@ class ModelingResult(Resource):
                 else:
                     tmp2[s] = []
 
-            return dict(tid=task.id, status=task.status, date=task.create_date.timestamp(), type=task.task_type,
-                        uid=task.user.id if task.user else None,
+            return dict(task=task.id, status=task.status, date=task.create_date.strftime("%Y-%m-%d %H:%M:%S"),
+                        type=task.task_type, user=task.user.id if task.user else None,
                         structures=[dict(sid=s.id, structure=s.structure, is_reaction=s.isreaction,
                                          temperature=s.temperature, pressure=s.pressure, status=s.status,
                                          modeling_results=[dict(model=m, results=r) for m, r in tmp1[s.id].items()],
@@ -86,8 +88,8 @@ class ModelingResult(Resource):
     api for task preparation.
     ===================================================
 '''
-pt_get = reqparse.RequestParser()
-pt_get.add_argument('task', type=str, required=True)
+pt_get = parser.copy()
+pt_get.add_argument('task', type=str, location='args', required=True)
 pt_post = pt_get.copy()
 pt_post.add_argument('structures', type=lambda x: marshal(json.loads(x), taskstructurefields),  required=True)
 
@@ -105,7 +107,8 @@ class PrepareTask(Resource):
             return dict(message=dict(task='not ready')), 400
 
         result = job.result
-        result['tid'] = args['task']
+        result['task'] = args['task']
+        result['date'] = result['date'].strftime("%Y-%m-%d %H:%M:%S")
         return result
 
     def post(self):
@@ -161,11 +164,12 @@ class PrepareTask(Resource):
                         pure[s]['pressure'] = d['pressure']
 
         if report:
+            task['status'] = 0
             task['structures'] = list(pure.values())
             newjob = redis.enqueue_call('redis_examp.prep', args=(task,), result_ttl=86400)
 
-            return dict(tid=newjob.id, status=task['status'], date=newjob.created_at.timestamp(), type=task['type'],
-                        uid=task['uid'])
+            return dict(task=newjob.id, status=0, date=newjob.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                        type=task['type'], user=task['uid'])
         else:
             return dict(message=dict(structures='invalid data')), 400
 
@@ -173,8 +177,8 @@ class PrepareTask(Resource):
     api for task creation.
     ===================================================
 '''
-ct_post = reqparse.RequestParser()
-ct_post.add_argument('type', type=int, required=True)
+ct_post = parser.copy()
+ct_post.add_argument('type', type=int, location='args', required=True)
 ct_post.add_argument('structures', type=lambda x: marshal(json.loads(x), taskstructurefields), required=True)
 
 
@@ -203,27 +207,28 @@ class CreateTask(Resource):
         if not data:
             return dict(message=dict(structures='invalid data')), 400
 
-        task = dict(status=0, type=args['type'], uid=None, structures=data)
+        task = dict(status=0, type=args['type'], user=args['user'], structures=data)
         newjob = redis.enqueue_call('redis_examp.prep', args=(task,), result_ttl=86400)
 
-        return dict(tid=newjob.id, status=0, date=newjob.created_at.timestamp(), type=args['type'], uid=None)
+        return dict(task=newjob.id, status=0, date=newjob.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                    type=args['type'], user=args['user'])
 
-uf_post = reqparse.RequestParser()
-uf_post.add_argument('type', type=int, required=True)
-ct_post.add_argument('file.path', type=str)
-ct_post.add_argument('structures', type=datastructures.FileStorage, location='files')
+uf_post = parser.copy()
+uf_post.add_argument('type', type=int, location='args', required=True)
+uf_post.add_argument('file.path', type=str)
+uf_post.add_argument('structures', type=datastructures.FileStorage, location='files')
 
 
 class UploadFile(Resource):
     def post(self):
-        args = ct_post.parse_args()
+        args = uf_post.parse_args()
 
         file_path = None
         if args['file.path']:  # костыль. если не найдет этого в аргументах, то мы без NGINX сидим тащемта.
             file_path = args['file.path']
-        elif args['file']:
+        elif args['structures']:
             file_path = os.path.join(UPLOAD_PATH, str(uuid.uuid4()))
-            args['file'].save(file_path)
+            args['structures'].save(file_path)
 
         if not file_path:
             return dict(message=dict(structures='invalid data')), 400
@@ -231,4 +236,5 @@ class UploadFile(Resource):
         task = dict(status=0, type=args['type'], uid=None, structures=file_path)
         newjob = redis.enqueue_call('redis_examp.file', args=(task,), result_ttl=86400)
 
-        return dict(tid=newjob.id, status=0, date=newjob.created_at.timestamp(), type=args['type'], uid=None)
+        return dict(task=newjob.id, status=0, date=newjob.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                    type=args['type'], user=args['user'])
