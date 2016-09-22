@@ -19,14 +19,14 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from pony.orm import Database, sql_debug, db_session, PrimaryKey, Required, Optional, Set, select, commit
-from datetime import datetime
+import sys
 import time
+from datetime import datetime
 import bcrypt
 import hashlib
 import os
-import sys
 from app.config import DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER
+from pony.orm import Database, sql_debug, db_session, PrimaryKey, Required, Optional, Set, select, commit
 
 
 if DEBUG:

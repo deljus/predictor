@@ -21,11 +21,11 @@
 #  MA 02110-1301, USA.
 #
 from app.forms import Login, Registration
-from flask_login import login_user, logout_user, login_required, current_user
-from flask import redirect, url_for, render_template
-from pony.orm import db_session
-from app.models import Users
 from app.logins import User
+from app.models import Users
+from flask import redirect, url_for, render_template
+from flask_login import login_user, logout_user, login_required
+from pony.orm import db_session
 
 
 def registration():
@@ -35,7 +35,7 @@ def registration():
             Users(email=form.email.data, password=Users.hash_password(form.password.data),
                   token=Users.gen_token(form.password.data))
             return redirect(url_for('login'))
-    return render_template('registration.html', form=form)
+    return render_template('formpage.html', form=form, header='Registration', title='Registration')
 
 
 def login():
@@ -45,7 +45,7 @@ def login():
         if user:
             login_user(user, remember=form.remember.data)
             return redirect(url_for('index'))
-    return render_template('login.html', form=form)
+    return render_template('formpage.html', form=form, header='Login', title='Login')
 
 
 @login_required
@@ -54,5 +54,6 @@ def logout():
     return redirect(url_for('login'))
 
 
+@login_required
 def index():
-    return render_template("predictor.html")
+    return render_template("home.html")

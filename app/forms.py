@@ -20,11 +20,10 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from flask_wtf import Form
-from wtforms import StringField, HiddenField, validators, \
-    BooleanField, SubmitField, SelectField, PasswordField, ValidationError, SelectMultipleField, TextAreaField
 from app.models import Users
+from flask_wtf import Form
 from pony.orm import db_session
+from wtforms import StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError
 
 
 class CheckEmailExist(object):

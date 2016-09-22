@@ -20,18 +20,12 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+from app.models import Users
 from flask_login import UserMixin
 from pony.orm import db_session
-from app.models import Users
-from itsdangerous import TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired
-from app.config import SECRET_KEY, TOKEN_EXPIRES
-
-
-tokenizer = Serializer(SECRET_KEY, expires_in=TOKEN_EXPIRES)
 
 
 def load_user(token):
-    print('load_user')
     with db_session:
         user = Users.get(token=token)
         if user:
@@ -42,11 +36,12 @@ def load_user(token):
 
 class User(UserMixin):
     def __init__(self, user):
-        self.__id = user['id']
+        self.id = user['id']
         self.__email = user['email']
         self.__active = user['active']
         self.__token = user['token']
 
+    @property
     def is_active(self):
         return self.__active
 
@@ -54,10 +49,6 @@ class User(UserMixin):
         return self.__email
 
     def get_id(self):
-        """
-        Encode a secure token for cookie
-        """
-        print('get_token')
         return self.__token
 
     @staticmethod
