@@ -67,19 +67,19 @@ class CResource(Resource):
 class ModelingResult(CResource):
     def get(self, task):
         with db_session:
-            task = Tasks.get(id=task)
-            if not task:
+            result = Tasks.get(id=task)
+            if not result:
                 return dict(message=dict(task='invalid id')), 400
-            if task.user.id != current_user.id:
+            if result.user.id != current_user.id:
                 return dict(message=dict(task='access denied')), 400
 
-            structures = select(s for s in Structures if s.task == task)
+            structures = select(s for s in Structures if s.task == result)
             resulsts = left_join((s.id, r.attrib, r.value, r.type, m.name)
                                  for s in Structures for r in s.results for m in r.model
-                                 if s.task == task)
+                                 if s.task == result)
             additives = left_join((s.id, a.amount, p.id, p.name, p.type, p.structure)
                                   for s in Structures for a in s.additives for p in a.additive
-                                  if s.task == task)
+                                  if s.task == result)
 
             tmp1, tmp2 = {}, {}
 
@@ -92,8 +92,8 @@ class ModelingResult(CResource):
                 else:
                     tmp2[s] = []
 
-            return dict(task=task.id, status=task.status, date=task.create_date.strftime("%Y-%m-%d %H:%M:%S"),
-                        type=task.task_type, user=task.user.id if task.user else None,
+            return dict(task=result.id, status=result.status, date=result.create_date.strftime("%Y-%m-%d %H:%M:%S"),
+                        type=result.task_type, user=result.user.id if result.user else None,
                         structures=[dict(structure=s.id, data=s.structure, is_reaction=s.isreaction,
                                          temperature=s.temperature, pressure=s.pressure, status=s.status,
                                          modeling_results=[dict(model=m, results=r) for m, r in tmp1[s.id].items()],
@@ -215,8 +215,9 @@ class CreateTask(CResource):
         if not data:
             return dict(message=dict(structures='invalid data')), 400
 
-        task = dict(status=0, type=ttype, user=current_user.id, structures=data)
-        newjob = redis.enqueue_call('redis_examp.prep', args=(task,), result_ttl=86400)
+        newjob = redis.enqueue_call('redis_examp.prep',
+                                    args=(dict(status=0, type=ttype, user=current_user.id, structures=data),),
+                                    result_ttl=86400)
 
         return dict(task=newjob.id, status=0, date=newjob.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                     type=ttype, user=current_user.id)
@@ -240,8 +241,9 @@ class UploadFile(CResource):
         if not file_path:
             return dict(message=dict(structures='invalid data')), 400
 
-        task = dict(status=0, type=ttype, user=current_user.id, structures=file_path)
-        newjob = redis.enqueue_call('redis_examp.file', args=(task,), result_ttl=86400)
+        newjob = redis.enqueue_call('redis_examp.file',
+                                    args=(dict(status=0, type=ttype, user=current_user.id, structures=file_path),),
+                                    result_ttl=86400)
 
         return dict(task=newjob.id, status=0, date=newjob.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                     type=ttype, user=current_user.id)
