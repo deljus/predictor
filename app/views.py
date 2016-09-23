@@ -23,11 +23,15 @@
 from app.forms import Login, Registration
 from app.logins import User
 from app.models import Users
-from flask import redirect, url_for, render_template
+from flask import redirect, url_for, render_template, Blueprint
 from flask_login import login_user, logout_user, login_required
 from pony.orm import db_session
 
 
+view_bp = Blueprint('view', __name__)
+
+
+@view_bp.route('/registration', methods=['GET', 'POST'])
 def registration():
     form = Registration()
     if form.validate_on_submit():
@@ -38,6 +42,7 @@ def registration():
     return render_template('formpage.html', form=form, header='Registration', title='Registration')
 
 
+@view_bp.route('/login', methods=['GET', 'POST'])
 def login():
     form = Login()
     if form.validate_on_submit():
@@ -48,12 +53,38 @@ def login():
     return render_template('formpage.html', form=form, header='Login', title='Login')
 
 
+@view_bp.route('/logout', methods=['GET'])
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('login'))
 
 
+@view_bp.route('/index', methods=['GET'])
 @login_required
 def index():
+    return render_template("home.html")
+
+
+@view_bp.route('/search', methods=['GET'])
+@login_required
+def search():
+    return render_template("home.html")
+
+
+@view_bp.route('/modeling', methods=['GET'])
+@login_required
+def modeling():
+    return render_template("home.html")
+
+
+@view_bp.route('/queries', methods=['GET'])
+@login_required
+def queries():
+    return render_template("home.html")
+
+
+@view_bp.route('/results', methods=['GET'])
+@login_required
+def results():
     return render_template("home.html")

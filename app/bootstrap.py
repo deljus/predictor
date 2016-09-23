@@ -27,11 +27,11 @@ from flask_nav.elements import *
 
 def top_nav():
     if current_user.is_authenticated:
-        navbar = [Subgroup(current_user.get_email(), View('Profile', 'index'), Separator(), View('Logout', 'logout')),
-                  View('Search', 'index'), View('Modeling', 'index'), View('Results', 'index'),
-                  View('Queries', 'index')]
+        navbar = [Subgroup(current_user.get_email(), View('Profile', '.index'), Separator(), View('Logout', '.logout')),
+                  View('Search', '.search'), View('Modeling', '.modeling'), View('Results', '.results'),
+                  View('Queries', '.queries')]
     else:
-        navbar = [View('Login', 'login'), View('Registration', 'registration')]
+        navbar = [View('Login', '.login'), View('Registration', '.registration')]
 
     return Navbar('Predictor', *navbar)
 

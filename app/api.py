@@ -18,21 +18,30 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import json
 import uuid
 import os
 from app.config import UPLOAD_PATH
 from app.models import Tasks, Structures, Additives, Models
+from flask import Blueprint
 from flask_login import current_user
-from flask_restful import reqparse, Resource, fields, marshal, abort
+from flask_restful import reqparse, Resource, fields, marshal, abort, Api
 from functools import wraps
 from pony.orm import db_session, select, left_join
 from redis import Redis
 from rq import Queue
-from rq.exceptions import NoSuchJobError
 from werkzeug import datastructures
 
 redis = Queue(connection=Redis(), default_timeout=3600)
+
+api_bp = Blueprint('api', __name__)
+api = Api(api_bp)
+
+
+taskstructurefields = dict(structure=fields.Integer, data=fields.String, temperature=fields.Float(298),
+                           pressure=fields.Float(1),
+                           todelete=fields.Boolean(default=False),
+                           additives=fields.List(fields.Nested(dict(additive=fields.Integer, amount=fields.Float))),
+                           models=fields.List(fields.Integer))
 
 
 def authenticate(func):
@@ -49,27 +58,16 @@ class CResource(Resource):
     method_decorators = [authenticate]
 
 
-parser = reqparse.RequestParser()
-
-taskstructurefields = dict(structure=fields.Integer, data=fields.String, temperature=fields.Float(298),
-                           pressure=fields.Float(1),
-                           todelete=fields.Boolean(default=False),
-                           additives=fields.List(fields.Nested(dict(additive=fields.Integer, amount=fields.Float))),
-                           models=fields.List(fields.Integer))
-
 ''' ===================================================
     collector of modeled tasks (individually). return json
     ===================================================
 '''
-mr_get = parser.copy()
-mr_get.add_argument('task', type=int, location='args', required=True)
 
 
 class ModelingResult(CResource):
-    def get(self):
-        args = mr_get.parse_args()
+    def get(self, task):
         with db_session:
-            task = Tasks.get(id=args['task'])
+            task = Tasks.get(id=task)
             if not task:
                 return dict(message=dict(task='invalid id')), 400
             if task.user.id != current_user.id:
@@ -105,42 +103,37 @@ class ModelingResult(CResource):
     api for task preparation.
     ===================================================
 '''
-pt_get = parser.copy()
-pt_get.add_argument('task', type=str, location='args', required=True)
-pt_post = pt_get.copy()
-pt_post.add_argument('structures', type=lambda x: marshal(json.loads(x), taskstructurefields),  required=True)
+pt_post = reqparse.RequestParser()
+pt_post.add_argument('structures', type=lambda x: marshal(x, taskstructurefields),  required=True)
 
 
 class PrepareTask(CResource):
     @staticmethod
     def __fetchtask(task):
-        try:
-            job = redis.fetch_job(task)
-            if not job.is_finished:
-                abort(400, message=dict(task='not ready'))
-
-            result = job.result
-            if result['user'] != current_user.id:
-                abort(400, message=dict(task='access denied'))
-            return result
-
-        except NoSuchJobError:
+        job = redis.fetch_job(task)
+        if job is None:
             abort(400, message=dict(task='invalid id'))
 
-    def get(self):
-        args = pt_get.parse_args()
+        if not job.is_finished:
+            abort(400, message=dict(task='not ready'))
 
-        task = self.__fetchtask(args['task'])
-        task['task'] = args['task']
-        task['date'] = task['date'].strftime("%Y-%m-%d %H:%M:%S")
-        return task
+        result = job.result
+        if result['user'] != current_user.id:
+            abort(400, message=dict(task='access denied'))
+        return result
 
-    def post(self):
+    def get(self, task):
+        result = self.__fetchtask(task)
+        result['task'] = task
+        result['date'] = result['date'].strftime("%Y-%m-%d %H:%M:%S")
+        return result
+
+    def post(self, task):
         args = pt_post.parse_args()
 
-        task = self.__fetchtask(args['task'])
+        result = self.__fetchtask(task)
 
-        pure = {x['structure']: x for x in task['structures']}
+        pure = {x['structure']: x for x in result['structures']}
 
         structures = args['structures'] if isinstance(args['structures'], list) else [args['structures']]
         tmp = {x['structure']: x for x in structures if x['structure'] in pure}
@@ -165,7 +158,7 @@ class PrepareTask(CResource):
                             alist.append(a)
                     pure[s]['additives'] = alist
 
-                if task['type'] == 0 and d['models'] is not None:
+                if result['type'] == 0 and d['models'] is not None:
                     pure[s]['models'] = [models[m] for m in d['models']
                                          if m in models and pure[s]['is_reaction'] == models[m]['type'] % 2]
 
@@ -182,24 +175,23 @@ class PrepareTask(CResource):
         if not report:
             abort(400, message=dict(structures='invalid data'))
 
-        task['status'] = 0
-        task['structures'] = list(pure.values())
-        newjob = redis.enqueue_call('redis_examp.prep', args=(task,), result_ttl=86400)
+        result['status'] = 0
+        result['structures'] = list(pure.values())
+        newjob = redis.enqueue_call('redis_examp.prep', args=(result,), result_ttl=86400)
 
         return dict(task=newjob.id, status=0, date=newjob.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                    type=task['type'], user=task['user'])
+                    type=result['type'], user=result['user'])
 
 ''' ===================================================
     api for task creation.
     ===================================================
 '''
-ct_post = parser.copy()
-ct_post.add_argument('type', type=int, location='args', required=True)
-ct_post.add_argument('structures', type=lambda x: marshal(json.loads(x), taskstructurefields), required=True)
+ct_post = reqparse.RequestParser()
+ct_post.add_argument('structures', type=lambda x: marshal(x, taskstructurefields), required=True)
 
 
 class CreateTask(CResource):
-    def post(self):
+    def post(self, ttype):
         args = ct_post.parse_args()
 
         with db_session:
@@ -210,33 +202,32 @@ class CreateTask(CResource):
 
         data = []
         for s, d in enumerate(structures, start=1):
-            if d['structure']:
+            if d['data']:
                 alist = []
                 for a in d['additives'] or []:
                     if a['additive'] in additives and 0 < a['amount'] < 1:
                         a.update(additives[a['additive']])
                         alist.append(a)
 
-                data.append(dict(structure=s, data=d['structure'], status=0, pressure=d['pressure'],
+                data.append(dict(structure=s, data=d['data'], status=0, pressure=d['pressure'],
                                  temperature=d['temperature'], additives=alist))
 
         if not data:
             return dict(message=dict(structures='invalid data')), 400
 
-        task = dict(status=0, type=args['type'], user=current_user.id, structures=data)
+        task = dict(status=0, type=ttype, user=current_user.id, structures=data)
         newjob = redis.enqueue_call('redis_examp.prep', args=(task,), result_ttl=86400)
 
         return dict(task=newjob.id, status=0, date=newjob.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                    type=args['type'], user=current_user.id)
+                    type=ttype, user=current_user.id)
 
-uf_post = parser.copy()
-uf_post.add_argument('type', type=int, location='args', required=True)
+uf_post = reqparse.RequestParser()
 uf_post.add_argument('file.path', type=str)
 uf_post.add_argument('structures', type=datastructures.FileStorage, location='files')
 
 
 class UploadFile(CResource):
-    def post(self):
+    def post(self, ttype):
         args = uf_post.parse_args()
 
         file_path = None
@@ -249,8 +240,14 @@ class UploadFile(CResource):
         if not file_path:
             return dict(message=dict(structures='invalid data')), 400
 
-        task = dict(status=0, type=args['type'], user=current_user.id, structures=file_path)
+        task = dict(status=0, type=ttype, user=current_user.id, structures=file_path)
         newjob = redis.enqueue_call('redis_examp.file', args=(task,), result_ttl=86400)
 
         return dict(task=newjob.id, status=0, date=newjob.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                    type=args['type'], user=current_user.id)
+                    type=ttype, user=current_user.id)
+
+
+api.add_resource(PrepareTask, '/prepare/<string:task>')
+api.add_resource(CreateTask, '/create/<int:ttype>')
+api.add_resource(UploadFile, '/upload/<int:ttype>')
+api.add_resource(ModelingResult, '/result/<int:task>')
