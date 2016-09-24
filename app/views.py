@@ -38,7 +38,7 @@ def registration():
         with db_session:
             Users(email=form.email.data, password=Users.hash_password(form.password.data),
                   token=Users.gen_token(form.password.data))
-            return redirect(url_for('login'))
+            return redirect(url_for('.login'))
     return render_template('formpage.html', form=form, header='Registration', title='Registration')
 
 
@@ -49,7 +49,7 @@ def login():
         user = User.get(form.email.data, form.password.data)
         if user:
             login_user(user, remember=form.remember.data)
-            return redirect(url_for('index'))
+            return redirect(url_for('.index'))
     return render_template('formpage.html', form=form, header='Login', title='Login')
 
 
@@ -57,7 +57,7 @@ def login():
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for('login'))
+    return redirect(url_for('.login'))
 
 
 @view_bp.route('/index', methods=['GET'])

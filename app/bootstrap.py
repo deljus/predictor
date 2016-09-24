@@ -23,17 +23,88 @@
 from math import ceil
 from flask_login import current_user
 from flask_nav.elements import *
+from flask_bootstrap.nav import BootstrapRenderer
+from hashlib import sha1
+from dominate import tags
 
 
-def top_nav():
-    if current_user.is_authenticated:
-        navbar = [Subgroup(current_user.get_email(), View('Profile', '.index'), Separator(), View('Logout', '.logout')),
-                  View('Search', '.search'), View('Modeling', '.modeling'), View('Results', '.results'),
-                  View('Queries', '.queries')]
-    else:
-        navbar = [View('Login', '.login'), View('Registration', '.registration')]
+class LeftSubgroup(NavigationItem):
+    """Nested substructure.
+    :param items: Any number of :class:`.NavigationItem` instances  that
+                  make up the navigation element.
+    """
+    def __init__(self, *items):
+        self.items = items
 
-    return Navbar('Predictor', *navbar)
+    @property
+    def active(self):
+        return any(item.active for item in self.items)
+
+
+class RightSubgroup(NavigationItem):
+    """Nested substructure.
+    :param items: Any number of :class:`.NavigationItem` instances  that
+                  make up the navigation element.
+    """
+    def __init__(self, *items):
+        self.items = items
+
+    @property
+    def active(self):
+        return any(item.active for item in self.items)
+
+
+class Customrenderer(BootstrapRenderer):
+    def __init__(self, **kwargs):
+        BootstrapRenderer.__init__(self)
+
+    def visit_Navbar(self, node):
+        node_id = self.id or sha1(str(id(node)).encode()).hexdigest()
+
+        root = tags.nav() if self.html5 else tags.div(role='navigation')
+        root['class'] = 'navbar navbar-default'
+
+        cont = root.add(tags.div(_class='container'))
+
+        # collapse button
+        header = cont.add(tags.div(_class='navbar-header'))
+        btn = header.add(tags.button(**{'type': 'button', 'class': 'navbar-toggle collapsed', 'data-toggle': 'collapse',
+                                        'data-target': '#' + node_id, 'aria-expanded': 'false',
+                                        'aria-controls': 'navbar'}))
+
+        btn.add(tags.span('Toggle navigation', _class='sr-only'))
+        btn.add(tags.span(_class='icon-bar'))
+        btn.add(tags.span(_class='icon-bar'))
+        btn.add(tags.span(_class='icon-bar'))
+
+        # title may also have a 'get_url()' method, in which case we render
+        # a brand-link
+        if node.title is not None:
+            if hasattr(node.title, 'get_url'):
+                header.add(tags.a(node.title.text, _class='navbar-brand', href=node.title.get_url()))
+            else:
+                header.add(tags.span(node.title, _class='navbar-brand'))
+
+        bar = cont.add(tags.div(_class='navbar-collapse collapse', id=node_id))
+
+        for item in node.items:
+            bar.add(self.visit(item))
+
+        return root
+
+    def visit_LeftSubgroup(self, node):
+        bar_list = tags.ul(_class='nav navbar-nav')
+        for item in node.items:
+            bar_list.add(self.visit(item))
+
+        return bar_list
+
+    def visit_RightSubgroup(self, node):
+        bar_list = tags.ul(_class='nav navbar-nav navbar-right')
+        for item in node.items:
+            bar_list.add(self.visit(item))
+
+        return bar_list
 
 
 class Pagination(object):
@@ -68,3 +139,16 @@ class Pagination(object):
 
     def iter_pages(self):
         return range(1, self.pages + 1)
+
+
+def top_nav():
+    if current_user.is_authenticated:
+        navbar = [LeftSubgroup(View('Search', '.search'), View('Modeling', '.modeling'), View('Results', '.results'),
+                  View('Queries', '.queries')),
+                  RightSubgroup(Subgroup(current_user.get_email(), View('Profile', '.index'), Separator(),
+                                         View('Logout', '.logout')))
+                  ]
+    else:
+        navbar = [RightSubgroup(View('Login', '.login'), View('Registration', '.registration'))]
+
+    return Navbar('Predictor', *navbar)

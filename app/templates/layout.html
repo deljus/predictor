@@ -3,15 +3,12 @@
 {% import "bootstrap/fixes.html" as fixes %}
 
 {% block navbar %}
-    {{ nav.top_nav.render() }}
+    {{ nav.top_nav.render(renderer='myrenderer') }}
 {% endblock %}
 
 {% block content %}
     <div class="container">
-        <!-- Main component for a primary marketing message or call to action -->
-        <div class="jumbotron">
-            {% block page %}{% endblock %}
-        </div>
+        {% block page %}{% endblock %}
     </div>
 {% endblock %}
 

@@ -22,19 +22,20 @@
 from app import views
 from app.api import api_bp
 from app.views import view_bp
-from app.bootstrap import top_nav
+from app.bootstrap import top_nav,Customrenderer
 from app.config import PORTAL_BASE, SECRET_KEY
 from app.logins import load_user
 from flask import Flask
 from flask_bootstrap import Bootstrap
 from flask_login import LoginManager
-from flask_nav import Nav
+from flask_nav import Nav, register_renderer
 
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = SECRET_KEY
+app.config['BOOTSTRAP_SERVE_LOCAL'] = True
 
-
+register_renderer(app, 'myrenderer', Customrenderer)
 nav = Nav(app)
 nav.register_element('top_nav', top_nav)
 Bootstrap(app)
