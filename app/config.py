@@ -19,7 +19,7 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-__author__ = 'stsouko'
+from enum import Enum
 
 TASK_CREATED = 0
 REQ_MAPPING = 1
@@ -51,3 +51,17 @@ DB_USER = 'postgres'
 DB_PASS = 'jyvt0n3'
 DB_HOST = 'localhost'
 DB_NAME = 'predictor'
+
+
+class StructureStatus(Enum):
+    RAW = 0
+    HAS_ERROR = 1
+    CLEAR = 2
+
+
+class TaskStatus(Enum):
+    NEW = 0
+    PREPARING = 1
+    PREPARED = 2
+    MODELING = 3
+    DONE = 4
