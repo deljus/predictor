@@ -93,10 +93,19 @@ class Models(db.Entity):
     name = Required(str)
     description = Required(str)
     example = Optional(str)
-    model_type = Required(int, default=0)  # нечетные для реакций, четные и 0 для молекул.
+    destinations = Set("Destinations")
+    model_type = Required(int, default=0)  # нечетные для реакций, четные для молекул и 0 для подготовки.
 
     structures = Set(Structures)
     results = Set(Results)
+
+
+class Destinations(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    model = Required(Models)
+    host = Required(str)
+    port = Optional(int)
+    password = Optional(str)
 
 
 class Additives(db.Entity):
