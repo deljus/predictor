@@ -75,7 +75,7 @@ class RedisCombiner(object):
 
             tmp = []
             for s in task['structures']:
-                if s['status'] != StructureStatus.CLEAR or \
+                if s['status'] != StructureStatus.CLEAR or not \
                    [model_struct[m].append(s) for m in (x['model'] for x in s['models'])
                     if (model_worker[m] if m in model_worker else
                         model_worker.setdefault(m, self.__getworker(m))) is not None]:
@@ -89,18 +89,34 @@ class RedisCombiner(object):
             task['structures'] = tmp
 
         else:
-            return None
+            return None  # DEV trigger for bug hunt
 
-        job = [(worker.name, worker.enqueue_call('redis_worker.run', kwargs=data, result_ttl=self.__result_ttl))]
+        jobs = [(w.name, w.enqueue_call('redis_worker.run', kwargs=d, result_ttl=self.__result_ttl))
+                for w, d in zip(worker, data)]
 
-        task['jobs'] = job
+        task['jobs'] = jobs
 
         return self.__tasks.enqueue_call('redis_worker.combiner', args=(task,), result_ttl=self.__result_ttl)
 
-    def fetch_job(self, task):
+    def fetch_job(self, task):  # potentially cachable
         job = self.__tasks.fetch_job(task)
-        if job is not None:
-            for worker in job.result['jobs']:
-                job.fetch_job()
+        if job is None:
+            return None
+        elif not job.is_finished:
+            return dict(is_finished=False)
 
-        return job
+        sub_jobs = [self.__redis[worker].fetch_job(sub_task) for worker, sub_task in job.result['jobs']]
+        if any(not x.is_finished for x in sub_jobs):
+            return dict(is_finished=False)
+
+        ended_at = max(x.ended_at for x in sub_jobs)
+
+        tmp = {s['structure']: s for s in job.result['structures']}  # not modeled structures
+        for s in (s for j in sub_jobs for s in j.result['structures']):
+            _s = tmp.get(s['structure']) or tmp.setdefault(s['structure'], s)
+            _s.setdefault('modeling_results', []).extend(s['modeling_results'])
+
+        result = dict(status=TaskStatus.DONE, user=job.result['user'], type=job.result['user'],
+                      structures=list(tmp.values()))
+
+        return dict(is_finished=False, ended_at=ended_at, result=result)

@@ -60,7 +60,7 @@ class Tasks(db.Entity):
     id = PrimaryKey(int, auto=True)
     user = Optional(Users)
     structures = Set("Structures")
-    create_date = Required(datetime, default=datetime.now())
+    date = Required(datetime, default=datetime.now())
     task_type = Required(int, default=0)  # 0 - common models, 1,2,... - searches
 
 
