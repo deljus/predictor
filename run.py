@@ -20,8 +20,8 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from app import app
-from app.config import HOST, DEBUG, PORT
+from app import init
+
 
 if __name__ == "__main__":
-    app.run(HOST, port=PORT, debug=DEBUG)
+    init()

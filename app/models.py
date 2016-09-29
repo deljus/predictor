@@ -19,14 +19,11 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import sys
-import time
-from datetime import datetime
 import bcrypt
 import hashlib
-import os
 from app.config import DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER
-from pony.orm import Database, sql_debug, db_session, PrimaryKey, Required, Optional, Set, select, commit
+from datetime import datetime
+from pony.orm import Database, sql_debug, PrimaryKey, Required, Optional, Set
 
 
 if DEBUG:
@@ -123,89 +120,3 @@ class Additiveset(db.Entity):
 
 
 db.generate_mapping(create_tables=True)
-
-
-
-
-class PredictorDataBase:
-
-
-
-
-
-
-    @db_session
-    def update_reaction_result(self, reaction_id, model_id, param, value, ptype):
-        '''
-        функция записывает в базу данные моделирования
-        :return:
-        '''
-        reaction = Chemicals.get(id=reaction_id)
-        model = Models.get(id=model_id)
-        if reaction and model:
-            Results(chemical=reaction, model=model, attrib=param, value=value, type=ptype)
-
-    @db_session
-    def get_solvents(self):
-        '''
-        функция возвращает список растворителей из базы
-        :return: список растворителей
-        '''
-        query = select((x.id, x.name) for x in Solvents)
-        return [{'id': x, 'name': y} for x, y in query]
-
-    @db_session
-    def get_models(self, model_hash=None):
-        '''
-        функция возвращает список доступных моделей
-        :return: список моделей
-        '''
-        try:
-            if model_hash:
-                models = select(x.models for x in AppDomains if x.hash == model_hash)
-                models = [(x.id, x.name, x.is_reaction, x.description, x.example) for x in models]
-            else:
-                models = select((x.id, x.name, x.is_reaction, x.description, x.example) for x in Models)
-
-            return [{'id': x, 'name': y, 'is_reaction': z, 'description': w, 'example': q} for x, y, z, w, q in models]
-        except:
-            print('get_models->', sys.exc_info()[0])
-        return None
-
-    @db_session
-    def get_model(self, model_id):
-        '''
-        функция возвращает список доступных моделей
-        :return: список моделей
-        '''
-        model = Models.get(id=model_id)
-        if model:
-            return dict(id=model.id, name=model.name, description=model.description, example=model.example)
-        else:
-            return None
-
-    @staticmethod
-    def insert_model(name, desc, example, is_reaction, reaction_hashes):
-        with db_session:
-            model = Models(name=name, description=desc, example=example, is_reaction=is_reaction)
-            if reaction_hashes:
-                for x in reaction_hashes:
-                    reaction_hash = AppDomains.get(hash=x)
-                    if not reaction_hash:
-                        reaction_hash = AppDomains(hash=x)
-                    model.app_domains.add(reaction_hash)
-
-        return model.id
-
-    @db_session
-    def delete_model(self, model_id):
-        model = Models.get(id=model_id)
-        if model:
-            reaction_hashes = model.app_domains.copy()
-            model.delete()
-
-            for x in reaction_hashes:
-                if not x.models:
-                    x.delete()
-
-        return True

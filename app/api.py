@@ -35,13 +35,13 @@ api_bp = Blueprint('api', __name__)
 api = Api(api_bp)
 
 with db_session:
-    models = [(m.id, [(d.host, d.port or 6379, d.password) for d in m.destinations], m.model_type)
+    models = [(m.id, m.name, [(d.host, d.port or 6379, d.password) for d in m.destinations], m.model_type)
               for m in select(x for x in Models)]
 redis = RedisCombiner(models)
 
 taskstructurefields = dict(structure=fields.Integer, data=fields.String, temperature=fields.Float(298),
                            pressure=fields.Float(1),
-                           todelete=fields.Boolean(default=False),
+                           todelete=fields.Boolean(False),
                            additives=fields.List(fields.Nested(dict(additive=fields.Integer, amount=fields.Float))),
                            models=fields.List(fields.Integer))
 
@@ -153,6 +153,8 @@ class StartTask(CResource):
         result['task'] = task
         result['date'] = ended_at.strftime("%Y-%m-%d %H:%M:%S")
         result['status'] = result['status'].value
+        for s in result['structures']:
+            s['status'] = s['status'].value
         return result
 
     def post(self, task):
@@ -176,6 +178,8 @@ class PrepareTask(CResource):
         result['task'] = task
         result['date'] = ended_at.strftime("%Y-%m-%d %H:%M:%S")
         result['status'] = result['status'].value
+        for s in result['structures']:
+            s['status'] = s['status'].value
         return result
 
     def post(self, task):
