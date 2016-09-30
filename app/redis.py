@@ -57,45 +57,40 @@ class RedisCombiner(object):
         return self.__models.get(model, [None])[0]
 
     def new_job(self, task):
-        if task['status'] == TaskStatus.NEW:
-            worker = [self.__getworker(self.__preparer)]
-            data = [{'structuresfile': task.pop('structuresfile'),
-                     'model': self.__models_names[self.__preparer]} if 'structuresfile' in task else
-                    {'structures': task['structures'], 'model': self.__models_names[self.__preparer]}]
+        if task['status'] not in (TaskStatus.NEW, TaskStatus.PREPARING, TaskStatus.MODELING):
+            return None
 
+        if 'structuresfile' in task:
+            tmp = task.pop('structuresfile')
+            mid = tmp['model']['model']
+            model_worker = self.__getworker(mid)
             task['structures'] = []
-
-        elif task['status'] == TaskStatus.PREPARING:
-            worker = [self.__getworker(self.__preparer)]
-            data = [{'structures': [s for s in task['structures'] if s['status'] == StructureStatus.RAW],
-                     'model': self.__models_names[self.__preparer]}]
-
-            task['structures'] = [s for s in task['structures'] if s['status'] != StructureStatus.RAW]
-
-        elif task['status'] == TaskStatus.MODELING:
-            model_worker = {}
-            model_struct = defaultdict(list)
-
-            tmp = []
-            for s in task['structures']:
-                if s['status'] != StructureStatus.CLEAR or not \
-                   [model_struct[m].append(s) for m in (x['model'] for x in s['models'])
-                    if (model_worker[m] if m in model_worker else
-                        model_worker.setdefault(m, self.__getworker(m))) is not None]:
-                    tmp.append(s)
-
-            worker, data = [], []
-            for m, s in model_struct.items():
-                worker.append(model_worker[m])
-                data.append({'structures': s, 'model': self.__models_names[m]})
-
-            task['structures'] = tmp
+            newjob = [(model_worker, {'structuresfile': tmp['url'],
+                                      'model': self.__models_names[mid]})] if model_worker is not None else []
 
         else:
-            return None  # DEV trigger for bug hunt
+            model_worker = {}
+            model_struct = defaultdict(list)
+            tmp = []
+
+            for s in task['structures']:
+                # check for models in structures
+                models = (x['model'] for x in s.pop('models') if x['type'] != 0) \
+                         if task['status'] == TaskStatus.MODELING else \
+                         (x['model'] for x in s.pop('models') if x['type'] == 0) \
+                         if s['status'] == StructureStatus.RAW else []
+
+                if not [model_struct[m].append(s) for m in models
+                        if (model_worker[m] if m in model_worker else
+                            model_worker.setdefault(m, self.__getworker(m))) is not None]:
+                    tmp.append(s)
+
+            task['structures'] = tmp
+            newjob = ((model_worker[m], {'structures': s, 'model': self.__models_names[m]})
+                      for m, s in model_struct.items())
 
         jobs = [(w.name, w.enqueue_call('redis_worker.run', kwargs=d, result_ttl=self.__result_ttl).id)
-                for w, d in zip(worker, data)]
+                for w, d in newjob]
 
         task['jobs'] = jobs
         task['status'] = TaskStatus.DONE if task['status'] == TaskStatus.MODELING else TaskStatus.PREPARED
@@ -110,18 +105,27 @@ class RedisCombiner(object):
             return dict(is_finished=False)
 
         result = job.result
-        sub_jobs = [self.__redis[worker].fetch_job(sub_task) for worker, sub_task in result.pop('jobs')]
+        sub_jobs_fin = []
+        sub_jobs_unf = []
+        for worker, sub_task in result.pop('jobs'):
+            tmp = self.__redis[worker].fetch_job(sub_task)
+            if tmp.is_finished:
+                sub_jobs_fin.append(tmp)
+            else:
+                sub_jobs_unf.append((worker, sub_task))
 
-        if any(not x.is_finished for x in sub_jobs):
-            return dict(is_finished=False)
+        if sub_jobs_fin:
+            tmp = {s['structure']: s for s in result['structures']}  # not modeled structures
+            for j in sub_jobs_fin:
+                for s in j.result:
+                    _s = tmp.get(s['structure']) or tmp.setdefault(s['structure'], s)
+                    _s['models'].extend(s['models'])
+                j.delete()
+            result['structures'] = list(tmp.values())
 
-        ended_at = max(x.ended_at for x in sub_jobs)
+        if sub_jobs_unf:
+            result['jobs'] = sub_jobs_unf
 
-        tmp = {s['structure']: s for s in result['structures']}  # not modeled structures
-        for s in (s for j in sub_jobs for s in j.result):
-            _s = tmp.get(s['structure']) or tmp.setdefault(s['structure'], s)
-            _s.setdefault('modeling_results', []).extend(s['modeling_results'])
-
-        result['structures'] = list(tmp.values())
-
-        return dict(is_finished=True, ended_at=ended_at, result=result)
+        ended_at = max(x.ended_at for x in sub_jobs_fin)
+        job.save()
+        return dict(is_finished=(False if sub_jobs_unf else True), ended_at=ended_at, result=result)

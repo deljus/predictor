@@ -35,15 +35,21 @@ api_bp = Blueprint('api', __name__)
 api = Api(api_bp)
 
 with db_session:
-    models = [(m.id, m.name, [(d.host, d.port or 6379, d.password) for d in m.destinations], m.model_type)
+    MODELS = [(m.id, m.name, [(d.host, d.port or 6379, d.password) for d in m.destinations], m.model_type)
               for m in select(x for x in Models)]
-redis = RedisCombiner(models)
+redis = RedisCombiner(MODELS)
 
 taskstructurefields = dict(structure=fields.Integer, data=fields.String, temperature=fields.Float(298),
                            pressure=fields.Float(1),
                            todelete=fields.Boolean(False),
                            additives=fields.List(fields.Nested(dict(additive=fields.Integer, amount=fields.Float))),
                            models=fields.List(fields.Integer))
+
+
+def get_zero_model():
+    with db_session:
+        return next(dict(model=m.id, name=m.name, description=m.description, type=m.model_type)
+                    for m in select(m for m in Models if m.model_type == 0))
 
 
 def fetchtask(task, status):
@@ -186,10 +192,10 @@ class PrepareTask(CResource):
         args = pt_post.parse_args()
 
         result = fetchtask(task, TaskStatus.PREPARED)[0]
-        pure = {x['structure']: x for x in result['structures']}
+        prepared = {x['structure']: x for x in result['structures']}
 
         structures = args['structures'] if isinstance(args['structures'], list) else [args['structures']]
-        tmp = {x['structure']: x for x in structures if x['structure'] in pure}
+        tmp = {x['structure']: x for x in structures if x['structure'] in prepared}
 
         with db_session:
             additives = {a.id: dict(additive=a.id, name=a.name, structure=a.structure, type=a.type)
@@ -201,7 +207,7 @@ class PrepareTask(CResource):
         for s, d in tmp.items():
             report = True
             if d['todelete']:
-                pure.pop(s)
+                prepared.pop(s)
             else:
                 if d['additives'] is not None:
                     alist = []
@@ -209,26 +215,26 @@ class PrepareTask(CResource):
                         if a['additive'] in additives and 0 < a['amount'] < 1:
                             a.update(additives[a['additive']])
                             alist.append(a)
-                    pure[s]['additives'] = alist
+                    prepared[s]['additives'] = alist
 
                 if result['type'] == 0 and d['models'] is not None:
-                    pure[s]['models'] = [models[m] for m in d['models']
-                                         if m in models and pure[s]['is_reaction'] == models[m]['type'] % 2]
+                    prepared[s]['models'] = [models[m] for m in d['models']
+                                             if m in models and prepared[s]['is_reaction'] == models[m]['type'] % 2]
 
                 if d['data']:
-                    pure[s]['data'] = d['data']
-                    pure[s]['status'] = StructureStatus.RAW
+                    prepared[s]['data'] = d['data']
+                    prepared[s]['status'] = StructureStatus.RAW
 
                 if d['temperature']:
-                    pure[s]['temperature'] = d['temperature']
+                    prepared[s]['temperature'] = d['temperature']
 
                 if d['pressure']:
-                    pure[s]['pressure'] = d['pressure']
+                    prepared[s]['pressure'] = d['pressure']
 
         if not report:
             abort(415, message=dict(structures='invalid data'))
 
-        result['structures'] = list(pure.values())
+        result['structures'] = list(prepared.values())
         result['status'] = TaskStatus.PREPARING
         newjob = redis.new_job(result)
 
@@ -253,6 +259,7 @@ class CreateTask(CResource):
             additives = {a.id: dict(additive=a.id, name=a.name, structure=a.structure, type=a.type)
                          for a in select(a for a in Additives)}
 
+        model = get_zero_model()
         structures = args['structures'] if isinstance(args['structures'], list) else [args['structures']]
 
         data = []
@@ -265,7 +272,7 @@ class CreateTask(CResource):
                         alist.append(a)
 
                 data.append(dict(structure=s, data=d['data'], status=StructureStatus.RAW, pressure=d['pressure'],
-                                 temperature=d['temperature'], additives=alist))
+                                 temperature=d['temperature'], additives=alist, models=[model]))
 
         if not data:
             return dict(message=dict(structures='invalid data')), 415
@@ -298,7 +305,8 @@ class UploadTask(CResource):
 
         file_url = os.path.basename(file_path)
 
-        newjob = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id, structuresfile=file_url))
+        newjob = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id,
+                                    structuresfile=dict(url=file_url, model=get_zero_model())))
 
         return dict(task=newjob.id, status=TaskStatus.PREPARING.value, type=_type,
                     date=newjob.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id)
