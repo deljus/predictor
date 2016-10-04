@@ -1,7 +1,11 @@
+from app.config import StructureStatus
 
 
 def run(structures=None, model=None, structuresfile=None):
-    # должно херить modelig_result
+    for s in structures:
+        s['models'] = [model]
+        s['is_reaction'] = False
+        s['status'] = StructureStatus.CLEAR
     return structures
 
 

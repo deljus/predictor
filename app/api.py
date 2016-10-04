@@ -34,10 +34,7 @@ from werkzeug import datastructures
 api_bp = Blueprint('api', __name__)
 api = Api(api_bp)
 
-with db_session:
-    MODELS = [(m.id, m.name, [(d.host, d.port or 6379, d.password) for d in m.destinations], m.model_type)
-              for m in select(x for x in Models)]
-redis = RedisCombiner(MODELS)
+redis = RedisCombiner()
 
 taskstructurefields = dict(structure=fields.Integer, data=fields.String, temperature=fields.Float(298),
                            pressure=fields.Float(1),
@@ -46,10 +43,22 @@ taskstructurefields = dict(structure=fields.Integer, data=fields.String, tempera
                            models=fields.List(fields.Integer))
 
 
-def get_zero_model():
+def get_preparer_model():
     with db_session:
         return next(dict(model=m.id, name=m.name, description=m.description, type=m.model_type)
                     for m in select(m for m in Models if m.model_type == 0))
+
+
+def get_additives():
+    with db_session:
+        return {a.id: dict(additive=a.id, name=a.name, structure=a.structure, type=a.type)
+                for a in select(a for a in Additives)}
+
+
+def get_models():
+    with db_session:
+        return {m.id: dict(model=m.id, name=m.name, description=m.description, type=m.model_type)
+                for m in select(m for m in Models)}
 
 
 def fetchtask(task, status):
@@ -191,17 +200,21 @@ class PrepareTask(CResource):
     def post(self, task):
         args = pt_post.parse_args()
 
+        additives = get_additives()
+        models = get_models()
+        preparer = get_preparer_model()
+
         result = fetchtask(task, TaskStatus.PREPARED)[0]
-        prepared = {x['structure']: x for x in result['structures']}
+        prepared = {}
+        for s in result['structures']:
+            if s['status'] == StructureStatus.RAW:  # for raw structures restore preparer if failed
+                s['models'] = [preparer]
+            prepared[s['structure']] = s
 
         structures = args['structures'] if isinstance(args['structures'], list) else [args['structures']]
         tmp = {x['structure']: x for x in structures if x['structure'] in prepared}
 
-        with db_session:
-            additives = {a.id: dict(additive=a.id, name=a.name, structure=a.structure, type=a.type)
-                         for a in select(a for a in Additives)}
-            models = {m.id: dict(model=m.id, name=m.name, description=m.description, type=m.model_type)
-                      for m in select(m for m in Models)}
+
 
         report = False
         for s, d in tmp.items():
@@ -217,13 +230,15 @@ class PrepareTask(CResource):
                             alist.append(a)
                     prepared[s]['additives'] = alist
 
-                if result['type'] == 0 and d['models'] is not None:
+                if result['type'] == 0 and d['models'] is not None and \
+                        not d['data'] and prepared[s]['status'] != StructureStatus.RAW:
                     prepared[s]['models'] = [models[m] for m in d['models']
                                              if m in models and prepared[s]['is_reaction'] == models[m]['type'] % 2]
 
                 if d['data']:
                     prepared[s]['data'] = d['data']
                     prepared[s]['status'] = StructureStatus.RAW
+                    prepared[s]['models'] = [preparer]
 
                 if d['temperature']:
                     prepared[s]['temperature'] = d['temperature']
@@ -255,11 +270,9 @@ class CreateTask(CResource):
             abort(404, message=dict(task=dict(type='invalid id')))
         args = ct_post.parse_args()
 
-        with db_session:
-            additives = {a.id: dict(additive=a.id, name=a.name, structure=a.structure, type=a.type)
-                         for a in select(a for a in Additives)}
+        additives = get_additives()
 
-        model = get_zero_model()
+        preparer = get_preparer_model()
         structures = args['structures'] if isinstance(args['structures'], list) else [args['structures']]
 
         data = []
@@ -272,15 +285,15 @@ class CreateTask(CResource):
                         alist.append(a)
 
                 data.append(dict(structure=s, data=d['data'], status=StructureStatus.RAW, pressure=d['pressure'],
-                                 temperature=d['temperature'], additives=alist, models=[model]))
+                                 temperature=d['temperature'], additives=alist, models=[preparer]))
 
         if not data:
             return dict(message=dict(structures='invalid data')), 415
 
-        newjob = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id, structures=data))
+        new_job = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id, structures=data))
 
-        return dict(task=newjob.id, status=TaskStatus.PREPARING.value, type=_type,
-                    date=newjob.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id)
+        return dict(task=new_job.id, status=TaskStatus.PREPARING.value, type=_type,
+                    date=new_job.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id)
 
 uf_post = reqparse.RequestParser()
 uf_post.add_argument('file.path', type=str)
@@ -305,11 +318,11 @@ class UploadTask(CResource):
 
         file_url = os.path.basename(file_path)
 
-        newjob = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id,
-                                    structuresfile=dict(url=file_url, model=get_zero_model())))
+        new_job = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id,
+                                     structuresfile=dict(url=file_url, model=get_preparer_model())))
 
-        return dict(task=newjob.id, status=TaskStatus.PREPARING.value, type=_type,
-                    date=newjob.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id)
+        return dict(task=new_job.id, status=TaskStatus.PREPARING.value, type=_type,
+                    date=new_job.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id)
 
 
 api.add_resource(CreateTask, '/task/create/<int:_type>')

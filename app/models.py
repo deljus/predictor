@@ -101,7 +101,7 @@ class Destinations(db.Entity):
     id = PrimaryKey(int, auto=True)
     model = Required(Models)
     host = Required(str)
-    port = Optional(int)
+    port = Required(int, default=6379)
     password = Optional(str)
 
 
