@@ -95,7 +95,7 @@ class Propertyextractor(object):
 
 
 class Descriptorsdict(object):
-    def __init__(self, data, isreaction=False):
+    def __init__(self, data=None, isreaction=False):
         self.__isreaction = isreaction
         self.__extention = data
         self.__extheader = self.__prepareextheader(data)

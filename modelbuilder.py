@@ -58,6 +58,13 @@ def descstarter(func, in_file, out_file, fformat, header):
     return True
 
 
+def descgenwrapper(dgen, kwargs):
+    def f():
+        return dgen(**kwargs)
+
+    return f
+
+
 class Modelbuilder(MBparser):
     def __init__(self, **kwargs):
         self.__options = kwargs
@@ -66,17 +73,18 @@ class Modelbuilder(MBparser):
         """
         descgenerator = {}
         if self.__options['fragments']:
-            descgenerator['F'] = [Fragmentor(**x) for x in self.parsefragmentoropts(self.__options['fragments'])]
+            descgenerator['F'] = [descgenwrapper(Fragmentor, x)
+                                  for x in self.parsefragmentoropts(self.__options['fragments'])]
 
         if self.__options['extention']:
-            descgenerator['E'] = [Descriptorsdict(self.parseext(self.__options['extention']),
-                                                  isreaction=self.__options['isreaction'])]
+            descgenerator['E'] = [descgenwrapper(Descriptorsdict, dict(data=self.parseext(self.__options['extention']),
+                                                                       isreaction=self.__options['isreaction']))]
 
         if self.__options['eed']:
-            descgenerator['D'] = [Eed(**x) for x in self.parsefragmentoropts(self.__options['eed'])]
+            descgenerator['D'] = [descgenwrapper(Eed, x) for x in self.parsefragmentoropts(self.__options['eed'])]
 
         if self.__options['pka']:
-            descgenerator['P'] = [Pkab(**x) for x in self.parsefragmentoropts(self.__options['pka'])]
+            descgenerator['P'] = [descgenwrapper(Pkab, x) for x in self.parsefragmentoropts(self.__options['pka'])]
 
         if self.__options['chains']:
             if self.__options['ad'] and len(self.__options['ad']) != len(self.__options['chains']):
@@ -109,10 +117,10 @@ class Modelbuilder(MBparser):
                         combo.append(list(zip(descgenerator[k], cycle(v))))
 
                 self.__descgens.extend(
-                    [Descriptorchain(*[g for gs in c for g in (gs if isinstance(gs, list) else [gs])]) for c in
+                    [Descriptorchain(*[g() for gs in c for g in (gs if isinstance(gs, list) else [gs])]) for c in
                      product(*combo)])
         else:
-            self.__descgens = [y for x in descgenerator.values() for y in x]
+            self.__descgens = [y() for x in descgenerator.values() for y in x]
 
         if not self.__options['output']:
             if os.path.isdir(self.__options['model']) or \
