@@ -41,9 +41,9 @@ class Descriptorchain(object):
             self.__generators = [(x, True) for x in args]
 
     def setworkpath(self, workpath):
-        for i in self.__generators:
-            if hasattr(i, 'setworkpath'):
-                i.setworkpath(workpath)
+        for gen, _ in self.__generators:
+            if hasattr(gen, 'setworkpath'):
+                gen.setworkpath(workpath)
 
     def get(self, structures, **kwargs):
         """

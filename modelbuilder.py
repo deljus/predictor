@@ -18,28 +18,27 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import os
-import threading
-from utils.config import GACONF
-from copy import deepcopy
-import sys
-from modeler.fragmentor import Fragmentor
-from modeler.descriptoragregator import Descriptorsdict, Descriptorchain
-from modeler.eed import Eed
-from modeler.cxcalc import Pkab
-from modeler.svmodel import Model as SVM
 import argparse
 import dill as pickle
 import gzip
-import tempfile
-import time
+import os
 import subprocess as sp
-from CGRtools.FEAR import FEAR
+import sys
+import tempfile
+import threading
+import time
 from CGRtools.CGRcore import CGRcore
+from CGRtools.FEAR import FEAR
 from CGRtools.RDFread import RDFread
-from modeler.parsers import MBparser
-from collections import Counter
+from copy import deepcopy
 from itertools import product, cycle
+from modeler.cxcalc import Pkab
+from modeler.descriptoragregator import Descriptorsdict, Descriptorchain
+from modeler.eed import Eed
+from modeler.fragmentor import Fragmentor
+from modeler.parsers import MBparser
+from modeler.svmodel import Model as SVM
+from utils.config import GACONF
 
 
 class DefaultList(list):
@@ -118,6 +117,7 @@ class Modelbuilder(MBparser):
         if not self.__options['output']:
             if os.path.isdir(self.__options['model']) or \
                (os.path.exists(self.__options['model']) and not os.access(self.__options['model'], os.W_OK)) or \
+               os.path.isdir(self.__options['model'] + '.save') or \
                (os.path.exists(self.__options['model'] + '.save') and
                     not (os.access(self.__options['model'] + '.save', os.W_OK) or
                          self.__options['model'] + '.save' == self.__options['reload'])) or \
@@ -128,6 +128,10 @@ class Modelbuilder(MBparser):
             if self.__options['reload']:
                 ests, description, self.__descgens = pickle.load(gzip.open(self.__options['reload'], 'rb'))
             else:
+                if not os.path.exists(self.__options['description']) or os.path.isdir(self.__options['description']):
+                    print('path to model description file invalid')
+                    return
+
                 description = self.parsemodeldescription(self.__options['description'])
                 if self.__options['isreaction']:
                     description['is_reaction'] = True
@@ -233,7 +237,7 @@ class Modelbuilder(MBparser):
                     t.start()
                 else:
                     break
-            time.sleep(5)
+            time.sleep(2)
 
         return True
 
@@ -300,7 +304,7 @@ def argparser():
                               "-c F:E [-c E:D:P]")
     rawopts.add_argument("-ad", action='append', type=str, default=None,
                          help="consider descriptor generator AD in descriptors chains. "
-                              "example: -ad y:n:y [True = y Y True true 1] for -c F:E:P [ignore extention AD] "
+                              "example: -ad y:n:y [True = y Y True true 1] for -c F:E:P [ignore extension AD] "
                               "number of -ad should be equal to number of --chains or skipped")
 
     rawopts.add_argument("--description", "-ds", type=str, default='model.dsc', help="model description file")
