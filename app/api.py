@@ -66,7 +66,7 @@ def get_models():
 def fetchtask(task, status):
     job = redis.fetch_job(task)
     if job is None:
-        abort(404, message=dict(task='invalid id'))
+        abort(403, message=dict(task='invalid id'))
 
     if not job:
         abort(500, message=dict(server='error'))
@@ -118,12 +118,12 @@ class ResultsTask(CResource):
         try:
             task = int(task)
         except ValueError:
-            abort(404, message=dict(task='invalid id'))
+            abort(403, message=dict(task='invalid id'))
 
         with db_session:
             result = Tasks.get(id=task)
             if not result:
-                return dict(message=dict(task='invalid id')), 404
+                return dict(message=dict(task='invalid id')), 403
             if result.user.id != current_user.id:
                 return dict(message=dict(task='access denied')), 403
 
@@ -271,7 +271,7 @@ ct_post.add_argument('structures', type=lambda x: marshal(x, taskstructurefields
 class CreateTask(CResource):
     def post(self, _type):
         if _type not in TASK_TYPES:
-            abort(404, message=dict(task=dict(type='invalid id')))
+            abort(403, message=dict(task=dict(type='invalid id')))
         args = ct_post.parse_args()
 
         additives = get_additives()
@@ -310,7 +310,7 @@ uf_post.add_argument('structures', type=datastructures.FileStorage, location='fi
 class UploadTask(CResource):
     def post(self, _type):
         if _type not in TASK_TYPES:
-            abort(404, message=dict(task=dict(type='invalid id')))
+            abort(403, message=dict(task=dict(type='invalid id')))
         args = uf_post.parse_args()
 
         file_path = None
