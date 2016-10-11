@@ -23,23 +23,25 @@ from itertools import product
 from sklearn.svm import SVR, SVC
 
 
-class Model(BaseModel):
+class SVModel(BaseModel):
     def __init__(self, descriptorgen, fitparams, structures, nfold=5, repetitions=1, rep_boost=100, dispcoef=0,
-                 fit='rmse', estimator='svr', scorers=('rmse', 'r2'), workpath='.',
+                 fit='rmse', estimator='svr', probability=False, scorers=('rmse', 'r2'), workpath='.',
                  normalize=False, n_jobs=2, **kwargs):
-        BaseModel.__init__(self, descriptorgen, fitparams, structures, nfold=nfold, repetitions=repetitions,
-                           rep_boost=rep_boost, dispcoef=dispcoef, fit=fit, scorers=scorers, workpath=workpath,
-                           normalize=normalize, n_jobs=n_jobs, **kwargs)
 
         self.estimator = self.__estimators[estimator]
         self.__estimator = estimator
+        self.__probability = [probability]
+        self.fitparams = fitparams
+        BaseModel.__init__(self, descriptorgen, structures, nfold=nfold, repetitions=repetitions,
+                           rep_boost=rep_boost, dispcoef=dispcoef, fit=fit, scorers=scorers, workpath=workpath,
+                           normalize=normalize, n_jobs=n_jobs, **kwargs)
 
     __estimators = dict(svr=SVR, svc=SVC)
 
     def prepareparams(self, param):
         base = dict(C=param['C'], tol=param['tol'])
         base.update(dict(epsilon=param['epsilon'])
-                    if self.__estimator == 'svr' else dict(probability=param['probability']))
+                    if self.__estimator == 'svr' else dict(probability=self.__probability))
 
         if param['kernel'] == 'linear':  # u'*v
             base.update(kernel=['linear'])
@@ -52,12 +54,13 @@ class Model(BaseModel):
 
         elif isinstance(param['kernel'], list):
             base.update(kernel=param['kernel'])
+        else:
+            return []
 
         k_list = []
         v_list = []
         for k, v in base.items():
             k_list.append(k)
             v_list.append(v)
-        tmp = [{k: v for k, v in zip(k_list, x)} for x in product(*v_list)]
 
-        return tmp
+        return [{k: v for k, v in zip(k_list, x)} for x in product(*v_list)]

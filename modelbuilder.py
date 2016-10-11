@@ -37,7 +37,7 @@ from modeler.descriptoragregator import Descriptorsdict, Descriptorchain
 from modeler.eed import Eed
 from modeler.fragmentor import Fragmentor
 from modeler.parsers import MBparser
-from modeler.svmodel import Model as SVM
+from modeler.svmodel import SVModel
 from utils.config import GACONF
 
 
@@ -158,7 +158,8 @@ class Modelbuilder(MBparser):
                     estparams = self.__chkest(estparams)
                     if not estparams:
                         return
-                    ests.append((lambda *vargs, **kwargs: SVM(*vargs, estimator=svm, **kwargs),
+                    ests.append((lambda *va, **kwa: SVModel(*va, estimator=svm,
+                                                            probability=self.__options['probability'], **kwa),
                                  estparams))
                 elif False:  # rf:  # todo: not implemented
                     if self.__options['rf']:
@@ -332,6 +333,8 @@ def argparser():
     rawopts.add_argument("--estimator", "-E", action='append', type=str, default=DefaultList(['svr']),
                          choices=['svr', 'svc'],
                          help="estimator")
+    rawopts.add_argument("--probability", "-P", action='store_true', help="estimates probability in SVC")
+
     rawopts.add_argument("--scorers", "-T", action='append', type=str, default=DefaultList(['rmse', 'r2']),
                          choices=['rmse', 'r2', 'ba', 'kappa'],
                          help="needed scoring functions. -T rmse [-T r2]")
@@ -342,7 +345,6 @@ def argparser():
                          help="score parameter. mean(score) - dispcoef * sqrt(variance(score)). [-score for rmse]")
 
     rawopts.add_argument("--normalize", "-N", action='store_true', help="normalize X vector to range(0, 1)")
-    rawopts.add_argument("--smartcv", "-S", action='store_true', help="smart crossvalidation [NOT implemented]")
 
     return vars(rawopts.parse_args())
 
