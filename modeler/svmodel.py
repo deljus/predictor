@@ -52,8 +52,10 @@ class SVModel(BaseModel):
         elif param['kernel'] == 'poly':  # (gamma*u'*v + coef0)^degree
             base.update(kernel=['poly'], gamma=param['gamma'], coef0=param['coef0'], degree=param['degree'])
 
-        elif isinstance(param['kernel'], list):
+        elif isinstance(param['kernel'], list) and all(callable(x) for x in param['kernel']):
             base.update(kernel=param['kernel'])
+        elif callable(param['kernel']):
+            base.update(kernel=[param['kernel']])
         else:
             return []
 

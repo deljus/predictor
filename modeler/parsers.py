@@ -21,6 +21,7 @@
 #  MA 02110-1301, USA.
 #
 import pandas as pd
+from modeler.kernels import tanimoto_kernel
 
 
 class MBparser(object):
@@ -57,7 +58,7 @@ class MBparser(object):
     def __pow10(x):
         return pow(10, x)
 
-    __kernel = {'0': 'linear', '1': 'poly', '2': 'rbf', '3': 'sigmoid'}
+    __kernel = {'0': 'linear', '1': 'poly', '2': 'rbf', '3': 'sigmoid', 't': 'tanimoto'}
 
     def getsvmparam(self, files):
         res = []
@@ -81,33 +82,41 @@ class MBparser(object):
 
                     for i in tmp['kernel']:
                         if i == 'linear':  # u'*v
-                            if svm.get('linear'):
+                            if svm.get(i):
                                 for k in ('C', 'epsilon', 'tol'):
-                                    svm['linear'][k].extend(tmp[k])
+                                    svm[i][k].extend(tmp[k])
                             else:
-                                svm['linear'] = dict(kernel='linear', C=tmp['C'], epsilon=tmp['epsilon'],
-                                                     tol=tmp['tol'])
+                                svm[i] = dict(kernel=i, C=tmp['C'], epsilon=tmp['epsilon'],
+                                              tol=tmp['tol'])
                         elif i == 'rbf':  # exp(-gamma*|u-v|^2)
-                            if svm.get('rbf'):
+                            if svm.get(i):
                                 for k in ('C', 'epsilon', 'tol', 'gamma'):
-                                    svm['rbf'][k].extend(tmp[k])
+                                    svm[i][k].extend(tmp[k])
                             else:
-                                svm['rbf'] = dict(kernel='rbf', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
-                                                  gamma=tmp['gamma'])
+                                svm[i] = dict(kernel=i, C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
+                                              gamma=tmp['gamma'])
                         elif i == 'sigmoid':  # tanh(gamma*u'*v + coef0)
-                            if svm.get('sigmoid'):
+                            if svm.get(i):
                                 for k in ('C', 'epsilon', 'tol', 'gamma', 'coef0'):
-                                    svm['sigmoid'][k].extend(tmp[k])
+                                    svm[i][k].extend(tmp[k])
                             else:
-                                svm['sigmoid'] = dict(kernel='sigmoid', C=tmp['C'], epsilon=tmp['epsilon'],
-                                                      tol=tmp['tol'], gamma=tmp['gamma'], coef0=tmp['coef0'])
+                                svm[i] = dict(kernel=i, C=tmp['C'], epsilon=tmp['epsilon'],
+                                              tol=tmp['tol'], gamma=tmp['gamma'], coef0=tmp['coef0'])
                         elif i == 'poly':  # (gamma*u'*v + coef0)^degree
-                            if svm.get('poly'):
+                            if svm.get(i):
                                 for k in ('C', 'epsilon', 'tol', 'gamma', 'coef0', 'degree'):
-                                    svm['poly'][k].extend(tmp[k])
+                                    svm[i][k].extend(tmp[k])
                             else:
-                                svm['poly'] = dict(kernel='poly', C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
-                                                   gamma=tmp['gamma'], coef0=tmp['coef0'], degree=tmp['degree'])
+                                svm[i] = dict(kernel=i, C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'],
+                                              gamma=tmp['gamma'], coef0=tmp['coef0'], degree=tmp['degree'])
+                        elif i == 'tanimoto':
+                            if svm.get(i):
+                                for k in ('C', 'epsilon', 'tol'):
+                                    svm[i][k].extend(tmp[k])
+                            else:
+                                svm[i] = dict(kernel=tanimoto_kernel,
+                                              C=tmp['C'], epsilon=tmp['epsilon'], tol=tmp['tol'])
+
             if svm:
                 res.append(svm)
         return res

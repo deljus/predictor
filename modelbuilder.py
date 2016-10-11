@@ -166,8 +166,7 @@ class Modelbuilder(MBparser):
                         estparams = None
                         estparams = self.__chkest(estparams)
                         if not estparams:
-                            ests.append((lambda *vargs, **kwargs: None,
-                                         estparams))
+                            ests.append((lambda *va, **kwa: None, estparams))
                     else:
                         return
 
