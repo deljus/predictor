@@ -81,12 +81,13 @@ def _balance_acc(y_test, y_pred):
 
 
 def _iap(y_test, y_prob):
+
     return
 
 
 class BaseModel(object):
-    def __init__(self, descriptorgen, structures, nfold=5, repetitions=1, rep_boost=100, dispcoef=0,
-                 fit='rmse', scorers=('rmse', 'r2'), workpath='.', normalize=False, n_jobs=2, **kwargs):
+    def __init__(self, descriptorgen, structures, workpath='.', nfold=5, repetitions=1, rep_boost=100, dispcoef=0,
+                 fit='rmse', scorers=('rmse', 'r2'), normalize=False, n_jobs=2, **kwargs):
 
         _scorers = dict(rmse=(_rmse, False), r2=(r2_score, False),
                         kappa=(_kappa_stat, False), ba=(_balance_acc, False), iap=(_iap, True))

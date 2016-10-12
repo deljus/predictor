@@ -65,9 +65,8 @@ def pairwise(iterable):
 
 class Fragmentor(object):
     def __init__(self, workpath='.', version=None, s_option=None, fragment_type=3, min_length=2, max_length=10,
-                 colorname=None, marked_atom=0, cgr_dynbonds=0, xml=None, doallways=False,
-                 useformalcharge=False, atompairs=False, fragmentstrict=False, getatomfragment=False,
-                 overwrite=True, headers=None,
+                 colorname=None, marked_atom=0, cgr_dynbonds=0, xml=None, doallways=False, useformalcharge=False,
+                 atompairs=False, fragmentstrict=False, getatomfragment=False, overwrite=True, headers=None,
                  marker_rules=None, standardize=None,
                  cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None, cgr_reverse=False,
                  cgr_type=None, cgr_stereo=False, cgr_balance=0, cgr_b_templates=None,

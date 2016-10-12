@@ -70,7 +70,7 @@ class Descriptorchain(object):
             structures.seek(0)
 
         res['X'] = reduce(merge_wrap, res['X'])
-        res['AD'] = reduce(operator.mul, sorted(res['AD'], key=lambda x: len(x.index), reverse=True))
+        res['AD'] = reduce(operator.and_, sorted(res['AD'], key=lambda x: len(x.index), reverse=True))
         res['Y'] = sorted(res['Y'], key=lambda x: len(x.index), reverse=True)[0]
 
         res['BOX'] = pd.concat(res['BOX'])

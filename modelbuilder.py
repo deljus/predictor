@@ -289,6 +289,7 @@ def argparser():
     rawopts.add_argument("--workpath", "-w", type=str, default='.', help="work path")
 
     rawopts.add_argument("--input", "-i", type=str, default='input.sdf', help="input SDF or RDF")
+    rawopts.add_argument("--index", "-x", type=str, default=None, help="custom indexes for input structures")
     rawopts.add_argument("--output", "-o", type=str, default=None, help="output SVM|CSV")
     rawopts.add_argument("--format", "-of", type=str, default='svm', choices=['svm', 'csv'], help="output format")
 
