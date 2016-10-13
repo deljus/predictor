@@ -20,7 +20,7 @@
 #
 import uuid
 import os
-from app.config import UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType
+from app.config import UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, AdditiveType
 from app.models import Tasks, Structures, Additives, Models, Additiveset
 from app.redis import RedisCombiner
 from flask import Blueprint
@@ -46,20 +46,22 @@ taskstructurefields = dict(structure=fields.Integer, data=fields.String, tempera
 def get_preparer_model():
     with db_session:
         return next(dict(model=m.id, name=m.name, description=m.description, type=ModelType(m.model_type),
-                         destinations=[dict(host=x.host, port=x.port, password=x.password) for x in m.destinations])
+                         destinations=[dict(host=x.host, port=x.port, password=x.password, name=x.name)
+                                       for x in m.destinations])
                     for m in select(m for m in Models if m.model_type == ModelType.PREPARER.value))
 
 
 def get_additives():
     with db_session:
-        return {a.id: dict(additive=a.id, name=a.name, structure=a.structure, type=a.type)
+        return {a.id: dict(additive=a.id, name=a.name, structure=a.structure, type=AdditiveType(a.type))
                 for a in select(a for a in Additives)}
 
 
 def get_models():
     with db_session:
         return {m.id: dict(model=m.id, name=m.name, description=m.description, type=ModelType(m.model_type),
-                           destinations=[dict(host=x.host, port=x.port, password=x.password) for x in m.destinations])
+                           destinations=[dict(host=x.host, port=x.port, password=x.password, name=x.name)
+                                         for x in m.destinations])
                 for m in select(m for m in Models)}
 
 
@@ -93,6 +95,8 @@ def format_results(task, status):
         s['status'] = s['status'].value
         for m in s['models']:
             m['type'] = m['type'].value
+        for a in s['additives']:
+            a['type'] = a['type'].value
     return result
 
 

@@ -27,11 +27,11 @@ from app.config import TaskStatus, StructureStatus, ModelType
 
 
 class RedisCombiner(object):
-    def __init__(self, host='localhost', port=6379, password=None, result_ttl=86400, job_timeout=3600):
+    def __init__(self, host='localhost', port=6379, password=None, name=None, result_ttl=86400, job_timeout=3600):
         self.__result_ttl = result_ttl
         self.__job_timeout = job_timeout
 
-        self.__tasks = dict(id=0, host=host, port=port, password=password)
+        self.__tasks = dict(id=0, host=host, port=port, password=password, name=name)
 
     def __new_worker(self, destinations):
         for x in destinations:
@@ -42,7 +42,7 @@ class RedisCombiner(object):
         r = Redis(host=destination['host'], port=destination['port'], password=destination['password'])
         try:
             if r.ping():
-                q = Queue(connection=r, default_timeout=self.__job_timeout)
+                q = Queue(connection=r, name=destination['name'], default_timeout=self.__job_timeout)
                 return q
         except:
             pass

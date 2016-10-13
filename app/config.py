@@ -78,3 +78,8 @@ class ModelType(Enum):
 class TaskType(Enum):
     MODELING = 0
     NOT_IMPLEMENTED = 1
+
+
+class AdditiveType(Enum):
+    SOLVENT = 0
+    CATALYST = 1

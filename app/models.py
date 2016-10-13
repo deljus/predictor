@@ -103,6 +103,7 @@ class Destinations(db.Entity):
     host = Required(str)
     port = Required(int, default=6379)
     password = Optional(str)
+    name = Required(str)
 
 
 class Additives(db.Entity):
