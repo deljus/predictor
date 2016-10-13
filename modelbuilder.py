@@ -335,9 +335,9 @@ def argparser():
     rawopts.add_argument("--probability", "-P", action='store_true', help="estimates probability in SVC")
 
     rawopts.add_argument("--scorers", "-T", action='append', type=str, default=DefaultList(['rmse', 'r2']),
-                         choices=['rmse', 'r2', 'ba', 'kappa'],
+                         choices=['rmse', 'r2', 'ba', 'kappa', 'iap'],
                          help="needed scoring functions. -T rmse [-T r2]")
-    rawopts.add_argument("--fit", "-t", type=str, default='rmse', choices=['rmse', 'r2', 'ba', 'kappa'],
+    rawopts.add_argument("--fit", "-t", type=str, default='rmse', choices=['rmse', 'r2', 'ba', 'kappa', 'iap'],
                          help="crossval score for parameters fit. (should be in selected scorers)")
 
     rawopts.add_argument("--dispcoef", "-p", type=float, default=0,

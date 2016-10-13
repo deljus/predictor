@@ -23,7 +23,7 @@
 from collections import defaultdict
 from redis import Redis
 from rq import Queue
-from app.config import TaskStatus, StructureStatus
+from app.config import TaskStatus, StructureStatus, ModelType
 
 
 class RedisCombiner(object):
@@ -70,9 +70,9 @@ class RedisCombiner(object):
 
             for s in task['structures']:
                 # check for models in structures
-                models = ((x['model'], x) for x in s.pop('models') if x['type'] != 0) \
+                models = ((x['model'], x) for x in s.pop('models') if x['type'] != ModelType.PREPARER) \
                     if task['status'] == TaskStatus.MODELING else \
-                    ((x['model'], x) for x in s.pop('models') if x['type'] == 0) \
+                    ((x['model'], x) for x in s.pop('models') if x['type'] == ModelType.PREPARER) \
                     if s['status'] == StructureStatus.RAW else []
 
                 populate = [model_struct[m].append(s) for m, model in models

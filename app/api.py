@@ -20,7 +20,7 @@
 #
 import uuid
 import os
-from app.config import UPLOAD_PATH, StructureStatus, TaskStatus, TASK_TYPES
+from app.config import UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType
 from app.models import Tasks, Structures, Additives, Models, Additiveset
 from app.redis import RedisCombiner
 from flask import Blueprint
@@ -45,9 +45,9 @@ taskstructurefields = dict(structure=fields.Integer, data=fields.String, tempera
 
 def get_preparer_model():
     with db_session:
-        return next(dict(model=m.id, name=m.name, description=m.description, type=m.model_type,
+        return next(dict(model=m.id, name=m.name, description=m.description, type=ModelType(m.model_type),
                          destinations=[dict(host=x.host, port=x.port, password=x.password) for x in m.destinations])
-                    for m in select(m for m in Models if m.model_type == 0))
+                    for m in select(m for m in Models if m.model_type == ModelType.PREPARER.value))
 
 
 def get_additives():
@@ -58,7 +58,7 @@ def get_additives():
 
 def get_models():
     with db_session:
-        return {m.id: dict(model=m.id, name=m.name, description=m.description, type=m.model_type,
+        return {m.id: dict(model=m.id, name=m.name, description=m.description, type=ModelType(m.model_type),
                            destinations=[dict(host=x.host, port=x.port, password=x.password) for x in m.destinations])
                 for m in select(m for m in Models)}
 
@@ -88,8 +88,11 @@ def format_results(task, status):
     result['task'] = task
     result['date'] = ended_at.strftime("%Y-%m-%d %H:%M:%S")
     result['status'] = result['status'].value
+    result['type'] = result['type'].value
     for s in result['structures']:
         s['status'] = s['status'].value
+        for m in s['models']:
+            m['type'] = m['type'].value
     return result
 
 
@@ -185,7 +188,7 @@ class StartTask(CResource):
         result = fetchtask(task, TaskStatus.PREPARED)[0]
         result['status'] = TaskStatus.MODELING
         newjob = redis.new_job(result)
-        return dict(task=newjob.id, status=result['status'].value, type=result['type'],
+        return dict(task=newjob.id, status=result['status'].value, type=result['type'].value,
                     date=newjob.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=result['user'])
 
 ''' ===================================================
@@ -231,7 +234,7 @@ class PrepareTask(CResource):
                             alist.append(a)
                     prepared[s]['additives'] = alist
 
-                if result['type'] == 0 and d['models'] is not None and \
+                if result['type'] == TaskType.MODELING and d['models'] is not None and \
                         not d['data'] and prepared[s]['status'] != StructureStatus.RAW:
                     prepared[s]['models'] = [models[m] for m in d['models']
                                              if m in models and prepared[s]['is_reaction'] == models[m]['type'] % 2]
@@ -270,8 +273,11 @@ ct_post.add_argument('structures', type=lambda x: marshal(x, taskstructurefields
 
 class CreateTask(CResource):
     def post(self, _type):
-        if _type not in TASK_TYPES:
+        try:
+            _type = TaskType(_type)
+        except ValueError:
             abort(403, message=dict(task=dict(type='invalid id')))
+
         args = ct_post.parse_args()
 
         additives = get_additives()
@@ -299,7 +305,7 @@ class CreateTask(CResource):
         if new_job is None:
             abort(500, message=dict(server='error'))
 
-        return dict(task=new_job.id, status=TaskStatus.PREPARING.value, type=_type,
+        return dict(task=new_job.id, status=TaskStatus.PREPARING.value, type=_type.value,
                     date=new_job.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id)
 
 uf_post = reqparse.RequestParser()
@@ -309,8 +315,11 @@ uf_post.add_argument('structures', type=datastructures.FileStorage, location='fi
 
 class UploadTask(CResource):
     def post(self, _type):
-        if _type not in TASK_TYPES:
+        try:
+            _type = TaskType(_type)
+        except ValueError:
             abort(403, message=dict(task=dict(type='invalid id')))
+
         args = uf_post.parse_args()
 
         file_path = None
@@ -330,7 +339,7 @@ class UploadTask(CResource):
         if new_job is None:
             abort(500, message=dict(server='error'))
 
-        return dict(task=new_job.id, status=TaskStatus.PREPARING.value, type=_type,
+        return dict(task=new_job.id, status=TaskStatus.PREPARING.value, type=_type.value,
                     date=new_job.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id)
 
 

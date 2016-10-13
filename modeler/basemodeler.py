@@ -18,6 +18,7 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+from itertools import product
 from copy import deepcopy
 import tempfile
 import shutil
@@ -27,9 +28,24 @@ from sklearn.externals.joblib import Parallel, delayed
 from sklearn.utils import shuffle
 from sklearn.cross_validation import KFold
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error, r2_score, confusion_matrix
+from sklearn.metrics import mean_squared_error, r2_score, cohen_kappa_score, accuracy_score
 from math import sqrt, ceil
 import numpy as np
+import operator
+
+
+class Score(dict):
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+
+    def __comparer(self, other, op):
+        return all(op(y, other[x]) for x, y in self.items())
+
+    def __lt__(self, other):
+        return self.__comparer(other, operator.lt)
+
+    def __le__(self, other):
+        return self.__comparer(other, operator.le)
 
 
 def _kfold(est, x, y, train, test, svmparams, normalize, box):
@@ -59,7 +75,7 @@ def _kfold(est, x, y, train, test, svmparams, normalize, box):
                   y_test=y_test, y_pred=y_pred, x_ad=x_ad, y_ad=y_ad)
 
     if hasattr(model, 'predict_proba'):
-        output['y_prob'] = pd.DataFrame(model.predict_proba, index=y_test.index)
+        output['y_prob'] = pd.DataFrame(model.predict_proba(x_test), index=y_test.index, columns=model.classes_)
 
     return output
 
@@ -68,21 +84,24 @@ def _rmse(y_test, y_pred):
     return sqrt(mean_squared_error(y_test, y_pred))
 
 
-def _kappa_stat(y_test, y_pred):
-    (tn, fp), (fn, tp) = confusion_matrix(y_test, y_pred)
-    a = len(y_test)
-    pe = ((tp + fp) * (tp + fn) + (fn + tn) * (fp + tn)) / (a**2)
-    return ((tp + tn) / a - pe)/(1 - pe)
-
-
 def _balance_acc(y_test, y_pred):
-    (tn, fp), (fn, tp) = confusion_matrix(y_test, y_pred)
-    return (0.5 * tp / (tp + fn) if (tp + fn) else .5) + (0.5 * tn / (tn + fp) if (tn + fp) else .5)
+    return accuracy_score(y_test, y_pred, normalize=True)
 
 
 def _iap(y_test, y_prob):
+    res = defaultdict(list)
+    for sid, s_prob in y_prob.groupby(level='structure'):
+        s_test = y_test.xs(sid, level='structure', drop_level=False)
+        for col in s_prob.columns:
+            in_class = s_test.loc[s_test == col].index
+            out_class = s_test.loc[s_test != col].index
 
-    return
+            in_class_dominance = sum(s_prob.loc[i][col] > s_prob.loc[o][col] for i, o in product(in_class, out_class))
+            possible_combo = len(in_class) * len(out_class)
+
+            res[col].append(in_class_dominance / possible_combo if possible_combo else 0)
+    res = Score({x: sum(y) / len(y) for x, y in res.items()})
+    return res
 
 
 class BaseModel(object):
@@ -90,7 +109,7 @@ class BaseModel(object):
                  fit='rmse', scorers=('rmse', 'r2'), normalize=False, n_jobs=2, **kwargs):
 
         _scorers = dict(rmse=(_rmse, False), r2=(r2_score, False),
-                        kappa=(_kappa_stat, False), ba=(_balance_acc, False), iap=(_iap, True))
+                        kappa=(cohen_kappa_score, False), ba=(_balance_acc, False), iap=(_iap, True))
         self.__model = {}
 
         self.__descriptorgen = descriptorgen
@@ -188,10 +207,10 @@ class BaseModel(object):
                     print('%d: fit model with params:' % fcount, i)
                     fittedmodel = self.__fit(i, self.__rep_boost)
                     print(self.__scorereporter % fittedmodel)
-                    if fittedmodel[self.__fitscore] < var_param_model[self.__fitscore]:
+                    if fittedmodel[self.__fitscore] <= var_param_model[self.__fitscore]:
                         var_param_model = fittedmodel
 
-                if var_param_model[self.__fitscore] < var_kern_model[self.__fitscore]:
+                if var_param_model[self.__fitscore] <= var_kern_model[self.__fitscore]:
                     var_kern_model = var_param_model
                     tmp = {}
                     for i, j in var_kern_model['params'].items():
@@ -204,7 +223,7 @@ class BaseModel(object):
                     param = tmp
                 else:
                     break
-            if var_kern_model[self.__fitscore] < bestmodel[self.__fitscore]:
+            if var_kern_model[self.__fitscore] <= bestmodel[self.__fitscore]:
                 bestmodel = var_kern_model
 
         if self.__repetitions > self.__rep_boost:
@@ -244,7 +263,7 @@ class BaseModel(object):
             kx_ad = pd.concat(kx_ad).loc[self.__y.index]
 
             if ky_prob:
-                ky_prob = pd.concat(ky_prob).loc[self.__y.index]
+                ky_prob = pd.concat(ky_prob).loc[self.__y.index].fillna(0)
                 y_prob.append(ky_prob)
 
             for s, (f, p) in self.__scorers.items():
@@ -263,8 +282,19 @@ class BaseModel(object):
             res['y_prob'] = pd.concat(y_prob, axis=1, keys=range(len(y_prob)))
 
         for s, _v in fold_scorers.items():
-            m, v = np.mean(_v), sqrt(np.var(_v))
-            c = (1 if s in ('rmse',) else -1) * m + self.__dispcoef * v
+            if isinstance(_v[0], Score):
+                m, v, c = Score(), Score(), Score()
+                tmp = defaultdict(list)
+                for _s in _v:
+                    for k, val in _s.items():
+                        tmp[k].append(val)
+                for k, val in tmp.items():
+                    m[k] = np.mean(val)
+                    v[k] = sqrt(np.var(val))
+                    c[k] = -m[k] + self.__dispcoef * v[k]
+            else:
+                m, v = np.mean(_v), sqrt(np.var(_v))
+                c = (1 if s == 'rmse' else -1) * m + self.__dispcoef * v
             res.update({s: m, 'C%s' % s: c, 'v%s' % s: v})
 
         return res

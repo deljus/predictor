@@ -41,8 +41,6 @@ PORTAL_BASE = '/qspr'
 
 UPLOAD_FOLDER = '/upload/'
 
-TASK_TYPES = (0, 1)
-
 SECRET_KEY = 'development key'
 DEBUG = True
 HOST = '0.0.0.0'
@@ -66,3 +64,17 @@ class TaskStatus(Enum):
     PREPARED = 2
     MODELING = 3
     DONE = 4
+
+
+class ModelType(Enum):
+    PREPARER = 0
+    REACTION = 1
+    MOLECULE = 2
+
+    def is_reaction(self):
+        return self == self.REACTION
+
+
+class TaskType(Enum):
+    MODELING = 0
+    NOT_IMPLEMENTED = 1
