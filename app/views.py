@@ -60,6 +60,7 @@ def logout():
     return redirect(url_for('.login'))
 
 
+@view_bp.route('/', methods=['GET'])
 @view_bp.route('/index', methods=['GET'])
 @login_required
 def index():

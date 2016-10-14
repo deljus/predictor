@@ -27,7 +27,7 @@ from app.config import TaskStatus, StructureStatus, ModelType
 
 
 class RedisCombiner(object):
-    def __init__(self, host='localhost', port=6379, password=None, name=None, result_ttl=86400, job_timeout=3600):
+    def __init__(self, host='localhost', port=6379, password=None, name='default', result_ttl=86400, job_timeout=3600):
         self.__result_ttl = result_ttl
         self.__job_timeout = job_timeout
 
