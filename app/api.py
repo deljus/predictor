@@ -209,12 +209,12 @@ class PrepareTask(CResource):
 
     def post(self, task):
         args = pt_post.parse_args()
+        result = fetchtask(task, TaskStatus.PREPARED)[0]
 
         additives = get_additives()
         models = get_models()
         preparer = get_preparer_model()
 
-        result = fetchtask(task, TaskStatus.PREPARED)[0]
         prepared = {}
         for s in result['structures']:
             if s['status'] == StructureStatus.RAW:  # for raw structures restore preparer if failed
@@ -239,7 +239,7 @@ class PrepareTask(CResource):
                     prepared[s]['additives'] = alist
 
                 if result['type'] == TaskType.MODELING and d['models'] is not None and \
-                        not d['data'] and prepared[s]['status'] != StructureStatus.RAW:
+                        not d['data'] and prepared[s]['status'] == StructureStatus.CLEAR:
                     prepared[s]['models'] = [models[m] for m in d['models']
                                              if m in models and prepared[s]['is_reaction'] == models[m]['type'] % 2]
 

@@ -49,8 +49,8 @@ class Users(db.Entity):
         return bcrypt.hashpw(password.encode(), self.password.encode()) == self.password.encode()
 
     @staticmethod
-    def gen_token(password):
-        return hashlib.md5(password.encode()).hexdigest()
+    def gen_token(email, password):
+        return hashlib.md5((email + password).encode()).hexdigest()
 
 
 class Tasks(db.Entity):

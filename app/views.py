@@ -37,7 +37,7 @@ def registration():
     if form.validate_on_submit():
         with db_session:
             Users(email=form.email.data, password=Users.hash_password(form.password.data),
-                  token=Users.gen_token(form.password.data))
+                  token=Users.gen_token(form.email.data, form.password.data))
             return redirect(url_for('.login'))
     return render_template('formpage.html', form=form, header='Registration', title='Registration')
 
