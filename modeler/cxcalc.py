@@ -23,9 +23,8 @@
 from modeler.structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker
 from modeler.descriptoragregator import Propertyextractor
 from io import StringIO
-from CGRtools.SDFread import SDFread
-from CGRtools.SDFwrite import SDFwrite
-from CGRtools.RDFread import RDFread
+from CGRtools.SDFrw import SDFread, SDFwrite
+from CGRtools.RDFrw import RDFread
 from subprocess import Popen, PIPE, STDOUT
 from utils.config import CXCALC
 import pandas as pd
@@ -43,7 +42,8 @@ class Pkab(Propertyextractor):
                                           postprocess=cgr_marker_postprocess,
                                           stereo=cgr_stereo, reverse=cgr_reverse) if cgr_marker else None
 
-        self.__dragos_std = StandardizeDragos(standardize) if standardize and not self.__cgr_marker else None
+        self.__dragos_std = StandardizeDragos(standardize) \
+            if standardize is not None and not self.__cgr_marker else None
         self.__workpath = workpath
         self.__reverse = cgr_reverse
         self.__acid = acid
@@ -56,7 +56,7 @@ class Pkab(Propertyextractor):
 
     def get(self, structures, **kwargs):
         reader = RDFread(structures) if self.__cgr_marker else SDFread(structures)
-        data = list(reader.readdata())
+        data = list(reader.read())
         structures.seek(0)  # ad-hoc for rereading
 
         if self.__dragos_std:
@@ -84,14 +84,14 @@ class Pkab(Propertyextractor):
                     for d in s:
                         tmp = [s_numb]
                         for x in d:
-                            writer.writedata(x[1])
+                            writer.write(x[1])
                             tmp.append(x[0])
                         doubles.extend([tmp] * len(d))
                 elif self.__dragos_marker:
-                    writer.writedata(s[0][0][1])
+                    writer.write(s[0][0][1])
                     doubles.append([([s_numb] + [x[0] for x in y]) for y in s])
                 else:
-                    writer.writedata(s)
+                    writer.write(s)
                     doubles.append(s_numb)
 
             res = p.communicate(input=f.getvalue().encode())[0].decode()

@@ -25,11 +25,10 @@ from operator import itemgetter
 from subprocess import Popen, PIPE, STDOUT, call
 from utils.config import PMAPPER, STANDARDIZER, COLOR
 from utils.utils import chemaxpost
-from CGRtools.CGRcore import CGRcore
-from CGRtools.RDFread import RDFread
-from CGRtools.SDFread import SDFread
-from CGRtools.SDFwrite import SDFwrite
-from CGRtools.RDFwrite import RDFwrite
+from CGRtools.CGRpreparer import CGRbalanser, CGRcombo
+from CGRtools.CGRreactor import CGRreactor
+from CGRtools.SDFrw import SDFread, SDFwrite
+from CGRtools.RDFrw import RDFread, RDFwrite
 from io import StringIO
 import networkx as nx
 import xml.etree.ElementTree as ET
@@ -38,15 +37,15 @@ from utils.mappercore import remove_namespace
 
 class StandardizeDragos(object):
     def __init__(self, rules):
-        self.__stdrules = self.__loadrules(rules)
+        self.__stdrules = self.__dumprules(rules)
         self.__unwanted = self.__loadunwanted()
         self.__minratio = 2
         self.__maxionsize = 5
         self.__minmainsize = 6
         self.__maxmainsize = 101
 
-    def __loadrules(self, rules):
-        with open(rules or os.path.join(os.path.dirname(__file__), "standardrules_dragos.rules")) as f:
+    def __dumprules(self, rules):
+        with rules or open(os.path.join(os.path.dirname(__file__), "standardrules_dragos.rules")) as f:
             ruless = f.read()
         return ruless
 
@@ -58,25 +57,28 @@ class StandardizeDragos(object):
         with StringIO() as f:
             tmp = SDFwrite(f)
             for x in structure:
-                tmp.writedata(x)
+                tmp.write(x)
 
             res = p.communicate(input=f.getvalue().encode())[0].decode()
 
         if p.returncode == 0:
             with StringIO(res) as f:
-                return list(SDFread(f).readdata())
+                return list(SDFread(f).read())
         return False
 
     def __processor_s(self, structure):
-        data = {"structure": structure, "parameters": "smiles",
-                "filterChain": [{"filter": "standardizer",
-                                 "parameters": {"standardizerDefinition": self.__stdrules}}]}
+        with StringIO() as f:
+            SDFwrite(f).write(structure)
+            data = {"structure": f.getvalue(), "parameters": "smiles",
+                    "filterChain": [{"filter": "standardizer",
+                                     "parameters": {"standardizerDefinition": self.__stdrules}}]}
+
         res = chemaxpost('calculate/molExport', data)
         if res:
             res = json.loads(res)
             if 'isReaction' not in res:
                 with StringIO(res['structure']) as f:
-                    return list(SDFread(f).readdata())
+                    return list(SDFread(f).read())
         return False
 
     def get(self, structure):
@@ -114,21 +116,19 @@ class StandardizeDragos(object):
 class Pharmacophoreatommarker(object):
     def __init__(self, markerrule, workpath):
         self.__markerrule, self.__markers = self.__dumprules(markerrule)
-        self.__config = os.path.join(workpath, 'iam')
-        self.__loadrules()
+        self.__config = None
+        self.setworkpath(workpath)
 
     @staticmethod
     def __dumprules(rules):
-        rules = open(rules).read()
-        marks = list(set(x.get('Symbol') for x in remove_namespace(ET.fromstring(rules),
+        with rules as f:
+            _rules = f.read()
+        marks = list(set(x.get('Symbol') for x in remove_namespace(ET.fromstring(_rules),
                                                                    'http://www.chemaxon.com').iter('AtomSet')))
-        return rules, marks
+        return _rules, marks
 
     def setworkpath(self, workpath):
         self.__config = os.path.join(workpath, 'iam')
-        self.__loadrules()
-
-    def __loadrules(self):
         with open(self.__config, 'w') as f:
             f.write(self.__markerrule)
 
@@ -145,7 +145,7 @@ class Pharmacophoreatommarker(object):
         with StringIO() as f:
             tmp = SDFwrite(f)
             for x in (structure if isinstance(structure, list) else [structure]):
-                tmp.writedata(x)
+                tmp.write(x)
 
             marks = p.communicate(input=f.getvalue().encode())[0].decode().split()
 
@@ -168,26 +168,34 @@ class Pharmacophoreatommarker(object):
         return False
 
 
-class CGRatommarker(CGRcore):
-    def __init__(self, patterns, prepare=None, postprocess=None, stereo=False, reverse=False):
-        CGRcore.__init__(self, type='0', stereo=stereo, balance=0, b_templates=None, e_rules=None, c_rules=None)
-        self.__stdprerules = self.__loadrules(prepare)
-        self.__stdpostrules = self.__loadrules(postprocess)
-        self.__templates, self.__marks = self.__loadpatterns(patterns)
+class CGRatommarker(CGRcombo, CGRreactor):
+    def __init__(self, patterns, prepare=None, postprocess=None, reverse=False,
+                 b_templates=None, m_templates=None, speed=False, extralabels=False, isotop=False, element=True, deep=0,
+                 stereo=False):
+
+        CGRreactor.__init__(self, stereo=stereo, hyb=extralabels, neighbors=extralabels, isotop=isotop, element=element,
+                            deep=deep)
+
+        CGRcombo.__init__(self, cgr_type='0',
+                          extralabels=extralabels, isotop=isotop, element=element, deep=deep, stereo=stereo,
+                          b_templates=b_templates, m_templates=m_templates, speed=speed)
+
+        self.__stdprerules = self.__dumprules(prepare)
+        self.__stdpostrules = self.__dumprules(postprocess)
+        self.__templates, self.__marks = self.__dumppatterns(patterns)
         self.__reverse = reverse
 
     @staticmethod
-    def __loadrules(rules):
+    def __dumprules(rules):
         if rules:
-            with open(rules) as f:
-                ruless = f.read().rstrip()
-        else:
-            ruless = None
-        return ruless
+            with rules as f:
+                rules = f.read().rstrip()
+        return rules
 
-    def __loadpatterns(self, patterns):
-        with open(patterns) as f:
-            templates = self.gettemplates(f)
+    @staticmethod
+    def __dumppatterns(patterns):
+        with patterns as f:
+            templates = CGRbalanser.get_templates(f)
             marks = len(templates[0]['products'])
         return templates, marks
 
@@ -197,16 +205,15 @@ class CGRatommarker(CGRcore):
     @staticmethod
     def __processor_s(structure, rules, remap=True):
         with StringIO() as f:
-            RDFwrite(f).writedata(structure)
-            structure = f.getvalue()
-        res = chemaxpost('calculate/molExport',
-                         {"structure": structure, "parameters": "rdf",
-                          "filterChain": [{"filter": "standardizer",
-                                           "parameters": {"standardizerDefinition": rules}}]})
+            RDFwrite(f).write(structure)
+            res = chemaxpost('calculate/molExport',
+                             {"structure": f.getvalue(), "parameters": "rdf",
+                              "filterChain": [{"filter": "standardizer",
+                                               "parameters": {"standardizerDefinition": rules}}]})
         if res:
             res = json.loads(res)
             if 'isReaction' in res:
-                return list(RDFread(StringIO(res['structure'])).readdata(remap=remap))
+                return list(RDFread(StringIO(res['structure'])).read(remap=remap))
         return False
 
     @staticmethod
@@ -215,11 +222,11 @@ class CGRatommarker(CGRcore):
         with StringIO() as f:
             tmp = RDFwrite(f)
             for x in structure:
-                tmp.writedata(x)
+                tmp.write(x)
 
             res = p.communicate(input=f.getvalue().encode())[0].decode()
             if p.returncode == 0:
-                return list(RDFread(StringIO(res)).readdata(remap=remap))
+                return list(RDFread(StringIO(res)).read(remap=remap))
         return False
 
     def get(self, structure):
@@ -229,7 +236,7 @@ class CGRatommarker(CGRcore):
             if not structure:
                 return False
 
-        _patterns = self.searchtemplate(self.__templates, speed=False)
+        _patterns = self.searchtemplate(self.__templates, speed=False)  # ad_hoc for pickle
 
         markslist = []
         gs = [self.getCGR(x) for x in (structure if isinstance(structure, list) else [structure])]
@@ -271,23 +278,34 @@ class CGRatommarker(CGRcore):
 
 class Colorize(object):
     def __init__(self, standardize, workpath):
-        self.__standardize = standardize
+        self.__input_file = self.__out_file = self.__std_file = None
+        self.__standardize = self.__dumprules(standardize)
         self.setworkpath(workpath)
 
+    @staticmethod
+    def __dumprules(rules):
+        with rules or open(os.path.join(os.path.dirname(__file__), "standardrules_dragos.rules")) as f:
+            rules = f.read()
+        return rules
+
     def setworkpath(self, workpath):
-        self.__inputfile = os.path.join(workpath, 'colorin.sdf')
-        self.__outfile = os.path.join(workpath, 'colorout.sdf')
+        self.__input_file = os.path.join(workpath, 'colorin.sdf')
+        self.__out_file = os.path.join(workpath, 'colorout.sdf')
+        self.__std_file = os.path.join(workpath, 'colorstd.xml')
+        with open(self.__std_file, 'w') as f:
+            f.write(self.__standardize)
 
     def get(self, structure):
-        if os.path.exists(self.__outfile):
-            os.remove(self.__outfile)
-        with open(self.__inputfile, 'w') as f:
+        if os.path.exists(self.__out_file):
+            os.remove(self.__out_file)
+        with open(self.__input_file, 'w') as f:
+            out = SDFwrite(f)
             for i in (structure if isinstance(structure, list) else [structure]):
-                SDFwrite(f).writedata(i)
+                out.write(i)
 
-        if call([COLOR, self.__inputfile, self.__outfile, self.__standardize]) == 0:
-            with open(self.__outfile) as f:
-                res = list(SDFread(f).readdata(remap=False))
+        if call([COLOR, self.__input_file, self.__out_file, self.__std_file]) == 0:
+            with open(self.__out_file) as f:
+                res = list(SDFread(f).read(remap=False))
                 if res:
                     return res
         return False

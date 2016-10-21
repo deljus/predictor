@@ -196,11 +196,11 @@ class BaseModel(object):
               '========================================' %
               (self.__y.mean(), sqrt(self.__y.var()), self.__y.max(), self.__y.min()))
 
-        bestmodel = dict(model=None, Cr2=np.inf, Crmse=np.inf)
+        bestmodel = dict(model=None, Cr2=np.inf, Crmse=np.inf, Ckappa=np.inf, Cba=np.inf, Ciap=np.inf)
         for param, md, di in zip(fitparams, maxdep, depindex):
-            var_kern_model = dict(model=None, Cr2=np.inf, Crmse=np.inf)
+            var_kern_model = bestmodel
             while True:
-                var_param_model = dict(model=None, Cr2=np.inf, Crmse=np.inf)
+                var_param_model = bestmodel
                 tmp = self.prepareparams(param)
                 for i in tmp:
                     fcount += 1
@@ -214,7 +214,7 @@ class BaseModel(object):
                     var_kern_model = var_param_model
                     tmp = {}
                     for i, j in var_kern_model['params'].items():
-                        if i == 'kernel':
+                        if i in ('kernel', 'probability'):
                             tmp[i] = j
                         elif di[i] < md and not param[i][j]:
                             tmp[i] = param[i]
@@ -252,7 +252,7 @@ class BaseModel(object):
                 ky_ad.append(fold.pop('y_ad'))
                 kx_ad.append(fold.pop('x_ad'))
 
-                if y_prob in fold:
+                if 'y_prob' in fold:
                     ky_prob.append(fold.pop('y_prob'))
 
                 fold.pop('y_test')

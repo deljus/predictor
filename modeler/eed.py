@@ -22,9 +22,8 @@
 from modeler.structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker
 from modeler.descriptoragregator import Propertyextractor
 from io import StringIO
-from CGRtools.SDFread import SDFread
-from CGRtools.SDFwrite import SDFwrite
-from CGRtools.RDFread import RDFread
+from CGRtools.SDFrw import SDFread, SDFwrite
+from CGRtools.RDFrw import RDFread
 from subprocess import Popen, PIPE
 from utils.config import EED
 import pandas as pd
@@ -42,7 +41,8 @@ class Eed(Propertyextractor):
                                           postprocess=cgr_marker_postprocess,
                                           stereo=cgr_stereo, reverse=cgr_reverse) if cgr_marker else None
 
-        self.__dragos_std = StandardizeDragos(standardize) if standardize and not self.__cgr_marker else None
+        self.__dragos_std = StandardizeDragos(standardize) \
+            if standardize is not None and not self.__cgr_marker else None
         self.__workpath = workpath
 
     def setworkpath(self, workpath):
@@ -52,7 +52,7 @@ class Eed(Propertyextractor):
 
     def get(self, structures, **kwargs):
         reader = RDFread(structures) if self.__cgr_marker else SDFread(structures)
-        data = list(reader.readdata())
+        data = list(reader.read())
         structures.seek(0)  # ad-hoc for rereading
 
         if self.__dragos_std:
@@ -74,7 +74,7 @@ class Eed(Propertyextractor):
 
         workfiles = [StringIO() for _ in range(self.__cgr_marker.getcount() if self.__cgr_marker
                                                else self.__dragos_marker.getcount() if self.__dragos_marker else 1)]
-        writers = [SDFwrite(x, flushmap=True) for x in workfiles]
+        writers = [SDFwrite(x, mark_to_map=True) for x in workfiles]
         tX, tD = [], []
         for s_numb, s in enumerate(data):
             if isinstance(s, list):
@@ -85,7 +85,7 @@ class Eed(Propertyextractor):
                         tmp.append(x[0])
                     doubles.append(tmp)
             else:
-                writers[0].writedata(s)
+                writers[0].write(s)
                 doubles.append(s_numb)
 
         for n, f in enumerate(workfiles):

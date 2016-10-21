@@ -27,10 +27,9 @@ import numpy as np
 import pandas as pd
 from functools import reduce
 from modeler.structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker, Colorize
-from CGRtools.CGRcore import CGRcore
-from CGRtools.SDFread import SDFread
-from CGRtools.SDFwrite import SDFwrite
-from CGRtools.RDFread import RDFread
+from CGRtools.CGRpreparer import cgr_combo
+from CGRtools.SDFrw import SDFread, SDFwrite
+from CGRtools.RDFrw import RDFread
 from sklearn.feature_extraction import DictVectorizer
 from utils.config import FRAGMENTOR
 
@@ -67,26 +66,26 @@ class Fragmentor(object):
     def __init__(self, workpath='.', version=None, s_option=None, fragment_type=3, min_length=2, max_length=10,
                  colorname=None, marked_atom=0, cgr_dynbonds=0, xml=None, doallways=False, useformalcharge=False,
                  atompairs=False, fragmentstrict=False, getatomfragment=False, overwrite=True, headers=None,
-                 marker_rules=None, standardize=None,
+                 marker_rules=None, standardize=None, docolor=None,
                  cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None, cgr_reverse=False,
-                 cgr_type=None, cgr_stereo=False, cgr_balance=0, cgr_b_templates=None,
-                 cgr_e_rules=None, cgr_c_rules=None, docolor=None):
+                 cgr_type=None, cgr_extralabels=False, cgr_b_templates=None, cgr_m_templates=None, cgr_speed=None,
+                 cgr_isotop=False, cgr_element=True, cgr_deep=0, cgr_stereo=False):
 
         self.__prepocess = any(x is not None for x in (marker_rules, standardize, cgr_type, cgr_marker, docolor))
 
         self.__dragos_marker = Pharmacophoreatommarker(marker_rules, workpath) if marker_rules else None
 
-        self.__cgr = CGRcore(type=cgr_type, stereo=cgr_stereo, balance=int(cgr_balance),
-                             b_templates=open(cgr_b_templates) if cgr_b_templates else None,
-                             e_rules=open(cgr_e_rules) if cgr_e_rules else None,
-                             c_rules=open(cgr_c_rules) if cgr_c_rules else None) if cgr_type is not None else None
+        self.__cgr = cgr_combo(cgr_type=cgr_type, extralabels=cgr_extralabels, b_templates=cgr_b_templates,
+                               m_templates=cgr_m_templates, speed=cgr_speed,
+                               isotop=cgr_isotop, element=cgr_element, deep=cgr_deep, stereo=cgr_stereo) \
+            if cgr_type else None
 
         self.__cgr_marker = CGRatommarker(cgr_marker, prepare=cgr_marker_prepare,
                                           postprocess=cgr_marker_postprocess,
                                           stereo=cgr_stereo, reverse=cgr_reverse) if cgr_marker else None
 
-        self.__dragos_std = StandardizeDragos(standardize) if standardize and not (self.__cgr or
-                                                                                   self.__cgr_marker) else None
+        self.__dragos_std = StandardizeDragos(standardize) \
+            if standardize is not None and not (self.__cgr or self.__cgr_marker) else None
         self.__do_color = Colorize(docolor, workpath) if docolor else None
 
         self.__sparse = DictVectorizer(sparse=False)
@@ -161,7 +160,7 @@ class Fragmentor(object):
             with openFiles(workfiles, ['w'] * len(workfiles)) as f:
                 writers = [SDFwrite(x) for x in f]
                 reader = RDFread(structures) if self.__cgr or self.__cgr_marker else SDFread(structures)
-                data = list(reader.readdata())
+                data = list(reader.read())
                 if self.__dragos_std:
                     data = self.__dragos_std.get(data)
 
@@ -206,7 +205,7 @@ class Fragmentor(object):
                                 tmp.append(x[0])
                             doubles.append(tmp)
                     else:
-                        writers[0].writedata(s)
+                        writers[0].write(s)
                         doubles.append(s_numb)
 
         else:

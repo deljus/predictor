@@ -24,8 +24,8 @@ import sys
 import operator
 import pandas as pd
 import numpy as np
-from CGRtools.SDFread import SDFread
-from CGRtools.RDFread import RDFread
+from CGRtools.SDFrw import SDFread
+from CGRtools.RDFrw import RDFread
 
 
 class Descriptorchain(object):
@@ -85,7 +85,7 @@ class Propertyextractor(object):
     def get_property(self, structures):
         reader = RDFread(structures) if self.__isreaction else SDFread(structures)
         data = []
-        for i in reader.readdata():
+        for i in reader.read():
             meta = i['meta'] if self.__isreaction else i.graph['meta']
             prop = meta.get(self.__name)
             data.append(float(prop) if prop else np.NaN)
@@ -134,7 +134,7 @@ class Descriptorsdict(object):
         """
         extblock = []
         reader = RDFread(structures) if self.__isreaction else SDFread(structures)
-        for i in reader.readdata():
+        for i in reader.read():
             meta = i['meta'] if self.__isreaction else i.graph['meta']
             tmp = []
             for key, value in meta.items():
