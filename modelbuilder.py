@@ -27,9 +27,10 @@ import sys
 import tempfile
 import threading
 import time
+from functools import partial
 from CGRtools.CGRcore import CGRcore
 from CGRtools.FEAR import FEAR
-from CGRtools.RDFread import RDFread
+from CGRtools.RDFrw import RDFread
 from copy import deepcopy
 from itertools import product, cycle
 from modeler.cxcalc import Pkab
@@ -43,7 +44,7 @@ from utils.config import GACONF
 
 class DefaultList(list):
     @staticmethod
-    def __copy__():
+    def __copy__(*_):
         return []
 
 
@@ -58,13 +59,6 @@ def descstarter(func, in_file, out_file, fformat, header):
     return True
 
 
-def descgenwrapper(dgen, kwargs):
-    def f():
-        return dgen(**kwargs)
-
-    return f
-
-
 class Modelbuilder(MBparser):
     def __init__(self, **kwargs):
         self.__options = kwargs
@@ -73,18 +67,18 @@ class Modelbuilder(MBparser):
         """
         descgenerator = {}
         if self.__options['fragments']:
-            descgenerator['F'] = [descgenwrapper(Fragmentor, x)
+            descgenerator['F'] = [partial(Fragmentor, **x)
                                   for x in self.parsefragmentoropts(self.__options['fragments'])]
 
         if self.__options['extention']:
-            descgenerator['E'] = [descgenwrapper(Descriptorsdict, dict(data=self.parseext(self.__options['extention']),
-                                                                       isreaction=self.__options['isreaction']))]
+            descgenerator['E'] = [partial(Descriptorsdict, data=self.parseext(self.__options['extention']),
+                                          isreaction=self.__options['isreaction'])]
 
         if self.__options['eed']:
-            descgenerator['D'] = [descgenwrapper(Eed, x) for x in self.parsefragmentoropts(self.__options['eed'])]
+            descgenerator['D'] = [partial(Eed, **x) for x in self.parsefragmentoropts(self.__options['eed'])]
 
         if self.__options['pka']:
-            descgenerator['P'] = [descgenwrapper(Pkab, x) for x in self.parsefragmentoropts(self.__options['pka'])]
+            descgenerator['P'] = [partial(Pkab, **x) for x in self.parsefragmentoropts(self.__options['pka'])]
 
         if self.__options['chains']:
             if self.__options['ad'] and len(self.__options['ad']) != len(self.__options['chains']):
@@ -180,11 +174,11 @@ class Modelbuilder(MBparser):
             self.__gendesc(self.__options['output'], fformat=self.__options['format'], header=True)
 
     def fit(self, ests, description):
-        models = [g(x, y.values(), open(self.__options['input']), parsesdf=True,
+        models = [g(x, list(y.values()), open(self.__options['input']), parsesdf=True,
                     dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
                     scorers=self.__options['scorers'],
                     n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
-                    smartcv=self.__options['smartcv'], rep_boost=self.__options['rep_boost'],
+                    rep_boost=self.__options['rep_boost'],
                     repetitions=self.__options['repetition'],
                     normalize='scale' in y or self.__options['normalize']) for g, e in ests
                   for x, y in zip(self.__descgens, e)]
@@ -199,15 +193,13 @@ class Modelbuilder(MBparser):
         pickle.dump(dict(models=models, config=description),
                     gzip.open(self.__options['model'], 'wb'))
 
-    def __gethashes(self, inputfile, stereo=False, b_templates=None, e_rules=None, c_rules=None):
+    def __gethashes(self, inputfile, extralabels=False, stereo=False):
         hashes = set()
-        _cgr = CGRcore(type='0', stereo=stereo, balance=0,
-                       b_templates=open(b_templates) if b_templates else None,
-                       e_rules=open(e_rules) if e_rules else None,
-                       c_rules=open(c_rules) if c_rules else None)
-        _fear = FEAR(isotop=False, stereo=False, hyb=False, element=True, deep=0)
+        _cgr = CGRcore(cgr_type='0', extralabels=extralabels)
+        _fear = FEAR(isotop=False, stereo=stereo, hyb=extralabels)
+
         with open(inputfile) as f:
-            for num, data in enumerate(RDFread(f).readdata(), start=1):
+            for num, data in enumerate(RDFread(f).read(), start=1):
                 if num % 100 == 1:
                     print("reaction: %d" % num, file=sys.stderr)
                 g = _cgr.getCGR(data)

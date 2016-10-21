@@ -65,7 +65,7 @@ def pairwise(iterable):
 class Fragmentor(object):
     def __init__(self, workpath='.', version=None, s_option=None, fragment_type=3, min_length=2, max_length=10,
                  colorname=None, marked_atom=0, cgr_dynbonds=0, xml=None, doallways=False, useformalcharge=False,
-                 atompairs=False, fragmentstrict=False, getatomfragment=False, overwrite=True, headers=None,
+                 atompairs=False, fragmentstrict=False, getatomfragment=False, overwrite=True, header=None,
                  marker_rules=None, standardize=None, docolor=None,
                  cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None, cgr_reverse=False,
                  cgr_type=None, cgr_extralabels=False, cgr_b_templates=None, cgr_m_templates=None, cgr_speed=None,
@@ -99,11 +99,13 @@ class Fragmentor(object):
         self.__fragversion = ('-%s' % version) if version else ''
         tmp = ['-f', 'SVM']
         if s_option: tmp.extend(['-s', s_option])
-        if headers and all(os.path.exists(x) for x in headers):
-            self.__genheader = False
-            for n, header in enumerate(headers):
-                self.__dumpheader(n, header)
-            tmp.extend(['-h', ''])
+        if header:
+            headers = header if isinstance(header, list) else [header]
+            if all(os.path.exists(x) for x in headers):
+                self.__genheader = False
+                for n, header in enumerate(headers):
+                    self.__dumpheader(n, header)
+                tmp.extend(['-h', ''])
         else:
             self.__genheader = True
 
