@@ -144,7 +144,11 @@ class MBparser(object):
                     key, value = (x.strip() for x in x.split('='))
                     value = True if value == 'True' else False if value == 'False' else value
                     if key in ['header']:
-                        tmp[key] = [x.strip() for x in value.split('|')]
+                        tmp[key] = [open(x.strip(), encoding='utf-8') for x in value.split('|')]
+                    elif key in ('marker_rules', 'standardize', 'docolor',
+                                 'cgr_marker', 'cgr_marker_prepare', 'cgr_marker_postprocess',
+                                 'cgr_b_templates', 'cgr_m_templates'):
+                        tmp[key] = open(value)
                     else:
                         tmp[key] = value
                 params.append(tmp)

@@ -128,7 +128,7 @@ class Fragmentor(object):
         return '%s%s' % (FRAGMENTOR, self.__fragversion)
 
     def __dumpheader(self, n, header):
-        with open(header, encoding='utf-8') as f:
+        with header as f:
             self.__headdump[n] = f.read()
             lines = self.__headdump[n].splitlines()
             self.__headsize[n] = len(lines)
