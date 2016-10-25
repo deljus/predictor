@@ -23,12 +23,18 @@
 import numpy as np
 
 
-def tanimoto_kernel(X, Y):
+def tanimoto_kernel(x, y):
     """ tanimoto coeff.
     """
-    Xdot = np.dot(X, X.T)
-    diag = Xdot.diagonal()
-    diagTD = np.tensordot(diag, np.ones_like(diag), axes=0)
-    result = Xdot / (diagTD + diagTD.T - Xdot)
-    result[np.isnan(result)] = 1
+    x_dot = np.dot(x, y.T)
+
+    x2 = (x**2).sum(axis=1)
+    y2 = (y**2).sum(axis=1)
+
+    len_x2 = len(x2)
+    len_y2 = len(y2)
+
+    result = x_dot / (np.array([x2] * len_y2).T + np.array([y2] * len_x2) - x_dot)
+    result[np.isnan(result)] = 0
+
     return result

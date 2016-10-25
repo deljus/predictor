@@ -50,7 +50,7 @@ class Descriptorchain(object):
         :param structures: opened structure file or stringio
         :param kwargs: generators specific arguments
         :return: dict(X=DataFrame, AD=Series, Y=Series, BOX=Series)
-        >>> from modeler.fragmentor import Fragmentor
+        >>> from MODtools.fragmentor import Fragmentor
         >>> f = Fragmentor(workpath='tests',version='last', s_option='shift', fragment_type=1, min_length=2, max_length=11, \
         marked_atom=3, marker_rules='tests/test.xml')
         >>> d = Descriptorsdict({'CdId': None, 'Formula': {'key': pd.Series(['H3O4P']), \

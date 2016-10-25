@@ -18,7 +18,7 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from modeler.basemodeler import BaseModel
+from MODtools.basemodeler import BaseModel
 from itertools import product
 from sklearn.svm import SVR, SVC
 

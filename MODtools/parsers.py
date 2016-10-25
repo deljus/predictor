@@ -21,7 +21,7 @@
 #  MA 02110-1301, USA.
 #
 import pandas as pd
-from modeler.kernels import tanimoto_kernel
+from MODtools.kernels import tanimoto_kernel
 
 
 class MBparser(object):

@@ -23,7 +23,7 @@ import os
 from utils.utils import chemaxpost
 import pickle
 import gzip
-from modeler.consensus import ConsensusDragos
+from MODtools.consensus import ConsensusDragos
 
 
 class Model(ConsensusDragos):

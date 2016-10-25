@@ -20,8 +20,8 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from modeler.structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker
-from modeler.descriptoragregator import Propertyextractor
+from MODtools.structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker
+from MODtools.descriptoragregator import Propertyextractor
 from io import StringIO
 from CGRtools.SDFrw import SDFread, SDFwrite
 from CGRtools.RDFrw import RDFread

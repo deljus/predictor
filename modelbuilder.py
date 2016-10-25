@@ -33,12 +33,12 @@ from CGRtools.FEAR import FEAR
 from CGRtools.RDFrw import RDFread
 from copy import deepcopy
 from itertools import product, cycle
-from modeler.cxcalc import Pkab
-from modeler.descriptoragregator import Descriptorsdict, Descriptorchain
-from modeler.eed import Eed
-from modeler.fragmentor import Fragmentor
-from modeler.parsers import MBparser
-from modeler.svmodel import SVModel
+from MODtools.cxcalc import Pkab
+from MODtools.descriptoragregator import Descriptorsdict, Descriptorchain
+from MODtools.eed import Eed
+from MODtools.fragmentor import Fragmentor
+from MODtools.parsers import MBparser
+from MODtools.svmodel import SVModel
 from utils.config import GACONF
 
 

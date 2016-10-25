@@ -26,8 +26,8 @@ import sys
 import numpy as np
 import pandas as pd
 from functools import reduce
-from modeler.structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker, Colorize
-from CGRtools.CGRpreparer import cgr_combo
+from MODtools.structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker, Colorize
+from CGRtools.CGRpreparer import CGRcombo
 from CGRtools.SDFrw import SDFread, SDFwrite
 from CGRtools.RDFrw import RDFread
 from sklearn.feature_extraction import DictVectorizer
@@ -75,10 +75,10 @@ class Fragmentor(object):
 
         self.__dragos_marker = Pharmacophoreatommarker(marker_rules, workpath) if marker_rules else None
 
-        self.__cgr = cgr_combo(cgr_type=cgr_type, extralabels=cgr_extralabels, b_templates=cgr_b_templates,
-                               m_templates=cgr_m_templates, speed=cgr_speed,
-                               isotop=cgr_isotop, element=cgr_element, deep=cgr_deep, stereo=cgr_stereo) \
-            if cgr_type else None
+        self.__cgr = CGRcombo(cgr_type=cgr_type, extralabels=cgr_extralabels,
+                              isotop=cgr_isotop, element=cgr_element, deep=cgr_deep, stereo=cgr_stereo,
+                              b_templates=cgr_b_templates, m_templates=cgr_m_templates,
+                              speed=cgr_speed) if cgr_type else None
 
         self.__cgr_marker = CGRatommarker(cgr_marker, prepare=cgr_marker_prepare,
                                           postprocess=cgr_marker_postprocess,
@@ -231,7 +231,7 @@ class Fragmentor(object):
 
             if exitcode and os.path.exists(outputfile + '.svm') and os.path.exists(outputfile + '.hdr'):
                 if self.__genheader:  # dump header if don't set on first run
-                    self.__dumpheader(n, outputfile + '.hdr')
+                    self.__dumpheader(n, open(outputfile + '.hdr', encoding='utf-8'))
                     if n + 1 == len(workfiles):  # disable header generation
                         self.__genheader = False
                         self.__execparams.insert(self.__execparams.index('-t'), '-h')
