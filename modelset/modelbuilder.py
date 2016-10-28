@@ -18,44 +18,47 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+import hashlib
 import json
 import os
 from utils.utils import chemaxpost
-import pickle
+import dill
 import gzip
 from MODtools.consensus import ConsensusDragos
 
 
 class Model(ConsensusDragos):
-    def __init__(self, workpath, file):
-        tmp = pickle.load(gzip.open(file, 'rb'))
+    def __init__(self, file):
+        tmp = dill.load(gzip.open(file, 'rb'))
         self.__models = tmp['models']
         self.__conf = tmp['config']
-        self.__workpath = workpath
+        self.__workpath = '.'
 
         self.Nlim = self.__conf.get('nlim', 1)
         self.TOL = self.__conf.get('tol', 1e10)
+        self.unit = self.__conf.get('report_units')
 
         ConsensusDragos.__init__(self)
 
-        self.__unit = self.__conf.get('report_units', None)
+    def get_example(self):
+        return self.__conf.get('example')
 
-    def getexample(self):
-        return self.__conf.get('example', ' ')
+    def get_desc(self):
+        return self.__conf.get('desc')
 
-    def getdesc(self):
-        return self.__conf.get('desc', 'no description')
+    def get_name(self):
+        return self.__conf.get('name')
 
-    def getname(self):
-        return self.__conf.get('name', 'no name')
+    def get_hashes(self):
+        return self.__conf.get('hashes')
 
-    def is_reation(self):
-        return 1 if self.__conf.get('is_reaction', False) else 0
+    def get_type(self):
+        return self.__conf.get('type')
 
-    def gethashes(self):
-        return self.__conf.get('hashes', [])
+    def setworkpath(self, workpath):
+        self.__workpath = workpath
 
-    def getresult(self, chemical):
+    def get_results(self, structures):
         structure = chemical['structure']
         solvents = chemical['solvents'][0]['name'] if chemical['solvents'] else 'Water'
         # [dict(id=y.solvent.id, name=y.solvent.name, amount=y.amount)]
@@ -77,22 +80,53 @@ class Model(ConsensusDragos):
                                      (x for x in pred['domain'].loc[0, :])):
                         self.cumulate(P, AD)
 
-                return res + self.report(units=self.__unit)
+                return res + self.report()
             else:
                 return False
         else:
             return False
 
 
-def get_models():
-    script_path = os.path.join(os.path.dirname(__file__), 'modelbuilder')
-    files = os.listdir(script_path)
-    models = []
-    for m in (os.path.join(script_path, f) for f in files if os.path.splitext(f)[1] == '.model'):
-        try:
-            model = Model('/tmp', m)
-            print('model name:', model.getname())
-            models.append((model.getname(), Model, m))
-        except:
-            pass
-    return models
+class ModelLoader(object):
+    def __init__(self):
+        self.__models_path = os.path.join(os.path.dirname(__file__), 'modelbuilder')
+
+        self.__cache_path = os.path.join(self.__models_path, '.cache')
+        self.__cache = self.__scan_models()
+
+    @staticmethod
+    def __md5(name):
+        hash_md5 = hashlib.md5()
+        with open(name, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
+
+    def __scan_models(self):
+        hashes = {x['hash']: x for x in (dill.load(open(self.__cache_path, 'rb'))
+                                         if os.path.exists(self.__cache_path) else {}).values()}
+        cache = {}
+        for file in (os.path.join(self.__models_path, f) for f in os.listdir(self.__models_path)
+                     if os.path.splitext(f)[-1] == '.model'):
+            m_hash = self.__md5(file)
+            if m_hash not in hashes:
+                try:
+                    model = Model(file)
+                    print('model name:', model.get_name())
+                    cache[model.get_name()] = dict(file=file, hash=m_hash, example=model.get_example(),
+                                                   desc=model.get_desc(), hashes=model.get_hashes(),
+                                                   type=model.get_type(), name=model.get_name())
+                except:
+                    pass
+            else:
+                cache[hashes[m_hash]['name']] = hashes[m_hash]
+
+        dill.dump(cache, open(self.__cache_path, 'wb'))
+        return cache
+
+    def load_model(self, name):
+        if name in self.__cache:
+            return Model(self.__cache[name]['file'])
+
+    def get_models(self):
+        return list(self.__cache.values())

@@ -33,7 +33,7 @@ class ConsensusDragos(object):
             self.__INlist.append(P)
         self.__ALLlist.append(P)
 
-    def report(self, units=None):
+    def report(self):
         if not self.__ALLlist:
             return False  # break if all models fails to predict
 
@@ -72,7 +72,8 @@ class ConsensusDragos(object):
             self.__TRUST -= int(proportion)
             reason.append(self.__errors['stp'] % (proportion * 100 - 100))
 
-        result.append(dict(type='text', attrib='predicted value ± sigma%s' % (' (%s)' % units if units else ''),
+        result.append(dict(type='text',
+                           attrib='predicted value ± sigma%s' % (' (%s)' % self.units if self.units else ''),
                            value='%.2f ± %.2f' % (Pavg, sigma)))
         result.append(dict(type='text', attrib='prediction trust', value=self.__trustdesc.get(self.__TRUST, 'None')))
         if reason:

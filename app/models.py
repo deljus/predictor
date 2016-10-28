@@ -87,8 +87,8 @@ class Results(db.Entity):
 
 class Models(db.Entity):
     id = PrimaryKey(int, auto=True)
-    name = Required(str)
-    description = Required(str)
+    name = Required(str, unique=True)
+    description = Optional(str)
     example = Optional(str)
     destinations = Set("Destinations")
     model_type = Required(int, default=0)  # нечетные для реакций, четные для молекул и 0 для подготовки.
