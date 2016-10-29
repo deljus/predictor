@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2015 Ramil Nugmanov <stsouko@live.ru>
+# Copyright 2015, 2016 Ramil Nugmanov <stsouko@live.ru>
 # This file is part of PREDICTOR.
 #
 # PREDICTOR is free software; you can redistribute it and/or modify
@@ -22,11 +22,27 @@ import os
 import pkgutil
 
 
-def set_to_cache(name, model, init=None):
-    MODELS[name] = (model, init)
+class ModelSet(object):
+    def __init__(self):
+        self.__models = self.__scan_models()
 
+    @staticmethod
+    def __scan_models():
+        models = {}
+        for mloader, pname, ispkg in pkgutil.iter_modules([os.path.dirname(__file__)]):
+            if not ispkg:
+                try:
+                    model_loader = mloader.find_module(pname).load_module().ModelLoader()
+                    for x in model_loader.get_models():
+                        models[x['name']] = (mloader, pname, x)
+                except:
+                    pass
+        return models
 
-def get_model(model_name):
-    for mloader, pname, ispkg in pkgutil.iter_modules([os.path.dirname(__file__)]):
-        if not ispkg:
-            model = mloader.find_module(pname).load_module().Model()
+    def load_model(self, name):
+        if name in self.__models:
+            mloader, pname, _ = self.__models[name]
+            return mloader.find_module(pname).load_module().ModelLoader().load_model(name)
+
+    def get_models(self):
+        return [x for *_, x in self.__models.values()]

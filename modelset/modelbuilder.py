@@ -88,11 +88,11 @@ class Model(ConsensusDragos):
 
 
 class ModelLoader(object):
-    def __init__(self):
+    def __init__(self, skip_md5=True):
+        self.__skip_md5 = skip_md5
         self.__models_path = os.path.join(os.path.dirname(__file__), 'modelbuilder')
-
         self.__cache_path = os.path.join(self.__models_path, '.cache')
-        self.__cache = self.__scan_models()
+        self.__models = self.__scan_models()
 
     @staticmethod
     def __md5(name):
@@ -103,30 +103,31 @@ class ModelLoader(object):
         return hash_md5.hexdigest()
 
     def __scan_models(self):
-        hashes = {x['hash']: x for x in (dill.load(open(self.__cache_path, 'rb'))
-                                         if os.path.exists(self.__cache_path) else {}).values()}
+        files = {x['file']: x for x in
+                 dill.load(open(self.__cache_path, 'rb'))} if os.path.exists(self.__cache_path) else {}
         cache = {}
         for file in (os.path.join(self.__models_path, f) for f in os.listdir(self.__models_path)
                      if os.path.splitext(f)[-1] == '.model'):
-            m_hash = self.__md5(file)
-            if m_hash not in hashes:
+
+            if file not in files or files[file]['size'] != os.path.getsize(file) or \
+                            not self.__skip_md5 and self.__md5(file) != files[file]['hash']:
                 try:
                     model = Model(file)
-                    print('model name:', model.get_name())
-                    cache[model.get_name()] = dict(file=file, hash=m_hash, example=model.get_example(),
+                    cache[model.get_name()] = dict(file=file, hash=self.__md5(file), example=model.get_example(),
                                                    desc=model.get_desc(), hashes=model.get_hashes(),
+                                                   size=os.path.getsize(file),
                                                    type=model.get_type(), name=model.get_name())
                 except:
                     pass
             else:
-                cache[hashes[m_hash]['name']] = hashes[m_hash]
+                cache[files[file]['name']] = files[file]
 
-        dill.dump(cache, open(self.__cache_path, 'wb'))
+        dill.dump(list(cache.values()), open(self.__cache_path, 'wb'))
         return cache
 
     def load_model(self, name):
-        if name in self.__cache:
-            return Model(self.__cache[name]['file'])
+        if name in self.__models:
+            return Model(self.__models[name]['file'])
 
     def get_models(self):
-        return list(self.__cache.values())
+        return list(self.__models.values())

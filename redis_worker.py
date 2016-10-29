@@ -1,10 +1,13 @@
 from app.config import StructureStatus
+from modelset import ModelSet
 
 
 def run(structures=None, model=None, structuresfile=None):
-    for s in structures:
+    models = ModelSet()
+    mod = models.load_model(model['name'])
+    results = mod.get_results(structures)
+    for s in structures: # todo: implement
         s['models'] = [model]
-        s['is_reaction'] = False
         s['status'] = StructureStatus.CLEAR
     return structures
 
