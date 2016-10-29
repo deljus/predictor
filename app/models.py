@@ -21,9 +21,12 @@
 #
 import bcrypt
 import hashlib
-from app.config import DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER
+from app.config import (DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER,
+                        TaskType, ModelType, AdditiveType, ResultType, StructureType, StructureStatus)
+from enum import Enum
 from datetime import datetime
 from pony.orm import Database, sql_debug, PrimaryKey, Required, Optional, Set
+from pony.orm.dbapiprovider import IntConverter
 
 
 if DEBUG:
@@ -33,6 +36,21 @@ else:
     db = Database('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST, database=DB_NAME)
 
 
+class EnumConverter(IntConverter):
+    def validate(self, val):
+        if not isinstance(val, Enum):
+            raise ValueError('Must be an Enum.  Got {}'.format(type(val)))
+        return val
+
+    def py2sql(self, val):
+        return val.value
+
+    def sql2py(self, val):
+        return self.py_type(val)
+
+db.provider.converter_classes.append((Enum, EnumConverter))
+
+
 class Users(db.Entity):
     id = PrimaryKey(int, auto=True)
     email = Required(str, unique=True)
@@ -40,6 +58,11 @@ class Users(db.Entity):
     active = Required(bool, default=True)
     token = Required(str)
     tasks = Set("Tasks")
+
+    def __init__(self, email, password):
+        self.email = email
+        self.password = self.hash_password(password)
+        self.token = self.gen_token(email, password)
 
     @staticmethod
     def hash_password(password):
@@ -58,19 +81,19 @@ class Tasks(db.Entity):
     user = Optional(Users)
     structures = Set("Structures")
     date = Required(datetime, default=datetime.now())
-    task_type = Required(int, default=0)  # 0 - common models, 1,2,... - searches
+    task_type = Required(TaskType, default=TaskType.MODELING)
 
 
 class Structures(db.Entity):
     id = PrimaryKey(int, auto=True)
     structure = Optional(str)
-    isreaction = Required(bool, default=False)
+    structure_type = Required(StructureType, default=StructureType.MOLECULE)
     temperature = Optional(float)
     pressure = Optional(float)
-    additives = Set("Additiveset")
+    additives = Set("Additivesets")
 
     task = Required(Tasks)
-    status = Required(int, default=0)
+    status = Required(StructureStatus, default=StructureStatus.CLEAR)
     results = Set("Results")
     models = Set("Models")
 
@@ -82,7 +105,7 @@ class Results(db.Entity):
 
     attrib = Required(str)
     value = Required(str)
-    type = Required(int)
+    type = Required(ResultType)
 
 
 class Models(db.Entity):
@@ -91,7 +114,7 @@ class Models(db.Entity):
     description = Optional(str)
     example = Optional(str)
     destinations = Set("Destinations")
-    model_type = Required(int, default=0)  # нечетные для реакций, четные для молекул и 0 для подготовки.
+    model_type = Required(ModelType, default=ModelType.MOLECULE_MODELING)
 
     structures = Set(Structures)
     results = Set(Results)
@@ -110,11 +133,11 @@ class Additives(db.Entity):
     id = PrimaryKey(int, auto=True)
     structure = Optional(str)
     name = Required(str, unique=True)
-    type = Required(int, default=0)
-    additivesets = Set("Additiveset")
+    additive_type = Required(AdditiveType, default=AdditiveType.SOLVENT)
+    additivesets = Set("Additivesets")
 
 
-class Additiveset(db.Entity):
+class Additivesets(db.Entity):
     amount = Required(float, default=1)
     additive = Required(Additives)
     structure = Required(Structures)

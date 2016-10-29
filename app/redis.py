@@ -86,14 +86,16 @@ class RedisCombiner(object):
             task['structures'] = tmp
             new_job = ((w, {'structures': s, 'model': m})
                        for (w, m), s in ((model_worker[m], s) for m, s in model_struct.items()))
+        try:
+            jobs = [(dest, w.enqueue_call('redis_worker.run', kwargs=d, result_ttl=self.__result_ttl).id)
+                    for (dest, w), d in new_job]
 
-        jobs = [(dest, w.enqueue_call('redis_worker.run', kwargs=d, result_ttl=self.__result_ttl).id)
-                for (dest, w), d in new_job]
+            task['jobs'] = jobs
+            task['status'] = TaskStatus.DONE if task['status'] == TaskStatus.MODELING else TaskStatus.PREPARED
 
-        task['jobs'] = jobs
-        task['status'] = TaskStatus.DONE if task['status'] == TaskStatus.MODELING else TaskStatus.PREPARED
-
-        return queue.enqueue_call('redis_worker.combiner', args=(task,), result_ttl=self.__result_ttl)
+            return queue.enqueue_call('redis_worker.combiner', args=(task,), result_ttl=self.__result_ttl)
+        except:
+            return None
 
     def fetch_job(self, task):  # potentially cachable
         queue = self.__get_queue(self.__tasks)

@@ -58,6 +58,11 @@ class StructureStatus(Enum):
     CLEAR = 2
 
 
+class StructureType(Enum):
+    MOLECULE = 0
+    REACTION = 1
+
+
 class TaskStatus(Enum):
     NEW = 0
     PREPARING = 1
@@ -68,18 +73,36 @@ class TaskStatus(Enum):
 
 class ModelType(Enum):
     PREPARER = 0
-    REACTION = 1
-    MOLECULE = 2
+    MOLECULE_MODELING = 1
+    REACTION_MODELING = 2
+    MOLECULE_SIMILARITY = 3
+    REACTION_SIMILARITY = 4
+    MOLECULE_SUBSTRUCTURE = 5
+    REACTION_SUBSTRUCTURE = 6
 
-    def is_reaction(self):
-        return self == self.REACTION
+    @staticmethod
+    def select(structure_type, task_type):
+        return ModelType['%s_%s' % (structure_type.name, task_type.name)]
+
+    def compatible(self, structure_type, task_type):
+        return self.name == '%s_%s' % (structure_type.name, task_type.name)
 
 
 class TaskType(Enum):
     MODELING = 0
-    NOT_IMPLEMENTED = 1
+    SIMILARITY = 1
+    SUBSTRUCTURE = 2
 
 
 class AdditiveType(Enum):
     SOLVENT = 0
     CATALYST = 1
+
+
+class ResultType(Enum):
+    TEXT = 0
+    STRUCTURE = 1
+    TABLE = 2
+    IMAGE = 3
+    GRAPH = 4
+    GTM = 5

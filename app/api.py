@@ -20,8 +20,8 @@
 #
 import uuid
 import os
-from app.config import UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, AdditiveType
-from app.models import Tasks, Structures, Additives, Models, Additiveset
+from app.config import UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, StructureType
+from app.models import Tasks, Structures, Additives, Models, Additivesets
 from app.redis import RedisCombiner
 from flask import Blueprint
 from flask_login import current_user
@@ -43,23 +43,23 @@ taskstructurefields = dict(structure=fields.Integer, data=fields.String, tempera
                            models=fields.List(fields.Integer))
 
 
-def get_preparer_model():
+def get_model(_type):
     with db_session:
-        return next(dict(model=m.id, name=m.name, description=m.description, type=ModelType(m.model_type),
+        return next(dict(model=m.id, name=m.name, description=m.description, type=m.model_type,
                          destinations=[dict(host=x.host, port=x.port, password=x.password, name=x.name)
                                        for x in m.destinations])
-                    for m in select(m for m in Models if m.model_type == ModelType.PREPARER.value))
+                    for m in select(m for m in Models if m.model_type == _type))
 
 
 def get_additives():
     with db_session:
-        return {a.id: dict(additive=a.id, name=a.name, structure=a.structure, type=AdditiveType(a.type))
+        return {a.id: dict(additive=a.id, name=a.name, structure=a.structure, type=a.additive_type)
                 for a in select(a for a in Additives)}
 
 
-def get_models():
+def get_models_list():
     with db_session:
-        return {m.id: dict(model=m.id, name=m.name, description=m.description, type=ModelType(m.model_type),
+        return {m.id: dict(model=m.id, name=m.name, description=m.description, type=m.model_type,
                            destinations=[dict(host=x.host, port=x.port, password=x.password, name=x.name)
                                          for x in m.destinations])
                 for m in select(m for m in Models)}
@@ -171,7 +171,7 @@ class ResultsTask(CResource):
                 _structure = Structures(structure=s['data'], isreaction=s['is_reaction'], temperature=s['temperature'],
                                         pressure=s['pressure'], status=s['status'])
                 for a in s['additives']:
-                    Additiveset(additive=Additives[a['additive']], structure=_structure, amount=a['amount'])
+                    Additivesets(additive=Additives[a['additive']], structure=_structure, amount=a['amount'])
 
                 # todo: save results
 
@@ -190,7 +190,12 @@ class StartTask(CResource):
 
     def post(self, task):
         result = fetchtask(task, TaskStatus.PREPARED)[0]
+        if result['type'] != TaskType.MODELING:
+            for s in result['structures']:
+                s['models'] = [get_model(ModelType.select(s['type'], result['type']))]
+
         result['status'] = TaskStatus.MODELING
+
         newjob = redis.new_job(result)
         return dict(task=newjob.id, status=result['status'].value, type=result['type'].value,
                     date=newjob.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=result['user'])
@@ -212,12 +217,12 @@ class PrepareTask(CResource):
         result = fetchtask(task, TaskStatus.PREPARED)[0]
 
         additives = get_additives()
-        models = get_models()
-        preparer = get_preparer_model()
+        models = get_models_list()
+        preparer = get_model(ModelType.PREPARER)
 
         prepared = {}
         for s in result['structures']:
-            if s['status'] == StructureStatus.RAW:  # for raw structures restore preparer if failed
+            if s['status'] == StructureStatus.RAW:  # for raw structures restore preparer
                 s['models'] = [preparer]
             prepared[s['structure']] = s
 
@@ -241,7 +246,8 @@ class PrepareTask(CResource):
                 if result['type'] == TaskType.MODELING and d['models'] is not None and \
                         not d['data'] and prepared[s]['status'] == StructureStatus.CLEAR:
                     prepared[s]['models'] = [models[m] for m in d['models']
-                                             if m in models and prepared[s]['is_reaction'] == models[m]['type'] % 2]
+                                             if m in models and
+                                             models[m]['type'].compatible(prepared[s]['type'], result['type'])]
 
                 if d['data']:
                     prepared[s]['data'] = d['data']
@@ -286,7 +292,7 @@ class CreateTask(CResource):
 
         additives = get_additives()
 
-        preparer = get_preparer_model()
+        preparer = get_model(ModelType.PREPARER)
         structures = args['structures'] if isinstance(args['structures'], list) else [args['structures']]
 
         data = []
@@ -298,8 +304,9 @@ class CreateTask(CResource):
                         a.update(additives[a['additive']])
                         alist.append(a)
 
-                data.append(dict(structure=s, data=d['data'], status=StructureStatus.RAW, pressure=d['pressure'],
-                                 temperature=d['temperature'], additives=alist, models=[preparer]))
+                data.append(dict(structure=s, data=d['data'], status=StructureStatus.RAW, type=StructureType.MOLECULE,
+                                 pressure=d['pressure'], temperature=d['temperature'],
+                                 additives=alist, models=[preparer]))
 
         if not data:
             return dict(message=dict(structures='invalid data')), 415
@@ -339,7 +346,7 @@ class UploadTask(CResource):
         file_url = os.path.basename(file_path)
 
         new_job = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id,
-                                     structuresfile=dict(url=file_url, model=get_preparer_model())))
+                                     structuresfile=dict(url=file_url, model=get_model(ModelType.PREPARER))))
         if new_job is None:
             abort(500, message=dict(server='error'))
 
