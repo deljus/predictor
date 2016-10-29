@@ -19,7 +19,6 @@
 #  MA 02110-1301, USA.
 #
 import argparse
-import dill as pickle
 import gzip
 import os
 import subprocess as sp
@@ -27,18 +26,20 @@ import sys
 import tempfile
 import threading
 import time
+import dill as pickle
+from copy import deepcopy
 from functools import partial
+from itertools import product, cycle
+from sortedcontainers import SortedListWithKey
 from CGRtools.CGRcore import CGRcore
 from CGRtools.FEAR import FEAR
 from CGRtools.RDFrw import RDFread
-from copy import deepcopy
-from itertools import product, cycle
-from MODtools.cxcalc import Pkab
-from MODtools.descriptoragregator import Descriptorsdict, Descriptorchain
-from MODtools.eed import Eed
-from MODtools.fragmentor import Fragmentor
+from MODtools.descriptors.cxcalc import Pkab
+from MODtools.descriptors.descriptoragregator import Descriptorsdict, Descriptorchain
+from MODtools.descriptors.eed import Eed
+from MODtools.descriptors.fragmentor import Fragmentor
+from MODtools.estimators.svmodel import SVModel
 from MODtools.parsers import MBparser
-from MODtools.svmodel import SVModel
 from utils.config import GACONF
 
 
@@ -175,8 +176,15 @@ class Modelbuilder(MBparser):
         else:
             self.__gendesc(self.__options['output'], fformat=self.__options['format'], header=True)
 
+    def __order(self, model):
+        s = (1 if self.__options['fit'] == 'rmse' else -1) * model.getmodelstats()[self.__options['fit']]
+        v = self.__options['dispcoef'] * model.getmodelstats()['%s_var' % self.__options['fit']]
+        return s + v
+
     def fit(self, ests, description):
-        models = [g(x, list(y.values()), open(self.__options['input']), parsesdf=True,
+        models = SortedListWithKey(key=self.__order)
+
+        model = [g(x, list(y.values()), open(self.__options['input']), parsesdf=True,
                     dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
                     scorers=self.__options['scorers'],
                     n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
@@ -185,7 +193,10 @@ class Modelbuilder(MBparser):
                     normalize='scale' in y or self.__options['normalize']) for g, e in ests
                   for x, y in zip(self.__descgens, e)]
 
-        # todo: удалять совсем плохие фрагментации.
+        models.add(model)
+        if len(models) > self.__options['']:
+            models.pop()
+
         if 'tol' not in description:
             description['tol'] = models[0].getmodelstats()['dragostolerance']
         print('name', description['name'])

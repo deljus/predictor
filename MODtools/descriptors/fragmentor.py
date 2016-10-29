@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright 2015, 2016 Ramil Nugmanov <stsouko@live.ru>
-# This file is part of PREDICTOR.
+# This file is part of MODtools.
 #
-# PREDICTOR is free software; you can redistribute it and/or modify
+# MODtools is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
@@ -21,12 +21,12 @@
 import operator
 import os
 import subprocess as sp
-from itertools import tee
 import sys
 import numpy as np
 import pandas as pd
+from itertools import tee
 from functools import reduce
-from MODtools.structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker, Colorize
+from ..structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker, Colorize
 from CGRtools.CGRpreparer import CGRcombo
 from CGRtools.SDFrw import SDFread, SDFwrite
 from CGRtools.RDFrw import RDFread

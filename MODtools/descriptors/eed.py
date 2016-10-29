@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright 2016 Ramil Nugmanov <stsouko@live.ru>
-# This file is part of PREDICTOR.
+# This file is part of MODtools.
 #
-# PREDICTOR is free software; you can redistribute it and/or modify
+# MODtools is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
@@ -19,16 +19,16 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from MODtools.structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker
-from MODtools.descriptoragregator import Propertyextractor
-from io import StringIO
-from CGRtools.SDFrw import SDFread, SDFwrite
-from CGRtools.RDFrw import RDFread
-from subprocess import Popen, PIPE
-from utils.config import EED
+import operator
 import pandas as pd
 from functools import reduce
-import operator
+from io import StringIO
+from subprocess import Popen, PIPE
+from CGRtools.RDFrw import RDFread
+from CGRtools.SDFrw import SDFread, SDFwrite
+from utils.config import EED
+from .descriptoragregator import Propertyextractor
+from ..structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker
 
 
 class Eed(Propertyextractor):

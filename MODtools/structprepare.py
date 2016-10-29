@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright 2015, 2016 Ramil Nugmanov <stsouko@live.ru>
-# This file is part of PREDICTOR.
+# This file is part of MODtools.
 #
-# PREDICTOR is free software; you can redistribute it and/or modify
+# MODtools is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
@@ -20,6 +20,8 @@
 #
 import json
 import os
+import networkx as nx
+import xml.etree.ElementTree as ET
 from itertools import product
 from operator import itemgetter
 from subprocess import Popen, PIPE, STDOUT, call
@@ -30,8 +32,6 @@ from CGRtools.CGRreactor import CGRreactor
 from CGRtools.SDFrw import SDFread, SDFwrite
 from CGRtools.RDFrw import RDFread, RDFwrite
 from io import StringIO
-import networkx as nx
-import xml.etree.ElementTree as ET
 from utils.mappercore import remove_namespace
 
 

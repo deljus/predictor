@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright 2016 Ramil Nugmanov <stsouko@live.ru>
-# This file is part of PREDICTOR.
+# This file is part of MODtools.
 #
-# PREDICTOR is free software; you can redistribute it and/or modify
+# MODtools is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
@@ -18,20 +18,21 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from itertools import product
-from copy import deepcopy
+
 import tempfile
 import shutil
-from collections import defaultdict
+import numpy as np
+import operator
 import pandas as pd
+from collections import defaultdict
+from itertools import product
+from copy import deepcopy
+from math import sqrt, ceil
 from sklearn.externals.joblib import Parallel, delayed
 from sklearn.utils import shuffle
 from sklearn.cross_validation import KFold
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, r2_score, cohen_kappa_score, accuracy_score
-from math import sqrt, ceil
-import numpy as np
-import operator
 
 
 class Score(dict):

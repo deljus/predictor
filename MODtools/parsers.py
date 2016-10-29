@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 #
 #  Copyright 2016 Ramil Nugmanov <stsouko@live.ru>
-#  This file is part of predictor.
+#  This file is part of MODtools.
 #
-#  predictor 
+#  MODtools
 #  is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
 #  the Free Software Foundation; either version 3 of the License, or
@@ -21,7 +21,7 @@
 #  MA 02110-1301, USA.
 #
 import pandas as pd
-from MODtools.kernels import tanimoto_kernel
+from .estimators.kernels import tanimoto_kernel
 
 
 class MBparser(object):

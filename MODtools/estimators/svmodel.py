@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright 2015, 2016 Ramil Nugmanov <stsouko@live.ru>
-# This file is part of PREDICTOR.
+# This file is part of MODtools.
 #
-# PREDICTOR is free software; you can redistribute it and/or modify
+# MODtools is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
@@ -18,9 +18,9 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from MODtools.basemodeler import BaseModel
 from itertools import product
 from sklearn.svm import SVR, SVC
+from .basemodeler import BaseModel
 
 
 class SVModel(BaseModel):

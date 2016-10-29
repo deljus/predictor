@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 #
 #  Copyright 2016 Ramil Nugmanov <stsouko@live.ru>
-#  This file is part of predictor.
+#  This file is part of MODtools.
 #
-#  predictor 
+#  MODtools
 #  is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
 #  the Free Software Foundation; either version 3 of the License, or
@@ -20,14 +20,14 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from MODtools.structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker
-from MODtools.descriptoragregator import Propertyextractor
-from io import StringIO
-from CGRtools.SDFrw import SDFread, SDFwrite
-from CGRtools.RDFrw import RDFread
-from subprocess import Popen, PIPE, STDOUT
-from utils.config import CXCALC
 import pandas as pd
+from io import StringIO
+from subprocess import Popen, PIPE, STDOUT
+from CGRtools.RDFrw import RDFread
+from CGRtools.SDFrw import SDFread, SDFwrite
+from utils.config import CXCALC
+from .descriptoragregator import Propertyextractor
+from ..structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker
 
 
 class Pkab(Propertyextractor):

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright 2016 Ramil Nugmanov <stsouko@live.ru>
-# This file is part of PREDICTOR.
+# This file is part of MODtools.
 #
-# PREDICTOR is free software; you can redistribute it and/or modify
+# MODtools is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
@@ -18,12 +18,12 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from collections import defaultdict
-from functools import reduce
 import sys
 import operator
 import pandas as pd
 import numpy as np
+from collections import defaultdict
+from functools import reduce
 from CGRtools.SDFrw import SDFread
 from CGRtools.RDFrw import RDFread
 
@@ -50,7 +50,7 @@ class Descriptorchain(object):
         :param structures: opened structure file or stringio
         :param kwargs: generators specific arguments
         :return: dict(X=DataFrame, AD=Series, Y=Series, BOX=Series)
-        >>> from MODtools.fragmentor import Fragmentor
+        >>> from MODtools.descriptors.fragmentor import Fragmentor
         >>> f = Fragmentor(workpath='tests',version='last', s_option='shift', fragment_type=1, min_length=2, max_length=11, \
         marked_atom=3, marker_rules='tests/test.xml')
         >>> d = Descriptorsdict({'CdId': None, 'Formula': {'key': pd.Series(['H3O4P']), \

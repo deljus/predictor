@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 #
 #  Copyright 2016 Ramil Nugmanov <stsouko@live.ru>
-#  This file is part of predictor.
+#  This file is part of MODtools.
 #
-#  predictor 
+#  MODtools
 #  is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
 #  the Free Software Foundation; either version 3 of the License, or
@@ -24,8 +24,6 @@ import numpy as np
 
 
 def tanimoto_kernel(x, y):
-    """ tanimoto coeff.
-    """
     x_dot = np.dot(x, y.T)
 
     x2 = (x**2).sum(axis=1)
