@@ -32,7 +32,7 @@ from CGRtools.CGRreactor import CGRreactor
 from CGRtools.SDFrw import SDFread, SDFwrite
 from CGRtools.RDFrw import RDFread, RDFwrite
 from io import StringIO
-from utils.mappercore import remove_namespace
+from . import remove_namespace
 
 
 class StandardizeDragos(object):

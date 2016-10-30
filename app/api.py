@@ -346,7 +346,8 @@ class UploadTask(CResource):
         file_url = os.path.basename(file_path)
 
         new_job = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id,
-                                     structuresfile=dict(url=file_url, model=get_model(ModelType.PREPARER))))
+                                     structures=[dict(url=file_url, status=StructureStatus.RAW,
+                                                      models=[get_model(ModelType.PREPARER)])]))
         if new_job is None:
             abort(500, message=dict(server='error'))
 

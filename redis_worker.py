@@ -1,19 +1,25 @@
-from app.config import StructureStatus
 from modelset import ModelSet
 
 
-def run(structures=None, model=None, structuresfile=None):
-    models = ModelSet()
-    mod = models.load_model(model['name'])
-    results = mod.get_results(structures)
-    for s in structures: # todo: implement
-        s['models'] = [model]
-        s['status'] = StructureStatus.CLEAR
+def run(structures=None, model=None):
+    mod = ModelSet().load_model(model['name'])
+    if mod is not None:
+        results = mod.get_results(structures)
+        if results:
+            for s in results:
+                s['models'][0].update(model)
+            return results
+
+    # if failed
+    for s in structures:
+        s['models'] = []
     return structures
 
 
-def combiner(x):
+def combiner(structures):
     """ simple ad_hoc for saving task metadata and unused structures.
-    :param x: Task data structure
+    :param structures: Task structures
     """
-    return x
+    for s in structures:
+        s['models'] = []
+    return structures

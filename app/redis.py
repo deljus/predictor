@@ -56,36 +56,29 @@ class RedisCombiner(object):
         if queue is None:
             return None
 
-        if 'structuresfile' in task:
-            tmp = task.pop('structuresfile')
-            model_worker = self.__new_worker(tmp['model'].pop('destinations'))
-            task['structures'] = []
-            new_job = [(model_worker, {'structuresfile': tmp['url'],
-                                       'model': tmp['model']})] if model_worker is not None else []
+        model_worker = {}
+        model_struct = defaultdict(list)
+        tmp = []
 
-        else:
-            model_worker = {}
-            model_struct = defaultdict(list)
-            tmp = []
+        for s in task['structures']:
+            # check for models in structures
+            models = ((x['model'], x) for x in s.pop('models') if x['type'] != ModelType.PREPARER) \
+                if task['status'] == TaskStatus.MODELING else \
+                ((x['model'], x) for x in s.pop('models') if x['type'] == ModelType.PREPARER) \
+                if s['status'] == StructureStatus.RAW else []
 
-            for s in task['structures']:
-                # check for models in structures
-                models = ((x['model'], x) for x in s.pop('models') if x['type'] != ModelType.PREPARER) \
-                    if task['status'] == TaskStatus.MODELING else \
-                    ((x['model'], x) for x in s.pop('models') if x['type'] == ModelType.PREPARER) \
-                    if s['status'] == StructureStatus.RAW else []
+            populate = [model_struct[m].append(s) for m, model in models
+                        if (model_worker.get(m) or
+                            model_worker.setdefault(m, (self.__new_worker(model.pop('destinations')), model)))[0]
+                        is not None]
 
-                populate = [model_struct[m].append(s) for m, model in models
-                            if (model_worker.get(m) or
-                                model_worker.setdefault(m, (self.__new_worker(model.pop('destinations')), model)))[0]
-                            is not None]
+            if not populate and task['status'] == TaskStatus.MODELING:
+                tmp.append(s)
 
-                if not populate:
-                    tmp.append(s)
+        task['structures'] = tmp
+        new_job = ((w, {'structures': s, 'model': m})
+                   for (w, m), s in ((model_worker[m], s) for m, s in model_struct.items()))
 
-            task['structures'] = tmp
-            new_job = ((w, {'structures': s, 'model': m})
-                       for (w, m), s in ((model_worker[m], s) for m, s in model_struct.items()))
         try:
             jobs = [(dest, w.enqueue_call('redis_worker.run', kwargs=d, result_ttl=self.__result_ttl).id)
                     for (dest, w), d in new_job]
@@ -135,7 +128,7 @@ class RedisCombiner(object):
         if sub_jobs_unf:
             result['jobs'] = sub_jobs_unf
 
-        ended_at = max(x.ended_at for x in sub_jobs_fin)
+        ended_at = max(x.ended_at for x in sub_jobs_fin) if sub_jobs_fin else job.ended_at
         job.save()
 
         if sub_jobs_unf:
