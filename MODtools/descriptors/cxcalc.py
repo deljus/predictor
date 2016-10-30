@@ -25,7 +25,7 @@ from io import StringIO
 from subprocess import Popen, PIPE, STDOUT
 from CGRtools.RDFrw import RDFread
 from CGRtools.SDFrw import SDFread, SDFwrite
-from utils.config import CXCALC
+from ..config import CXCALC
 from .descriptoragregator import Propertyextractor
 from ..structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker
 

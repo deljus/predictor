@@ -22,6 +22,7 @@
 
 
 def init():
+    from os.path import join
     from flask import Flask
     from flask_bootstrap import Bootstrap
     from flask_login import LoginManager
@@ -48,8 +49,8 @@ def init():
     login_manager.login_view = '.login'
     login_manager.user_loader(load_user)
 
-    app.register_blueprint(api_bp, url_prefix='/api')
-    app.register_blueprint(view_bp)
+    app.register_blueprint(api_bp, url_prefix=join('/', PORTAL_BASE, 'api'))
+    app.register_blueprint(view_bp, url_prefix=join('/', PORTAL_BASE))
 
     # start Flask app
     app.run(HOST, port=PORT, debug=DEBUG)

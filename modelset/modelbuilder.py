@@ -18,13 +18,13 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+import gzip
 import hashlib
 import json
 import os
-from utils.utils import chemaxpost
 import dill
-import gzip
 from MODtools.consensus import ConsensusDragos
+from MODtools.utils import chemaxpost
 
 
 class Model(ConsensusDragos):
@@ -43,7 +43,7 @@ class Model(ConsensusDragos):
     def get_example(self):
         return self.__conf.get('example')
 
-    def get_desc(self):
+    def get_description(self):
         return self.__conf.get('desc')
 
     def get_name(self):
@@ -114,7 +114,7 @@ class ModelLoader(object):
                 try:
                     model = Model(file)
                     cache[model.get_name()] = dict(file=file, hash=self.__md5(file), example=model.get_example(),
-                                                   desc=model.get_desc(), hashes=model.get_hashes(),
+                                                   description=model.get_description(), hashes=model.get_hashes(),
                                                    size=os.path.getsize(file),
                                                    type=model.get_type(), name=model.get_name())
                 except:

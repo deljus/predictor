@@ -26,7 +26,7 @@ from io import StringIO
 from subprocess import Popen, PIPE
 from CGRtools.RDFrw import RDFread
 from CGRtools.SDFrw import SDFread, SDFwrite
-from utils.config import EED
+from ..config import EED
 from .descriptoragregator import Propertyextractor
 from ..structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker
 

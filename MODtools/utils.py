@@ -18,17 +18,15 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-
-from utils.config import CHEMAXON, SERVER, PORT, PORTAL_BASE
-
-import requests
 import json
+import requests
+from .config import CHEMAXON, PREDICTOR
 
 
 def serverget(url, params):
     for _ in range(2):
         try:
-            q = requests.get("%s:%d%s/api/%s" % (SERVER, PORT, PORTAL_BASE, url), params=params, timeout=20)
+            q = requests.get("%s/api/%s" % (PREDICTOR, url), params=params, timeout=20)
         except:
             continue
         else:
@@ -43,7 +41,7 @@ def serverget(url, params):
 def serverput(url, params):
     for _ in range(2):
         try:
-            q = requests.put("%s:%d%s/api/%s" % (SERVER, PORT, PORTAL_BASE, url), params=params, timeout=20)
+            q = requests.put("%s/api/%s" % (PREDICTOR, url), params=params, timeout=20)
         except:
             continue
         else:
@@ -58,7 +56,7 @@ def serverput(url, params):
 def serverpost(url, params):
     for _ in range(2):
         try:
-            q = requests.post("%s:%d%s/api/%s" % (SERVER, PORT, PORTAL_BASE, url), data=params, timeout=20)
+            q = requests.post("%s/api/%s" % (PREDICTOR, url), data=params, timeout=20)
         except:
             continue
         else:
@@ -73,7 +71,7 @@ def serverpost(url, params):
 def serverdel(url, params):
     for _ in range(2):
         try:
-            q = requests.delete("%s:%d%s/api/%s" % (SERVER, PORT, PORTAL_BASE, url), params=params, timeout=20)
+            q = requests.delete("%s/api/%s" % (PREDICTOR, url), params=params, timeout=20)
         except:
             continue
         else:

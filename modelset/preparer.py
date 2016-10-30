@@ -18,36 +18,30 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from utils.config import LOCK_MAPPING, STANDARD, MAPPING_DONE, MOLCONVERT
-from utils.utils import getsolvents, chemaxpost, serverpost, serverput, serverget, serverdel
-from io import StringIO
-from CGRtools.FEAR import FEAR
-from CGRtools.CGRcore import CGRcore
-from CGRtools.RDFread import RDFread
-from CGRtools.RDFwrite import RDFwrite
+import json
+import re
 import subprocess as sp
 import xml.etree.ElementTree as ET
-import re
-import json
+from io import StringIO
+
+from CGRtools.CGRcore import CGRcore
+from CGRtools.FEAR import FEAR
+from CGRtools.RDFrw import RDFread, RDFwrite
+from MODtools.config import LOCK_MAPPING, STANDARD, MAPPING_DONE, MOLCONVERT
+from MODtools.utils import getsolvents, chemaxpost, serverpost, serverput, serverget, serverdel
+from app.config import ModelType
 
 
-def remove_namespace(doc, namespace):
-    """Remove namespace in the passed document in place."""
-    ns = u'{%s}' % namespace
-    nsl = len(ns)
-    for elem in doc.getiterator():
-        if elem.tag.startswith(ns):
-            elem.tag = elem.tag[nsl:]
-    return doc
-
-
-class Mapper(object):
+class Model(object):
     def __init__(self, stereo=False, b_templates=None, e_rules=None, c_rules=None):
         self.__cgr = CGRcore(type='0', stereo=stereo, balance=1,
                              b_templates=open(b_templates) if b_templates else None,
                              e_rules=open(e_rules) if e_rules else None,
                              c_rules=open(c_rules) if c_rules else None)
         self.__fear = FEAR(isotop=False, stereo=False, hyb=False, element=True, deep=0)
+
+    def get_results(self, structures):
+        pass
 
     def parsefile(self, task):
         if serverput("task_status/%s" % task['id'], {'task_status': LOCK_MAPPING}):
@@ -202,3 +196,18 @@ class Mapper(object):
                       pe='part of reagents equal to part of products',
                       tfe='tautomerized and neutralized reagents equal to products',
                       tpe='tautomerized and neutralized part of reagents equal to part of products')
+
+
+class ModelLoader(object):
+    def __init__(self, **kwargs):
+        pass
+
+    @staticmethod
+    def load_model(name):
+        if name == 'Preparer':
+            return Model()
+
+    @staticmethod
+    def get_models():
+        return [dict(description='Structure checking and possibly restoring',
+                     type=ModelType.PREPARER, name='Preparer')]

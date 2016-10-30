@@ -24,14 +24,14 @@ import subprocess as sp
 import sys
 import numpy as np
 import pandas as pd
-from itertools import tee
 from functools import reduce
-from ..structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker, Colorize
-from CGRtools.CGRpreparer import CGRcombo
-from CGRtools.SDFrw import SDFread, SDFwrite
-from CGRtools.RDFrw import RDFread
+from itertools import tee
 from sklearn.feature_extraction import DictVectorizer
-from utils.config import FRAGMENTOR
+from CGRtools.CGRpreparer import CGRcombo
+from CGRtools.RDFrw import RDFread
+from CGRtools.SDFrw import SDFread, SDFwrite
+from ..config import FRAGMENTOR
+from ..structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker, Colorize
 
 
 class openFiles(object):

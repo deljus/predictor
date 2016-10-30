@@ -18,54 +18,43 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import os
+from os import path
 
 # dynamic
 SERVER = "https://cimm.kpfu.ru"
-PORT = 443
-PORTAL_BASE = '/qspr'
+PORTAL_BASE = ''
+
 CHEMAXON = "%s/webservices" % SERVER
 JCHEMBIN = '/opt/JChem/bin'
-UPLOAD_PATH = '/tmp'
-WORK_PATH = '/tmp'
 FRAGMENTOR = '/opt/fragmentor/fragmentor'
 EED = '/opt/dragos/eedstart'
 COLOR = '/opt/dragos/colorstart'
 GACONF = '/op/dragos/gaconfstart'
 
-INTERVAL = 3
-MODEL_REFRESH = 5
-THREAD_LIMIT = 5
 
-if not os.path.exists(os.path.join(os.path.dirname(__file__), "config.ini")):
-    with open(os.path.join(os.path.dirname(__file__), "config.ini"), 'w') as f:
-        f.write('\n'.join('%s = %s' % (x, y) for x, y in globals().items() if x[0] != '_' and x != 'os' and x != 'f'))
+if not path.exists(path.join(path.dirname(__file__), "config.ini")):
+    with open(path.join(path.dirname(__file__), "config.ini"), 'w') as f:
+        f.write('\n'.join('%s = %s' % (x, y) for x, y in globals().items()
+                          if x in ('SERVER', 'PORTAL_BASE', 'CHEMAXON', 'JCHEMBIN',
+                                   'FRAGMENTOR', 'EED', 'COLOR', 'GACONF')))
 
-with open(os.path.join(os.path.dirname(__file__), "config.ini")) as f:
+with open(path.join(path.dirname(__file__), "config.ini")) as f:
     for line in f:
         try:
             k, v = line.split('=')
             k = k.strip()
             v = v.strip()
-            if k in globals():
+            if k in ('SERVER', 'PORTAL_BASE', 'CHEMAXON', 'JCHEMBIN', 'FRAGMENTOR', 'EED', 'COLOR', 'GACONF'):
                 globals()[k] = int(v) if v.isdigit() else v
         except:
             pass
 
-# static
-with open(os.path.join(os.path.dirname(__file__), "std_rules.xml")) as f:
-    STANDARD = f.read()
 
-MOLCONVERT = os.path.join(JCHEMBIN, 'molconvert')
-STANDARDIZER = os.path.join(JCHEMBIN, 'standardize')
-CXCALC = os.path.join(JCHEMBIN, 'cxcalc')
-REACTOR = os.path.join(JCHEMBIN, 'react')
-JCSEARCH = os.path.join(JCHEMBIN, 'jcsearch')
-PMAPPER = os.path.join(JCHEMBIN, 'pmapper')
+MOLCONVERT = path.join(JCHEMBIN, 'molconvert')
+STANDARDIZER = path.join(JCHEMBIN, 'standardize')
+CXCALC = path.join(JCHEMBIN, 'cxcalc')
+REACTOR = path.join(JCHEMBIN, 'react')
+JCSEARCH = path.join(JCHEMBIN, 'jcsearch')
+PMAPPER = path.join(JCHEMBIN, 'pmapper')
 
-REQ_MAPPING = 1
-LOCK_MAPPING = 2
-MAPPING_DONE = 3
-REQ_MODELLING = 4
-LOCK_MODELLING = 5
-MODELLING_DONE = 6
+PREDICTOR = SERVER + PORTAL_BASE

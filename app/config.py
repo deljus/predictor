@@ -20,36 +20,20 @@
 #  MA 02110-1301, USA.
 #
 from enum import Enum
+from os import path
 
-TASK_CREATED = 0
-REQ_MAPPING = 1
-LOCK_MAPPING = 2
-MAPPING_DONE = 3
-REQ_MODELLING = 4
-LOCK_MODELLING = 5
-MODELLING_DONE = 6
-
-SEARCH_TASK_CREATED = 10
-LOCK_SEARCHING = 11
-SEARCHING_DONE = 12
 
 UPLOAD_PATH = './upload/'
-ALLOWED_EXTENSIONS = ('rdf', 'sdf', 'mol', 'mrv', 'smi', 'smiles', 'rxn')
-
-PORTAL_BASE = '/qspr'
-
-
-UPLOAD_FOLDER = '/upload/'
-
+PORTAL_BASE = ''
 SECRET_KEY = 'development key'
-DEBUG = True
+DEBUG = False
 HOST = '0.0.0.0'
 PORT = 5000
 
-DB_USER = 'postgres'
-DB_PASS = 'jyvt0n3'
-DB_HOST = 'localhost'
-DB_NAME = 'predictor'
+DB_USER = None
+DB_PASS = None
+DB_HOST = None
+DB_NAME = None
 
 
 class StructureStatus(Enum):
@@ -106,3 +90,22 @@ class ResultType(Enum):
     IMAGE = 3
     GRAPH = 4
     GTM = 5
+
+
+if not path.exists(path.join(path.dirname(__file__), "config.ini")):
+    with open(path.join(path.dirname(__file__), "config.ini"), 'w') as f:
+        f.write('\n'.join('%s = %s' % (x, y) for x, y in globals().items() if x in
+                          ('UPLOAD_PATH', 'PORTAL_BASE', 'SECRET_KEY', 'HOST', 'PORT',
+                           'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME')))
+
+with open(path.join(path.dirname(__file__), "config.ini")) as f:
+    for line in f:
+        try:
+            k, v = line.split('=')
+            k = k.strip()
+            v = v.strip()
+            if k in ('UPLOAD_PATH', 'PORTAL_BASE', 'SECRET_KEY', 'HOST', 'PORT', 'DEBUG',
+                     'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME'):
+                globals()[k] = int(v) if v.isdigit() else v
+        except:
+            pass

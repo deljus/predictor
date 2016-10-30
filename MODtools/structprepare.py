@@ -20,18 +20,19 @@
 #
 import json
 import os
-import networkx as nx
 import xml.etree.ElementTree as ET
+from io import StringIO
 from itertools import product
 from operator import itemgetter
 from subprocess import Popen, PIPE, STDOUT, call
-from utils.config import PMAPPER, STANDARDIZER, COLOR
-from utils.utils import chemaxpost
+
+import networkx as nx
 from CGRtools.CGRpreparer import CGRbalanser, CGRcombo
 from CGRtools.CGRreactor import CGRreactor
-from CGRtools.SDFrw import SDFread, SDFwrite
 from CGRtools.RDFrw import RDFread, RDFwrite
-from io import StringIO
+from CGRtools.SDFrw import SDFread, SDFwrite
+from .config import PMAPPER, STANDARDIZER, COLOR
+from .utils import chemaxpost
 from . import remove_namespace
 
 

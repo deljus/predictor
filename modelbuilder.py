@@ -19,6 +19,7 @@
 #  MA 02110-1301, USA.
 #
 import argparse
+import dill
 import gzip
 import os
 import subprocess as sp
@@ -26,7 +27,6 @@ import sys
 import tempfile
 import threading
 import time
-import dill as pickle
 from copy import deepcopy
 from functools import partial
 from itertools import product, cycle
@@ -34,13 +34,13 @@ from sortedcontainers import SortedListWithKey
 from CGRtools.CGRcore import CGRcore
 from CGRtools.FEAR import FEAR
 from CGRtools.RDFrw import RDFread
+from MODtools.config import GACONF
 from MODtools.descriptors.cxcalc import Pkab
 from MODtools.descriptors.descriptoragregator import Descriptorsdict, Descriptorchain
 from MODtools.descriptors.eed import Eed
 from MODtools.descriptors.fragmentor import Fragmentor
 from MODtools.estimators.svmodel import SVModel
 from MODtools.parsers import MBparser
-from utils.config import GACONF
 
 
 class DefaultList(list):
@@ -129,7 +129,7 @@ class Modelbuilder(MBparser):
                 return
 
             if self.__options['reload']:
-                ests, description, self.__descgens = pickle.load(gzip.open(self.__options['reload'], 'rb'))
+                ests, description, self.__descgens = dill.load(gzip.open(self.__options['reload'], 'rb'))
             else:
                 if not os.path.exists(self.__options['description']) or os.path.isdir(self.__options['description']):
                     print('path to model description file invalid')
@@ -170,7 +170,7 @@ class Modelbuilder(MBparser):
                 if not ests:
                     return
 
-                pickle.dump((ests, description, self.__descgens), gzip.open(self.__options['model'] + '.save', 'wb'))
+                dill.dump((ests, description, self.__descgens), gzip.open(self.__options['model'] + '.save', 'wb'))
 
             self.fit(ests, description)
         else:
@@ -203,7 +203,7 @@ class Modelbuilder(MBparser):
         print('desc', description['desc'])
         print('tol', description['tol'])
         print('nlim', description.get('nlim'))
-        pickle.dump(dict(models=models, config=description),
+        dill.dump(dict(models=models, config=description),
                     gzip.open(self.__options['model'], 'wb'))
 
     def __gethashes(self, inputfile, extralabels=False, stereo=False):
