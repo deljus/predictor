@@ -19,14 +19,13 @@
 #  MA 02110-1301, USA.
 #
 import json
+import networkx as nx
 import os
 import xml.etree.ElementTree as ET
 from io import StringIO
 from itertools import product
 from operator import itemgetter
 from subprocess import Popen, PIPE, STDOUT, call
-
-import networkx as nx
 from CGRtools.CGRpreparer import CGRbalanser, CGRcombo
 from CGRtools.CGRreactor import CGRreactor
 from CGRtools.RDFrw import RDFread, RDFwrite
@@ -117,7 +116,6 @@ class StandardizeDragos(object):
 class Pharmacophoreatommarker(object):
     def __init__(self, markerrule, workpath):
         self.__markerrule, self.__markers = self.__dumprules(markerrule)
-        self.__config = None
         self.setworkpath(workpath)
 
     @staticmethod
@@ -279,7 +277,6 @@ class CGRatommarker(CGRcombo, CGRreactor):
 
 class Colorize(object):
     def __init__(self, standardize, workpath):
-        self.__input_file = self.__out_file = self.__std_file = None
         self.__standardize = self.__dumprules(standardize)
         self.setworkpath(workpath)
 

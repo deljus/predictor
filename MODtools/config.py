@@ -27,9 +27,9 @@ PORTAL_BASE = ''
 CHEMAXON = "%s/webservices" % SERVER
 JCHEMBIN = '/opt/JChem/bin'
 FRAGMENTOR = '/opt/fragmentor/fragmentor'
-EED = '/opt/dragos/eedstart'
-COLOR = '/opt/dragos/colorstart'
-GACONF = '/op/dragos/gaconfstart'
+EED = '/opt/dragos/eedstart.sh'
+COLOR = '/opt/dragos/colorstart.sh'
+GACONF = '/opt/dragos/gaconfstarter.sh'
 
 
 if not path.exists(path.join(path.dirname(__file__), "config.ini")):

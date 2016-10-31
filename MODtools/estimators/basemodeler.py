@@ -113,7 +113,6 @@ class BaseModel(object):
         self.__model = {}
 
         self.__descriptorgen = descriptorgen
-        self.__workpath = workpath
         self.setworkpath(workpath)
 
         self.__nfold = nfold

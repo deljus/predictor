@@ -102,7 +102,7 @@ class Descriptorsdict(object):
 
     @staticmethod
     def setworkpath(_):
-        return True
+        return None
 
     @staticmethod
     def __prepareextheader(data):
