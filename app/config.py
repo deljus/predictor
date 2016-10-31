@@ -23,7 +23,7 @@ from enum import Enum
 from os import path
 
 
-UPLOAD_PATH = './upload/'
+UPLOAD_PATH = 'upload'
 PORTAL_BASE = ''
 SECRET_KEY = 'development key'
 DEBUG = False

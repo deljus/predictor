@@ -19,11 +19,11 @@
 #  MA 02110-1301, USA.
 #
 import uuid
-import os
-from app.config import UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, StructureType
+from os import path
+from app.config import UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, StructureType, AdditiveType
 from app.models import Tasks, Structures, Additives, Models, Additivesets
 from app.redis import RedisCombiner
-from flask import Blueprint
+from flask import Blueprint, url_for, send_from_directory
 from flask_login import current_user
 from flask_restful import reqparse, Resource, fields, marshal, abort, Api
 from functools import wraps
@@ -43,23 +43,28 @@ taskstructurefields = dict(structure=fields.Integer, data=fields.String, tempera
                            models=fields.List(fields.Integer))
 
 
+@api_bp.route('/task/batch_file/<string:file>', methods=['GET'])
+def batch_file(file):
+    return send_from_directory(directory=UPLOAD_PATH, filename=file)
+
+
 def get_model(_type):
     with db_session:
-        return next(dict(model=m.id, name=m.name, description=m.description, type=m.model_type,
+        return next(dict(model=m.id, name=m.name, description=m.description, type=ModelType(m.model_type),
                          destinations=[dict(host=x.host, port=x.port, password=x.password, name=x.name)
                                        for x in m.destinations])
-                    for m in select(m for m in Models if m.model_type == _type))
+                    for m in select(m for m in Models if m.model_type == _type.value))
 
 
 def get_additives():
     with db_session:
-        return {a.id: dict(additive=a.id, name=a.name, structure=a.structure, type=a.additive_type)
+        return {a.id: dict(additive=a.id, name=a.name, structure=a.structure, type=AdditiveType(a.additive_type))
                 for a in select(a for a in Additives)}
 
 
 def get_models_list():
     with db_session:
-        return {m.id: dict(model=m.id, name=m.name, description=m.description, type=m.model_type,
+        return {m.id: dict(model=m.id, name=m.name, description=m.description, type=ModelType(m.model_type),
                            destinations=[dict(host=x.host, port=x.port, password=x.password, name=x.name)
                                          for x in m.destinations])
                 for m in select(m for m in Models)}
@@ -320,7 +325,7 @@ class CreateTask(CResource):
                     date=new_job.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id)
 
 uf_post = reqparse.RequestParser()
-uf_post.add_argument('file.path', type=str)
+uf_post.add_argument('file.url', type=str)
 uf_post.add_argument('structures', type=datastructures.FileStorage, location='files')
 
 
@@ -333,18 +338,16 @@ class UploadTask(CResource):
 
         args = uf_post.parse_args()
 
-        file_path = None
-        if args['file.path']:  # костыль. если не найдет этого в аргументах, то мы без NGINX-upload.
-            file_path = args['file.path']
+        if args['file.url']:  # костыль. если не найдет этого в аргументах, то мы без NGINX-upload.
+            file_url = args['file.path']
         elif args['structures']:
-            file_path = os.path.join(UPLOAD_PATH, str(uuid.uuid4()))
-            args['structures'].save(file_path)
+            file_name = str(uuid.uuid4())
+            args['structures'].save(path.join(UPLOAD_PATH, file_name))
+            file_url = url_for('.batch_file', file=file_name)
 
-        if not file_path:
+        else:
             return dict(message=dict(structures='invalid data')), 415
-
-        file_url = os.path.basename(file_path)
-
+        print(file_url)
         new_job = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id,
                                      structures=[dict(url=file_url, status=StructureStatus.RAW,
                                                       models=[get_model(ModelType.PREPARER)])]))

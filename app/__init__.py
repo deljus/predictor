@@ -50,7 +50,7 @@ def init():
     login_manager.user_loader(load_user)
 
     app.register_blueprint(api_bp, url_prefix=join('/', PORTAL_BASE, 'api'))
-    app.register_blueprint(view_bp, url_prefix=join('/', PORTAL_BASE))
+    app.register_blueprint(view_bp, url_prefix=join('/', PORTAL_BASE) if PORTAL_BASE else None)
 
     # start Flask app
     app.run(HOST, port=PORT, debug=DEBUG)
