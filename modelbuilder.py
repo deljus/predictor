@@ -137,11 +137,11 @@ class Modelbuilder(MBparser):
 
                 description = self.parsemodeldescription(self.__options['description'])
                 if self.__options['isreaction']:
-                    description['type'] = 1
+                    description['type'] = 2
                     description['hashes'] = self.__gethashes(self.__options['input'])
                     print(description['hashes'])
                 else:
-                    description['type'] = 2
+                    description['type'] = 1
 
                 ests = []
                 svm = {'svr', 'svc'}.intersection(self.__options['estimator']).pop()
@@ -155,8 +155,7 @@ class Modelbuilder(MBparser):
                     estparams = self.__chkest(estparams)
                     if not estparams:
                         return
-                    ests.append((lambda *va, **kwa: SVModel(*va, estimator=svm,
-                                                            probability=self.__options['probability'], **kwa),
+                    ests.append((partial(SVModel, estimator=svm, probability=self.__options['probability']),
                                  estparams))
                 elif False:  # rf:  # todo: not implemented
                     if self.__options['rf']:
@@ -183,19 +182,17 @@ class Modelbuilder(MBparser):
 
     def fit(self, ests, description):
         models = SortedListWithKey(key=self.__order)
+        for g, e in ests:
+            for x, y in zip(self.__descgens, e):
+                models.add(g(x, list(y.values()), open(self.__options['input']), parsesdf=True,
+                           dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
+                           scorers=self.__options['scorers'],
+                           n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
+                           rep_boost=self.__options['rep_boost'], repetitions=self.__options['repetition'],
+                           normalize='scale' in y or self.__options['normalize']))
 
-        model = [g(x, list(y.values()), open(self.__options['input']), parsesdf=True,
-                    dispcoef=self.__options['dispcoef'], fit=self.__options['fit'],
-                    scorers=self.__options['scorers'],
-                    n_jobs=self.__options['n_jobs'], nfold=self.__options['nfold'],
-                    rep_boost=self.__options['rep_boost'],
-                    repetitions=self.__options['repetition'],
-                    normalize='scale' in y or self.__options['normalize']) for g, e in ests
-                  for x, y in zip(self.__descgens, e)]
-
-        models.add(model)
-        if len(models) > self.__options['']:
-            models.pop()
+                if len(models) > self.__options['consensus']:
+                    models.pop()
 
         if 'tol' not in description:
             description['tol'] = models[0].getmodelstats()['dragostolerance']
@@ -349,6 +346,8 @@ def argparser():
                          help="score parameter. mean(score) - dispcoef * sqrt(variance(score)). [-score for rmse]")
 
     rawopts.add_argument("--normalize", "-N", action='store_true', help="normalize X vector to range(0, 1)")
+
+    rawopts.add_argument("--consensus", "-C", type=int, default=10, help="number of models for consensus")
 
     return vars(rawopts.parse_args())
 
