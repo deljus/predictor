@@ -36,11 +36,11 @@ else:
 
 class Users(db.Entity):
     id = PrimaryKey(int, auto=True)
+    active = Required(bool, default=True)
     email = Required(str, unique=True)
     password = Required(str)
-    active = Required(bool, default=True)
-    token = Required(str)
     tasks = Set("Tasks")
+    token = Required(str)
 
     def __init__(self, email, password):
         password = self.hash_password(password)
@@ -61,68 +61,110 @@ class Users(db.Entity):
 
 class Tasks(db.Entity):
     id = PrimaryKey(int, auto=True)
-    user = Optional(Users)
-    structures = Set("Structures")
     date = Required(datetime, default=datetime.now())
-    task_type = Required(int, default=TaskType.MODELING.value)
+    structures = Set("Structures")
+    task_type = Required(int)
+    user = Optional(Users)
+
+    def __init__(self, **kwargs):
+        _type = kwargs.pop('type', TaskType.MODELING).value
+        super(Tasks, self).__init__(task_type=_type, **kwargs)
+
+    @property
+    def type(self):
+        return TaskType(self.task_type)
 
 
 class Structures(db.Entity):
     id = PrimaryKey(int, auto=True)
-    structure = Optional(str)
-    structure_type = Required(int, default=StructureType.MOLECULE.value)
-    temperature = Optional(float)
-    pressure = Optional(float)
     additives = Set("Additivesets")
-
-    task = Required(Tasks)
-    status = Required(int, default=StructureStatus.CLEAR.value)
-    results = Set("Results")
     models = Set("Models")
+    pressure = Optional(float)
+    results = Set("Results")
+    structure = Optional(str)
+    structure_type = Required(int)
+    structures_status = Required(int)
+    task = Required(Tasks)
+    temperature = Optional(float)
+
+    def __init__(self, **kwargs):
+        _type = kwargs.pop('type', StructureType.MOLECULE).value
+        status = kwargs.pop('status', StructureStatus.CLEAR).value
+        super(Structures, self).__init__(structure_type=_type, structures_status=status, **kwargs)
+
+    @property
+    def type(self):
+        return StructureType(self.structure_type)
+
+    @property
+    def status(self):
+        return StructureStatus(self.structures_status)
 
 
 class Results(db.Entity):
     id = PrimaryKey(int, auto=True)
-    structure = Required(Structures)
-    model = Required("Models")
-
     attrib = Required(str)
+    model = Required("Models")
+    result_type = Required(int)
+    structure = Required(Structures)
     value = Required(str)
-    result_type = Required(int, default=ResultType.TEXT.value)
+
+    def __init__(self, **kwargs):
+        _type = kwargs.pop('type', ResultType.TEXT).value
+        super(Results, self).__init__(result_type=_type, **kwargs)
+
+    @property
+    def type(self):
+        return ResultType(self.result_type)
 
 
 class Models(db.Entity):
     id = PrimaryKey(int, auto=True)
-    name = Required(str, unique=True)
     description = Optional(str)
-    example = Optional(str)
     destinations = Set("Destinations")
-    model_type = Required(int, default=ModelType.MOLECULE_MODELING.value)
-
-    structures = Set(Structures)
+    example = Optional(str)
+    model_type = Required(int)
+    name = Required(str, unique=True)
     results = Set(Results)
+    structures = Set(Structures)
+
+    def __init__(self, **kwargs):
+        _type = kwargs.pop('type', ModelType.MOLECULE_MODELING).value
+        super(Models, self).__init__(model_type=_type, **kwargs)
+
+    @property
+    def type(self):
+        return ModelType(self.model_type)
 
 
 class Destinations(db.Entity):
     id = PrimaryKey(int, auto=True)
-    model = Required(Models)
     host = Required(str)
-    port = Required(int, default=6379)
-    password = Optional(str)
+    model = Required(Models)
     name = Required(str)
+    password = Optional(str)
+    port = Required(int, default=6379)
 
 
 class Additives(db.Entity):
     id = PrimaryKey(int, auto=True)
-    structure = Optional(str)
-    name = Required(str, unique=True)
-    additive_type = Required(int, default=AdditiveType.SOLVENT.value)
+    additive_type = Required(int)
     additivesets = Set("Additivesets")
+    name = Required(str, unique=True)
+    structure = Optional(str)
+
+    def __init__(self, **kwargs):
+        _type = kwargs.pop('type', AdditiveType.SOLVENT).value
+        super(Additives, self).__init__(additive_type=_type, **kwargs)
+
+    @property
+    def type(self):
+        return AdditiveType(self.additive_type)
 
 
 class Additivesets(db.Entity):
-    amount = Required(float, default=1)
     additive = Required(Additives)
+    amount = Required(float, default=1)
     structure = Required(Structures)
 
 
