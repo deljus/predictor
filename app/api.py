@@ -28,6 +28,7 @@ from flask_login import current_user
 from flask_restful import reqparse, Resource, fields, marshal, abort, Api
 from functools import wraps
 from pony.orm import db_session, select, left_join
+from validators import url
 from werkzeug import datastructures
 
 
@@ -50,7 +51,7 @@ def batch_file(file):
 
 def get_model(_type):
     with db_session:
-        return next(dict(model=m.id, name=m.name, description=m.description, type=ModelType(m.model_type),
+        return next(dict(model=m.id, name=m.name, description=m.description, type=m.type,
                          destinations=[dict(host=x.host, port=x.port, password=x.password, name=x.name)
                                        for x in m.destinations])
                     for m in select(m for m in Models if m.model_type == _type.value))
@@ -58,13 +59,13 @@ def get_model(_type):
 
 def get_additives():
     with db_session:
-        return {a.id: dict(additive=a.id, name=a.name, structure=a.structure, type=AdditiveType(a.additive_type))
+        return {a.id: dict(additive=a.id, name=a.name, structure=a.structure, type=a.type)
                 for a in select(a for a in Additives)}
 
 
 def get_models_list():
     with db_session:
-        return {m.id: dict(model=m.id, name=m.name, description=m.description, type=ModelType(m.model_type),
+        return {m.id: dict(model=m.id, name=m.name, description=m.description, type=m.type,
                            destinations=[dict(host=x.host, port=x.port, password=x.password, name=x.name)
                                          for x in m.destinations])
                 for m in select(m for m in Models)}
@@ -195,7 +196,7 @@ class StartTask(CResource):
 
     def post(self, task):
         result = fetchtask(task, TaskStatus.PREPARED)[0]
-        if result['type'] != TaskType.MODELING:
+        if result['type'] != TaskType.MODELING:  # for search tasks assign compatible models
             for s in result['structures']:
                 s['models'] = [get_model(ModelType.select(s['type'], result['type']))]
 
@@ -309,7 +310,7 @@ class CreateTask(CResource):
                         a.update(additives[a['additive']])
                         alist.append(a)
 
-                data.append(dict(structure=s, data=d['data'], status=StructureStatus.RAW, type=StructureType.MOLECULE,
+                data.append(dict(structure=s, data=d['data'], status=StructureStatus.RAW,
                                  pressure=d['pressure'], temperature=d['temperature'],
                                  additives=alist, models=[preparer]))
 
@@ -326,6 +327,7 @@ class CreateTask(CResource):
 
 uf_post = reqparse.RequestParser()
 uf_post.add_argument('file.url', type=str)
+uf_post.add_argument('file.path', type=str)
 uf_post.add_argument('structures', type=datastructures.FileStorage, location='files')
 
 
@@ -338,16 +340,20 @@ class UploadTask(CResource):
 
         args = uf_post.parse_args()
 
-        if args['file.url']:  # костыль. если не найдет этого в аргументах, то мы без NGINX-upload.
-            file_url = args['file.path']
+        if args['file.url'] and url(args['file.url']):
+            # smart frontend
+            file_url = args['file.url']
+        elif args['file.path'] and path.exists(path.join(UPLOAD_PATH, path.basename(args['file.path']))):
+            # NGINX upload
+            file_url = url_for('.batch_file', file=path.basename(args['file.path']))
         elif args['structures']:
+            # flask
             file_name = str(uuid.uuid4())
             args['structures'].save(path.join(UPLOAD_PATH, file_name))
             file_url = url_for('.batch_file', file=file_name)
-
         else:
             return dict(message=dict(structures='invalid data')), 415
-        print(file_url)
+
         new_job = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id,
                                      structures=[dict(url=file_url, status=StructureStatus.RAW,
                                                       models=[get_model(ModelType.PREPARER)])]))

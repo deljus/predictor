@@ -20,75 +20,133 @@
 #
 import json
 import re
+import requests
+import tempfile
 import subprocess as sp
 import xml.etree.ElementTree as ET
-from io import StringIO
-
-from CGRtools.CGRcore import CGRcore
+from io import StringIO, TextIOWrapper, BufferedReader
+from os import path
+from CGRtools.CGRpreparer import CGRcombo
 from CGRtools.FEAR import FEAR
 from CGRtools.RDFrw import RDFread, RDFwrite
-from MODtools.config import LOCK_MAPPING, STANDARD, MAPPING_DONE, MOLCONVERT
+from MODtools.config import MOLCONVERT
 from MODtools.utils import getsolvents, chemaxpost, serverpost, serverput, serverget, serverdel
 from app.config import ModelType
 
 
-class Model(object):
-    def __init__(self, stereo=False, b_templates=None, e_rules=None, c_rules=None):
-        self.__cgr = CGRcore(type='0', stereo=stereo, balance=1,
-                             b_templates=open(b_templates) if b_templates else None,
-                             e_rules=open(e_rules) if e_rules else None,
-                             c_rules=open(c_rules) if c_rules else None)
+class Model(CGRcombo):
+    def __init__(self):
+        config_path = path.join(path.dirname(__file__), 'preparer')
+        b_path = path.join(config_path, 'b_templates.rdf')
+        m_path = path.join(config_path, 'm_templates.rdf')
+
+        b_templates = open(b_path) if path.exists(b_path) else None
+        m_templates = open(m_path) if path.exists(m_path) else None
+
+        CGRcombo.__init__(self, cgr_type='0',
+                          extralabels=True, isotop=False, element=True, deep=0, stereo=False,
+                          b_templates=b_templates, m_templates=m_templates, speed=False)
+
         self.__fear = FEAR(isotop=False, stereo=False, hyb=False, element=True, deep=0)
+        self.__workpath = '.'
+
+    @staticmethod
+    def get_example():
+        return None
+
+    @staticmethod
+    def get_description():
+        return 'Structure checking and possibly restoring'
+
+    @staticmethod
+    def get_name():
+        return 'Preparer'
+
+    @staticmethod
+    def get_hashes():
+        return None
+
+    @staticmethod
+    def get_type():
+        return ModelType.PREPARER
+
+    def setworkpath(self, workpath):
+        self.__workpath = workpath
 
     def get_results(self, structures):
-        pass
+        result = []
+        for s in structures:
+            if 'url' in s:
+                result = self.__parsefile(s['url'])
+                break
+            result.append(self.__process_structure(s))
+        return result
 
-    def parsefile(self, task):
-        if serverput("task_status/%s" % task['id'], {'task_status': LOCK_MAPPING}):
-            p = sp.Popen([MOLCONVERT, 'mrv', task['file']], stdout=sp.PIPE, stderr=sp.STDOUT)
-            try:
-                mrv = remove_namespace(ET.fromstring(p.communicate()[0].decode()), 'http://www.chemaxon.com')
-                solv = {x['name'].lower(): x['id'] for x in getsolvents()}
+    def __process_structure(self, structure):
+        structure_data = structure['data']
+        structure_status =
+        structure_type =
+        return dict(structure=structure['structure'],
+                    data=structure_data, status=structure_status, type=structure_type,
+                    pressure=structure['pressure'], temperature=structure['temperature'],
+                    additives=structure['additives'], models=[dict(results=[])])
 
-                for i in mrv.getchildren():
-                    solvlist = {}
-                    temp = 298
-                    prop = {x.get('title').lower(): x.find('scalar').text.lower().strip() for x in i.iter('property')}
-                    for k, v in prop.items():
-                        if 'additive.amount.' in k:
-                            try:
-                                sname, *_, samount = re.split('[:=]', v)
-                                sid = solv.get(sname.strip())
-                                if sid:
-                                    if '%' in samount:
-                                        v = samount.replace('%', '')
-                                        grader = 100
-                                    else:
-                                        v = samount
-                                        grader = 1
+    def __parsefile(self, url):
+        r = requests.get(url, stream=True)
+        if r.status_code != 200:
+            return False
 
-                                    solvlist[sid] = float(v) / grader
-                            except:
-                                pass
-                        elif 'temperature' == k:
-                            try:
-                                temp = float(v)
-                            except ValueError:
-                                temp = 298
+        with sp.Popen([MOLCONVERT, 'mrv'], stdin=BufferedReader(r.raw, buffer_size=1024), stdout=sp.PIPE,
+                      stderr=sp.STDOUT) as molconvert, TextIOWrapper(molconvert.stdout) as data:
+            next(data)  # skip xml header
+            for i in data:
+                print(i)
 
-                    standardized = self.standardize(ET.tostring(i, encoding='utf8', method='xml').decode())
-                    if standardized:
-                        data = dict(task_id=task['id'], structure=standardized['structure'],
-                                    isreaction=standardized['isreaction'],
-                                    solvents=json.dumps(solvlist), temperature=temp, status=standardized['status'])
-                        q = serverpost('parser', data)
-                        if q.isdigit():
-                            serverpost("reaction/%s" % int(q), {'models': ','.join(standardized['models'])})
-            except:
-                pass
 
-            if serverput("task_status/%s" % task['id'], {'task_status': MAPPING_DONE}):
-                return True
+
+        try:
+            mrv = remove_namespace(ET.fromstring(p.communicate()[0].decode()), 'http://www.chemaxon.com')
+            solv = {x['name'].lower(): x['id'] for x in getsolvents()}
+
+            for i in mrv.getchildren():
+                solvlist = {}
+                temp = 298
+                prop = {x.get('title').lower(): x.find('scalar').text.lower().strip() for x in i.iter('property')}
+                for k, v in prop.items():
+                    if 'additive.amount.' in k:
+                        try:
+                            sname, *_, samount = re.split('[:=]', v)
+                            sid = solv.get(sname.strip())
+                            if sid:
+                                if '%' in samount:
+                                    v = samount.replace('%', '')
+                                    grader = 100
+                                else:
+                                    v = samount
+                                    grader = 1
+
+                                solvlist[sid] = float(v) / grader
+                        except:
+                            pass
+                    elif 'temperature' == k:
+                        try:
+                            temp = float(v)
+                        except ValueError:
+                            temp = 298
+
+                standardized = self.standardize(ET.tostring(i, encoding='utf8', method='xml').decode())
+                if standardized:
+                    data = dict(task_id=task['id'], structure=standardized['structure'],
+                                isreaction=standardized['isreaction'],
+                                solvents=json.dumps(solvlist), temperature=temp, status=standardized['status'])
+                    q = serverpost('parser', data)
+                    if q.isdigit():
+                        serverpost("reaction/%s" % int(q), {'models': ','.join(standardized['models'])})
+        except:
+            pass
+
+        if serverput("task_status/%s" % task['id'], {'task_status': MAPPING_DONE}):
+            return True
         return False
 
     def mapper(self, task):
@@ -209,5 +267,6 @@ class ModelLoader(object):
 
     @staticmethod
     def get_models():
-        return [dict(description='Structure checking and possibly restoring',
-                     type=ModelType.PREPARER, name='Preparer')]
+        model = Model()
+        return [dict(example=model.get_example(), description=model.get_description(), hashes=model.get_hashes(),
+                     type=model.get_type(), name=model.get_name())]
