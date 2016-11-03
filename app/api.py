@@ -68,7 +68,8 @@ def get_models_list():
         return {m.id: dict(model=m.id, name=m.name, description=m.description, type=m.type,
                            destinations=[dict(host=x.host, port=x.port, password=x.password, name=x.name)
                                          for x in m.destinations])
-                for m in select(m for m in Models)}
+                for m in select(m for m in Models if m.model_type in (ModelType.MOLECULE_MODELING.value,
+                                                                      ModelType.REACTION_MODELING.value))}
 
 
 def fetchtask(task, status):
@@ -118,6 +119,25 @@ def authenticate(func):
 
 class CResource(Resource):
     method_decorators = [authenticate]
+
+
+class AvailableModels(CResource):
+    def get(self):
+        out = []
+        for x in get_models_list().values():
+            x.pop('destinations')
+            x['type'] = x['type'].value
+            out.append(x)
+        return out
+
+
+class AvailableAdditives(CResource):
+    def get(self):
+        out = []
+        for x in get_additives().values():
+            x['type'] = x['type'].value
+            out.append(x)
+        return out
 
 
 ''' ===================================================
@@ -253,7 +273,7 @@ class PrepareTask(CResource):
                         not d['data'] and prepared[s]['status'] == StructureStatus.CLEAR:
                     prepared[s]['models'] = [models[m] for m in d['models']
                                              if m in models and
-                                             models[m]['type'].compatible(prepared[s]['type'], result['type'])]
+                                             models[m]['type'].compatible(prepared[s]['type'], TaskType.MODELING)]
 
                 if d['data']:
                     prepared[s]['data'] = d['data']
@@ -369,3 +389,5 @@ api.add_resource(UploadTask, '/task/upload/<int:_type>')
 api.add_resource(PrepareTask, '/task/prepare/<string:task>')
 api.add_resource(StartTask, '/task/modeling/<string:task>')
 # api.add_resource(ResultsTask, '/task/results/<string:task>')
+api.add_resource(AvailableAdditives, '/resources/additives')
+api.add_resource(AvailableModels, '/resources/models')
