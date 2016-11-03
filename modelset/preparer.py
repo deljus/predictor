@@ -19,19 +19,44 @@
 #  MA 02110-1301, USA.
 #
 import json
+from itertools import chain
+
 import re
 import requests
 import tempfile
 import subprocess as sp
 import xml.etree.ElementTree as ET
-from io import StringIO, TextIOWrapper, BufferedReader
+from io import StringIO, TextIOWrapper, BufferedReader, IOBase, BytesIO
 from os import path
 from CGRtools.CGRpreparer import CGRcombo
 from CGRtools.FEAR import FEAR
 from CGRtools.RDFrw import RDFread, RDFwrite
 from MODtools.config import MOLCONVERT
 from MODtools.utils import getsolvents, chemaxpost, serverpost, serverput, serverget, serverdel
-from app.config import ModelType
+from app.config import ModelType, ResultType, StructureType, StructureStatus
+
+
+class ByteLoop(IOBase):
+    __data = b''
+
+    def read(self, n=-1):
+        data = BytesIO(self.__data)
+        out = data.read(n)
+        self.__data = self.__data[len(out):]
+        return out
+
+    def write(self, data):
+        self.__data += data
+        return len(data)
+
+    def seekable(self):
+        return False
+
+    def writable(self):
+        return True
+
+    def readable(self):
+        return True
 
 
 class Model(CGRcombo):
@@ -49,6 +74,20 @@ class Model(CGRcombo):
 
         self.__fear = FEAR(isotop=False, stereo=False, hyb=False, element=True, deep=0)
         self.__workpath = '.'
+
+        with open(path.join(config_path, 'preparer.xml')) as f:
+            self.__pre_rules = f.read()
+        self.__pre_filter_chain = [dict(filter="standardizer",
+                                        parameters=dict(standardizerDefinition=self.__pre_rules)),
+                                   dict(filter="clean", parameters=dict(dim=2))]
+
+        self.__post_rules = None
+        self.__post_filter_chain = [dict(filter="clean", parameters=dict(dim=2))]
+        if path.exists(path.join(config_path, 'postprocess.xml')):
+            with open(path.join(config_path, 'postprocess.xml')) as f:
+                self.__post_rules = f.read()
+            self.__post_filter_chain.insert(0, dict(filter="standardizer",
+                                                    parameters=dict(standardizerDefinition=self.__post_rules)))
 
     @staticmethod
     def get_example():
@@ -79,30 +118,72 @@ class Model(CGRcombo):
             if 'url' in s:
                 result = self.__parsefile(s['url'])
                 break
-            result.append(self.__process_structure(s))
+            parsed = self.__parse_structure(s)
+            if parsed:
+                result.append(parsed)
         return result
 
-    def __process_structure(self, structure):
-        structure_data = structure['data']
-        structure_status =
-        structure_type =
+    def __parse_structure(self, structure):
+        chemaxed = chemaxpost('calculate/molExport',
+                              dict(structure=structure['data'], parameters="mol", filterChain=self.__pre_filter_chain))
+        if not chemaxed:
+            return False
+
+        if 'isReaction' in chemaxed:
+            structure_type = StructureType.REACTION
+
+            with StringIO(chemaxed['structure']) as in_file, StringIO() as out_file:
+                parse_results = self.__prepare_reaction(in_file, out_file)[0]
+                prepared = out_file.getvalue()
+
+        else:
+            structure_type = StructureType.MOLECULE
+            parse_results = []
+            prepared = chemaxed['structure']
+
+        chemaxed = chemaxpost('calculate/molExport',
+                              dict(structure=prepared, parameters="mrv", filterChain=self.__post_filter_chain))
+        if not chemaxed:
+            return False
+
+        structure_data = chemaxed['structure']
+        structure_status = StructureStatus.CLEAR
+
         return dict(structure=structure['structure'],
                     data=structure_data, status=structure_status, type=structure_type,
                     pressure=structure['pressure'], temperature=structure['temperature'],
-                    additives=structure['additives'], models=[dict(results=[])])
+                    additives=structure['additives'], models=[dict(results=parse_results)])
+
+    def __prepare_reaction(self, in_file, out_file):
+        report = []
+        out = RDFwrite(out_file)
+        for r in RDFread(in_file).read():
+            g = self.getCGR(r)
+            g.graph['meta'] = {}
+            out.write(g)
+            report.append([dict(key='Processed', value=x, type=ResultType.TEXT)
+                           for x in g.graph.get('CGR_REPORT')])
+
+        return report
 
     def __parsefile(self, url):
         r = requests.get(url, stream=True)
         if r.status_code != 200:
             return False
 
-        with sp.Popen([MOLCONVERT, 'mrv'], stdin=BufferedReader(r.raw, buffer_size=1024), stdout=sp.PIPE,
-                      stderr=sp.STDOUT) as molconvert, TextIOWrapper(molconvert.stdout) as data:
-            next(data)  # skip xml header
-            for i in data:
-                print(i)
+        with sp.Popen([MOLCONVERT, 'mol'], stdin=BufferedReader(r.raw, buffer_size=1024), stdout=sp.PIPE,
+                      stderr=sp.STDOUT) as convert1, \
+                TextIOWrapper(convert1.stdout) as data1, \
+                ByteLoop() as loop, \
+                sp.Popen([MOLCONVERT, 'mrv'], stdin=BufferedReader(loop, buffer_size=1024), stdout=sp.PIPE,
+                         stderr=sp.STDOUT) as convert2, \
+                TextIOWrapper(convert2.stdout) as data2:
 
+            header = next(data1)
 
+            if '$RXN' in header:
+                structure_type = StructureType.REACTION
+                parse_results = self.__prepare_reaction(chain([header], data1), TextIOWrapper(loop))
 
         try:
             mrv = remove_namespace(ET.fromstring(p.communicate()[0].decode()), 'http://www.chemaxon.com')
@@ -169,31 +250,23 @@ class Model(CGRcombo):
         return False
 
     def standardize(self, structure):
-        data = {"structure": structure, "parameters": "mol",
-                "filterChain": [{"filter": "standardizer", "parameters": {"standardizerDefinition": STANDARD}},
-                                {"filter": "clean", "parameters": {"dim": 2}}]}
+        data = dict(structure=structure, parameters="mol",
+                    filterChain=[dict(filter="standardizer", parameters=dict(standardizerDefinition=self.__standard)),
+                                 dict(filter="clean", parameters=dict(dim=2))])
         structure = chemaxpost('calculate/molExport', data)
-        models = set()
         status = None
-        isreaction = False
         if structure:
             structure = json.loads(structure)
             if 'isReaction' in structure:
-                isreaction = True
+                is_reaction = True
                 print('!! std reaction')
-                try:
-                    out = StringIO()
-                    g = self.__cgr.getCGR(next(RDFread(StringIO(structure['structure'])).readdata()))
-                    status = g.graph.get('CGR_REPORT')
+                with StringIO(structure['structure']) as in_file, StringIO() as out_file:
+                    for r in RDFread(in_file).read():
+                        g = self.getCGR(r)
+                        status = g.graph.get('CGR_REPORT')
 
-                    *_, hashes = self.__fear.chkreaction(g, gennew=True)
                     RDFwrite(out).writedata(self.__cgr.dissCGR(g))
                     mol = out.getvalue()
-
-                    models.update(str(y['id']) for x in hashes for y in serverget("models", {'hash': x[2]}))
-                except Exception as e:
-                    print(e)
-                    mol = structure['structure']
 
                 chk = self.chkreaction(mol)
                 if chk:
@@ -201,8 +274,9 @@ class Model(CGRcombo):
                         status = '%s, %s' % (status, chk)
                     else:
                         status = chk
-                # todo: get reaction hashes etc
+                        # todo: get reaction hashes etc
             else:
+                is_reaction = False
                 print('!! std molecule')
                 mol = structure['structure']
                 # todo: тут надо для молекул заморочиться. mb

@@ -92,7 +92,7 @@ def chemaxpost(url, data):
             continue
         else:
             if q.status_code in (201, 200):
-                return q.text
+                return q.json()
             else:
                 continue
     else:

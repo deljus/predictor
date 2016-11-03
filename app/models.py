@@ -103,7 +103,7 @@ class Structures(db.Entity):
 
 class Results(db.Entity):
     id = PrimaryKey(int, auto=True)
-    attrib = Required(str)
+    key = Required(str)
     model = Required("Models")
     result_type = Required(int)
     structure = Required(Structures)
