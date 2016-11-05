@@ -24,8 +24,8 @@ import pandas as pd
 import numpy as np
 from collections import defaultdict
 from functools import reduce
-from CGRtools.SDFrw import SDFread
-from CGRtools.RDFrw import RDFread
+from CGRtools.files.SDFrw import SDFread
+from CGRtools.files.RDFrw import RDFread
 
 
 class Descriptorchain(object):

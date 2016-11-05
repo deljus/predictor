@@ -33,7 +33,7 @@ from itertools import product, cycle
 from sortedcontainers import SortedListWithKey
 from CGRtools.CGRcore import CGRcore
 from CGRtools.FEAR import FEAR
-from CGRtools.RDFrw import RDFread
+from CGRtools.files.RDFrw import RDFread
 from MODtools.config import GACONF
 from MODtools.descriptors.cxcalc import Pkab
 from MODtools.descriptors.descriptoragregator import Descriptorsdict, Descriptorchain

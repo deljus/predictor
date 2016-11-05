@@ -28,8 +28,8 @@ from functools import reduce
 from itertools import tee
 from sklearn.feature_extraction import DictVectorizer
 from CGRtools.CGRpreparer import CGRcombo
-from CGRtools.RDFrw import RDFread
-from CGRtools.SDFrw import SDFread, SDFwrite
+from CGRtools.files.RDFrw import RDFread
+from CGRtools.files.SDFrw import SDFread, SDFwrite
 from ..config import FRAGMENTOR
 from ..structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker, Colorize
 

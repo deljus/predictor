@@ -28,8 +28,8 @@ from operator import itemgetter
 from subprocess import Popen, PIPE, STDOUT, call
 from CGRtools.CGRpreparer import CGRbalanser, CGRcombo
 from CGRtools.CGRreactor import CGRreactor
-from CGRtools.RDFrw import RDFread, RDFwrite
-from CGRtools.SDFrw import SDFread, SDFwrite
+from CGRtools.files.RDFrw import RDFread, RDFwrite
+from CGRtools.files.SDFrw import SDFread, SDFwrite
 from .config import PMAPPER, STANDARDIZER, COLOR
 from .utils import chemaxpost
 from . import remove_namespace

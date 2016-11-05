@@ -24,8 +24,8 @@ import pandas as pd
 from functools import reduce
 from io import StringIO
 from subprocess import Popen, PIPE
-from CGRtools.RDFrw import RDFread
-from CGRtools.SDFrw import SDFread, SDFwrite
+from CGRtools.files.RDFrw import RDFread
+from CGRtools.files.SDFrw import SDFread, SDFwrite
 from ..config import EED
 from .descriptoragregator import Propertyextractor
 from ..structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker
