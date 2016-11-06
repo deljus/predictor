@@ -21,6 +21,7 @@
 import json
 import requests
 from .config import CHEMAXON, PREDICTOR
+from MWUI.config import AdditiveType
 
 
 def serverget(url, params):
@@ -107,5 +108,10 @@ def getfiletask():
     return serverget('parser', None)
 
 
-def getsolvents():
-    return serverget('solvents', None)
+def get_additives():
+    res = serverget('resources/additives', None)
+    if res:
+        for a in res:
+            a['type'] = AdditiveType(a['type'])
+
+    return res or []

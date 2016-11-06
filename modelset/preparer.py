@@ -19,48 +19,24 @@
 #  MA 02110-1301, USA.
 #
 import json
-from itertools import chain
-
 import re
 import requests
-import tempfile
 import subprocess as sp
-import xml.etree.ElementTree as ET
-from io import StringIO, TextIOWrapper, BufferedReader, IOBase, BytesIO
+from io import StringIO, BufferedReader
 from os import path
 from CGRtools.CGRpreparer import CGRcombo
 from CGRtools.FEAR import FEAR
-from CGRtools.RDFrw import RDFread, RDFwrite
+from CGRtools.files.RDFrw import RDFread, RDFwrite
+from CGRtools.files.SDFrw import SDFwrite
 from MODtools.config import MOLCONVERT
-from MODtools.utils import getsolvents, chemaxpost, serverpost, serverput, serverget, serverdel
-from app.config import ModelType, ResultType, StructureType, StructureStatus
-
-
-class ByteLoop(IOBase):
-    __data = b''
-
-    def read(self, n=-1):
-        data = BytesIO(self.__data)
-        out = data.read(n)
-        self.__data = self.__data[len(out):]
-        return out
-
-    def write(self, data):
-        self.__data += data
-        return len(data)
-
-    def seekable(self):
-        return False
-
-    def writable(self):
-        return True
-
-    def readable(self):
-        return True
+from MODtools.utils import get_additives, chemaxpost
+from MWUI.config import ModelType, ResultType, StructureType, StructureStatus
 
 
 class Model(CGRcombo):
     def __init__(self):
+        self.__additives = {x['name'].lower(): x for x in get_additives()}
+
         config_path = path.join(path.dirname(__file__), 'preparer')
         b_path = path.join(config_path, 'b_templates.rdf')
         m_path = path.join(config_path, 'm_templates.rdf')
@@ -102,10 +78,6 @@ class Model(CGRcombo):
         return 'Preparer'
 
     @staticmethod
-    def get_hashes():
-        return None
-
-    @staticmethod
     def get_type():
         return ModelType.PREPARER
 
@@ -115,8 +87,9 @@ class Model(CGRcombo):
     def get_results(self, structures):
         result = []
         for s in structures:
-            if 'url' in s:
-                result = self.__parsefile(s['url'])
+            if isinstance(s['data'], dict):
+                if 'url' in s['data'] and len(structures) == 1:
+                    result = self.__parsefile(s['data']['url'])
                 break
             parsed = self.__parse_structure(s)
             if parsed:
@@ -129,40 +102,81 @@ class Model(CGRcombo):
         if not chemaxed:
             return False
 
-        if 'isReaction' in chemaxed:
-            structure_type = StructureType.REACTION
-
-            with StringIO(chemaxed['structure']) as in_file, StringIO() as out_file:
-                parse_results = self.__prepare_reaction(in_file, out_file)[0]
-                prepared = out_file.getvalue()
-
-        else:
-            structure_type = StructureType.MOLECULE
-            parse_results = []
-            prepared = chemaxed['structure']
+        with StringIO(chemaxed['structure']) as in_file, StringIO() as out_file:
+            try:
+                results = self.__prepare(in_file, out_file)[0]
+            except IndexError:
+                return False
+            prepared = out_file.getvalue()
 
         chemaxed = chemaxpost('calculate/molExport',
                               dict(structure=prepared, parameters="mrv", filterChain=self.__post_filter_chain))
         if not chemaxed:
             return False
 
-        structure_data = chemaxed['structure']
-        structure_status = StructureStatus.CLEAR
+        return dict(data=chemaxed['structure'], status=results['status'], type=results['type'],
+                    results=results['results'])
 
-        return dict(structure=structure['structure'],
-                    data=structure_data, status=structure_status, type=structure_type,
-                    pressure=structure['pressure'], temperature=structure['temperature'],
-                    additives=structure['additives'], models=[dict(results=parse_results)])
-
-    def __prepare_reaction(self, in_file, out_file):
+    def __prepare(self, in_file, out_file, first_only=True):
+        mark = 0
         report = []
-        out = RDFwrite(out_file)
+        rdf = RDFwrite(out_file)
+        sdf = SDFwrite(out_file)
         for r in RDFread(in_file).read():
-            g = self.getCGR(r)
-            g.graph['meta'] = {}
-            out.write(g)
-            report.append([dict(key='Processed', value=x, type=ResultType.TEXT)
-                           for x in g.graph.get('CGR_REPORT')])
+            _meta, r['meta'] = r['meta'], {}
+            if mark in (0, 1) in r['products'] and r['substrats']:  # ONLY FULL REACTIONS
+                mark = 1
+                g = self.getCGR(r)
+                _type = StructureType.REACTION
+                _report = g.graph.get('CGR_REPORT')
+                _status = StructureStatus.HAS_ERROR if any('ERROR:' in x for x in _report) else StructureStatus.CLEAR
+                rdf.write(self.dissCGR(g))
+            elif mark in (0, 2) and r['substrats']:  # MOLECULES AND MIXTURES
+                mark = 2
+                _type = StructureType.MOLECULE
+                _report = []
+                _status = StructureStatus.CLEAR
+                sdf.write(self.merge_mols(r)['substrats'])  # todo: molecules checks.
+            else:
+                continue
+
+            additives = []
+            for k, v in _meta.items():
+                if 'additive.amount.' in k:
+                    try:
+                        a_name, *_, a_amount = re.split('[:=]+', v)
+                        additive = self.__additives.get(a_name.strip().lower())
+                        if additive:
+                            if '%' in a_amount:
+                                v = a_amount.replace('%', '')
+                                grader = 100
+                            else:
+                                v = a_amount
+                                grader = 1
+
+                            tmp = dict(amount=float(v) / grader)
+                            tmp.update(additive)
+                            additives.append(tmp)
+                    except:
+                        pass
+
+            tmp = _meta.pop('pressure', 1)
+            try:
+                pressure = float(tmp)
+            except ValueError:
+                pressure = 1
+
+            tmp = _meta.pop('temperature', 298)
+            try:
+                temperature = float(tmp)
+            except ValueError:
+                temperature = 298
+
+            report.append(dict(results=[dict(key='Processed', value=x, type=ResultType.TEXT) for x in _report],
+                               status=_status, type=_type,
+                               additives=additives, pressure=pressure, temperature=temperature))
+            if first_only:
+                break
 
         return report
 
@@ -171,122 +185,33 @@ class Model(CGRcombo):
         if r.status_code != 200:
             return False
 
-        with sp.Popen([MOLCONVERT, 'mol'], stdin=BufferedReader(r.raw, buffer_size=1024), stdout=sp.PIPE,
-                      stderr=sp.STDOUT) as convert1, \
-                TextIOWrapper(convert1.stdout) as data1, \
-                ByteLoop() as loop, \
-                sp.Popen([MOLCONVERT, 'mrv'], stdin=BufferedReader(loop, buffer_size=1024), stdout=sp.PIPE,
-                         stderr=sp.STDOUT) as convert2, \
-                TextIOWrapper(convert2.stdout) as data2:
+        # ANY to MDL converter
+        with sp.Popen([MOLCONVERT, 'rdf'], stdin=BufferedReader(r.raw, buffer_size=1024), stdout=sp.PIPE,
+                      stderr=sp.STDOUT) as convert_mol:
+            res = convert_mol.communicate()[0].decode()
+            if convert_mol.returncode != 0:
+                return False
 
-            header = next(data1)
+        # MAGIC
+        with StringIO(res) as mol_in, StringIO() as mol_out:
+            results = self.__prepare(mol_in, mol_out)
+            res = mol_out.getvalue()
 
-            if '$RXN' in header:
-                structure_type = StructureType.REACTION
-                parse_results = self.__prepare_reaction(chain([header], data1), TextIOWrapper(loop))
+        # MDL to MRV
+        with sp.Popen([MOLCONVERT, 'mrv'], stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.STDOUT) as convert_mrv:
+            res = convert_mrv.communicate(input=res.encode())[0].decode()
+            if convert_mrv.returncode != 0:
+                return False
 
-        try:
-            mrv = remove_namespace(ET.fromstring(p.communicate()[0].decode()), 'http://www.chemaxon.com')
-            solv = {x['name'].lower(): x['id'] for x in getsolvents()}
+        with StringIO(res) as mrv:
+            next(mrv)
+            for structure in mrv:
+                pass
 
-            for i in mrv.getchildren():
-                solvlist = {}
-                temp = 298
-                prop = {x.get('title').lower(): x.find('scalar').text.lower().strip() for x in i.iter('property')}
-                for k, v in prop.items():
-                    if 'additive.amount.' in k:
-                        try:
-                            sname, *_, samount = re.split('[:=]', v)
-                            sid = solv.get(sname.strip())
-                            if sid:
-                                if '%' in samount:
-                                    v = samount.replace('%', '')
-                                    grader = 100
-                                else:
-                                    v = samount
-                                    grader = 1
-
-                                solvlist[sid] = float(v) / grader
-                        except:
-                            pass
-                    elif 'temperature' == k:
-                        try:
-                            temp = float(v)
-                        except ValueError:
-                            temp = 298
-
-                standardized = self.standardize(ET.tostring(i, encoding='utf8', method='xml').decode())
-                if standardized:
-                    data = dict(task_id=task['id'], structure=standardized['structure'],
-                                isreaction=standardized['isreaction'],
-                                solvents=json.dumps(solvlist), temperature=temp, status=standardized['status'])
-                    q = serverpost('parser', data)
-                    if q.isdigit():
-                        serverpost("reaction/%s" % int(q), {'models': ','.join(standardized['models'])})
-        except:
-            pass
-
-        if serverput("task_status/%s" % task['id'], {'task_status': MAPPING_DONE}):
-            return True
-        return False
-
-    def mapper(self, task):
-        if serverput("task_status/%s" % (task['id']), {'task_status': LOCK_MAPPING}):
-            chemicals = serverget("task_reactions/%s" % (task['id']), None)
-            for j in chemicals:
-                structure = serverget("reaction_structure/%s" % (j['reaction_id']), None)
-                standardized = self.standardize(structure)
-                if standardized:
-                    serverpost("reaction_structure/%s" % (j['reaction_id']),
-                               {'reaction_structure': standardized['structure'],
-                                'status': standardized['status'],
-                                'isreaction': standardized['isreaction']})
-                    serverpost("reaction/%s" % j['reaction_id'], {'models': ','.join(standardized['models'])})
-                else:
-                    serverdel("reaction/%s" % (j['reaction_id']), None)
-
-            if serverput("task_status/%s" % task['id'], {'task_status': MAPPING_DONE}):
-                return True
-        return False
-
-    def standardize(self, structure):
-        data = dict(structure=structure, parameters="mol",
-                    filterChain=[dict(filter="standardizer", parameters=dict(standardizerDefinition=self.__standard)),
-                                 dict(filter="clean", parameters=dict(dim=2))])
-        structure = chemaxpost('calculate/molExport', data)
-        status = None
-        if structure:
-            structure = json.loads(structure)
-            if 'isReaction' in structure:
-                is_reaction = True
-                print('!! std reaction')
-                with StringIO(structure['structure']) as in_file, StringIO() as out_file:
-                    for r in RDFread(in_file).read():
-                        g = self.getCGR(r)
-                        status = g.graph.get('CGR_REPORT')
-
-                    RDFwrite(out).writedata(self.__cgr.dissCGR(g))
-                    mol = out.getvalue()
-
-                chk = self.chkreaction(mol)
-                if chk:
-                    if status:
-                        status = '%s, %s' % (status, chk)
-                    else:
-                        status = chk
-                        # todo: get reaction hashes etc
-            else:
-                is_reaction = False
-                print('!! std molecule')
-                mol = structure['structure']
-                # todo: тут надо для молекул заморочиться. mb
-
-            structure = chemaxpost('calculate/molExport', {"structure": mol, "parameters": "mrv",
-                                                           "filterChain": [{"filter": "clean",
-                                                                            "parameters": {"dim": 2}}]})
-            if structure:
-                structure = json.loads(structure)
-                return dict(structure=structure['structure'], models=models, status=status, isreaction=isreaction)
+        dict(structure=structure['structure'],
+             data=chemaxed['structure'], status=results['status'], type=results['type'],
+             pressure=structure['pressure'], temperature=structure['temperature'],
+             additives=structure['additives'], results=results['results'])
 
         return False
 
@@ -342,5 +267,5 @@ class ModelLoader(object):
     @staticmethod
     def get_models():
         model = Model()
-        return [dict(example=model.get_example(), description=model.get_description(), hashes=model.get_hashes(),
+        return [dict(example=model.get_example(), description=model.get_description(),
                      type=model.get_type(), name=model.get_name())]

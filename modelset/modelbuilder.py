@@ -49,9 +49,6 @@ class Model(ConsensusDragos):
     def get_name(self):
         return self.__conf.get('name')
 
-    def get_hashes(self):
-        return self.__conf.get('hashes')
-
     def get_type(self):
         return self.__conf.get('type')
 
@@ -114,7 +111,7 @@ class ModelLoader(object):
                 try:
                     model = Model(file)
                     cache[model.get_name()] = dict(file=file, hash=self.__md5(file), example=model.get_example(),
-                                                   description=model.get_description(), hashes=model.get_hashes(),
+                                                   description=model.get_description(),
                                                    size=os.path.getsize(file),
                                                    type=model.get_type(), name=model.get_name())
                 except:
