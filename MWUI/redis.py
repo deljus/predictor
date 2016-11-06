@@ -23,7 +23,7 @@
 from collections import defaultdict
 from redis import Redis
 from rq import Queue
-from app.config import TaskStatus, StructureStatus, ModelType
+from .config import TaskStatus, StructureStatus, ModelType
 
 
 class RedisCombiner(object):

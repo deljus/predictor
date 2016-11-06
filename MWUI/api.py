@@ -20,9 +20,9 @@
 #
 import uuid
 from os import path
-from app.config import UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, StructureType, AdditiveType
-from app.models import Tasks, Structures, Additives, Models, Additivesets
-from app.redis import RedisCombiner
+from .config import UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, StructureType, AdditiveType
+from .models import Tasks, Structures, Additives, Models, Additivesets
+from .redis import RedisCombiner
 from flask import Blueprint, url_for, send_from_directory
 from flask_login import current_user
 from flask_restful import reqparse, Resource, fields, marshal, abort, Api
@@ -375,7 +375,7 @@ class UploadTask(CResource):
             return dict(message=dict(structures='invalid data')), 415
 
         new_job = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id,
-                                     structures=[dict(url=file_url, status=StructureStatus.RAW,
+                                     structures=[dict(data=dict(url=file_url), status=StructureStatus.RAW,
                                                       models=[get_model(ModelType.PREPARER)])]))
         if new_job is None:
             abort(500, message=dict(server='error'))

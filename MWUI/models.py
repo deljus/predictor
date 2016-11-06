@@ -21,8 +21,8 @@
 #
 import bcrypt
 import hashlib
-from app.config import (DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER,
-                        TaskType, ModelType, AdditiveType, ResultType, StructureType, StructureStatus)
+from .config import (DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER,
+                     TaskType, ModelType, AdditiveType, ResultType, StructureType, StructureStatus)
 from datetime import datetime
 from pony.orm import Database, sql_debug, PrimaryKey, Required, Optional, Set
 

@@ -20,7 +20,7 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from app.models import Users
+from .models import Users
 from flask_wtf import Form
 from pony.orm import db_session
 from wtforms import StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError

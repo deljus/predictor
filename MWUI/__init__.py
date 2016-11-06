@@ -28,11 +28,11 @@ def init():
     from flask_login import LoginManager
     from flask_nav import Nav, register_renderer
 
-    from app.api import api_bp
-    from app.views import view_bp
-    from app.bootstrap import top_nav, Customrenderer
-    from app.config import PORTAL_BASE, SECRET_KEY, HOST, DEBUG, PORT
-    from app.logins import load_user
+    from .api import api_bp
+    from .views import view_bp
+    from .bootstrap import top_nav, Customrenderer
+    from .config import PORTAL_BASE, SECRET_KEY, HOST, DEBUG, PORT
+    from .logins import load_user
 
     app = Flask(__name__)
 

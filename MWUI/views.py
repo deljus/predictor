@@ -20,9 +20,9 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from app.forms import Login, Registration
-from app.logins import User
-from app.models import Users
+from .forms import Login, Registration
+from .logins import User
+from .models import Users
 from flask import redirect, url_for, render_template, Blueprint
 from flask_login import login_user, logout_user, login_required
 from pony.orm import db_session
