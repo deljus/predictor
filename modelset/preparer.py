@@ -35,6 +35,7 @@ from MWUI.config import ModelType, ResultType, StructureType, StructureStatus
 
 class Model(CGRcombo):
     def __init__(self):
+        self.__workpath = '.'
         self.__additives = {x['name'].lower(): x for x in get_additives()}
 
         config_path = path.join(path.dirname(__file__), 'preparer')
@@ -47,9 +48,6 @@ class Model(CGRcombo):
         CGRcombo.__init__(self, cgr_type='0',
                           extralabels=True, isotop=False, element=True, deep=0, stereo=False,
                           b_templates=b_templates, m_templates=m_templates, speed=False)
-
-        self.__fear = FEAR(isotop=False, stereo=False, hyb=False, element=True, deep=0)
-        self.__workpath = '.'
 
         with open(path.join(config_path, 'preparer.xml')) as f:
             self.__pre_rules = f.read()
@@ -85,26 +83,27 @@ class Model(CGRcombo):
         self.__workpath = workpath
 
     def get_results(self, structures):
-        result = []
+        results = []
         for s in structures:
-            if isinstance(s['data'], dict):
-                if 'url' in s['data'] and len(structures) == 1:
-                    result = self.__parsefile(s['data']['url'])
+            if isinstance(s['data'], dict):  # AD-HOC for files processing
+                if 'url' in s['data']:
+                    results = self.__parsefile(s['data']['url'])
                 break
-            parsed = self.__parse_structure(s)
-            if parsed:
-                result.append(parsed)
-        return result
+            else:
+                parsed = self.__parse_structure(s)
+                if parsed:
+                    results.append(parsed)
+        return results
 
     def __parse_structure(self, structure):
         chemaxed = chemaxpost('calculate/molExport',
-                              dict(structure=structure['data'], parameters="mol", filterChain=self.__pre_filter_chain))
+                              dict(structure=structure['data'], parameters="rdf", filterChain=self.__pre_filter_chain))
         if not chemaxed:
             return False
 
         with StringIO(chemaxed['structure']) as in_file, StringIO() as out_file:
             try:
-                results = self.__prepare(in_file, out_file)[0]
+                result = self.__prepare(in_file, out_file)[0]
             except IndexError:
                 return False
             prepared = out_file.getvalue()
@@ -114,8 +113,45 @@ class Model(CGRcombo):
         if not chemaxed:
             return False
 
-        return dict(data=chemaxed['structure'], status=results['status'], type=results['type'],
-                    results=results['results'])
+        return dict(data=chemaxed['structure'], status=result['status'], type=result['type'],
+                    results=result['results'])
+
+    def __parsefile(self, url):
+        r = requests.get(url)
+        if r.status_code != 200:
+            return False
+
+        # ANY to MDL converter
+        with sp.Popen([MOLCONVERT, 'rdf'], stdin=sp.PIPE, stdout=sp.PIPE,
+                      stderr=sp.STDOUT) as convert_mol:
+            res = convert_mol.communicate(input=r.content)[0].decode()
+            if convert_mol.returncode != 0:
+                return False
+
+        # MAGIC
+        with StringIO(res) as mol_in, StringIO() as mol_out:
+            report = self.__prepare(mol_in, mol_out, first_only=False)
+            res = mol_out.getvalue()
+
+        # MDL to MRV
+        with sp.Popen([MOLCONVERT, 'mrv'], stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.STDOUT) as convert_mrv:
+            res = convert_mrv.communicate(input=res.encode())[0].decode()
+            if convert_mrv.returncode != 0:
+                return False
+
+        results = []
+        with StringIO(res) as mrv:
+            header = next(mrv)
+            for n, (structure, tmp) in enumerate(zip(mrv, report), start=1):
+                if '</cml>' not in structure:
+                    out = dict(structure=n, data=''.join([header, structure, '</cml>']))
+                    out.update(tmp)
+                    results.append(out)
+
+        if len(results) != len(report):
+            return False
+
+        return results
 
     def __prepare(self, in_file, out_file, first_only=True):
         mark = 0
@@ -124,11 +160,11 @@ class Model(CGRcombo):
         sdf = SDFwrite(out_file)
         for r in RDFread(in_file).read():
             _meta, r['meta'] = r['meta'], {}
-            if mark in (0, 1) in r['products'] and r['substrats']:  # ONLY FULL REACTIONS
+            if mark in (0, 1) and r['products'] and r['substrats']:  # ONLY FULL REACTIONS
                 mark = 1
                 g = self.getCGR(r)
                 _type = StructureType.REACTION
-                _report = g.graph.get('CGR_REPORT')
+                _report = g.graph.get('CGR_REPORT', [])
                 _status = StructureStatus.HAS_ERROR if any('ERROR:' in x for x in _report) else StructureStatus.CLEAR
                 rdf.write(self.dissCGR(g))
             elif mark in (0, 2) and r['substrats']:  # MOLECULES AND MIXTURES
@@ -179,41 +215,6 @@ class Model(CGRcombo):
                 break
 
         return report
-
-    def __parsefile(self, url):
-        r = requests.get(url, stream=True)
-        if r.status_code != 200:
-            return False
-
-        # ANY to MDL converter
-        with sp.Popen([MOLCONVERT, 'rdf'], stdin=BufferedReader(r.raw, buffer_size=1024), stdout=sp.PIPE,
-                      stderr=sp.STDOUT) as convert_mol:
-            res = convert_mol.communicate()[0].decode()
-            if convert_mol.returncode != 0:
-                return False
-
-        # MAGIC
-        with StringIO(res) as mol_in, StringIO() as mol_out:
-            results = self.__prepare(mol_in, mol_out)
-            res = mol_out.getvalue()
-
-        # MDL to MRV
-        with sp.Popen([MOLCONVERT, 'mrv'], stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.STDOUT) as convert_mrv:
-            res = convert_mrv.communicate(input=res.encode())[0].decode()
-            if convert_mrv.returncode != 0:
-                return False
-
-        with StringIO(res) as mrv:
-            next(mrv)
-            for structure in mrv:
-                pass
-
-        dict(structure=structure['structure'],
-             data=chemaxed['structure'], status=results['status'], type=results['type'],
-             pressure=structure['pressure'], temperature=structure['temperature'],
-             additives=structure['additives'], results=results['results'])
-
-        return False
 
     def chkreaction(self, structure):
         data = {"structure": structure, "parameters": "smiles:u",

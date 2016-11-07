@@ -121,7 +121,7 @@ class CResource(Resource):
     method_decorators = [authenticate]
 
 
-class AvailableModels(CResource):
+class AvailableModels(Resource):
     def get(self):
         out = []
         for x in get_models_list().values():
@@ -131,7 +131,7 @@ class AvailableModels(CResource):
         return out
 
 
-class AvailableAdditives(CResource):
+class AvailableAdditives(Resource):
     def get(self):
         out = []
         for x in get_additives().values():

@@ -39,21 +39,6 @@ def serverget(url, params):
         return False
 
 
-def serverput(url, params):
-    for _ in range(2):
-        try:
-            q = requests.put("%s/api/%s" % (PREDICTOR, url), params=params, timeout=20)
-        except:
-            continue
-        else:
-            if q.status_code in (201, 200):
-                return True
-            else:
-                continue
-    else:
-        return False
-
-
 def serverpost(url, params):
     for _ in range(2):
         try:
@@ -65,21 +50,6 @@ def serverpost(url, params):
                 return q.text
             else:
                 continue
-    else:
-        return False
-
-
-def serverdel(url, params):
-    for _ in range(2):
-        try:
-            q = requests.delete("%s/api/%s" % (PREDICTOR, url), params=params, timeout=20)
-        except:
-            continue
-        else:
-            if q.status_code in (201, 200):
-                return True
-            else:
-                return False
     else:
         return False
 
@@ -100,18 +70,9 @@ def chemaxpost(url, data):
         return False
 
 
-def gettask(status):
-    return serverget('tasks', {'task_status': status}) or []
-
-
-def getfiletask():
-    return serverget('parser', None)
-
-
 def get_additives():
     res = serverget('resources/additives', None)
     if res:
         for a in res:
             a['type'] = AdditiveType(a['type'])
-
     return res or []
