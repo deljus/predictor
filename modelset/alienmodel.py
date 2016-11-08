@@ -113,7 +113,7 @@ class Model(ConsensusDragos):
 
 class ModelLoader(object):
     def __init__(self, **kwargs):
-        self.__models_path = os.path.join(os.path.dirname(__file__), 'custommodel')
+        self.__models_path = os.path.join(os.path.dirname(__file__), 'alienmodel')
         self.__cache_path = os.path.join(self.__models_path, '.cache')
         self.__models = self.__scan_models()
 
