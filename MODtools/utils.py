@@ -47,7 +47,7 @@ def serverpost(url, params):
             continue
         else:
             if q.status_code in (201, 200):
-                return q.text
+                return q.json()
             else:
                 continue
     else:

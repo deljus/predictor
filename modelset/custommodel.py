@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2015, 2016 Ramil Nugmanov <stsouko@live.ru>
+# Copyright 2016 Ramil Nugmanov <stsouko@live.ru>
 # This file is part of PREDICTOR.
 #
 # PREDICTOR is free software; you can redistribute it and/or modify
@@ -28,10 +28,8 @@ from MODtools.utils import chemaxpost
 
 
 class Model(ConsensusDragos):
-    def __init__(self, file):
-        tmp = dill.load(gzip.open(file, 'rb'))
-        self.__models = tmp['models']
-        self.__conf = tmp['config']
+    def __init__(self, directory):
+        self.__models, self.__conf = self.__load_model(directory)
         self.__workpath = '.'
 
         self.Nlim = self.__conf.get('nlim', 1)
@@ -39,6 +37,13 @@ class Model(ConsensusDragos):
         self.unit = self.__conf.get('report_units')
 
         ConsensusDragos.__init__(self)
+
+    @staticmethod
+    def __load_model(directory):
+        with open(os.path.join(directory, 'model.ini')) as f:
+            for line in f:
+                if
+        return [], {}
 
     def get_example(self):
         return self.__conf.get('example')
@@ -85,39 +90,28 @@ class Model(ConsensusDragos):
 
 
 class ModelLoader(object):
-    def __init__(self, fast_load=True):
-        self.__skip_md5 = fast_load
-        self.__models_path = os.path.join(os.path.dirname(__file__), 'modelbuilder')
+    def __init__(self, **kwargs):
+        self.__models_path = os.path.join(os.path.dirname(__file__), 'custommodel')
         self.__cache_path = os.path.join(self.__models_path, '.cache')
         self.__models = self.__scan_models()
 
-    @staticmethod
-    def __md5(name):
-        hash_md5 = hashlib.md5()
-        with open(name, "rb") as f:
-            for chunk in iter(lambda: f.read(4096), b""):
-                hash_md5.update(chunk)
-        return hash_md5.hexdigest()
-
     def __scan_models(self):
-        files = {x['file']: x for x in
-                 dill.load(open(self.__cache_path, 'rb'))} if os.path.exists(self.__cache_path) else {}
+        directories = {x['directory']: x for x in
+                       dill.load(open(self.__cache_path, 'rb'))} if os.path.exists(self.__cache_path) else {}
         cache = {}
-        for file in (os.path.join(self.__models_path, f) for f in os.listdir(self.__models_path)
-                     if os.path.splitext(f)[-1] == '.model'):
+        for directory in (os.path.join(self.__models_path, f) for f in os.listdir(self.__models_path)
+                          if os.path.splitext(f)[-1] == '.model'):
 
-            if file not in files or files[file]['size'] != os.path.getsize(file) or \
-                            not self.__skip_md5 and self.__md5(file) != files[file]['hash']:
+            if directory not in directories:
                 try:
-                    model = Model(file)
-                    cache[model.get_name()] = dict(file=file, hash=self.__md5(file), example=model.get_example(),
+                    model = Model(directory)
+                    cache[model.get_name()] = dict(directory=directory, example=model.get_example(),
                                                    description=model.get_description(),
-                                                   size=os.path.getsize(file),
                                                    type=model.get_type(), name=model.get_name())
                 except:
                     pass
             else:
-                cache[files[file]['name']] = files[file]
+                cache[directories[directory]['name']] = directories[directory]
 
         dill.dump(list(cache.values()), open(self.__cache_path, 'wb'))
         return cache

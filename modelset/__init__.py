@@ -18,8 +18,8 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import os
 import pkgutil
+from os import path
 
 
 class ModelSet(object):
@@ -29,7 +29,7 @@ class ModelSet(object):
     @staticmethod
     def __scan_models():
         models = {}
-        for mloader, pname, ispkg in pkgutil.iter_modules([os.path.dirname(__file__)]):
+        for mloader, pname, ispkg in pkgutil.iter_modules([path.dirname(__file__)]):
             if not ispkg:
                 try:
                     model_loader = mloader.find_module(pname).load_module().ModelLoader()
