@@ -113,7 +113,7 @@ class Model(CGRcombo):
         if not chemaxed:
             return False
 
-        return dict(data=chemaxed['structure'], status=result['status'], type=result['type'],
+        return dict(data=chemaxed['structure'].split('\n')[1], status=result['status'], type=result['type'],
                     results=result['results'])
 
     def __parsefile(self, url):
@@ -123,7 +123,7 @@ class Model(CGRcombo):
 
         # ANY to MDL converter
         with sp.Popen([MOLCONVERT, 'rdf'], stdin=sp.PIPE, stdout=sp.PIPE,
-                      stderr=sp.STDOUT) as convert_mol:
+                      stderr=sp.STDOUT, cwd=self.__workpath) as convert_mol:
             res = convert_mol.communicate(input=r.content)[0].decode()
             if convert_mol.returncode != 0:
                 return False
@@ -134,17 +134,18 @@ class Model(CGRcombo):
             res = mol_out.getvalue()
 
         # MDL to MRV
-        with sp.Popen([MOLCONVERT, 'mrv'], stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.STDOUT) as convert_mrv:
+        with sp.Popen([MOLCONVERT, 'mrv'], stdin=sp.PIPE, stdout=sp.PIPE,
+                      stderr=sp.STDOUT, cwd=self.__workpath) as convert_mrv:
             res = convert_mrv.communicate(input=res.encode())[0].decode()
             if convert_mrv.returncode != 0:
                 return False
 
         results = []
         with StringIO(res) as mrv:
-            header = next(mrv)
+            next(mrv)
             for n, (structure, tmp) in enumerate(zip(mrv, report), start=1):
                 if '</cml>' not in structure:
-                    out = dict(structure=n, data=''.join([header, structure, '</cml>']))
+                    out = dict(structure=n, data=structure)
                     out.update(tmp)
                     results.append(out)
 

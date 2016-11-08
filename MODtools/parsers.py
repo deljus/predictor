@@ -127,7 +127,7 @@ class MBparser(object):
         with open(file) as f:
             for line in f:
                 k, v = (x.strip() for x in line.split(':='))
-                if k in ('nlim', 'tol', 'name', 'example', 'desc', 'report_units'):
+                if k in ('nlim', 'tol', 'name', 'example', 'description', 'report_units'):
                     if k in ('nlim', 'tol'):
                         v = float(v)
                     tmp[k] = v

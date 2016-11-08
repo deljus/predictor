@@ -136,12 +136,8 @@ class Modelbuilder(MBparser):
                     return
 
                 description = self.parsemodeldescription(self.__options['description'])
-                if self.__options['isreaction']:
-                    description['type'] = 2
-                    description['hashes'] = self.__gethashes(self.__options['input'])
-                    print(description['hashes'])
-                else:
-                    description['type'] = 1
+
+                description['type'] = 2 if self.__options['isreaction'] else 1
 
                 ests = []
                 svm = {'svr', 'svc'}.intersection(self.__options['estimator']).pop()

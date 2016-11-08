@@ -18,18 +18,22 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import gzip
-import hashlib
 import json
 import os
 import dill
+import subprocess as sp
+from io import StringIO
+from itertools import count
 from MODtools.consensus import ConsensusDragos
+from MODtools.config import MOLCONVERT
 from MODtools.utils import chemaxpost
+from CGRtools.files.RDFrw import RDFread, RDFwrite
+from CGRtools.files.SDFrw import SDFwrite
 
 
 class Model(ConsensusDragos):
     def __init__(self, directory):
-        self.__models, self.__conf = self.__load_model(directory)
+        self.__conf = self.__load_model(directory)
         self.__workpath = '.'
 
         self.Nlim = self.__conf.get('nlim', 1)
@@ -40,10 +44,9 @@ class Model(ConsensusDragos):
 
     @staticmethod
     def __load_model(directory):
-        with open(os.path.join(directory, 'model.ini')) as f:
-            for line in f:
-                if
-        return [], {}
+        with open(os.path.join(directory, 'model.json')) as f:
+            tmp = json.load(f)
+        return tmp
 
     def get_example(self):
         return self.__conf.get('example')
@@ -61,32 +64,51 @@ class Model(ConsensusDragos):
         self.__workpath = workpath
 
     def get_results(self, structures):
-        structure = chemical['structure']
-        solvents = chemical['solvents'][0]['name'] if chemical['solvents'] else 'Water'
-        # [dict(id=y.solvent.id, name=y.solvent.name, amount=y.amount)]
-        temperature = chemical['temperature']
+        structure_file = os.path.join(self.__workpath, 'structures')
+        results_file = os.path.join(self.__workpath, 'results.csv')
 
-        if structure != ' ':
-            q = chemaxpost('calculate/molExport', {"structure": structure, "parameters": "mol"})
-            if q:
-                structure = json.loads(q)['structure']
-                res = [dict(type='structure', attrib='used structure', value=structure)]
-                for model in self.__models:
-                    model.setworkpath(self.__workpath)
-                    pred = model.predict(structure, temperature=temperature, solvent=solvents)
-                    # dict(prediction=pd.concat(pred, axis=1),
-                    #      domain=pd.concat(dom, axis=1), y_domain=pd.concat(ydom, axis=1))
-                    model.delworkpath()
-                    print(pred)
-                    for P, AD in zip((x for x in pred['prediction'].loc[0, :]),
-                                     (x for x in pred['domain'].loc[0, :])):
-                        self.cumulate(P, AD)
-
-                return res + self.report()
-            else:
+        # prepare input file
+        if len(structures) == 1:
+            chemaxed = chemaxpost('calculate/molExport',
+                                  dict(structure=structures[0]['data'], parameters="rdf"))
+            if not chemaxed:
                 return False
+            data = chemaxed['structure']
         else:
+            with sp.Popen([MOLCONVERT, 'rdf'], stdin=sp.PIPE, stdout=sp.PIPE,
+                          stderr=sp.STDOUT, cwd=self.__workpath) as convert_mol:
+                data = convert_mol.communicate(input=''.join(s['data'] for s in structures).encode())[0].decode()
+                if convert_mol.returncode != 0:
+                    return False
+
+        mark = 0
+        counter = count()
+        with StringIO(data) as in_file, open(structure_file, 'w') as out_file:
+            rdf = RDFwrite(out_file)
+            sdf = SDFwrite(out_file)
+            for r, meta in zip(RDFread(in_file).read(), structures):
+                next(counter)
+                r['meta'] = dict(pressure=meta['pressure'], temperature=meta['temperature'])
+                for n, a in enumerate(meta['additives'], start=1):
+                    r['meta']['additive.amount.%d' % n] = '%s: %f' % (a['name'], a['amount'])
+
+                if mark in (0, 1) and r['products'] and r['substrats']:  # ONLY FULL REACTIONS
+                    mark = 1
+                    rdf.write(r)
+                elif mark in (0, 2) and r['substrats']:  # MOLECULES AND MIXTURES
+                    mark = 2
+                    g = r['substrats'][0]
+                    g.graph['meta'] = r['meta']
+                    sdf.write(g)
+
+        if len(structures) != next(counter):
             return False
+
+        if sp.call([self.__conf['start']], cwd=self.__workpath) == 0:
+            # parese output file
+            return  # result
+
+        return False
 
 
 class ModelLoader(object):

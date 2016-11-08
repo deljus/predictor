@@ -1,0 +1,9 @@
+{
+  "nlim": 1,
+  "description": "bla",
+  "tol": 10000000000.0,
+  "name": "short bla",
+  "report_units": "kg",
+  "example": "smiles or cml or mrv",
+  "start": "launcher"
+}
