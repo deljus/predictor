@@ -20,7 +20,7 @@
 #
 import uuid
 from os import path
-from .config import UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, StructureType, AdditiveType
+from .config import UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType
 from .models import Tasks, Structures, Additives, Models, Additivesets
 from .redis import RedisCombiner
 from flask import Blueprint, url_for, send_from_directory
@@ -37,11 +37,19 @@ api = Api(api_bp)
 
 redis = RedisCombiner()
 
+
+class ModelTypeField(fields.Raw):
+    def format(self, value):
+        return ModelType(value)
+
+
 taskstructurefields = dict(structure=fields.Integer, data=fields.String, temperature=fields.Float(298),
                            pressure=fields.Float(1),
                            todelete=fields.Boolean(False),
                            additives=fields.List(fields.Nested(dict(additive=fields.Integer, amount=fields.Float))),
                            models=fields.List(fields.Integer))
+
+modelfields = dict(example=fields.String, description=fields.String, type=ModelTypeField, name=fields.String)
 
 
 @api_bp.route('/task/batch_file/<string:file>', methods=['GET'])
@@ -138,6 +146,21 @@ class AvailableAdditives(Resource):
             x['type'] = x['type'].value
             out.append(x)
         return out
+
+
+rm_post = reqparse.RequestParser()
+rm_post.add_argument('models', type=lambda x: marshal(x, modelfields), required=True)
+
+
+class RegisterModels(Resource):
+    def post(self):
+        args = rm_post.parse_args()
+        models = args['models'] if isinstance(args['models'], list) else [args['models']]
+        available = {x['name']: x['destinations'] for x in get_models_list().values()}
+        for m in models: #  dict(example=fields.String, description=fields.String, type=ModelTypeField, name=fields.String)
+            if m['name'] not in available:
+                Models(type=m['type'], name=m['name'])
+        return
 
 
 ''' ===================================================

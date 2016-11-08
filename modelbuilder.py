@@ -246,6 +246,8 @@ class Modelbuilder(MBparser):
                                                (self.savesvm if fformat == 'svm' else self.savecsv), header])
                     t.start()
                 else:
+                    while threading.active_count() > 1:
+                        pass
                     break
             time.sleep(2)
 
