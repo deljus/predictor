@@ -22,10 +22,9 @@ import json
 import re
 import requests
 import subprocess as sp
-from io import StringIO, BufferedReader
+from io import StringIO
 from os import path
 from CGRtools.CGRpreparer import CGRcombo
-from CGRtools.FEAR import FEAR
 from CGRtools.files.RDFrw import RDFread, RDFwrite
 from CGRtools.files.SDFrw import SDFwrite
 from MODtools.config import MOLCONVERT
@@ -144,10 +143,9 @@ class Model(CGRcombo):
         with StringIO(res) as mrv:
             next(mrv)
             for n, (structure, tmp) in enumerate(zip(mrv, report), start=1):
-                if '</cml>' not in structure:
-                    out = dict(structure=n, data=structure)
-                    out.update(tmp)
-                    results.append(out)
+                out = dict(structure=n, data=structure)
+                out.update(tmp)
+                results.append(out)
 
         if len(results) != len(report):
             return False

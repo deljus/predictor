@@ -24,23 +24,18 @@ import dill
 import subprocess as sp
 from io import StringIO
 from itertools import count
-from MODtools.consensus import ConsensusDragos
+from MWUI.config import ModelType, ResultType
 from MODtools.config import MOLCONVERT
 from MODtools.utils import chemaxpost
 from CGRtools.files.RDFrw import RDFread, RDFwrite
 from CGRtools.files.SDFrw import SDFwrite
 
 
-class Model(ConsensusDragos):
+class Model(object):
     def __init__(self, directory):
         self.__conf = self.__load_model(directory)
+        self.__starter = [os.path.join(directory, self.__conf['start'])]
         self.__workpath = '.'
-
-        self.Nlim = self.__conf.get('nlim', 1)
-        self.TOL = self.__conf.get('tol', 1e10)
-        self.unit = self.__conf.get('report_units')
-
-        ConsensusDragos.__init__(self)
 
     @staticmethod
     def __load_model(directory):
@@ -58,7 +53,7 @@ class Model(ConsensusDragos):
         return self.__conf.get('name')
 
     def get_type(self):
-        return self.__conf.get('type')
+        return ModelType(self.__conf.get('type'))
 
     def setworkpath(self, workpath):
         self.__workpath = workpath
@@ -66,7 +61,6 @@ class Model(ConsensusDragos):
     def get_results(self, structures):
         structure_file = os.path.join(self.__workpath, 'structures')
         results_file = os.path.join(self.__workpath, 'results.csv')
-
         # prepare input file
         if len(structures) == 1:
             chemaxed = chemaxpost('calculate/molExport',
@@ -80,7 +74,6 @@ class Model(ConsensusDragos):
                 data = convert_mol.communicate(input=''.join(s['data'] for s in structures).encode())[0].decode()
                 if convert_mol.returncode != 0:
                     return False
-
         mark = 0
         counter = count()
         with StringIO(data) as in_file, open(structure_file, 'w') as out_file:
@@ -104,16 +97,28 @@ class Model(ConsensusDragos):
         if len(structures) != next(counter):
             return False
 
-        if sp.call([self.__conf['start']], cwd=self.__workpath) == 0:
-            # parese output file
-            return  # result
+        if sp.call(self.__starter, cwd=self.__workpath) == 0:
+            results = []
+            with open(results_file) as f:
+                header = [dict(key=k, type=ResultType[t]) for t, k in
+                          (x.split(':') for x in next(f).rstrip().split(','))]
+                for l in f:
+                    rep = []
+                    for h, v in zip(header, l.rstrip().split(',')):
+                        if v:
+                            tmp = dict(value=v)
+                            tmp.update(h)
+                            rep.append(tmp)
+                    results.append(dict(results=rep))
+            if len(structures) == len(results):
+                return results
 
         return False
 
 
 class ModelLoader(object):
     def __init__(self, **kwargs):
-        self.__models_path = os.path.join(os.path.dirname(__file__), 'alienmodel')
+        self.__models_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'alienmodel'))
         self.__cache_path = os.path.join(self.__models_path, '.cache')
         self.__models = self.__scan_models()
 
@@ -140,7 +145,7 @@ class ModelLoader(object):
 
     def load_model(self, name):
         if name in self.__models:
-            return Model(self.__models[name]['file'])
+            return Model(self.__models[name]['directory'])
 
     def get_models(self):
         return list(self.__models.values())

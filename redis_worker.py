@@ -1,3 +1,5 @@
+import shutil
+import tempfile
 from modelset import ModelSet
 
 
@@ -13,23 +15,26 @@ def cycle2(structures):  # AD-HOC for preparing model for uploaded files process
 
 
 def run(structures=None, model=None):
-    mod = ModelSet().load_model(model['name'])
-    if mod is not None:
-        results = mod.get_results(structures)
+    workpath = tempfile.mkdtemp(dir='/tmp')
+    mod = ModelSet().load_model(model['name'], workpath=workpath)
 
-        if results:
-            out = []
-            for s, r in zip(cycle2(structures), results):
-                _res = dict(results=r.pop('results'))
-                _res.update(model)
-                r['models'] = [_res]
-                s.update(r)
-                out.append(s)
-            return out
+    results = mod.get_results(structures) if mod is not None else None
 
-    # if failed return empty models list
-    for s in structures:
-        s['models'] = []
+    if results:
+        out = []
+        for s, r in zip(cycle2(structures), results):
+            _res = dict(results=r.pop('results'))
+            _res.update(model)
+            r['models'] = [_res]
+            s.update(r)
+            out.append(s)
+        structures = out
+    else:
+        # if failed return empty models list
+        for s in structures:
+            s['models'] = []
+
+    shutil.rmtree(workpath)
     return structures
 
 

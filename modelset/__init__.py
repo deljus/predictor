@@ -39,10 +39,12 @@ class ModelSet(object):
                     pass
         return models
 
-    def load_model(self, name):
+    def load_model(self, name, workpath='.'):
         if name in self.__models:
             mloader, pname, _ = self.__models[name]
-            return mloader.find_module(pname).load_module().ModelLoader().load_model(name)
+            model = mloader.find_module(pname).load_module().ModelLoader().load_model(name)
+            model.setworkpath(workpath)
+            return model
 
     def get_models(self):
         return [x for *_, x in self.__models.values()]

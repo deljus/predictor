@@ -23,6 +23,7 @@ import hashlib
 import json
 import os
 import dill
+from MWUI.config import ModelType, ResultType
 from MODtools.consensus import ConsensusDragos
 from MODtools.utils import chemaxpost
 
@@ -47,10 +48,10 @@ class Model(ConsensusDragos):
         return self.__conf.get('desc')
 
     def get_name(self):
-        return self.__conf.get('name')
+        return self.__conf['name']
 
     def get_type(self):
-        return self.__conf.get('type')
+        return ModelType(self.__conf['type'])
 
     def setworkpath(self, workpath):
         self.__workpath = workpath
