@@ -243,7 +243,7 @@ class Modelbuilder(MBparser):
                     t.start()
                 else:
                     while threading.active_count() > 1:
-                        pass
+                        time.sleep(2)
                     break
             time.sleep(2)
 
