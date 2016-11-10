@@ -22,7 +22,7 @@
 #
 from math import ceil
 from flask_login import current_user
-from flask_nav.elements import *
+from flask_nav.elements import View, NavigationItem, Navbar, Separator, Subgroup
 from flask_bootstrap.nav import BootstrapRenderer
 from hashlib import sha1
 from dominate import tags
@@ -145,10 +145,10 @@ def top_nav():
     if current_user.is_authenticated:
         navbar = [LeftSubgroup(View('Search', '.search'), View('Modeling', '.modeling'), View('Results', '.results'),
                   View('Queries', '.queries')),
-                  RightSubgroup(Subgroup(current_user.get_email(), View('Profile', '.index'), Separator(),
+                  RightSubgroup(Subgroup(current_user.get_email(), View('Profile', '.profile'), Separator(),
                                          View('Logout', '.logout')))
                   ]
     else:
         navbar = [RightSubgroup(View('Login', '.login'), View('Registration', '.registration'))]
 
-    return Navbar('Predictor', *navbar)
+    return Navbar(View('Predictor', '.index'), *navbar)

@@ -88,3 +88,9 @@ def queries():
 @login_required
 def results():
     return render_template("home.html")
+
+
+@view_bp.route('/profile', methods=['GET'])
+@login_required
+def profile():
+    return render_template("home.html")

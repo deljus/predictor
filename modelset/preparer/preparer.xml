@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <StandardizerConfiguration Version="0.1">
   <Actions>
-    <Transformation Exact="false" ID="C1&gt;C" SearchOptions="" Structure="[#6;v0+]&gt;&gt;[#6]" format="cxsmarts"/>
     <Transformation Exact="false" ID="S3&gt;S" SearchOptions="" Structure="[S;v0+3]&gt;&gt;[#16] |^1:0|" format="cxsmarts"/>
     <RemoveExplicitH Bridgehead="true" Charged="true" Hconnected="true" ID="Remove Explicit Hydrogens" Isotopic="false" Lonely="true" Mapped="true" Polymerendgroup="true" Radical="true" Sgroup="true" Sgroupend="true" Valenceerror="true" Wedged="true"/>
     <SetHydrogenIsotopeSymbol ID="Set Hydrogen Isotope Symbol" Type="2H3H"/>

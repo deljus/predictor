@@ -21,7 +21,7 @@
 #  MA 02110-1301, USA.
 #
 from .models import Users
-from flask_wtf import Form
+from flask_wtf import FlaskForm
 from pony.orm import db_session
 from wtforms import StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError
 
@@ -36,7 +36,7 @@ class CheckEmailExist(object):
                 raise ValidationError(self.message)
 
 
-class Registration(Form):
+class Registration(FlaskForm):
     email = StringField('Email', [validators.DataRequired(), validators.Email(), CheckEmailExist()])
     password = PasswordField('Password', [validators.DataRequired(),
                                           validators.EqualTo('confirm', message='Passwords must match')])
@@ -44,7 +44,7 @@ class Registration(Form):
     submit_btn = SubmitField('Register')
 
 
-class Login(Form):
+class Login(FlaskForm):
     email = StringField('Email', [validators.DataRequired(), validators.Email()])
     password = PasswordField('Password', [validators.DataRequired()])
     remember = BooleanField('Remember me')
