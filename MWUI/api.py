@@ -21,7 +21,7 @@
 import uuid
 from os import path
 from .config import UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType
-from .models import Tasks, Structures, Additives, Models, Additivesets
+from .models import Tasks, Structures, Additives, Models, Additivesets, Destinations
 from .redis import RedisCombiner
 from flask import Blueprint, url_for, send_from_directory
 from flask_login import current_user
@@ -30,7 +30,6 @@ from functools import wraps
 from pony.orm import db_session, select, left_join
 from validators import url
 from werkzeug import datastructures
-
 
 api_bp = Blueprint('api', __name__)
 api = Api(api_bp)
@@ -49,7 +48,9 @@ taskstructurefields = dict(structure=fields.Integer, data=fields.String, tempera
                            additives=fields.List(fields.Nested(dict(additive=fields.Integer, amount=fields.Float))),
                            models=fields.List(fields.Integer))
 
-modelfields = dict(example=fields.String, description=fields.String, type=ModelTypeField, name=fields.String)
+modelfields = dict(example=fields.String, description=fields.String, type=ModelTypeField, name=fields.String,
+                   destinations=fields.List(fields.Nested(dict(host=fields.String, port=fields.Integer(6379),
+                                                               password=fields.String, name=fields.String))))
 
 
 @api_bp.route('/task/batch_file/<string:file>', methods=['GET'])
@@ -71,13 +72,14 @@ def get_additives():
                 for a in select(a for a in Additives)}
 
 
-def get_models_list():
+def get_models_list(skip_prep=True):
     with db_session:
-        return {m.id: dict(model=m.id, name=m.name, description=m.description, type=m.type,
+        return {m.id: dict(model=m.id, name=m.name, description=m.description, type=m.type, example=m.example,
                            destinations=[dict(host=x.host, port=x.port, password=x.password, name=x.name)
                                          for x in m.destinations])
-                for m in select(m for m in Models if m.model_type in (ModelType.MOLECULE_MODELING.value,
-                                                                      ModelType.REACTION_MODELING.value))}
+                for m in (select(m for m in Models if m.model_type in (ModelType.MOLECULE_MODELING.value,
+                                                                       ModelType.REACTION_MODELING.value))
+                if skip_prep else select(m for m in Models))}
 
 
 def fetchtask(task, status):
@@ -122,11 +124,17 @@ def authenticate(func):
             return func(*args, **kwargs)
 
         abort(401, message=dict(user='not authenticated'))
+
     return wrapper
 
 
-class CResource(Resource):
+class AuthResource(Resource):
     method_decorators = [authenticate]
+
+
+class AdminResource(Resource):
+    pass
+    #method_decorators = [authenticate]
 
 
 class AvailableModels(Resource):
@@ -152,15 +160,42 @@ rm_post = reqparse.RequestParser()
 rm_post.add_argument('models', type=lambda x: marshal(x, modelfields), required=True)
 
 
-class RegisterModels(Resource):
+class RegisterModels(AdminResource):
     def post(self):
         args = rm_post.parse_args()
         models = args['models'] if isinstance(args['models'], list) else [args['models']]
-        available = {x['name']: x['destinations'] for x in get_models_list().values()}
-        for m in models: #  dict(example=fields.String, description=fields.String, type=ModelTypeField, name=fields.String)
-            if m['name'] not in available:
-                Models(type=m['type'], name=m['name'])
-        return
+        available = {x['name']: [(d['host'], d['port'], d['name']) for d in x['destinations']]
+                     for x in get_models_list(skip_prep=False).values()}
+        report = []
+        for m in models:
+            if m['destinations']:
+                if m['name'] not in available:
+                    with db_session:
+                        new_m = Models(type=m['type'], name=m['name'],
+                                       **{x: m[x] for x in ('description', 'example') if m[x]})
+
+                        for d in m['destinations']:
+                            Destinations(model=new_m, **{x: y for x, y in d.items() if y})
+
+                    report.append(dict(model=new_m.id, name=new_m.name, description=new_m.description,
+                                       type=new_m.type.value,
+                                       example=new_m.example,
+                                       destinations=[dict(host=x.host, port=x.port, name=x.name)
+                                                     for x in new_m.destinations]))
+                else:
+                    tmp = []
+                    with db_session:
+                        model = Models.get(name=m['name'])
+                        for d in m['destinations']:
+                            if (d['host'], d['port'], d['name']) not in available[m['name']]:
+                                tmp.append(Destinations(model=model, **{x: y for x, y in d.items() if y}))
+
+                    if tmp:
+                        report.append(dict(model=model.id, name=model.name, description=model.description,
+                                           type=model.type.value, example=model.example,
+                                           destinations=[dict(host=x.host, port=x.port, name=x.name)
+                                                         for x in tmp]))
+        return report
 
 
 ''' ===================================================
@@ -169,7 +204,7 @@ class RegisterModels(Resource):
 '''
 
 
-class ResultsTask(CResource):
+class ResultsTask(AuthResource):
     def get(self, task):
         try:
             task = int(task)
@@ -222,10 +257,11 @@ class ResultsTask(CResource):
                 for a in s['additives']:
                     Additivesets(additive=Additives[a['additive']], structure=_structure, amount=a['amount'])
 
-                # todo: save results
+                    # todo: save results
 
         return dict(task=_task.id, status=TaskStatus.DONE.value, date=ended_at.strftime("%Y-%m-%d %H:%M:%S"),
                     type=_task.task_type, user=_task.user.id)
+
 
 ''' ===================================================
     api for task modeling.
@@ -233,7 +269,7 @@ class ResultsTask(CResource):
 '''
 
 
-class StartTask(CResource):
+class StartTask(AuthResource):
     def get(self, task):
         return format_results(task, TaskStatus.DONE)
 
@@ -249,15 +285,16 @@ class StartTask(CResource):
         return dict(task=newjob.id, status=result['status'].value, type=result['type'].value,
                     date=newjob.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=result['user'])
 
+
 ''' ===================================================
     api for task preparation.
     ===================================================
 '''
 pt_post = reqparse.RequestParser()
-pt_post.add_argument('structures', type=lambda x: marshal(x, taskstructurefields),  required=True)
+pt_post.add_argument('structures', type=lambda x: marshal(x, taskstructurefields), required=True)
 
 
-class PrepareTask(CResource):
+class PrepareTask(AuthResource):
     def get(self, task):
         return format_results(task, TaskStatus.PREPARED)
 
@@ -319,8 +356,9 @@ class PrepareTask(CResource):
         if new_job is None:
             abort(500, message=dict(server='error'))
 
-        return dict(task=new_job.id, status=result['status'].value,  type=result['type'],
+        return dict(task=new_job.id, status=result['status'].value, type=result['type'],
                     date=new_job.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=result['user'])
+
 
 ''' ===================================================
     api for task creation.
@@ -330,7 +368,7 @@ ct_post = reqparse.RequestParser()
 ct_post.add_argument('structures', type=lambda x: marshal(x, taskstructurefields), required=True)
 
 
-class CreateTask(CResource):
+class CreateTask(AuthResource):
     def post(self, _type):
         try:
             _type = TaskType(_type)
@@ -368,13 +406,14 @@ class CreateTask(CResource):
         return dict(task=new_job.id, status=TaskStatus.PREPARING.value, type=_type.value,
                     date=new_job.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id)
 
+
 uf_post = reqparse.RequestParser()
 uf_post.add_argument('file.url', type=str)
 uf_post.add_argument('file.path', type=str)
 uf_post.add_argument('structures', type=datastructures.FileStorage, location='files')
 
 
-class UploadTask(CResource):
+class UploadTask(AuthResource):
     def post(self, _type):
         try:
             _type = TaskType(_type)
@@ -414,3 +453,4 @@ api.add_resource(StartTask, '/task/modeling/<string:task>')
 # api.add_resource(ResultsTask, '/task/results/<string:task>')
 api.add_resource(AvailableAdditives, '/resources/additives')
 api.add_resource(AvailableModels, '/resources/models')
+api.add_resource(RegisterModels, '/admin/models')
