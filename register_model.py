@@ -20,15 +20,42 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+import argparse
 from modelset import ModelSet
-from MODtools.utils import serverget, serverpost
+from MODtools.utils import serverpost
 
 
-def main():
+class DefaultList(list):
+    @staticmethod
+    def __copy__(*_):
+        return []
+
+
+def main(redis):
+    destinations = []
+    for x in redis['name']:
+        tmp = redis.copy()
+        tmp['name'] = x
+        destinations.append(tmp)
+
     models = ModelSet().get_models()
-    #dict(example=model.get_example(), description=model.get_description(),
-    #                 type=model.get_type(), name=model.get_name())
 
+    report = []
+    for m in models:
+        report.append(dict(type=m['type'].value, name=m['name'], example=m['example'], description=m['description'],
+                           destinations=destinations))
+
+    print(serverpost('admin/models', dict(models=report)))
 
 if __name__ == "__main__":
-    main()
+    rawopts = argparse.ArgumentParser(description="Model Register",
+                                      epilog="Copyright 2016 Ramil Nugmanov <stsouko@live.ru>",
+                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    rawopts.add_argument("--host", type=str, default='localhost', help="Redis host")
+    rawopts.add_argument("--port", "-p", type=int, default=6379, help="Redis port")
+    rawopts.add_argument("--password", "-pw", type=str, default=None, help="Redis password")
+
+    rawopts.add_argument("--name", "-n", action='append', type=str, default=DefaultList(['worker']),
+                         help="available workers names. -n worker1 [-n worker2]")
+
+    main(vars(rawopts.parse_args()))

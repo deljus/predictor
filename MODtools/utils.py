@@ -39,10 +39,10 @@ def serverget(url, params):
         return False
 
 
-def serverpost(url, params):
+def serverpost(url, data):
     for _ in range(2):
         try:
-            q = requests.post("%s/api/%s" % (PREDICTOR, url), data=params, timeout=20)
+            q = requests.post("%s/api/%s" % (PREDICTOR, url), json=data, timeout=20)
         except:
             continue
         else:
