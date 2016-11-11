@@ -33,8 +33,14 @@ from ..structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatomm
 
 class Eed(Propertyextractor):
     def __init__(self, workpath='.', s_option=None, marker_rules=None, standardize=None, cgr_reverse=False,
-                 cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None, cgr_stereo=False):
-        Propertyextractor.__init__(self, s_option, isreaction=cgr_marker)
+                 cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None, cgr_stereo=False,
+                 is_reaction=False):
+
+        self.__is_reaction = is_reaction
+        if is_reaction and not cgr_marker:
+            return
+
+        Propertyextractor.__init__(self, s_option, is_reaction=is_reaction)
         self.__dragos_marker = Pharmacophoreatommarker(marker_rules, workpath) if marker_rules else None
 
         self.__cgr_marker = CGRatommarker(cgr_marker, prepare=cgr_marker_prepare,
@@ -51,7 +57,7 @@ class Eed(Propertyextractor):
             self.__dragos_marker.setworkpath(workpath)
 
     def get(self, structures, **kwargs):
-        reader = RDFread(structures) if self.__cgr_marker else SDFread(structures)
+        reader = RDFread(structures) if self.__is_reaction else SDFread(structures)
         data = list(reader.read())
         structures.seek(0)  # ad-hoc for rereading
 

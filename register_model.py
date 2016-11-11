@@ -42,10 +42,12 @@ def main(redis):
 
     report = []
     for m in models:
+        print('found: ', m['name'])
         report.append(dict(type=m['type'].value, name=m['name'], example=m['example'], description=m['description'],
                            destinations=destinations))
 
-    print(serverpost('admin/models', dict(models=report)))
+    for m in serverpost('admin/models', dict(models=report)):
+        print(m)
 
 if __name__ == "__main__":
     rawopts = argparse.ArgumentParser(description="Model Register",

@@ -32,9 +32,13 @@ from ..structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatomm
 
 class Pkab(Propertyextractor):
     def __init__(self, workpath='.', s_option=None, marker_rules=None, standardize=None, acid=True, base=True,
-                 cgr_reverse=False,
+                 cgr_reverse=False, is_reaction=False,
                  cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None, cgr_stereo=False):
-        Propertyextractor.__init__(self, s_option, isreaction=cgr_marker)
+        Propertyextractor.__init__(self, s_option, is_reaction=cgr_marker)
+
+        self.__is_reaction = is_reaction
+        if is_reaction and not cgr_marker:
+            return
 
         self.__dragos_marker = Pharmacophoreatommarker(marker_rules, workpath) if marker_rules else None
 
@@ -55,7 +59,7 @@ class Pkab(Propertyextractor):
             self.__dragos_marker.setworkpath(workpath)
 
     def get(self, structures, **kwargs):
-        reader = RDFread(structures) if self.__cgr_marker else SDFread(structures)
+        reader = RDFread(structures) if self.__is_reaction else SDFread(structures)
         data = list(reader.read())
         structures.seek(0)  # ad-hoc for rereading
 

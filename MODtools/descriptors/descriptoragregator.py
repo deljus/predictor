@@ -78,15 +78,15 @@ class Descriptorchain(object):
 
 
 class Propertyextractor(object):
-    def __init__(self, name, isreaction=False):
-        self.__isreaction = isreaction
+    def __init__(self, name, is_reaction=False):
+        self.__is_reaction = is_reaction
         self.__name = name
 
     def get_property(self, structures):
-        reader = RDFread(structures) if self.__isreaction else SDFread(structures)
+        reader = RDFread(structures) if self.__is_reaction else SDFread(structures)
         data = []
         for i in reader.read():
-            meta = i['meta'] if self.__isreaction else i.graph['meta']
+            meta = i['meta'] if self.__is_reaction else i.graph['meta']
             prop = meta.get(self.__name)
             data.append(float(prop) if prop else np.NaN)
         res = pd.Series(data, name='Property')
@@ -95,8 +95,8 @@ class Propertyextractor(object):
 
 
 class Descriptorsdict(object):
-    def __init__(self, data=None, isreaction=False):
-        self.__isreaction = isreaction
+    def __init__(self, data=None, is_reaction=False):
+        self.__is_reaction = is_reaction
         self.__extention = data
         self.__extheader = self.__prepareextheader(data)
 
@@ -133,9 +133,9 @@ class Descriptorsdict(object):
          True
         """
         extblock = []
-        reader = RDFread(structures) if self.__isreaction else SDFread(structures)
+        reader = RDFread(structures) if self.__is_reaction else SDFread(structures)
         for i in reader.read():
-            meta = i['meta'] if self.__isreaction else i.graph['meta']
+            meta = i['meta'] if self.__is_reaction else i.graph['meta']
             tmp = []
             for key, value in meta.items():
                 if key in self.__extention:

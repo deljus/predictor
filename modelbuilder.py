@@ -68,18 +68,20 @@ class Modelbuilder(MBparser):
         """
         descgenerator = {}
         if self.__options['fragments']:
-            descgenerator['F'] = [partial(Fragmentor, **x)
+            descgenerator['F'] = [partial(Fragmentor, is_reaction=self.__options['isreaction'], **x)
                                   for x in self.parsefragmentoropts(self.__options['fragments'])]
 
         if self.__options['extention']:
             descgenerator['E'] = [partial(Descriptorsdict, data=self.parseext(self.__options['extention']),
-                                          isreaction=self.__options['isreaction'])]
+                                          is_reaction=self.__options['isreaction'])]
 
         if self.__options['eed']:
-            descgenerator['D'] = [partial(Eed, **x) for x in self.parsefragmentoropts(self.__options['eed'])]
+            descgenerator['D'] = [partial(Eed, is_reaction=self.__options['isreaction'], **x)
+                                  for x in self.parsefragmentoropts(self.__options['eed'])]
 
         if self.__options['pka']:
-            descgenerator['P'] = [partial(Pkab, **x) for x in self.parsefragmentoropts(self.__options['pka'])]
+            descgenerator['P'] = [partial(Pkab, is_reaction=self.__options['isreaction'], **x)
+                                  for x in self.parsefragmentoropts(self.__options['pka'])]
 
         if self.__options['chains']:
             if self.__options['ad'] and len(self.__options['ad']) != len(self.__options['chains']):

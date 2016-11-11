@@ -69,7 +69,11 @@ class Fragmentor(object):
                  marker_rules=None, standardize=None, docolor=None,
                  cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None, cgr_reverse=False,
                  cgr_type=None, cgr_extralabels=False, cgr_b_templates=None, cgr_m_templates=None, cgr_speed=None,
-                 cgr_isotop=False, cgr_element=True, cgr_deep=0, cgr_stereo=False):
+                 cgr_isotop=False, cgr_element=True, cgr_deep=0, cgr_stereo=False, is_reaction=False):
+
+        self.__is_reaction = is_reaction
+        if is_reaction and not (cgr_type or cgr_marker):
+            return
 
         self.__prepocess = any(x is not None for x in (marker_rules, standardize, cgr_type, cgr_marker, docolor))
 
@@ -161,7 +165,7 @@ class Fragmentor(object):
         if self.__prepocess:
             with openFiles(workfiles, ['w'] * len(workfiles)) as f:
                 writers = [SDFwrite(x) for x in f]
-                reader = RDFread(structures) if self.__cgr or self.__cgr_marker else SDFread(structures)
+                reader = RDFread(structures) if self.__is_reaction else SDFread(structures)
                 data = list(reader.read())
                 if self.__dragos_std:
                     data = self.__dragos_std.get(data)
