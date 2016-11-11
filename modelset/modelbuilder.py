@@ -19,13 +19,15 @@
 #  MA 02110-1301, USA.
 #
 import gzip
-import hashlib
-import json
-import os
 import dill
-from MWUI.config import ModelType, ResultType
+import hashlib
+import os
+import subprocess as sp
+from io import StringIO
+from MODtools.config import MOLCONVERT
 from MODtools.consensus import ConsensusDragos
 from MODtools.utils import chemaxpost
+from MWUI.config import ModelType, ResultType
 
 
 class Model(ConsensusDragos):
@@ -55,40 +57,40 @@ class Model(ConsensusDragos):
 
     def setworkpath(self, workpath):
         self.__workpath = workpath
+        for m in self.__models:
+            m.setworkpath(workpath)
 
     def get_results(self, structures):
-        structure = chemical['structure']
-        solvents = chemical['solvents'][0]['name'] if chemical['solvents'] else 'Water'
-        # [dict(id=y.solvent.id, name=y.solvent.name, amount=y.amount)]
-        temperature = chemical['temperature']
-
-        if structure != ' ':
-            q = chemaxpost('calculate/molExport', {"structure": structure, "parameters": "mol"})
-            if q:
-                structure = json.loads(q)['structure']
-                res = [dict(type='structure', attrib='used structure', value=structure)]
-                for model in self.__models:
-                    model.setworkpath(self.__workpath)
-                    pred = model.predict(structure, temperature=temperature, solvent=solvents)
-                    # dict(prediction=pd.concat(pred, axis=1),
-                    #      domain=pd.concat(dom, axis=1), y_domain=pd.concat(ydom, axis=1))
-                    model.delworkpath()
-                    print(pred)
-                    for P, AD in zip((x for x in pred['prediction'].loc[0, :]),
-                                     (x for x in pred['domain'].loc[0, :])):
-                        self.cumulate(P, AD)
-
-                return res + self.report()
-            else:
+        # prepare input file
+        if len(structures) == 1:
+            chemaxed = chemaxpost('calculate/molExport',
+                                  dict(structure=structures[0]['data'],
+                                       parameters="rdf" if self.get_type() == ModelType.REACTION_MODELING else "sdf"))
+            if not chemaxed:
                 return False
+            data = chemaxed['structure']
         else:
-            return False
+            with sp.Popen([MOLCONVERT, "rdf" if self.get_type() == ModelType.REACTION_MODELING else "sdf"],
+                          stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.STDOUT, cwd=self.__workpath) as convert_mol:
+                data = convert_mol.communicate(input=''.join(s['data'] for s in structures).encode())[0].decode()
+                if convert_mol.returncode != 0:
+                    return False
+
+        for m in self.__models:
+            with StringIO(data) as f:
+                res = m.predict(f)
+
+
+        if len(structures) == len(results):
+            return results
+
+        return False
 
 
 class ModelLoader(object):
     def __init__(self, fast_load=True):
         self.__skip_md5 = fast_load
-        self.__models_path = os.path.join(os.path.dirname(__file__), 'modelbuilder')
+        self.__models_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'modelbuilder'))
         self.__cache_path = os.path.join(self.__models_path, '.cache')
         self.__models = self.__scan_models()
 
