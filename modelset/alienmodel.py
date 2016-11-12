@@ -83,7 +83,8 @@ class Model(object):
                 next(counter)
                 r['meta'] = dict(pressure=meta['pressure'], temperature=meta['temperature'])
                 for n, a in enumerate(meta['additives'], start=1):
-                    r['meta']['additive.amount.%d' % n] = '%s: %f' % (a['name'], a['amount'])
+                    r['meta']['additive.%d' % n] = a['name']
+                    r['meta']['amount.%d' % n] = '%f' % a['amount']
 
                 if mark in (0, 1) and r['products'] and r['substrats']:  # ONLY FULL REACTIONS
                     mark = 1

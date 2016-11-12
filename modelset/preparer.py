@@ -175,25 +175,68 @@ class Model(CGRcombo):
             else:
                 continue
 
+            """
+                $DTYPE additive.amount.1
+                $DATUM name = .5
+                $DTYPE temperature
+                $DATUM 40
+                $DTYPE pressure
+                $DATUM 0.9
+                $DTYPE additive.2
+                $DATUM name
+                $DTYPE amount.2
+                $DATUM 0.5
+            """
+
             additives = []
+            tmp_add = {}
             for k, v in _meta.items():
-                if 'additive.amount.' in k:
+                if k.startswith('additive.amount.'):
                     try:
                         a_name, *_, a_amount = re.split('[:=]+', v)
                         additive = self.__additives.get(a_name.strip().lower())
                         if additive:
                             if '%' in a_amount:
-                                v = a_amount.replace('%', '')
+                                _v = a_amount.replace('%', '')
                                 grader = 100
                             else:
-                                v = a_amount
+                                _v = a_amount
                                 grader = 1
 
-                            tmp = dict(amount=float(v) / grader)
+                            tmp = dict(amount=float(_v) / grader)
                             tmp.update(additive)
                             additives.append(tmp)
                     except:
                         pass
+                elif k.startswith('additive.'):
+                    key = k[9:]
+                    additive = self.__additives.get(v.lower())
+                    if additive and key:
+                        tmp = tmp_add.get(key, dict(amount=1))
+                        tmp.update(additive)
+                        tmp_add[key] = tmp
+
+                elif k.startswith('amount.'):
+                    key = k[7:]
+                    if key:
+                        try:
+                            if '%' in v:
+                                _v = v.replace('%', '')
+                                grader = 100
+                            else:
+                                _v = v
+                                grader = 1
+
+                            amount = dict(amount=float(_v) / grader)
+                            tmp = tmp_add.get(key, {})
+                            tmp.update(amount)
+                            tmp_add[key] = tmp
+                        except:
+                            pass
+
+            for i in tmp_add.values():
+                if 'name' in i:
+                    additives.append(i)
 
             tmp = _meta.pop('pressure', 1)
             try:
