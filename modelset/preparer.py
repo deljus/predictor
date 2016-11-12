@@ -112,7 +112,7 @@ class Model(CGRcombo):
         if not chemaxed:
             return False
 
-        return dict(data=chemaxed['structure'].split('\n')[1], status=result['status'], type=result['type'],
+        return dict(data=chemaxed['structure'].split('\n')[1] + '\n', status=result['status'], type=result['type'],
                     results=result['results'])
 
     def __parsefile(self, url):

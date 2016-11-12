@@ -60,26 +60,43 @@ class Model(ConsensusDragos):
         for m in self.__models:
             m.setworkpath(workpath)
 
+    @property
+    def __format(self):
+        return "rdf" if self.get_type() == ModelType.REACTION_MODELING else "sdf"
+
     def get_results(self, structures):
         # prepare input file
         if len(structures) == 1:
             chemaxed = chemaxpost('calculate/molExport',
                                   dict(structure=structures[0]['data'],
-                                       parameters="rdf" if self.get_type() == ModelType.REACTION_MODELING else "sdf"))
+                                       parameters=self.__format))
             if not chemaxed:
                 return False
+            additions = dict(pressure=structures[0]['pressure'], temperature=structures[0]['temperature'])
+            for n, a in enumerate(structures[0]['additives'], start=1):
+                additions['additive.%d' % n] = a['name']
+                additions['amount.%d' % n] = '%f' % a['amount']
+
             data = chemaxed['structure']
         else:
-            with sp.Popen([MOLCONVERT, "rdf" if self.get_type() == ModelType.REACTION_MODELING else "sdf"],
+            with sp.Popen([MOLCONVERT, self.__format],
                           stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.STDOUT, cwd=self.__workpath) as convert_mol:
                 data = convert_mol.communicate(input=''.join(s['data'] for s in structures).encode())[0].decode()
                 if convert_mol.returncode != 0:
                     return False
 
+            additions = dict(pressure=[], temperature=[])
+            for m, s in enumerate(structures):
+                additions['pressure'].append(s['pressure'])
+                additions['temperature'].append(s['temperature'])
+                for n, a in enumerate(s['additives']):
+                    additions.setdefault('additive.%d' % n, {})[m] = a['name']
+                    additions.setdefault('amount.%d' % n, {})[m] = a['amount']
+
         for m in self.__models:
             with StringIO(data) as f:
-                res = m.predict(f)
-
+                res = m.predict(f, additions)
+                # todo: parser
 
         if len(structures) == len(results):
             return results
