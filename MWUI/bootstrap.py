@@ -62,7 +62,7 @@ class Customrenderer(BootstrapRenderer):
         node_id = self.id or sha1(str(id(node)).encode()).hexdigest()
 
         root = tags.nav() if self.html5 else tags.div(role='navigation')
-        root['class'] = 'navbar navbar-default'
+        root['class'] = 'navbar navbar-default navbar-static-top'
 
         cont = root.add(tags.div(_class='container'))
 
