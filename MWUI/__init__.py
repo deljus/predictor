@@ -36,6 +36,7 @@ def init():
 
     app = Flask(__name__)
 
+    app.config['DEBUG'] = DEBUG
     app.config['SECRET_KEY'] = SECRET_KEY
     app.config['BOOTSTRAP_SERVE_LOCAL'] = True
 
