@@ -62,7 +62,7 @@ class Customrenderer(BootstrapRenderer):
         node_id = self.id or sha1(str(id(node)).encode()).hexdigest()
 
         root = tags.nav() if self.html5 else tags.div(role='navigation')
-        root['class'] = 'navbar navbar-default navbar-static-top'
+        root['class'] = 'navbar navbar-inverse navbar-fixed-top'
 
         cont = root.add(tags.div(_class='container'))
 
@@ -143,12 +143,15 @@ class Pagination(object):
 
 def top_nav():
     if current_user.is_authenticated:
-        navbar = [LeftSubgroup(View('Search', '.search'), View('Modeling', '.modeling'), View('Results', '.results'),
-                  View('Queries', '.queries')),
-                  RightSubgroup(Subgroup(current_user.get_email(), View('Profile', '.profile'), Separator(),
-                                         View('Logout', '.logout')))
+        navbar = [LeftSubgroup(View('News', '.blog'), View('About Us', '.about')),
+                  RightSubgroup(View('Search', '.search'), View('Modeling', '.modeling'),
+                                Subgroup(current_user.get_email(),
+                                         View('Modeling Results', '.results'), View('Queries History', '.queries'),
+                                         Separator(),
+                                         View('Profile', '.profile'), Separator(), View('Logout', '.logout')))
                   ]
     else:
-        navbar = [RightSubgroup(View('Login', '.login'), View('Registration', '.registration'))]
+        navbar = [LeftSubgroup(View('News', '.blog'), View('About Us', '.about')),
+                  RightSubgroup(View('Login', '.login'), View('Registration', '.registration'))]
 
     return Navbar(View('Predictor', '.index'), *navbar)

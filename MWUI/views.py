@@ -63,7 +63,7 @@ def logout():
 @view_bp.route('/index', methods=['GET'])
 @login_required
 def index():
-    return render_template("home.html")
+    return render_template("home.html", home=dict(info=[1], welcome='Hello!'))
 
 
 @view_bp.route('/search', methods=['GET'])
@@ -93,4 +93,14 @@ def results():
 @view_bp.route('/profile', methods=['GET'])
 @login_required
 def profile():
+    return render_template("home.html")
+
+
+@view_bp.route('/about', methods=['GET'])
+def about():
+    return render_template("home.html")
+
+
+@view_bp.route('/blog', methods=['GET'])
+def blog():
     return render_template("home.html")
