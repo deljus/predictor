@@ -22,6 +22,7 @@
 
 
 def init():
+    from datetime import datetime
     from os.path import join
     from flask import Flask
     from flask_bootstrap import Bootstrap
@@ -31,7 +32,7 @@ def init():
     from .api import api_bp
     from .views import view_bp
     from .bootstrap import top_nav, Customrenderer
-    from .config import PORTAL_BASE, SECRET_KEY, HOST, DEBUG, PORT
+    from .config import PORTAL_BASE, SECRET_KEY, HOST, DEBUG, PORT, LAB_NAME
     from .logins import load_user
 
     app = Flask(__name__)
@@ -39,6 +40,7 @@ def init():
     app.config['DEBUG'] = DEBUG
     app.config['SECRET_KEY'] = SECRET_KEY
     app.config['BOOTSTRAP_SERVE_LOCAL'] = True
+    app.jinja_env.globals.update(year=datetime.utcnow, laboratory=LAB_NAME)
 
     register_renderer(app, 'myrenderer', Customrenderer)
     nav = Nav(app)

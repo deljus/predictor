@@ -21,8 +21,8 @@
 #
 import bcrypt
 import hashlib
-from .config import (DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER,
-                     TaskType, ModelType, AdditiveType, ResultType, StructureType, StructureStatus)
+from .config import (DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER, BlogPost,
+                     TaskType, ModelType, AdditiveType, ResultType, StructureType, StructureStatus, UserRole)
 from datetime import datetime
 from pony.orm import Database, sql_debug, PrimaryKey, Required, Optional, Set
 
@@ -37,26 +37,35 @@ else:
 class Users(db.Entity):
     id = PrimaryKey(int, auto=True)
     active = Required(bool, default=True)
+    blog = Set('Blog')
     email = Required(str, unique=True)
     password = Required(str)
+    user_role = Required(int)
     tasks = Set("Tasks")
     token = Required(str)
 
-    def __init__(self, email, password):
-        password = self.hash_password(password)
-        token = self.gen_token(email, password)
-        super(Users, self).__init__(email=email, password=password, token=token)
+    def __init__(self, email, password, role=UserRole.COMMON):
+        password = self.__hash_password(password)
+        token = self.__gen_token(email, password)
+        super(Users, self).__init__(email=email, password=password, token=token, user_role=role.value)
 
     @staticmethod
-    def hash_password(password):
+    def __hash_password(password):
         return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
     def verify_password(self, password):
         return bcrypt.hashpw(password.encode(), self.password.encode()) == self.password.encode()
 
     @staticmethod
-    def gen_token(email, password):
+    def __gen_token(email, password):
         return hashlib.md5((email + password).encode()).hexdigest()
+
+    def change_token(self):
+        self.token = self.__gen_token(self.email, str(datetime.utcnow()))
+
+    @property
+    def role(self):
+        return UserRole(self.user_role)
 
 
 class Tasks(db.Entity):
@@ -167,5 +176,21 @@ class Additivesets(db.Entity):
     amount = Required(float, default=1)
     structure = Required(Structures)
 
+
+class Blog(db.Entity):
+    title = Required(str)
+    slug = Required(str, unique=True)
+    body = Required(str)
+    banner = Optional(str)
+    post_type = Required(int)
+    author = Required(Users)
+
+    def __init__(self, **kwargs):
+        _type = kwargs.pop('type', BlogPost.COMMON).value
+        super(Blog, self).__init__(post_type=_type, **kwargs)
+
+    @property
+    def type(self):
+        return BlogPost(self.post_type)
 
 db.generate_mapping(create_tables=True)

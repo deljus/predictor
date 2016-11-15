@@ -10,6 +10,15 @@
     {% block carousel %}{% endblock %}
     <div class="container">
         {% block page %}{% endblock %}
+        <hr>
+        <!-- Footer -->
+        <footer>
+            <div class="row">
+                <div class="col-lg-12">
+                    <p>Copyright &copy; {{ laboratory }} {{ year().strftime("%Y") }}</p>
+                </div>
+            </div>
+        </footer>
     </div>
 {% endblock %}
 

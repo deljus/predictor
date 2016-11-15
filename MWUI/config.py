@@ -29,6 +29,7 @@ SECRET_KEY = 'development key'
 DEBUG = False
 HOST = '0.0.0.0'
 PORT = 5000
+LAB_NAME = 'Kazan Chemoinformatics and Molecular Modeling Laboratory'
 
 DB_USER = None
 DB_PASS = None
@@ -90,6 +91,21 @@ class ResultType(Enum):
     IMAGE = 3
     GRAPH = 4
     GTM = 5
+
+
+class UserRole(Enum):
+    COMMON = 0
+    ADMIN = 1
+
+
+class BlogPost(Enum):
+    COMMON = 0
+    CAROUSEL = 1
+    IMPORTANT = 2
+    PROJECTS = 3
+    TEAM = 4
+    CHIEF = 5
+    STUDENT = 6
 
 
 if not path.exists(path.join(path.dirname(__file__), "config.ini")):
