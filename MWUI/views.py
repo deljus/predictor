@@ -36,7 +36,7 @@ def send_restore_email(email):
     with db_session:
         if Users.exists(email=email):
             pass
-        flash('Check your email box', 'danger')
+        flash('Check your email box', 'warning')
 
 
 @view_bp.route('/registration', methods=['GET', 'POST'])
