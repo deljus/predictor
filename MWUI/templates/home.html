@@ -7,19 +7,17 @@
 {% block page %}
     <div class="row">
         <div class="col-lg-12">
-            <h1 class="page-header">
-                {{ home.welcome if home is defined else 'Welcome to Laboratory' }}
-            </h1>
+            <h2 class="page-header">Welcome to {{ laboratory }}</h2>
         </div>
-        {% for i in (home.info if home is defined else []) %}
+        {% for i in data.info %}
             <div class="col-md-4">
                 <div class="panel panel-default">
                     <div class="panel-heading">
-                        <h4>Bootstrap v3.3.7</h4>
+                        <h4>{{ i.title }}</h4>
                     </div>
                     <div class="panel-body">
-                        <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Itaque, optio corporis quae nulla aspernatur in alias at numquam rerum ea excepturi expedita tenetur assumenda voluptatibus eveniet incidunt dicta nostrum quod?</p>
-                        <a href="#" class="btn btn-default">Learn More</a>
+                        <p>{{ i.body }}</p>
+                        <a href="{{ i.url }}" class="btn btn-default">{{ i.link }}</a>
                     </div>
                 </div>
             </div>
@@ -30,34 +28,26 @@
     <!-- Features Section -->
     <div class="row">
         <div class="col-lg-12">
-            <h2 class="page-header">Modern Business Features</h2>
+            <h2 class="page-header">Our Projects</h2>
         </div>
         <div class="col-md-6">
-            <p>The Modern Business template by Start Bootstrap includes:</p>
+            <p>{{ data.projects.title }}</p>
             <ul>
-                <li><strong>Bootstrap v3.3.7</strong>
-                </li>
-                <li>jQuery v1.11.1</li>
-                <li>Font Awesome v4.2.0</li>
-                <li>Working PHP contact form with validation</li>
-                <li>Unstyled page elements for easy customization</li>
-                <li>17 HTML pages</li>
+                {% for i in data.projects.list %}
+                    <li>
+                        {% if loop.index == 1 %}
+                            <strong>{{ i }}</strong>
+                        {% else %}
+                            {{ i }}
+                        {% endif %}
+                    </li>
+                {% endfor %}
             </ul>
-            <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Corporis, omnis doloremque non cum id reprehenderit, quisquam totam aspernatur tempora minima unde aliquid ea culpa sunt. Reiciendis quia dolorum ducimus unde.</p>
+            <p>{{ data.projects.foot }}</p>
         </div>
         <div class="col-md-6">
-            <img class="img-responsive" src="http://placehold.it/700x450" alt="">
+            <img class="img-responsive" src="{{ data.projects.img }}" alt="700x450">
         </div>
     </div>
     <!-- /.row -->
-
-    <hr>
-    <!-- Footer -->
-    <footer>
-        <div class="row">
-            <div class="col-lg-12">
-                <p>Copyright &copy; Your Website 2014</p>
-            </div>
-        </div>
-    </footer>
 {% endblock %}

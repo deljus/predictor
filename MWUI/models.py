@@ -56,6 +56,9 @@ class Users(db.Entity):
     def verify_password(self, password):
         return bcrypt.hashpw(password.encode(), self.password.encode()) == self.password.encode()
 
+    def change_password(self, password):
+        self.password = self.__hash_password(password)
+
     @staticmethod
     def __gen_token(email, password):
         return hashlib.md5((email + password).encode()).hexdigest()

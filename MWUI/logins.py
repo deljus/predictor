@@ -29,17 +29,18 @@ def load_user(token):
     with db_session:
         user = Users.get(token=token)
         if user:
-            return User(user.to_dict())
+            return User(user.id, user.email, user.active, user.token, user.role)
 
     return None
 
 
 class User(UserMixin):
-    def __init__(self, user):
-        self.id = user['id']
-        self.__email = user['email']
-        self.__active = user['active']
-        self.__token = user['token']
+    def __init__(self, _id, email, active, token, role):
+        self.id = _id
+        self.__email = email
+        self.__active = active
+        self.__token = token
+        self.__role = role
 
     @property
     def is_active(self):
@@ -51,10 +52,13 @@ class User(UserMixin):
     def get_id(self):
         return self.__token
 
+    def get_role(self):
+        return self.__role
+
     @staticmethod
     def get(email, password):
         with db_session:
             user = Users.get(email=email)
             if user and user.verify_password(password):
-                return User(user.to_dict())
+                return User(user.id, user.email, user.active, user.token, user.role)
         return None

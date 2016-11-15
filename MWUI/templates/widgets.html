@@ -12,7 +12,7 @@
         <div class="carousel-inner">
             {% for i in data %}
                 <div class="{{ 'item active' if loop.index == 1 else 'item'}}">
-                    <img src="{{ url_for('static', filename=i['file']) }}" alt="Chania">
+                    <img src="{{ url_for('static', filename=i['file']) }}" alt="{{ i['title'] }}">
                     <div class="carousel-caption">
                         <h2>{{ i['title'] }}</h2>
                         <p>{{ i['subtitle'] }}</p>

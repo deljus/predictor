@@ -21,12 +21,16 @@
 #  MA 02110-1301, USA.
 #
 from .models import Users
+from .config import BlogPost, UserRole
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileAllowed, FileRequired
+from flask_login import current_user
 from pony.orm import db_session
-from wtforms import StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError
+from wtforms import (StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError, TextAreaField,
+                     SelectField)
 
 
-class CheckEmailExist(object):
+class CheckUserFree(object):
     def __init__(self):
         self.message = 'User exist'
 
@@ -36,8 +40,29 @@ class CheckEmailExist(object):
                 raise ValidationError(self.message)
 
 
+class CheckUserExist(object):
+    def __init__(self):
+        self.message = 'User not found'
+
+    def __call__(self, form, field):
+        with db_session:
+            if not Users.exists(email=field.data):
+                raise ValidationError(self.message)
+
+
+class VerifyPassword(object):
+    def __init__(self):
+        self.message = 'Bad password'
+
+    def __call__(self, form, field):
+        with db_session:
+            user = Users.get(id=current_user.id)
+            if not user or not user.verify_password(field.data):
+                raise ValidationError(self.message)
+
+
 class Registration(FlaskForm):
-    email = StringField('Email', [validators.DataRequired(), validators.Email(), CheckEmailExist()])
+    email = StringField('Email', [validators.DataRequired(), validators.Email(), CheckUserFree()])
     password = PasswordField('Password', [validators.DataRequired(),
                                           validators.EqualTo('confirm', message='Passwords must match')])
     confirm = PasswordField('Repeat Password', [validators.DataRequired()])
@@ -45,7 +70,57 @@ class Registration(FlaskForm):
 
 
 class Login(FlaskForm):
-    email = StringField('Email', [validators.DataRequired(), validators.Email()])
+    email = StringField('Email', [validators.DataRequired(), validators.Email(), CheckUserExist()])
     password = PasswordField('Password', [validators.DataRequired()])
     remember = BooleanField('Remember me')
-    submit_btn = SubmitField('Enter')
+    submit_btn = SubmitField('Log in')
+
+
+class ReLogin(FlaskForm):
+    password = PasswordField('Password', [validators.DataRequired(), VerifyPassword()])
+    submit_btn = SubmitField('Log out')
+
+
+class ChangePassword(FlaskForm):
+    password = PasswordField('Old Password', [validators.DataRequired(), VerifyPassword()])
+    new_password = PasswordField('Password', [validators.DataRequired(),
+                                              validators.EqualTo('confirm', message='Passwords must match')])
+    confirm = PasswordField('Repeat Password', [validators.DataRequired()])
+    submit_btn = SubmitField('Change Password')
+
+
+class ForgotPassword(FlaskForm):
+    email = StringField('Email', [validators.DataRequired(), validators.Email()])
+    submit_btn = SubmitField('Restore')
+
+
+class ChangeRole(FlaskForm):
+    email = StringField('User Email', validators=[validators.DataRequired(), CheckUserExist()])
+    role_type = SelectField('Post Type', [validators.DataRequired()],
+                            choices=[(x.value, x.name) for x in UserRole], coerce=int)
+    submit_btn = SubmitField('Change Role')
+
+    @property
+    def type(self):
+        return UserRole(self.role_type.data)
+
+
+class BanUser(FlaskForm):
+    email = StringField('User Email', [validators.DataRequired(), CheckUserExist()])
+    submit_btn = SubmitField('Ban User')
+
+
+class NewPost(FlaskForm):
+    title = StringField('Title', [validators.DataRequired()])
+    slug = StringField('Slug', [validators.DataRequired()])
+    body = TextAreaField('Message', [validators.DataRequired()])
+    banner = FileField('Image', validators=[FileRequired(),
+                                            FileAllowed('jpg jpe jpeg png gif svg bmp'.split(), 'Images only')])
+    special = StringField('Special')
+    post_type = SelectField('Post Type', [validators.DataRequired()],
+                            choices=[(x.value, x.name) for x in BlogPost], coerce=int)
+    submit_btn = SubmitField('New Post')
+
+    @property
+    def type(self):
+        return BlogPost(self.post_type.data)
