@@ -182,6 +182,7 @@ class Blog(db.Entity):
     slug = Required(str, unique=True)
     body = Required(str)
     banner = Optional(str)
+    special = Optional(str)
     post_type = Required(int)
     author = Required(Users)
 
