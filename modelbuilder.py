@@ -114,8 +114,8 @@ class Modelbuilder(MBparser):
                         combo.append(list(zip(descgenerator[k], cycle(v))))
 
                 self.__descgens.extend(
-                    [Descriptorchain(*[g() for gs in c for g in (gs if isinstance(gs, list) else [gs])]) for c in
-                     product(*combo)])
+                    [Descriptorchain(*[(g(), a) for gs in c
+                                       for g, a in (gs if isinstance(gs, list) else [gs])]) for c in product(*combo)])
         else:
             self.__descgens = [y() for x in descgenerator.values() for y in x]
 
@@ -195,7 +195,7 @@ class Modelbuilder(MBparser):
         if 'tol' not in description:
             description['tol'] = models[0].getmodelstats()['dragostolerance']
         print('name', description['name'])
-        print('desc', description['desc'])
+        print('description', description['description'])
         print('tol', description['tol'])
         print('nlim', description.get('nlim'))
         dill.dump(dict(models=models, config=description),

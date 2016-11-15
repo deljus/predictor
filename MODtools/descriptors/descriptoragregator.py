@@ -71,9 +71,14 @@ class Descriptorchain(object):
 
         res['X'] = reduce(merge_wrap, res['X'])
         res['AD'] = reduce(operator.and_, sorted(res['AD'], key=lambda x: len(x.index), reverse=True))
+        # на данный момент не придумано как поступать с мультицентровостью. пока свойство просто дублируется.
         res['Y'] = sorted(res['Y'], key=lambda x: len(x.index), reverse=True)[0]
 
         res['BOX'] = pd.concat(res['BOX'])
+
+        if 'structures' in res:
+            res['structures'] = reduce(merge_wrap, res['structures'])
+
         return dict(res)
 
 

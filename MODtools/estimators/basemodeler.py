@@ -307,7 +307,7 @@ class BaseModel(object):
 
     def predict(self, structures, **kwargs):
         res = self.__descriptorgen.get(structures, **kwargs)
-        d_x, d_ad = res['X'], res['AD']
+        d_x, d_ad, d_s = res['X'], res['AD'], res.get('structures')
 
         pred, prob, x_ad, y_ad = [], [], [], []
         for i, model in enumerate(self.__model['model']):
@@ -324,10 +324,13 @@ class BaseModel(object):
             x_ad.append(((d_x.loc[:, self.__box] - model['x_min']).min(axis=1) >= 0) &
                         ((model['x_max'] - d_x.loc[:, self.__box]).min(axis=1) >= 0) & d_ad)
 
-        res = dict(prediction=pd.concat(pred, axis=1),
+        out = dict(prediction=pd.concat(pred, axis=1),
                    domain=pd.concat(x_ad, axis=1), y_domain=pd.concat(y_ad, axis=1))
 
         if prob:
-            res['probability'] = pd.concat(prob, axis=1, keys=range(len(prob)))
+            out['probability'] = pd.concat(prob, axis=1, keys=range(len(prob)))
 
-        return res
+        if d_s:
+            out['structures'] = d_s
+
+        return out
