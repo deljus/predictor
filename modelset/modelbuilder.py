@@ -19,10 +19,14 @@
 #  MA 02110-1301, USA.
 #
 import gzip
+from collections import defaultdict
+
 import dill
 import hashlib
 import os
 import subprocess as sp
+import pandas as pd
+from functools import reduce
 from io import StringIO
 from MODtools.config import MOLCONVERT
 from MODtools.consensus import ConsensusDragos
@@ -40,6 +44,7 @@ class Model(ConsensusDragos):
         self.Nlim = self.__conf.get('nlim', 1)
         self.TOL = self.__conf.get('tol', 1e10)
         self.unit = self.__conf.get('report_units')
+        self.__show_structures = self.__conf.get('show_structures')
 
         ConsensusDragos.__init__(self)
 
@@ -63,6 +68,10 @@ class Model(ConsensusDragos):
     @property
     def __format(self):
         return "rdf" if self.get_type() == ModelType.REACTION_MODELING else "sdf"
+
+    @staticmethod
+    def __merge_wrap(x, y):
+        return pd.merge(x, y, how='outer', left_index=True, right_index=True)
 
     def get_results(self, structures):
         # prepare input file
@@ -93,10 +102,50 @@ class Model(ConsensusDragos):
                     additions.setdefault('additive.%d' % n, {})[m] = a['name']
                     additions.setdefault('amount.%d' % n, {})[m] = a['amount']
 
+        print(additions)
+        res = []
         for m in self.__models:
             with StringIO(data) as f:
-                res = m.predict(f, additions)
+                res.append(m.predict(f, additions))
                 # todo: parser
+
+        reason = defaultdict(list)
+
+        # all_y_domains = reduce(merge_wrap, (x['y_domain'] for x in res))
+        all_domains = reduce(self.__merge_wrap, (x['domain'] for x in res)).fillna(False)
+
+        all_predictions = reduce(self.__merge_wrap, (x['prediction'] for x in res))
+        in_predictions = all_predictions.mask(all_domains != True)
+
+        # mean predicted property
+        avg_all = all_predictions.mean(axis=1)
+        sigma_all = all_predictions.var(axis=1)
+
+        avg_in = in_predictions.mean(axis=1)
+        sigma_in = in_predictions.var(axis=1)
+
+        avg_diff = (avg_in - avg_all).abs()
+        if avg_diff > self.TOL:
+            reason.append(self.__errors['diff'] % pavgdiff)
+            self.__TRUST -= 1
+        if pavgdiff.isnull():  # not in domain
+            self.__TRUST -= 1
+            reason.append(self.__errors['zad'])
+
+        proportion = len(self.__INlist) / len(self.__ALLlist)
+        if proportion > self.Nlim:
+            sigma = sigmaIN
+            Pavg = PavgIN
+        else:
+            sigma = sigmaALL
+            Pavg = PavgALL
+            self.__TRUST -= 1
+            if self.__INlist:
+                reason.append(self.__errors['lad'] % ceil(100 * proportion))
+        # mean predicted property on AD-True
+        t1ad_H = all_predictions.mask(all_domains != True)
+        # part of AD-True models
+        t1ad_M = pd.DataFrame([mm['domain'].mean(axis=1) for mm in Test1]).mean()
 
         if len(structures) == len(results):
             return results

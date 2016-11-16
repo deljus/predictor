@@ -72,8 +72,8 @@ class Modelbuilder(MBparser):
                                   for x in self.parsefragmentoropts(self.__options['fragments'])]
 
         if self.__options['extention']:
-            descgenerator['E'] = [partial(Descriptorsdict, data=self.parseext(self.__options['extention']),
-                                          is_reaction=self.__options['isreaction'])]
+            descgenerator['E'] = [partial(Descriptorsdict, is_reaction=self.__options['isreaction'],
+                                          **self.parseext(self.__options['extention']))]
 
         if self.__options['eed']:
             descgenerator['D'] = [partial(Eed, is_reaction=self.__options['isreaction'], **x)

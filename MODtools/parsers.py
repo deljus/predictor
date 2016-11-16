@@ -127,7 +127,7 @@ class MBparser(object):
         with open(file) as f:
             for line in f:
                 k, v = (x.strip() for x in line.split(':='))
-                if k in ('nlim', 'tol', 'name', 'example', 'description', 'report_units'):
+                if k in ('nlim', 'tol', 'name', 'example', 'description', 'report_units', 'show_structures'):
                     if k in ('nlim', 'tol'):
                         v = float(v)
                     tmp[k] = v
@@ -157,15 +157,21 @@ class MBparser(object):
     @staticmethod
     def parseext(rawext):
         extdata = {}
+        s_option = None
         for e in rawext:
             record = None
             ext, *file = e.split(':')
+            if ext == 's_option':
+                if file:
+                    s_option = file[0]
+                continue
+
             if file:
                 v = pd.read_csv(file[0])
                 k = v.pop('EXTKEY')
                 record = dict(key=k, value=v.rename(columns=lambda x: '%s.%s' % (ext, x)))
             extdata[ext] = record
-        return extdata
+        return dict(s_option=s_option, data=extdata)
 
     @staticmethod
     def savesvm(outputfile, X, Y, header=True):

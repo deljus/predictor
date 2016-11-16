@@ -14,4 +14,8 @@ for i in `find ${datadir} -type f -name "*.svm"`; do
 done
 
 ${GACONF}/pilot_local.csh data_dir=${datadir} workdir=${workdir} >& ${datadir}/GA.log
-rc=$?; if [[ ${rc} != 0 ]]; then exit ${rc}; fi  # return exitcode
+rc=$?
+
+killall pilot_local.csh local_SVMreg.csh svm-train svm-predict
+
+if [[ ${rc} != 0 ]]; then exit ${rc}; fi  # return exitcode

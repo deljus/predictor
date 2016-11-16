@@ -87,20 +87,21 @@ class Propertyextractor(object):
         self.__is_reaction = is_reaction
         self.__name = name
 
-    def get_property(self, structures):
-        reader = RDFread(structures) if self.__is_reaction else SDFread(structures)
-        data = []
-        for i in reader.read():
+    def get_property(self, data):
+        tmp = []
+        for i in data:
             meta = i['meta'] if self.__is_reaction else i.graph['meta']
             prop = meta.get(self.__name)
-            data.append(float(prop) if prop else np.NaN)
-        res = pd.Series(data, name='Property')
-        res.index = pd.Index(res.index, name='structure')
+            tmp.append(float(prop) if prop else np.NaN)
+
+        res = pd.Series(tmp, name='Property')
+        res.index.name = 'structure'
         return res
 
 
 class Descriptorsdict(object):
-    def __init__(self, data=None, is_reaction=False):
+    def __init__(self, data=None, s_option=None, is_reaction=False):
+        self.__s_option = s_option
         self.__is_reaction = is_reaction
         self.__extention = data
         self.__extheader = self.__prepareextheader(data)
@@ -138,6 +139,7 @@ class Descriptorsdict(object):
          True
         """
         extblock = []
+        props = []
         reader = RDFread(structures) if self.__is_reaction else SDFread(structures)
         for i in reader.read():
             meta = i['meta'] if self.__is_reaction else i.graph['meta']
@@ -150,9 +152,14 @@ class Descriptorsdict(object):
                         data.index = [0]
                         tmp.append(data)
             extblock.append(pd.concat(tmp, axis=1) if tmp else pd.DataFrame([{}]))
+
+            tmp = meta.get(self.__s_option)
+            props.append(float(tmp) if tmp else np.NaN)
+
         res = pd.DataFrame(pd.concat(extblock), columns=self.__extheader)
         res.index = pd.Index(range(len(res.index)), name='structure')
-        return res
+        prop = pd.Series(props, name='Property', index=res.index)
+        return res, prop
 
     def __parseadditions0(self, **kwargs):
         extblock = []
@@ -186,20 +193,23 @@ class Descriptorsdict(object):
 
     def get(self, structures=None, **kwargs):
         if kwargs.get('parsesdf'):
-            extblock = self.__parsefile(structures)
+            extblock, prop = self.__parsefile(structures)
+            structures.seek(0)  # ad-hoc for rereading
 
         elif all(isinstance(x, list) or isinstance(x, dict) for y, x in kwargs.items() if y in self.__extention):
             extblock = self.__parseadditions0(**kwargs)
+            prop = pd.Series(index=extblock.index)
 
         elif not any(isinstance(x, list) or isinstance(x, dict) for y, x in kwargs.items() if
                      y in self.__extention):
             extblock = self.__parseadditions1(**kwargs)
+            prop = pd.Series(index=extblock.index)
 
         else:
             print('WHAT DO YOU WANT? use correct extentions params', file=sys.stderr)
             return False
 
-        return dict(X=extblock, AD=-extblock.isnull().any(axis=1))
+        return dict(X=extblock, AD=-extblock.isnull().any(axis=1), Y=prop)
 
 if __name__ == '__main__':
     import doctest
