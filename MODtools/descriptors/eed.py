@@ -59,6 +59,7 @@ class Eed(Propertyextractor):
     def get(self, structures, **kwargs):
         reader = RDFread(structures) if self.__is_reaction else SDFread(structures)
         data = list(reader.read())
+        prop = self.get_property(data)
         structures.seek(0)  # ad-hoc for rereading
 
         if self.__dragos_std:
@@ -111,7 +112,7 @@ class Eed(Propertyextractor):
         else:
             i = pd.Index(doubles, name='structure')
 
-        res['Y'] = self.get_property(structures) * pd.Series(1, index=i)
+        res['Y'] = prop * pd.Series(1, index=i)  # ad-hoc for repeating
         res['X'].index = res['AD'].index = i
         return res
 
