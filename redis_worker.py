@@ -38,10 +38,10 @@ def run(structures=None, model=None):
     return structures
 
 
-def combiner(structures):
+def combiner(job):
     """ simple ad_hoc for saving task metadata and unused structures.
-    :param structures: Task structures
+    :param job: job
     """
-    for s in structures:
-        s['models'] = []
-    return structures
+    for s in job['structures']:
+        s.setdefault('models', [])
+    return job

@@ -72,7 +72,7 @@ class RedisCombiner(object):
                             model_worker.setdefault(m, (self.__new_worker(model.pop('destinations')), model)))[0]
                         is not None]
 
-            if not populate and task['status'] == TaskStatus.MODELING:
+            if not populate and not isinstance(s['data'], dict):  # second cond ad-hoc for file upload.
                 tmp.append(s)
 
         task['structures'] = tmp
@@ -125,13 +125,14 @@ class RedisCombiner(object):
                 j.delete()
             result['structures'] = list(tmp.values())
 
-        if sub_jobs_unf:
-            result['jobs'] = sub_jobs_unf
+        result['jobs'] = sub_jobs_unf
 
-        ended_at = max(x.ended_at for x in sub_jobs_fin) if sub_jobs_fin else job.ended_at
+        if sub_jobs_fin:
+            job.ended_at = max(x.ended_at for x in sub_jobs_fin)
+
         job.save()
 
         if sub_jobs_unf:
             return dict(is_finished=False)
 
-        return dict(is_finished=True, ended_at=ended_at, result=result)
+        return dict(is_finished=True, ended_at=job.ended_at, result=result)

@@ -23,7 +23,7 @@ from os import path
 from .config import UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType
 from .models import Tasks, Structures, Additives, Models, Additivesets, Destinations
 from .redis import RedisCombiner
-from flask import Blueprint, url_for, send_from_directory
+from flask import Blueprint, url_for, send_from_directory, request
 from flask_login import current_user
 from flask_restful import reqparse, Resource, fields, marshal, abort, Api
 from functools import wraps
@@ -110,8 +110,12 @@ def format_results(task, status):
     result['type'] = result['type'].value
     for s in result['structures']:
         s['status'] = s['status'].value
+        s['type'] = s['type'].value
         for m in s['models']:
+            m.pop('destinations', None)
             m['type'] = m['type'].value
+            for r in m.get('results', []):
+                r['type'] = r['type'].value
         for a in s['additives']:
             a['type'] = a['type'].value
     return result
@@ -156,14 +160,10 @@ class AvailableAdditives(Resource):
         return out
 
 
-rm_post = reqparse.RequestParser()
-rm_post.add_argument('models', type=lambda x: marshal(x, modelfields), required=True)
-
-
 class RegisterModels(AdminResource):
     def post(self):
-        args = rm_post.parse_args()
-        models = args['models'] if isinstance(args['models'], list) else [args['models']]
+        data = marshal(request.get_json(force=True), modelfields)
+        models = data if isinstance(data, list) else [data]
         available = {x['name']: [(d['host'], d['port'], d['name']) for d in x['destinations']]
                      for x in get_models_list(skip_prep=False).values()}
         report = []
@@ -286,20 +286,16 @@ class StartTask(AuthResource):
                     date=newjob.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=result['user'])
 
 
-''' ===================================================
-    api for task preparation.
-    ===================================================
-'''
-pt_post = reqparse.RequestParser()
-pt_post.add_argument('structures', type=lambda x: marshal(x, taskstructurefields), required=True)
-
-
 class PrepareTask(AuthResource):
+    """ ===================================================
+        api for task preparation.
+        ===================================================
+    """
     def get(self, task):
         return format_results(task, TaskStatus.PREPARED)
 
     def post(self, task):
-        args = pt_post.parse_args()
+        data = marshal(request.get_json(force=True), taskstructurefields)
         result = fetchtask(task, TaskStatus.PREPARED)[0]
 
         additives = get_additives()
@@ -312,7 +308,7 @@ class PrepareTask(AuthResource):
                 s['models'] = [preparer]
             prepared[s['structure']] = s
 
-        structures = args['structures'] if isinstance(args['structures'], list) else [args['structures']]
+        structures = data if isinstance(data, list) else [data]
         tmp = {x['structure']: x for x in structures if x['structure'] in prepared}
 
         report = False
@@ -356,31 +352,27 @@ class PrepareTask(AuthResource):
         if new_job is None:
             abort(500, message=dict(server='error'))
 
-        return dict(task=new_job.id, status=result['status'].value, type=result['type'],
+        return dict(task=new_job.id, status=result['status'].value, type=result['type'].value,
                     date=new_job.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=result['user'])
 
 
-''' ===================================================
-    api for task creation.
-    ===================================================
-'''
-ct_post = reqparse.RequestParser()
-ct_post.add_argument('structures', type=lambda x: marshal(x, taskstructurefields), required=True)
-
-
 class CreateTask(AuthResource):
+    """ ===================================================
+        api for task creation.
+        ===================================================
+    """
     def post(self, _type):
         try:
             _type = TaskType(_type)
         except ValueError:
             abort(403, message=dict(task=dict(type='invalid id')))
 
-        args = ct_post.parse_args()
+        data = marshal(request.get_json(force=True), taskstructurefields)
 
         additives = get_additives()
 
         preparer = get_model(ModelType.PREPARER)
-        structures = args['structures'] if isinstance(args['structures'], list) else [args['structures']]
+        structures = data if isinstance(data, list) else [data]
 
         data = []
         for s, d in enumerate(structures, start=1):
