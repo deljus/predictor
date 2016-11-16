@@ -46,7 +46,7 @@ def main(redis):
         report.append(dict(type=m['type'].value, name=m['name'], example=m['example'], description=m['description'],
                            destinations=destinations))
 
-    for m in serverpost('admin/models', dict(models=report)):
+    for m in serverpost('admin/models', report):
         print(m)
 
 if __name__ == "__main__":
