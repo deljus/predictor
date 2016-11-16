@@ -163,3 +163,8 @@ def about():
 @view_bp.route('/blog', methods=['GET'])
 def blog():
     return render_template("layout.html")
+
+
+@view_bp.route('/predictor', methods=['GET'])
+def predictor():
+    return render_template("predictor.html")

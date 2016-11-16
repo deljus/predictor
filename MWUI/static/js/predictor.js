@@ -1,11 +1,25 @@
 /******************************************************/
-TASK_CREATED    = 0
-REQ_MAPPING     = 1
-LOCK_MAPPING    = 2
-MAPPING_DONE    = 3
-REQ_MODELLING   = 4
-LOCK_MODELLING  = 5
-MODELLING_DONE  = 6
+
+//class TaskType(Enum):
+    MODELING = 0
+    SIMILARITY = 1
+    SUBSTRUCTURE = 2
+
+//class ModelType(Enum):
+    PREPARER = 0
+    MOLECULE_MODELING = 1
+    REACTION_MODELING = 2
+    MOLECULE_SIMILARITY = 3
+    REACTION_SIMILARITY = 4
+    MOLECULE_SUBSTRUCTURE = 5
+    REACTION_SUBSTRUCTURE = 6
+
+//class TaskStatus(Enum):
+    NEW = 0
+    PREPARING = 1
+    PREPARED = 2
+    MODELING = 3
+    DONE = 4
 
 var TIMER_INTERVAL = 5000;
 var MOL_FORMAT = 'mrv';
@@ -448,19 +462,22 @@ function upload_task_draw_data(draw_data)
 	hide_upload_sketcher_data_btn();
 	hide_save_sketcher_data_btn();
 
-    var data = JSON.stringify({"reaction_structure": draw_data, "task_type":"model"});
+    var data = {"structures":[{"data":draw_data}]};
+    data = JSON.stringify(data);
 
     $.ajax({
-            "url": API_BASE+"/tasks"
+            "url": API_BASE+"/task/create/"+MODELING
             ,"type": "POST"
             ,"dataType": "json"
             ,"contentType": "application/json"
             ,"data": data
-    }).done(function (data, textStatus, jqXHR) {
+    }).done(function (resp, textStatus, jqXHR) {
 
-		//log_log('TASK_ID = '+data);
-        $("#task_id").val(data);
-        start_task_mapping(data);
+		log_log('задача создана:');
+        log_log(resp);
+        var task_id = resp.task;
+        $("#task_id").val(task_id);
+        start_task_mapping(task_id);
 
     }).fail(handleRequestError);
 }

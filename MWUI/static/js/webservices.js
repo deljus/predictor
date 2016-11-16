@@ -15,7 +15,7 @@ function getDefaultServicesPrefix() {
 
 function getApiUrl()
 {
-	return '/qspr/api';
+	return '/api';
 }
 
 function getDefaultServices() {

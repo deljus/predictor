@@ -154,4 +154,4 @@ def top_nav():
         navbar = [LeftSubgroup(View('News', '.blog'), View('About Us', '.about')),
                   RightSubgroup(View('Login', '.login'), View('Registration', '.registration'))]
 
-    return Navbar(View('Predictor', '.index'), *navbar)
+    return Navbar(View('Predictor', '.predictor'), *navbar)
