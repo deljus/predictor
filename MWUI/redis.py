@@ -20,18 +20,21 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+import pickle
 from collections import defaultdict
-from redis import Redis
+from datetime import datetime
+from uuid import uuid4
+from redis import Redis, ConnectionError
 from rq import Queue
 from .config import TaskStatus, StructureStatus, ModelType
 
 
 class RedisCombiner(object):
-    def __init__(self, host='localhost', port=6379, password=None, name='default', result_ttl=86400, job_timeout=3600):
+    def __init__(self, host='localhost', port=6379, password=None, result_ttl=86400, job_timeout=3600):
         self.__result_ttl = result_ttl
         self.__job_timeout = job_timeout
 
-        self.__tasks = dict(id=0, host=host, port=port, password=password, name=name)
+        self.__tasks = Redis(host=host, port=port, password=password)
 
     def __new_worker(self, destinations):
         for x in destinations:
@@ -41,19 +44,18 @@ class RedisCombiner(object):
     def __get_queue(self, destination):
         r = Redis(host=destination['host'], port=destination['port'], password=destination['password'])
         try:
-            if r.ping():
-                q = Queue(connection=r, name=destination['name'], default_timeout=self.__job_timeout)
-                return q
-        except:
-            pass
-        return None
+            r.ping()
+            return Queue(connection=r, name=destination['name'], default_timeout=self.__job_timeout)
+        except ConnectionError:
+            return None
 
     def new_job(self, task):
         if task['status'] not in (TaskStatus.NEW, TaskStatus.PREPARING, TaskStatus.MODELING):
             return None  # for api check.
 
-        queue = self.__get_queue(self.__tasks)
-        if queue is None:
+        try:
+            self.__tasks.ping()
+        except ConnectionError:
             return None
 
         model_worker = {}
@@ -86,25 +88,27 @@ class RedisCombiner(object):
             task['jobs'] = jobs
             task['status'] = TaskStatus.DONE if task['status'] == TaskStatus.MODELING else TaskStatus.PREPARED
 
-            return queue.enqueue_call('redis_worker.combiner', args=(task,), result_ttl=self.__result_ttl)
+            _id = str(uuid4())
+            self.__tasks.set(_id, pickle.dumps((task, datetime.utcnow())), ex=self.__result_ttl)
+            return dict(id=_id, created_at=datetime.utcnow())
         except:
             return None
 
-    def fetch_job(self, task):  # potentially cachable
-        queue = self.__get_queue(self.__tasks)
-        if queue is None:
+    def fetch_job(self, task):
+        try:
+            self.__tasks.ping()
+        except ConnectionError:
             return False
 
-        job = queue.fetch_job(task)
+        job = self.__tasks.get(task)
         if job is None:
             return None
-        elif not job.is_finished:
-            return dict(is_finished=False)
 
-        result = job.result
+        result, ended_at = pickle.loads(job)
+
         sub_jobs_fin = []
         sub_jobs_unf = []
-        for dest, sub_task in result.pop('jobs'):
+        for dest, sub_task in result['jobs']:
             worker = self.__get_queue(dest)
             if worker is not None:  # skip lost workers
                 tmp = worker.fetch_job(sub_task)
@@ -123,16 +127,14 @@ class RedisCombiner(object):
                     else:
                         tmp[s['structure']] = s
                 j.delete()
+
             result['structures'] = list(tmp.values())
+            result['jobs'] = sub_jobs_unf
+            ended_at = max(x.ended_at for x in sub_jobs_fin)
 
-        result['jobs'] = sub_jobs_unf
-
-        if sub_jobs_fin:
-            job.ended_at = max(x.ended_at for x in sub_jobs_fin)
-
-        job.save()
+            self.__tasks.set(task, pickle.dumps((result, ended_at)), ex=self.__result_ttl)
 
         if sub_jobs_unf:
             return dict(is_finished=False)
 
-        return dict(is_finished=True, ended_at=job.ended_at, result=result)
+        return dict(is_finished=True, ended_at=ended_at, result=result)

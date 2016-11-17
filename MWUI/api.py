@@ -108,6 +108,7 @@ def format_results(task, status):
     result['date'] = ended_at.strftime("%Y-%m-%d %H:%M:%S")
     result['status'] = result['status'].value
     result['type'] = result['type'].value
+    result.pop('jobs')
     for s in result['structures']:
         s['status'] = s['status'].value
         s['type'] = s['type'].value
@@ -282,8 +283,8 @@ class StartTask(AuthResource):
         result['status'] = TaskStatus.MODELING
 
         newjob = redis.new_job(result)
-        return dict(task=newjob.id, status=result['status'].value, type=result['type'].value,
-                    date=newjob.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=result['user'])
+        return dict(task=newjob['id'], status=result['status'].value, type=result['type'].value,
+                    date=newjob['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=result['user'])
 
 
 class PrepareTask(AuthResource):
@@ -352,8 +353,8 @@ class PrepareTask(AuthResource):
         if new_job is None:
             abort(500, message=dict(server='error'))
 
-        return dict(task=new_job.id, status=result['status'].value, type=result['type'].value,
-                    date=new_job.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=result['user'])
+        return dict(task=new_job['id'], status=result['status'].value, type=result['type'].value,
+                    date=new_job['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=result['user'])
 
 
 class CreateTask(AuthResource):
@@ -395,8 +396,8 @@ class CreateTask(AuthResource):
         if new_job is None:
             abort(500, message=dict(server='error'))
 
-        return dict(task=new_job.id, status=TaskStatus.PREPARING.value, type=_type.value,
-                    date=new_job.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id)
+        return dict(task=new_job['id'], status=TaskStatus.PREPARING.value, type=_type.value,
+                    date=new_job['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id)
 
 
 uf_post = reqparse.RequestParser()
@@ -434,8 +435,8 @@ class UploadTask(AuthResource):
         if new_job is None:
             abort(500, message=dict(server='error'))
 
-        return dict(task=new_job.id, status=TaskStatus.PREPARING.value, type=_type.value,
-                    date=new_job.created_at.strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id)
+        return dict(task=new_job['id'], status=TaskStatus.PREPARING.value, type=_type.value,
+                    date=new_job['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id)
 
 
 api.add_resource(CreateTask, '/task/create/<int:_type>')
