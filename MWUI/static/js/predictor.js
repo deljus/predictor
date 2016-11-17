@@ -294,6 +294,12 @@ function get_task_status(task_id)
     return $.get(API_BASE+"/task_status/"+task_id);
 }
 
+function get_prepare_task_status(task_id)
+{
+	//log_log('get_task_status->'+task_id);
+    return $.get(API_BASE+"/task/prepare/"+task_id);
+}
+
 function get_reaction_structure(reaction_id)
 {
     return $.get(API_BASE+"/reaction_structure/"+reaction_id);
@@ -462,11 +468,12 @@ function upload_task_draw_data(draw_data)
 	hide_upload_sketcher_data_btn();
 	hide_save_sketcher_data_btn();
 
-    var data = {"structures":[{"data":draw_data}]};
+    //var data = {"structures":[{"data":draw_data}]};
+    var data = {"data":draw_data};
     data = JSON.stringify(data);
 
     $.ajax({
-            "url": API_BASE+"/task/create/"+MODELING
+            "url": API_BASE+"/task/create/"+MODELING    // Task Type
             ,"type": "POST"
             ,"dataType": "json"
             ,"contentType": "application/json"
@@ -477,6 +484,7 @@ function upload_task_draw_data(draw_data)
         log_log(resp);
         var task_id = resp.task;
         $("#task_id").val(task_id);
+        setCookie('task_id',task_id);
         start_task_mapping(task_id);
 
     }).fail(handleRequestError);
@@ -531,10 +539,13 @@ function start_task_searching(task_id)
 
 function check_task_mapping_status(task_id)
 {
+    if (task_id==undefined)
+        task_id = get_task();
     //log_log('check_task_mapping_status->');
 	
-    get_task_status(task_id).done(function (data, textStatus, jqXHR){
-
+    get_prepare_task_status(task_id).done(function (data, textStatus, jqXHR){
+        log_log(textStatus);
+        log_log(jqXHR);
 		if (data==MAPPING_DONE)
 		{
 			reset_timer();

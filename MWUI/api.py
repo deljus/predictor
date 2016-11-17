@@ -85,7 +85,7 @@ def get_models_list(skip_prep=True):
 def fetchtask(task, status):
     job = redis.fetch_job(task)
     if job is None:
-        abort(403, message=dict(task='invalid id'))
+        abort(400, message=dict(task='invalid id'))
 
     if not job:
         abort(500, message=dict(server='error'))
@@ -94,10 +94,10 @@ def fetchtask(task, status):
         abort(202, message=dict(task='not ready'))
 
     if job['result']['status'] != status:
-        abort(403, message=dict(task=dict(status='incorrect')))
+        abort(400, message=dict(task=dict(status='incorrect')))
 
     if job['result']['user'] != current_user.id:
-        abort(403, message=dict(task='access denied'))
+        abort(403, message='access deny')
 
     return job['result'], job['ended_at']
 
@@ -366,7 +366,8 @@ class CreateTask(AuthResource):
         try:
             _type = TaskType(_type)
         except ValueError:
-            abort(403, message=dict(task=dict(type='invalid id')))
+            msg = 'invalid task type ['+str(_type)+']. valid values are '+','.join(str(e.value) for e in TaskType)
+            abort(400, message=msg)
 
         data = marshal(request.get_json(force=True), taskstructurefields)
 
@@ -389,12 +390,12 @@ class CreateTask(AuthResource):
                                  additives=alist, models=[preparer]))
 
         if not data:
-            return dict(message=dict(structures='invalid data')), 415
+            return dict(message='invalid or empty submited data'), 400
 
         new_job = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id, structures=data))
 
         if new_job is None:
-            abort(500, message=dict(server='error'))
+            abort(500, message='error with creating task')
 
         return dict(task=new_job['id'], status=TaskStatus.PREPARING.value, type=_type.value,
                     date=new_job['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id), 201
