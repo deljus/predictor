@@ -1,25 +1,33 @@
 /******************************************************/
 
 //class TaskType(Enum):
-    MODELING = 0
-    SIMILARITY = 1
-    SUBSTRUCTURE = 2
+    TaskType = {
+         MODELING:0
+        ,SIMILARITY: 1
+        ,SUBSTRUCTURE: 2
+    }
+
 
 //class ModelType(Enum):
-    PREPARER = 0
-    MOLECULE_MODELING = 1
-    REACTION_MODELING = 2
-    MOLECULE_SIMILARITY = 3
-    REACTION_SIMILARITY = 4
-    MOLECULE_SUBSTRUCTURE = 5
-    REACTION_SUBSTRUCTURE = 6
+    ModelType = {
+         PREPARER: 0
+        ,MOLECULE_MODELING:     1
+        ,REACTION_MODELING:     2
+        ,MOLECULE_SIMILARITY:   3
+        ,REACTION_SIMILARITY:   4
+        ,MOLECULE_SUBSTRUCTURE: 5
+        ,REACTION_SUBSTRUCTURE: 6
+    }
+
 
 //class TaskStatus(Enum):
-    NEW = 0
-    PREPARING = 1
-    PREPARED = 2
-    MODELING = 3
-    DONE = 4
+    TaskStatus = {
+         NEW:       0
+        ,PREPARING: 1
+        ,PREPARED:  2
+        ,MODELING:  3
+        ,DONE:      4
+    }
 
 var TIMER_INTERVAL = 5000;
 var MOL_FORMAT = 'mrv';
@@ -34,6 +42,22 @@ var isSketcherDataChanged = false;
 // все модели
 var MODELS = new Array();
 var API_BASE = getApiUrl();
+
+/*
+api.add_resource(UploadTask, '/task/upload/<int:_type>')
+api.add_resource(PrepareTask, '/task/prepare/<string:task>')
+api.add_resource(ModelTask, '/task/model/<string:task>')
+# api.add_resource(ResultsTask, '/task/results/<string:task>')
+api.add_resource(AvailableAdditives, '/resources/additives')
+api.add_resource(AvailableModels, '/resources/models')
+api.add_resource(RegisterModels, '/admin/models')
+ */
+var ApiUrl = {
+         create_task: API_BASE+"/task/create/"+TaskType.MODELING
+        ,prepare_task: API_BASE+"/task/prepare/"
+        ,model_task: API_BASE+"/task/model/"
+        ,task_result: API_BASE+"/task/results/"
+    }
 /******************************************************/
 
 function array_distinct(arr, fld) {
@@ -473,7 +497,7 @@ function upload_task_draw_data(draw_data)
     data = JSON.stringify(data);
 
     $.ajax({
-            "url": API_BASE+"/task/create/"+MODELING    // Task Type
+            "url": ApiUrl.create_task
             ,"type": "POST"
             ,"dataType": "json"
             ,"contentType": "application/json"
