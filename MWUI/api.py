@@ -85,19 +85,19 @@ def get_models_list(skip_prep=True):
 def fetchtask(task, status):
     job = redis.fetch_job(task)
     if job is None:
-        abort(400, message=dict(task='invalid id'))
+        abort(404, message='invalid task id')
 
     if not job:
-        abort(500, message=dict(server='error'))
+        abort(500, message='modeling server error')
 
     if not job['is_finished']:
-        abort(202, message=dict(task='not ready'))
+        abort(403, message='task not ready')
 
     if job['result']['status'] != status:
-        abort(400, message=dict(task=dict(status='incorrect')))
+        abort(403, message='task incompatible')
 
     if job['result']['user'] != current_user.id:
-        abort(403, message='access deny')
+        abort(403, message='user access deny')
 
     return job['result'], job['ended_at']
 
@@ -210,14 +210,14 @@ class ResultsTask(AuthResource):
         try:
             task = int(task)
         except ValueError:
-            abort(403, message=dict(task='invalid id'))
+            abort(403, message='invalid task id')
 
         with db_session:
             result = Tasks.get(id=task)
             if not result:
-                return dict(message=dict(task='invalid id')), 403
+                return dict(message='invalid task id'), 403
             if result.user.id != current_user.id:
-                return dict(message=dict(task='access denied')), 403
+                return dict(message='user access deny'), 403
 
             structures = select(s for s in Structures if s.task == result)
             resulsts = left_join((s.id, r.attrib, r.value, r.type, m.name)
@@ -312,9 +312,10 @@ class PrepareTask(AuthResource):
         structures = data if isinstance(data, list) else [data]
         tmp = {x['structure']: x for x in structures if x['structure'] in prepared}
 
-        report = False
+        if 0 in tmp:
+            abort(400, message='invalid structure data')
+
         for s, d in tmp.items():
-            report = True
             if d['todelete']:
                 prepared.pop(s)
             else:
@@ -343,15 +344,12 @@ class PrepareTask(AuthResource):
                 if d['pressure']:
                     prepared[s]['pressure'] = d['pressure']
 
-        if not report:
-            abort(415, message=dict(structures='invalid data'))
-
         result['structures'] = list(prepared.values())
         result['status'] = TaskStatus.PREPARING
         new_job = redis.new_job(result)
 
         if new_job is None:
-            abort(500, message=dict(server='error'))
+            abort(500, message='modeling server error')
 
         return dict(task=new_job['id'], status=result['status'].value, type=result['type'].value,
                     date=new_job['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=result['user']), 201
@@ -366,7 +364,7 @@ class CreateTask(AuthResource):
         try:
             _type = TaskType(_type)
         except ValueError:
-            msg = 'invalid task type ['+str(_type)+']. valid values are '+','.join(str(e.value) for e in TaskType)
+            msg = 'invalid task type [%s]. valid values are %s' % (_type, ', '.join(str(e.value) for e in TaskType))
             abort(400, message=msg)
 
         data = marshal(request.get_json(force=True), taskstructurefields)
@@ -390,12 +388,12 @@ class CreateTask(AuthResource):
                                  additives=alist, models=[preparer]))
 
         if not data:
-            return dict(message='invalid or empty submited data'), 400
+            abort(400, message='invalid structure data')
 
         new_job = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id, structures=data))
 
         if new_job is None:
-            abort(500, message='error with creating task')
+            abort(500, message='modeling server error')
 
         return dict(task=new_job['id'], status=TaskStatus.PREPARING.value, type=_type.value,
                     date=new_job['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id), 201
@@ -412,7 +410,8 @@ class UploadTask(AuthResource):
         try:
             _type = TaskType(_type)
         except ValueError:
-            abort(403, message=dict(task=dict(type='invalid id')))
+            msg = 'invalid task type [%s]. valid values are %s' % (_type, ', '.join(str(e.value) for e in TaskType))
+            abort(403, message=msg)
 
         args = uf_post.parse_args()
 
@@ -428,13 +427,13 @@ class UploadTask(AuthResource):
             args['structures'].save(path.join(UPLOAD_PATH, file_name))
             file_url = url_for('.batch_file', file=file_name)
         else:
-            return dict(message=dict(structures='invalid data')), 415
+            abort(400, message='invalid structure data')
 
         new_job = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id,
                                      structures=[dict(data=dict(url=file_url), status=StructureStatus.RAW,
                                                       models=[get_model(ModelType.PREPARER)])]))
         if new_job is None:
-            abort(500, message=dict(server='error'))
+            abort(500, message='modeling server error')
 
         return dict(task=new_job['id'], status=TaskStatus.PREPARING.value, type=_type.value,
                     date=new_job['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id), 201

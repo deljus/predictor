@@ -40,6 +40,7 @@ def init():
     app.config['DEBUG'] = DEBUG
     app.config['SECRET_KEY'] = SECRET_KEY
     app.config['BOOTSTRAP_SERVE_LOCAL'] = True
+    app.config['ERROR_404_HELP'] = False
     app.jinja_env.globals.update(year=datetime.utcnow, laboratory=LAB_NAME)
 
     register_renderer(app, 'myrenderer', Customrenderer)

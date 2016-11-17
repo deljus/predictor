@@ -3,15 +3,9 @@ import tempfile
 from modelset import ModelSet
 
 
-def cycle2(structures):  # AD-HOC for preparing model for uploaded files processing.
-    saved = []
-    for s in structures:
-        saved.append(s)
-        yield s.copy()
-
+def cycle2(structures):
     while True:
-        for s in saved:
-            yield s.copy()
+        yield structures[0].copy()
 
 
 def run(structures=None, model=None):
@@ -22,7 +16,10 @@ def run(structures=None, model=None):
 
     if results:
         out = []
-        for s, r in zip(cycle2(structures), results):
+        # AD-HOC for preparing model for uploaded files processing.
+        tmp = cycle2(structures) if isinstance(structures[0]['data'], dict) else structures
+
+        for s, r in zip(tmp, results):
             _res = dict(results=r.pop('results'))
             _res.update(model)
             r['models'] = [_res]
@@ -30,18 +27,13 @@ def run(structures=None, model=None):
             out.append(s)
         structures = out
     else:
+        # AD-HOC for preparing model for uploaded files processing.
+        if isinstance(structures[0]['data'], dict):
+            raise Exception('Preparer model failed on file processing')
+
         # if failed return empty models list
         for s in structures:
             s['models'] = []
 
     shutil.rmtree(workpath)
     return structures
-
-
-def combiner(job):
-    """ simple ad_hoc for saving task metadata and unused structures.
-    :param job: job
-    """
-    for s in job['structures']:
-        s.setdefault('models', [])
-    return job

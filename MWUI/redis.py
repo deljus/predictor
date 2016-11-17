@@ -75,6 +75,7 @@ class RedisCombiner(object):
                         is not None]
 
             if not populate and not isinstance(s['data'], dict):  # second cond ad-hoc for file upload.
+                s.setdefault('models', [])
                 tmp.append(s)
 
         task['structures'] = tmp
@@ -115,6 +116,8 @@ class RedisCombiner(object):
                 if tmp is not None:
                     if tmp.is_finished:
                         sub_jobs_fin.append(tmp)
+                    elif tmp.is_failed:  # skip failed jobs
+                        pass
                     else:
                         sub_jobs_unf.append((dest, sub_task))
 
