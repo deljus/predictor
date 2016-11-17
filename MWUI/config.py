@@ -36,6 +36,12 @@ DB_PASS = None
 DB_HOST = None
 DB_NAME = None
 
+REDIS_HOST = 'localhost'
+REDIS_PORT = 6379
+REDIS_PASSWORD = None
+REDIS_TTL = 86400
+REDIS_JOB_TIMEOUT = 3600
+
 
 class StructureStatus(Enum):
     RAW = 0

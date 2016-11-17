@@ -20,7 +20,8 @@
 #
 import uuid
 from os import path
-from .config import UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType
+from .config import (UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, REDIS_HOST, REDIS_JOB_TIMEOUT,
+                     REDIS_PASSWORD, REDIS_PORT, REDIS_TTL)
 from .models import Tasks, Structures, Additives, Models, Additivesets, Destinations
 from .redis import RedisCombiner
 from flask import Blueprint, url_for, send_from_directory, request
@@ -34,7 +35,8 @@ from werkzeug import datastructures
 api_bp = Blueprint('api', __name__)
 api = Api(api_bp)
 
-redis = RedisCombiner()
+redis = RedisCombiner(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD, result_ttl=REDIS_TTL,
+                      job_timeout=REDIS_JOB_TIMEOUT)
 
 
 class ModelTypeField(fields.Raw):
