@@ -40,7 +40,7 @@ class Eed(Propertyextractor):
         if is_reaction and not cgr_marker:
             return
 
-        Propertyextractor.__init__(self, s_option, is_reaction=is_reaction)
+        Propertyextractor.__init__(self, s_option)
         self.__dragos_marker = Pharmacophoreatommarker(marker_rules, workpath) if marker_rules else None
 
         self.__cgr_marker = CGRatommarker(cgr_marker, prepare=cgr_marker_prepare,
@@ -59,7 +59,6 @@ class Eed(Propertyextractor):
     def get(self, structures, **kwargs):
         reader = RDFread(structures) if self.__is_reaction else SDFread(structures)
         data = list(reader.read())
-        prop = self.get_property(data)
         structures.seek(0)  # ad-hoc for rereading
 
         if self.__dragos_std:
@@ -77,27 +76,33 @@ class Eed(Propertyextractor):
         if not data:
             return False
 
+        prop = []
         doubles = []
 
         workfiles = [StringIO() for _ in range(self.__cgr_marker.getcount() if self.__cgr_marker
                                                else self.__dragos_marker.getcount() if self.__dragos_marker else 1)]
         writers = [SDFwrite(x, mark_to_map=True) for x in workfiles]
-        tX, tD = [], []
+
         for s_numb, s in enumerate(data):
             if isinstance(s, list):
-                for d in s:
+                meta = s[0][0][1]['meta']
+                for d in s:  # d = ((n1, tmp1), (n2, tmp2), ...)
                     tmp = [s_numb]
-                    for w, x in zip(writers, d):
-                        w.writedata(x[1])
-                        tmp.append(x[0])
+                    for w, (x, y) in zip(writers, d):
+                        w.writedata(y)
+                        tmp.append(x)
+                    prop.append(self.get_property(meta, marks=tmp[1:]))
                     doubles.append(tmp)
             else:
                 writers[0].write(s)
+                prop.append(self.get_property(s['meta']))
                 doubles.append(s_numb)
 
-        for n, f in enumerate(workfiles):
+        tX, tD = [], []
+
+        for n, workfile in enumerate(workfiles):
             p = Popen([EED], stdout=PIPE, stdin=PIPE)
-            res = p.communicate(input=f.getvalue().encode())[0].decode()
+            res = p.communicate(input=workfile.getvalue().encode())[0].decode()
 
             if p.returncode != 0:
                 return False
@@ -106,14 +111,15 @@ class Eed(Propertyextractor):
             tX.append(X)
             tD.append(D)
 
-        res = dict(X=pd.concat(tX, axis=1, keys=range(len(tX))), AD=reduce(operator.and_, tD))
+        res = dict(X=pd.concat(tX, axis=1, keys=range(len(tX))), AD=reduce(operator.and_, tD),
+                   Y=pd.Series(prop, name='Property'))
+
         if self.__cgr_marker or self.__dragos_marker:
             i = pd.MultiIndex.from_tuples(doubles, names=['structure'] + ['c.%d' % x for x in range(len(workfiles))])
         else:
             i = pd.Index(doubles, name='structure')
 
-        res['Y'] = prop * pd.Series(1, index=i)  # ad-hoc for repeating
-        res['X'].index = res['AD'].index = i
+        res['X'].index = res['AD'].index = res['Y'].index = i
         return res
 
     @staticmethod

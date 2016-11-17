@@ -30,6 +30,7 @@ from sklearn.feature_extraction import DictVectorizer
 from CGRtools.CGRpreparer import CGRcombo
 from CGRtools.files.RDFrw import RDFread
 from CGRtools.files.SDFrw import SDFread, SDFwrite
+from .descriptoragregator import Propertyextractor
 from ..config import FRAGMENTOR
 from ..structprepare import Pharmacophoreatommarker, StandardizeDragos, CGRatommarker, Colorize
 
@@ -62,7 +63,7 @@ def pairwise(iterable):
     return zip(a, b)
 
 
-class Fragmentor(object):
+class Fragmentor(Propertyextractor):
     def __init__(self, workpath='.', version=None, s_option=None, fragment_type=3, min_length=2, max_length=10,
                  colorname=None, marked_atom=0, cgr_dynbonds=0, xml=None, doallways=False, useformalcharge=False,
                  atompairs=False, fragmentstrict=False, getatomfragment=False, overwrite=True, header=None,
@@ -74,6 +75,8 @@ class Fragmentor(object):
         self.__is_reaction = is_reaction
         if is_reaction and not (cgr_type or cgr_marker):
             return
+
+        Propertyextractor.__init__(self, s_option)
 
         self.__prepocess = any(x is not None for x in (marker_rules, standardize, cgr_type, cgr_marker, docolor))
 
@@ -89,7 +92,7 @@ class Fragmentor(object):
                                           stereo=cgr_stereo, reverse=cgr_reverse) if cgr_marker else None
 
         self.__dragos_std = StandardizeDragos(standardize) \
-            if standardize is not None and not (self.__cgr or self.__cgr_marker) else None
+            if standardize is not None and not is_reaction else None
         self.__do_color = Colorize(docolor, workpath) if docolor else None
 
         self.__sparse = DictVectorizer(sparse=False)
@@ -102,7 +105,7 @@ class Fragmentor(object):
         self.__workpath = workpath
         self.__fragversion = ('-%s' % version) if version else ''
         tmp = ['-f', 'SVM']
-        if s_option: tmp.extend(['-s', s_option])
+
         if header:
             headers = header if isinstance(header, list) else [header]
             if all(os.path.exists(x) for x in headers):
@@ -162,70 +165,73 @@ class Fragmentor(object):
                                     else self.__dragos_marker.getcount() if self.__dragos_marker else 1)]
         outputfile = os.path.join(self.__workpath, "frg")
 
+        reader = RDFread(structures) if self.__is_reaction else SDFread(structures)
+        data = list(reader.read())
+        structures.seek(0)  # ad-hoc for rereading
+
         if self.__prepocess:
-            with openFiles(workfiles, ['w'] * len(workfiles)) as f:
-                writers = [SDFwrite(x) for x in f]
-                reader = RDFread(structures) if self.__is_reaction else SDFread(structures)
-                data = list(reader.read())
-                if self.__dragos_std:
-                    data = self.__dragos_std.get(data)
+            if self.__dragos_std:
+                data = self.__dragos_std.get(data)
 
-                if self.__do_color:
-                    if self.__cgr or self.__cgr_marker:
-                        for i in ('substrats', 'products'):
-                            mols, shifts = [], [0]
-                            for x in data:
-                                shifts.append(len(x[i]) + shifts[-1])
-                                mols.extend(x[i])
+            if self.__do_color:
+                if self.__is_reaction:
+                    for i in ('substrats', 'products'):
+                        mols, shifts = [], [0]
+                        for x in data:
+                            shifts.append(len(x[i]) + shifts[-1])
+                            mols.extend(x[i])
 
-                            colored = self.__do_color.get(mols)
-                            if not colored:
-                                return False
+                        colored = self.__do_color.get(mols)
+                        if not colored:
+                            return False
 
-                            for (y, z), x in zip(pairwise(shifts), data):
-                                x[i] = colored[y: z]
-                    else:
-                        data = self.__do_color.get(data)
+                        for (y, z), x in zip(pairwise(shifts), data):
+                            x[i] = colored[y: z]
+                else:
+                    data = self.__do_color.get(data)
 
-                if not data:
-                    return False
+            if not data:
+                return False
 
-                if self.__cgr:
-                    data = [self.__cgr.getCGR(x) for x in data]
+            if self.__cgr:
+                data = [self.__cgr.getCGR(x) for x in data]
 
-                elif self.__cgr_marker:
-                    data = self.__cgr_marker.get(data)
+            elif self.__cgr_marker:
+                data = self.__cgr_marker.get(data)
 
-                elif self.__dragos_marker:
-                    data = self.__dragos_marker.get(data)
+            elif self.__dragos_marker:
+                data = self.__dragos_marker.get(data)
 
-                if not data:
-                    return False
-                doubles = []
-                for s_numb, s in enumerate(data):
-                    if isinstance(s, list):
-                        for d in s:
-                            tmp = [s_numb]
-                            for w, x in zip(writers, d):
-                                w.writedata(x[1])
-                                tmp.append(x[0])
-                            doubles.append(tmp)
-                    else:
-                        writers[0].write(s)
-                        doubles.append(s_numb)
+            if not data:
+                return False
 
-        else:
-            doubles = None
-            with open(workfiles[0], 'w') as f:
-                for i in structures:
-                    f.write(i)
+        prop = []
+        doubles = []
 
-        """ prepare header if exist (normally true). run fragmentor.
-        """
-        tX, tY, tD = [], None, []
+        with openFiles(workfiles, ['w'] * len(workfiles)) as f:
+            writers = [SDFwrite(x) for x in f]
+
+            for s_numb, s in enumerate(data):
+                if isinstance(s, list):
+                    meta = s[0][0][1]['meta']
+                    for d in s:  # d = ((n1, tmp1), (n2, tmp2), ...)
+                        tmp = [s_numb]
+                        for w, (x, y) in zip(writers, d):
+                            w.writedata(y)
+                            tmp.append(x)
+                        prop.append(self.get_property(meta, marks=tmp[1:]))
+                        doubles.append(tmp)
+                else:
+                    writers[0].write(s)
+                    prop.append(self.get_property(s['meta']))
+                    doubles.append(s_numb)
+
+        tX, tD = [], []
 
         for n, workfile in enumerate(workfiles):
             if not self.__genheader:
+                """ prepare header if exist (normally true). run fragmentor.
+                """
                 self.__prepareheader(n)
 
             execparams = [self.__fragmentor(), '-i', workfile, '-o', outputfile]
@@ -241,29 +247,28 @@ class Fragmentor(object):
                         self.__execparams.insert(self.__execparams.index('-t'), '-h')
                         self.__execparams.insert(self.__execparams.index('-t'), '')
 
-                print('parsing fragmentor output', file=sys.stderr)
-                X, Y, D = self.__parsefragmentoroutput(n, outputfile)
+                X, D = self.__parsefragmentoroutput(n, outputfile)
                 tX.append(X)
-                tY = Y
                 tD.append(D)
             else:
                 return False
 
-        res = dict(X=pd.concat(tX, axis=1, keys=range(len(tX))), AD=reduce(operator.and_, tD), Y=tY)
+        res = dict(X=pd.concat(tX, axis=1, keys=range(len(tX))), AD=reduce(operator.and_, tD),
+                   Y=pd.Series(prop, name='Property'))
+
         if self.__cgr_marker or self.__dragos_marker:
             i = pd.MultiIndex.from_tuples(doubles, names=['structure'] + ['c.%d' % x for x in range(len(workfiles))])
         else:
-            i = pd.Index(doubles if doubles is not None else res['X'].index, name='structure')
+            i = pd.Index(doubles, name='structure')
 
         res['X'].index = res['AD'].index = res['Y'].index = i
         return res
 
     def __parsefragmentoroutput(self, n, outputfile):
-        prop, vector, ad = [], [], []
+        vector, ad = [], []
         with open(outputfile + '.svm') as sf:
             for frag in sf:
-                y, *x = frag.split()
-                prop.append(float(y) if y.strip() != '?' else np.NaN)
+                _, *x = frag.split()
                 ad.append(True)
                 tmp = {}  # X vector
                 for i in x:
@@ -275,5 +280,4 @@ class Fragmentor(object):
                         break
                 vector.append(tmp)
 
-        return (pd.DataFrame(vector, columns=self.__headcolumns[n]).fillna(0),
-                pd.Series(prop, name='Property'), pd.Series(ad))
+        return pd.DataFrame(vector, columns=self.__headcolumns[n]).fillna(0), pd.Series(ad)

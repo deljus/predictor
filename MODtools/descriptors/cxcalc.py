@@ -61,7 +61,6 @@ class Pkab(Propertyextractor):
     def get(self, structures, **kwargs):
         reader = RDFread(structures) if self.__is_reaction else SDFread(structures)
         data = list(reader.read())
-        prop = self.get_property(data)
         structures.seek(0)  # ad-hoc for rereading
 
         if self.__dragos_std:
@@ -79,24 +78,31 @@ class Pkab(Propertyextractor):
         if not data:
             return False
 
+        prop = []
         doubles = []
+
         p = Popen([CXCALC] + 'pka -x 50 -i -50 -a 8 -b 8 -P dynamic -m micro'.split(),
                   stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+
         with StringIO() as f:
             writer = SDFwrite(f)
             for s_numb, s in enumerate(data):
                 if self.__cgr_marker:
+                    meta = s[0][0][1]['meta']
                     for d in s:
                         tmp = [s_numb]
-                        for x in d:
-                            writer.write(x[1])
-                            tmp.append(x[0])
+                        for x, y in d:
+                            writer.write(y)
+                            tmp.append(x)
+                        prop.append(self.get_property(meta, marks=tmp[1:]))
                         doubles.extend([tmp] * len(d))
                 elif self.__dragos_marker:
                     writer.write(s[0][0][1])
-                    doubles.append([([s_numb] + [x[0] for x in y]) for y in s])
+                    prop.extend([self.get_property(d[0][1]['meta'], marks=[x[0] for x in d]) for d in s])
+                    doubles.append([([s_numb] + [x[0] for x in d]) for d in s])
                 else:
                     writer.write(s)
+                    prop.append(self.get_property(s['meta']))
                     doubles.append(s_numb)
 
             res = p.communicate(input=f.getvalue().encode())[0].decode()
@@ -132,14 +138,14 @@ class Pkab(Propertyextractor):
             X = pd.DataFrame([x[1] for x in new_doubles],
                              columns=(['pka'] if self.__acid else []) + (['pkb'] if self.__base else []))
 
-            res = dict(X=X, AD=-X.isnull().any(axis=1))
+            res = dict(X=X, AD=-X.isnull().any(axis=1), Y=pd.Series(prop, name='Property'))
+
             if self.__cgr_marker or self.__dragos_marker:
                 i = pd.MultiIndex.from_tuples([x[0] for x in new_doubles], names=['structure', 'c.0', 'c.1'])
             else:
                 i = pd.Index(doubles, name='structure')
 
-            res['Y'] = prop * pd.Series(1, index=i)
-            res['X'].index = res['AD'].index = i
+            res['X'].index = res['AD'].index = res['Y'].index = i
             return res
 
         return False

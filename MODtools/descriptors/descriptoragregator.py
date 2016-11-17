@@ -83,20 +83,16 @@ class Descriptorchain(object):
 
 
 class Propertyextractor(object):
-    def __init__(self, name, is_reaction=False):
-        self.__is_reaction = is_reaction
+    def __init__(self, name):
         self.__name = name
 
-    def get_property(self, data):
-        tmp = []
-        for i in data:
-            meta = i['meta'] if self.__is_reaction else i.graph['meta']
-            prop = meta.get(self.__name)
-            tmp.append(float(prop) if prop else np.NaN)
+    def get_property(self, meta, marks=None):
+        if marks:
+            pass
+        else:
+            tmp = meta.get(self.__name)
 
-        res = pd.Series(tmp, name='Property')
-        res.index.name = 'structure'
-        return res
+        return float(tmp) if tmp else None
 
 
 class Descriptorsdict(object):

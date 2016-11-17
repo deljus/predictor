@@ -156,13 +156,13 @@ class Pharmacophoreatommarker(object):
                     if m:
                         tmp = s.copy()
                         tmp.node[n]['mark'] = '1'
-                        found[self.__markers.index(m)].append([n, tmp])
+                        found[self.__markers.index(m)].append((n, tmp))
 
                 for x in found:
                     if not x:
-                        x.append([None, s])
+                        x.append((None, s))
 
-                output.append([list(x) for x in product(*found)])
+                output.append(list(product(*found)))
             return output
         return False
 
@@ -269,9 +269,9 @@ class CGRatommarker(CGRcombo, CGRreactor):
                     ssc.node[atom]['mark'] = '1'
                     tmp.append([a_mark, atom, ssc])
 
-                result.append([[x, y] for _, x, y in sorted(tmp)])
+                result.append([(x, y) for _, x, y in sorted(tmp)])
 
-            output.append(result if result else [[[None, ss]] * self.getcount()])
+            output.append(result if result else [[(None, ss)] * self.getcount()])
         return output
 
 
