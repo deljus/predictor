@@ -162,7 +162,7 @@ class Pharmacophoreatommarker(object):
                     if not x:
                         x.append((None, s))
 
-                output.append(list(product(*found)))
+                output.append([list(x) for x in product(*found)])
             return output
         return False
 
