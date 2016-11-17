@@ -91,7 +91,7 @@ def fetchtask(task, status):
         abort(500, message=dict(server='error'))
 
     if not job['is_finished']:
-        abort(403, message=dict(task='not ready'))
+        abort(202, message=dict(task='not ready'))
 
     if job['result']['status'] != status:
         abort(403, message=dict(task=dict(status='incorrect')))
@@ -149,7 +149,7 @@ class AvailableModels(Resource):
             x.pop('destinations')
             x['type'] = x['type'].value
             out.append(x)
-        return out
+        return out, 200
 
 
 class AvailableAdditives(Resource):
@@ -158,7 +158,7 @@ class AvailableAdditives(Resource):
         for x in get_additives().values():
             x['type'] = x['type'].value
             out.append(x)
-        return out
+        return out, 200
 
 
 class RegisterModels(AdminResource):
@@ -196,7 +196,7 @@ class RegisterModels(AdminResource):
                                            type=model.type.value, example=model.example,
                                            destinations=[dict(host=x.host, port=x.port, name=x.name)
                                                          for x in tmp]))
-        return report
+        return report, 201
 
 
 ''' ===================================================
@@ -245,7 +245,7 @@ class ResultsTask(AuthResource):
                         structures=[dict(structure=s.id, data=s.structure, is_reaction=s.isreaction,
                                          temperature=s.temperature, pressure=s.pressure, status=s.status,
                                          models=[dict(model=m, results=r) for m, r in tmp1[s.id].items()],
-                                         additives=tmp2[s.id]) for s in structures])
+                                         additives=tmp2[s.id]) for s in structures]), 200
 
     def post(self, task):
         result, ended_at = fetchtask(task, TaskStatus.DONE)
@@ -261,7 +261,7 @@ class ResultsTask(AuthResource):
                     # todo: save results
 
         return dict(task=_task.id, status=TaskStatus.DONE.value, date=ended_at.strftime("%Y-%m-%d %H:%M:%S"),
-                    type=_task.task_type, user=_task.user.id)
+                    type=_task.task_type, user=_task.user.id), 201
 
 
 ''' ===================================================
@@ -270,9 +270,9 @@ class ResultsTask(AuthResource):
 '''
 
 
-class StartTask(AuthResource):
+class ModelTask(AuthResource):
     def get(self, task):
-        return format_results(task, TaskStatus.DONE)
+        return format_results(task, TaskStatus.DONE), 200
 
     def post(self, task):
         result = fetchtask(task, TaskStatus.PREPARED)[0]
@@ -284,7 +284,7 @@ class StartTask(AuthResource):
 
         newjob = redis.new_job(result)
         return dict(task=newjob['id'], status=result['status'].value, type=result['type'].value,
-                    date=newjob['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=result['user'])
+                    date=newjob['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=result['user']), 201
 
 
 class PrepareTask(AuthResource):
@@ -293,7 +293,7 @@ class PrepareTask(AuthResource):
         ===================================================
     """
     def get(self, task):
-        return format_results(task, TaskStatus.PREPARED)
+        return format_results(task, TaskStatus.PREPARED), 200
 
     def post(self, task):
         data = marshal(request.get_json(force=True), taskstructurefields)
@@ -354,7 +354,7 @@ class PrepareTask(AuthResource):
             abort(500, message=dict(server='error'))
 
         return dict(task=new_job['id'], status=result['status'].value, type=result['type'].value,
-                    date=new_job['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=result['user'])
+                    date=new_job['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=result['user']), 201
 
 
 class CreateTask(AuthResource):
@@ -397,7 +397,7 @@ class CreateTask(AuthResource):
             abort(500, message=dict(server='error'))
 
         return dict(task=new_job['id'], status=TaskStatus.PREPARING.value, type=_type.value,
-                    date=new_job['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id)
+                    date=new_job['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id), 201
 
 
 uf_post = reqparse.RequestParser()
@@ -436,13 +436,13 @@ class UploadTask(AuthResource):
             abort(500, message=dict(server='error'))
 
         return dict(task=new_job['id'], status=TaskStatus.PREPARING.value, type=_type.value,
-                    date=new_job['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id)
+                    date=new_job['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id), 201
 
 
 api.add_resource(CreateTask, '/task/create/<int:_type>')
 api.add_resource(UploadTask, '/task/upload/<int:_type>')
 api.add_resource(PrepareTask, '/task/prepare/<string:task>')
-api.add_resource(StartTask, '/task/modeling/<string:task>')
+api.add_resource(ModelTask, '/task/model/<string:task>')
 # api.add_resource(ResultsTask, '/task/results/<string:task>')
 api.add_resource(AvailableAdditives, '/resources/additives')
 api.add_resource(AvailableModels, '/resources/models')
