@@ -108,7 +108,7 @@ class Customrenderer(BootstrapRenderer):
 
 
 class Pagination(object):
-    def __init__(self, page, total_count, pagesize=50):
+    def __init__(self, page, total_count, pagesize=10):
         self.per_page = pagesize
         self.total_count = total_count or 1
         self.page = page if total_count >= (page - 1) * pagesize else self.pages
@@ -152,6 +152,6 @@ def top_nav():
                   ]
     else:
         navbar = [LeftSubgroup(View('News', '.blog'), View('About Us', '.about')),
-                  RightSubgroup(View('Login', '.login'), View('Registration', '.registration'))]
+                  RightSubgroup(View('Login', '.login'))]
 
     return Navbar(View('Predictor', '.predictor'), *navbar)

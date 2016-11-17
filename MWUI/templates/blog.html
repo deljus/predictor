@@ -1,0 +1,28 @@
+{% from "bootstrap/pagination.html" import render_pagination %}
+{% extends "layout.html" %}
+{% block page %}
+    {% for p in posts %}
+        <div class="row">
+            <div class="col-md-1 text-center">
+                <p><span class="glyphicon glyphicon-{{ p.glyph }} gi-5x" aria-hidden="true"></span>
+                </p>
+                <p>{{ p.date }}</p>
+            </div>
+            <div class="col-md-5">
+                <a href="{{ p.url }}">
+                    <img class="img-responsive img-hover" src="{{ p.banner }}" alt="">
+                </a>
+            </div>
+            <div class="col-md-6">
+                <h3>
+                    <a href="{{ p.url }}">{{ p.title }}</a>
+                </h3>
+                <p>{{ p.body }}</p>
+                <a class="btn btn-primary" href="{{ p.url }}">Read More <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span></a>
+            </div>
+        </div>
+        <hr>
+    {% endfor %}
+
+    {{ render_pagination(paginator) }}
+{% endblock %}

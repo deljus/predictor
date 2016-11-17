@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block page %}
+    <div class="row">
+        <div class="col-md-12">
+            {{ utils.flashed_messages(container=False) }}
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="panel-group" id="accordion">
+                {% for m, f in forms %}
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h4 class="panel-title">
+                                <a class="accordion-toggle" data-toggle="collapse" data-parent="#accordion" href="#collapse{{ loop.index }}">
+                                    {{ m }}
+                                </a>
+                            </h4>
+                        </div>
+                        <div id="collapse{{ loop.index }}" class="panel-collapse collapse {{ 'in' if loop.first }}">
+                            <div class="panel-body">
+                                <div class="col-md-8">
+                                    {{ wtf.quick_form(f, form_type='horizontal', button_map={'submit_button': 'primary'})}}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

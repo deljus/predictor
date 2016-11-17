@@ -37,7 +37,6 @@ else:
 class Users(db.Entity):
     id = PrimaryKey(int, auto=True)
     active = Required(bool, default=True)
-    blog = Set('Blog')
     email = Required(str, unique=True)
     password = Required(str)
     user_role = Required(int)
@@ -142,7 +141,7 @@ class Models(db.Entity):
 
     def __init__(self, **kwargs):
         _type = kwargs.pop('type', ModelType.MOLECULE_MODELING).value
-        super(Models, self).__init__(model_type=_type, **kwargs)
+        super(Models, self).__init__(model_type=_type, **{x: y for x, y in kwargs.items() if y})
 
     @property
     def type(self):
@@ -156,6 +155,9 @@ class Destinations(db.Entity):
     name = Required(str)
     password = Optional(str)
     port = Required(int, default=6379)
+
+    def __init__(self, **kwargs):
+        super(Destinations, self).__init__(**{x: y for x, y in kwargs.items() if y})
 
 
 class Additives(db.Entity):
@@ -184,14 +186,14 @@ class Blog(db.Entity):
     title = Required(str)
     slug = Required(str, unique=True)
     body = Required(str)
-    banner = Optional(str)
+    banner = Required(str)
+    date = Required(datetime, default=datetime.now())
     special = Optional(str)
     post_type = Required(int)
-    author = Required(Users)
 
     def __init__(self, **kwargs):
         _type = kwargs.pop('type', BlogPost.COMMON).value
-        super(Blog, self).__init__(post_type=_type, **kwargs)
+        super(Blog, self).__init__(post_type=_type, **{x: y for x, y in kwargs.items() if y})
 
     @property
     def type(self):

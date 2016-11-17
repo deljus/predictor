@@ -174,11 +174,11 @@ class RegisterModels(AdminResource):
             if m['destinations']:
                 if m['name'] not in available:
                     with db_session:
-                        new_m = Models(type=m['type'], name=m['name'],
-                                       **{x: m[x] for x in ('description', 'example') if m[x]})
+                        new_m = Models(type=m['type'], name=m['name'], description=m['description'],
+                                       example=m['example'])
 
                         for d in m['destinations']:
-                            Destinations(model=new_m, **{x: y for x, y in d.items() if y})
+                            Destinations(model=new_m, **d)
 
                     report.append(dict(model=new_m.id, name=new_m.name, description=new_m.description,
                                        type=new_m.type.value,
@@ -191,7 +191,7 @@ class RegisterModels(AdminResource):
                         model = Models.get(name=m['name'])
                         for d in m['destinations']:
                             if (d['host'], d['port'], d['name']) not in available[m['name']]:
-                                tmp.append(Destinations(model=model, **{x: y for x, y in d.items() if y}))
+                                tmp.append(Destinations(model=model, **d))
 
                     if tmp:
                         report.append(dict(model=model.id, name=model.name, description=model.description,
