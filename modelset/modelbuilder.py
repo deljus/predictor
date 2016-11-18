@@ -109,13 +109,15 @@ class Model(ConsensusDragos):
                 res.append(m.predict(f, additions))
                 # todo: parser
 
-        reason = defaultdict(list)
+        report = defaultdict(list)
 
         # all_y_domains = reduce(merge_wrap, (x['y_domain'] for x in res))
         all_domains = reduce(self.__merge_wrap, (x['domain'] for x in res)).fillna(False)
 
         all_predictions = reduce(self.__merge_wrap, (x['prediction'] for x in res))
         in_predictions = all_predictions.mask(all_domains != True)
+
+        trust = pd.Series(5, index=all_predictions.index)
 
         # mean predicted property
         avg_all = all_predictions.mean(axis=1)
@@ -125,12 +127,17 @@ class Model(ConsensusDragos):
         sigma_in = in_predictions.var(axis=1)
 
         avg_diff = (avg_in - avg_all).abs()
-        if avg_diff > self.TOL:
-            reason.append(self.__errors['diff'] % pavgdiff)
-            self.__TRUST -= 1
-        if pavgdiff.isnull():  # not in domain
-            self.__TRUST -= 1
-            reason.append(self.__errors['zad'])
+        avg_diff_tol = avg_diff > self.TOL
+        trust.loc[avg_diff_tol] -= 1
+        for r, d in avg_diff.loc[avg_diff_tol]:
+            s, *n = r if isinstance(r, tuple) else (r,)
+            report[s].append((n, self.errors['diff'] % d))
+
+        avg_diff_nul = avg_diff.isnull()
+        trust.loc[avg_diff_nul] -= 1  # not in domain
+        for r, _ in avg_diff.loc[avg_diff_nul]:
+            s, *n = r if isinstance(r, tuple) else (r,)
+            report[s].append((n, self.errors['zad']))
 
         proportion = len(self.__INlist) / len(self.__ALLlist)
         if proportion > self.Nlim:

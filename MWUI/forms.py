@@ -97,7 +97,7 @@ class ForgotPassword(FlaskForm):
 class ChangeRole(FlaskForm):
     email = StringField('User Email', validators=[validators.DataRequired(), CheckUserExist()])
     role_type = SelectField('Post Type', [validators.DataRequired()],
-                            choices=[(x.value, x.name) for x in UserRole], coerce=int)
+                            choices=[(x.name, x.name) for x in UserRole])
     submit_btn = SubmitField('Change Role')
 
     @property
@@ -114,13 +114,12 @@ class NewPost(FlaskForm):
     title = StringField('Title', [validators.DataRequired()])
     slug = StringField('Slug', [validators.DataRequired()])
     body = TextAreaField('Message', [validators.DataRequired()])
-    banner = FileField('Image', validators=[FileRequired(),
-                                            FileAllowed('jpg jpe jpeg png gif svg bmp'.split(), 'Images only')])
+    banner = FileField('Image', validators=[FileAllowed('jpg jpe jpeg png gif svg bmp'.split(), 'Images only')])
     special = StringField('Special')
     post_type = SelectField('Post Type', [validators.DataRequired()],
-                            choices=[(x.value, x.name) for x in BlogPost], coerce=int)
-    submit_btn = SubmitField('New Post')
+                            choices=[(x.name, x.name) for x in BlogPost])
+    submit_btn = SubmitField('Post')
 
     @property
     def type(self):
-        return BlogPost(self.post_type.data)
+        return BlogPost[self.post_type.data]

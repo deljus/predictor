@@ -72,7 +72,7 @@ class Users(db.Entity):
 
 class Tasks(db.Entity):
     id = PrimaryKey(int, auto=True)
-    date = Required(datetime, default=datetime.now())
+    date = Required(datetime, default=datetime.utcnow())
     structures = Set("Structures")
     task_type = Required(int)
     user = Optional(Users)
@@ -186,8 +186,8 @@ class Blog(db.Entity):
     title = Required(str)
     slug = Required(str, unique=True)
     body = Required(str)
-    banner = Required(str)
-    date = Required(datetime, default=datetime.now())
+    banner = Optional(str)
+    date = Required(datetime, default=datetime.utcnow())
     special = Optional(str)
     post_type = Required(int)
 

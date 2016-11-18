@@ -24,12 +24,14 @@ import uuid
 from .forms import Login, Registration, ReLogin, ChangePassword, NewPost, ChangeRole, BanUser, ForgotPassword
 from .logins import User
 from .models import Users, Blog
-from .config import UserRole, BLOG_POSTS, Glyph, UPLOAD_PATH
+from .config import UserRole, BLOG_POSTS, Glyph, UPLOAD_PATH, BlogPost
 from .bootstrap import Pagination
 from flask import redirect, url_for, render_template, Blueprint, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 from pony.orm import db_session, select
+from datetime import datetime
 from os import path
+from io import StringIO
 
 
 view_bp = Blueprint('view', __name__)
@@ -85,18 +87,19 @@ def profile():
             user = Users.get(id=current_user.id)
             user.change_token()
         logout_user()
-        redirect(url_for('.login'))
+        return redirect(url_for('.login'))
     elif change_passwd_form.validate_on_submit():
         with db_session:
             user = Users.get(id=current_user.id)
             user.change_password(change_passwd_form.new_password.data)
         logout_user()
-        redirect(url_for('.login'))
+        return redirect(url_for('.login'))
 
     if current_user.get_role() == UserRole.ADMIN:
         new_post_form = NewPost(prefix='NewPost')
         change_role_form = ChangeRole(prefix='ChangeRole')
         ban_form = BanUser(prefix='BanUser')
+
         forms.extend([('Change User Role', change_role_form), ('Ban User', ban_form)])
         forms.insert(0, ('New Blog Post', new_post_form))
 
@@ -111,7 +114,7 @@ def profile():
                 p = Blog(type=new_post_form.type, title=new_post_form.title.data, slug=new_post_form.slug.data,
                          body=new_post_form.body.data, banner=file_name, special=new_post_form.special.data)
 
-            redirect(url_for('.profile'))
+            return redirect(url_for('.blog_post', post=p.id))
 
         elif change_role_form.validate_on_submit():
             pass
@@ -136,12 +139,21 @@ def results():
 @view_bp.route('/', methods=['GET'])
 @view_bp.route('/index', methods=['GET'])
 def index():
-    return render_template("home.html", data=dict(info=[dict(url=url_for('.blog'), link='Learn', title='AAA',
-                                                             body='BBBB')],
-                                                  projects=dict(title='Title',
-                                                                list=['CGRtools'],
-                                                                foot='Foot',
-                                                                img=url_for('static', filename='img/3.png'))))
+    with db_session:
+        c = select(x for x in Blog if x.post_type == BlogPost.CAROUSEL.value).order_by(Blog.id.desc()).limit(BLOG_POSTS)
+        carousel = [dict(banner=url_for('static', filename='uploads/%s' % x.banner),
+                         title=x.title, body=x.body[:200]) for x in c]
+
+        ip = select(x for x in Blog if x.post_type == BlogPost.IMPORTANT.value)
+        info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body[:200])
+                for x in ip.order_by(Blog.id.desc()).limit(3)]
+
+        pl = select(x for x in Blog if x.post_type == BlogPost.PROJECTS.value)
+        projects = [dict(url=url_for('.blog_post', post=x.id),
+                         title=x.title, banner=url_for('static', filename='uploads/%s' % x.banner))
+                    for x in pl.order_by(Blog.id.desc())]
+
+    return render_template("home.html", carousel=carousel, projects=projects, info=info, title='Welcome')
 
 
 @view_bp.route('/search', methods=['GET'])
@@ -165,7 +177,7 @@ def about():
 @view_bp.route('/blog/<int:page>', methods=['GET'])
 def blog(page=1):
     if page < 1:
-        return redirect(url_for('.blog', page=1))
+        return redirect(url_for('.blog'))
 
     with db_session:
         q = select(x for x in Blog)
@@ -185,17 +197,43 @@ def blog(page=1):
 @view_bp.route('/blog/post/<int:post>', methods=['GET', 'POST'])
 def blog_post(post):
     with db_session:
-        bp = Blog.get(id=post)
-        if not bp:
+        p = Blog.get(id=post)
+        if not p:
             return redirect(url_for('.blog'))
 
-    if request.args.get('edit'):
-        data = None
-    else:
-        data = dict(date=bp.date.strftime('%B %d, %Y at %H:%M'), title=bp.title,
-                    body=bp.body, banner=url_for('static', filename='uploads/%s' % bp.banner))
-    print(data)
-    return render_template("post.html", title=bp.title, data=data)
+        if request.args.get('edit') == 'delete' and current_user.get_role() == UserRole.ADMIN:
+            p.delete()
+            return redirect(url_for('.blog'))
+
+        elif request.args.get('edit') == 'edit' and current_user.get_role() == UserRole.ADMIN:
+            form = NewPost(obj=p)
+            if form.validate_on_submit():
+                p.body = form.body.data
+                p.title = form.title.data
+                p.slug = form.slug.data
+                p.post_type = form.type.value
+                p.date = datetime.utcnow()
+
+                if form.special.data:
+                    p.special = form.special.data
+
+                if form.banner.data:
+                    file_name = str(uuid.uuid4())
+                    form.banner.data.save(path.join(UPLOAD_PATH, file_name))
+                    p.banner = file_name
+        else:
+            form = None
+
+        ip = select(x for x in Blog if x.post_type == BlogPost.IMPORTANT.value and x.id != post)
+        info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body[:200])
+                for x in ip.order_by(Blog.id.desc()).limit(3)]
+
+    data = dict(date=p.date.strftime('%B %d, %Y at %H:%M'), title=p.title,
+                body=StringIO(p.body), banner=url_for('static', filename='uploads/%s' % p.banner),
+                info=info)
+
+    return render_template("post.html", title=p.title, data=data, form=form,
+                           editable=current_user.get_role() == UserRole.ADMIN)
 
 
 @view_bp.route('/predictor', methods=['GET'])

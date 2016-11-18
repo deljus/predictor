@@ -1,15 +1,11 @@
 {% extends "layout.html" %}
 {% import "widgets.html" as widgets %}
 {% block carousel %}
-    {{ widgets.carousel([{'file': 'img/1.jpg', 'title':'China', 'subtitle': 'The atmosphere in Chania has a touch of Florence and Venice.'},
-    {'file':'img/2.png', 'title':'yyyyyyyyyy', 'subtitle': 'aaaaaaaaaaaa'}]) }}
+    {{ widgets.carousel(carousel) }}
 {% endblock %}
 {% block page %}
     <div class="row">
-        <div class="col-lg-12">
-            <h2 class="page-header">Welcome to {{ laboratory }}</h2>
-        </div>
-        {% for i in data.info %}
+        {% for i in info %}
             <div class="col-md-4">
                 <div class="panel panel-default">
                     <div class="panel-heading">
@@ -17,36 +13,37 @@
                     </div>
                     <div class="panel-body">
                         <p>{{ i.body }}</p>
-                        <a href="{{ i.url }}" class="btn btn-default">{{ i.link }}</a>
+                        <a href="{{ i.url }}" class="btn btn-default">
+                            Read More <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
+                        </a>
                     </div>
                 </div>
             </div>
         {% endfor %}
     </div>
-    <!-- /.row -->
 
-    <!-- Features Section -->
     <div class="row">
         <div class="col-lg-12">
             <h2 class="page-header">Our Projects</h2>
         </div>
         <div class="col-md-6">
-            <p>{{ data.projects.title }}</p>
             <ul>
-                {% for i in data.projects.list %}
+                {% for i in projects %}
                     <li>
-                        {% if loop.index == 1 %}
-                            <strong>{{ i }}</strong>
+                        {% if loop.first %}
+                            <strong>{{ i.title }}</strong>
                         {% else %}
-                            {{ i }}
+                            {{ i.title }}
                         {% endif %}
                     </li>
                 {% endfor %}
             </ul>
-            <p>{{ data.projects.foot }}</p>
         </div>
         <div class="col-md-6">
-            <img class="img-responsive" src="{{ data.projects.img }}" alt="700x450">
+            {% set selected_banner = projects|random %}
+            <a href="{{ selected_banner.url }}">
+                <img class="img-responsive" src="{{ selected_banner.banner }}" alt="700x450">
+            </a>
         </div>
     </div>
     <!-- /.row -->
