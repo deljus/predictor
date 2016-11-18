@@ -43,10 +43,17 @@ class Users(db.Entity):
     tasks = Set("Tasks")
     token = Required(str)
 
-    def __init__(self, email, password, role=UserRole.COMMON):
+    name = Required(str)
+    country = Required(str)
+    job = Optional(str)
+    town = Optional(str)
+    status = Optional(str)
+
+    def __init__(self, email, password, role=UserRole.COMMON, **kwargs):
         password = self.__hash_password(password)
         token = self.__gen_token(email, password)
-        super(Users, self).__init__(email=email, password=password, token=token, user_role=role.value)
+        super(Users, self).__init__(email=email, password=password, token=token, user_role=role.value,
+                                    **{x: y for x, y in kwargs.items() if y})
 
     @staticmethod
     def __hash_password(password):

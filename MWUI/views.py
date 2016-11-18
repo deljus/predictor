@@ -55,8 +55,11 @@ def login():
 
     elif registration_form.validate_on_submit():
         with db_session:
-            Users(email=registration_form.email.data, password=registration_form.password.data)
-            return redirect(url_for('.login'))
+            Users(email=registration_form.email.data, password=registration_form.password.data,
+                  name=registration_form.name.data, job=registration_form.job.data,
+                  town=registration_form.town.data, country=registration_form.country.data,
+                  status=registration_form.status.data)
+        return redirect(url_for('.login'))
 
     elif forgot_form.validate_on_submit():
         with db_session:
@@ -121,19 +124,7 @@ def profile():
         elif ban_form.validate_on_submit():
             pass
 
-    return render_template("forms.html", title='Profile', subtitle=current_user.get_email(), forms=forms)
-
-
-@view_bp.route('/queries', methods=['GET'])
-@login_required
-def queries():
-    return render_template("layout.html")
-
-
-@view_bp.route('/results', methods=['GET'])
-@login_required
-def results():
-    return render_template("layout.html")
+    return render_template("forms.html", title='Profile', subtitle=current_user.get_name(), forms=forms)
 
 
 @view_bp.route('/', methods=['GET'])
@@ -149,28 +140,11 @@ def index():
                 for x in ip.order_by(Blog.id.desc()).limit(3)]
 
         pl = select(x for x in Blog if x.post_type == BlogPost.PROJECTS.value)
-        projects = [dict(url=url_for('.blog_post', post=x.id),
+        projects = [dict(url=url_for('.blog_post', post=x.id), body=x.body[:100],
                          title=x.title, banner=url_for('static', filename='uploads/%s' % x.banner))
                     for x in pl.order_by(Blog.id.desc())]
 
     return render_template("home.html", carousel=carousel, projects=projects, info=info, title='Welcome')
-
-
-@view_bp.route('/search', methods=['GET'])
-@login_required
-def search():
-    return render_template("layout.html")
-
-
-@view_bp.route('/modeling', methods=['GET'])
-@login_required
-def modeling():
-    return render_template("layout.html")
-
-
-@view_bp.route('/about', methods=['GET'])
-def about():
-    return render_template("layout.html")
 
 
 @view_bp.route('/blog/', methods=['GET'])
@@ -234,6 +208,35 @@ def blog_post(post):
 
     return render_template("post.html", title=p.title, data=data, form=form,
                            editable=current_user.get_role() == UserRole.ADMIN)
+
+
+@view_bp.route('/search', methods=['GET'])
+@login_required
+def search():
+    return render_template("layout.html")
+
+
+@view_bp.route('/modeling', methods=['GET'])
+@login_required
+def modeling():
+    return render_template("layout.html")
+
+
+@view_bp.route('/about', methods=['GET'])
+def about():
+    return render_template("layout.html")
+
+
+@view_bp.route('/queries', methods=['GET'])
+@login_required
+def queries():
+    return render_template("layout.html")
+
+
+@view_bp.route('/results', methods=['GET'])
+@login_required
+def results():
+    return render_template("layout.html")
 
 
 @view_bp.route('/predictor', methods=['GET'])

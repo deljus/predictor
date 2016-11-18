@@ -103,18 +103,19 @@ class ResultType(Enum):
 
 
 class UserRole(Enum):
-    COMMON = 0
-    ADMIN = 1
+    COMMON = 1
+    ADMIN = 2
 
 
 class BlogPost(Enum):
-    COMMON = 0
-    CAROUSEL = 1
-    IMPORTANT = 2
-    PROJECTS = 3
-    TEAM = 4
-    CHIEF = 5
-    STUDENT = 6
+    COMMON = 1
+    CAROUSEL = 2
+    IMPORTANT = 3
+    PROJECTS = 4
+    TEAM = 5
+    CHIEF = 6
+    STUDENT = 7
+    MEETING = 8
 
 
 class Glyph(Enum):
@@ -123,7 +124,9 @@ class Glyph(Enum):
     IMPORTANT = 'bullhorn'
     PROJECTS = 'hdd'
     TEAM = 'queen'
+    CHIEF = 'king'
     STUDENT = 'pawn'
+    MEETING = 'resize-small'
 
 
 if not path.exists(path.join(path.dirname(__file__), "config.ini")):

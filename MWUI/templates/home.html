@@ -26,19 +26,17 @@
         <div class="col-lg-12">
             <h2 class="page-header">Our Projects</h2>
         </div>
-        <div class="col-md-6">
-            <ul>
+        <div class="col-md-4">
+            <div class="list-group">
                 {% for i in projects %}
-                    <li>
-                        {% if loop.first %}
-                            <strong>{{ i.title }}</strong>
-                        {% else %}
-                            {{ i.title }}
-                        {% endif %}
-                    </li>
+                    <a href="{{ i.url }}" class="list-group-item">
+                        <h4 class="list-group-item-heading">{{ i.title }}</h4>
+                        <p class="list-group-item-text">{{ i.body }}</p>
+                    </a>
                 {% endfor %}
-            </ul>
+            </div>
         </div>
+        <div class="col-md-2"></div>
         <div class="col-md-6">
             {% set selected_banner = projects|random %}
             <a href="{{ selected_banner.url }}">
@@ -46,5 +44,4 @@
             </a>
         </div>
     </div>
-    <!-- /.row -->
 {% endblock %}

@@ -29,15 +29,16 @@ def load_user(token):
     with db_session:
         user = Users.get(token=token)
         if user:
-            return User(user.id, user.email, user.active, user.token, user.role)
+            return User(user.id, user.email, user.name, user.active, user.token, user.role)
 
     return None
 
 
 class User(UserMixin):
-    def __init__(self, _id, email, active, token, role):
+    def __init__(self, _id, email, name, active, token, role):
         self.id = _id
         self.__email = email
+        self.__name = name
         self.__active = active
         self.__token = token
         self.__role = role
@@ -48,6 +49,9 @@ class User(UserMixin):
 
     def get_email(self):
         return self.__email
+
+    def get_name(self):
+        return self.__name
 
     def get_id(self):
         return self.__token
@@ -60,5 +64,5 @@ class User(UserMixin):
         with db_session:
             user = Users.get(email=email)
             if user and user.verify_password(password):
-                return User(user.id, user.email, user.active, user.token, user.role)
+                return User(user.id, user.email, user.name, user.active, user.token, user.role)
         return None

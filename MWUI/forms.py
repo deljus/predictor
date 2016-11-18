@@ -20,10 +20,11 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+from pycountry import countries
 from .models import Users
 from .config import BlogPost, UserRole
 from flask_wtf import FlaskForm
-from flask_wtf.file import FileField, FileAllowed, FileRequired
+from flask_wtf.file import FileField, FileAllowed
 from flask_login import current_user
 from pony.orm import db_session
 from wtforms import (StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError, TextAreaField,
@@ -66,6 +67,12 @@ class Registration(FlaskForm):
     password = PasswordField('Password', [validators.DataRequired(),
                                           validators.EqualTo('confirm', message='Passwords must match')])
     confirm = PasswordField('Repeat Password', [validators.DataRequired()])
+
+    name = StringField('Name Surname', [validators.DataRequired()])
+    job = StringField('Organization')
+    town = StringField('Town')
+    country = SelectField('Country', [validators.DataRequired()], choices=[(x.alpha_3, x.name) for x in countries])
+    status = StringField('Status')
     submit_btn = SubmitField('Register')
 
 
@@ -97,7 +104,7 @@ class ForgotPassword(FlaskForm):
 class ChangeRole(FlaskForm):
     email = StringField('User Email', validators=[validators.DataRequired(), CheckUserExist()])
     role_type = SelectField('Post Type', [validators.DataRequired()],
-                            choices=[(x.name, x.name) for x in UserRole])
+                            choices=[(x.value, x.name) for x in UserRole], coerce=int)
     submit_btn = SubmitField('Change Role')
 
     @property
@@ -117,9 +124,9 @@ class NewPost(FlaskForm):
     banner = FileField('Image', validators=[FileAllowed('jpg jpe jpeg png gif svg bmp'.split(), 'Images only')])
     special = StringField('Special')
     post_type = SelectField('Post Type', [validators.DataRequired()],
-                            choices=[(x.name, x.name) for x in BlogPost])
+                            choices=[(x.value, x.name) for x in BlogPost], coerce=int)
     submit_btn = SubmitField('Post')
 
     @property
     def type(self):
-        return BlogPost[self.post_type.data]
+        return BlogPost(self.post_type.data)
