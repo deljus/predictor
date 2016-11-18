@@ -31,6 +31,7 @@ HOST = '0.0.0.0'
 PORT = 5000
 
 LAB_NAME = 'Kazan Chemoinformatics and Molecular Modeling Laboratory'
+LAB_SHORT = 'CIMM'
 BLOG_POSTS = 10
 
 DB_USER = None
@@ -129,7 +130,9 @@ if not path.exists(path.join(path.dirname(__file__), "config.ini")):
     with open(path.join(path.dirname(__file__), "config.ini"), 'w') as f:
         f.write('\n'.join('%s = %s' % (x, y) for x, y in globals().items() if x in
                           ('UPLOAD_PATH', 'PORTAL_BASE', 'SECRET_KEY', 'HOST', 'PORT',
-                           'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME')))
+                           'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME',
+                           'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD', 'REDIS_TTL', 'REDIS_JOB_TIMEOUT',
+                           'LAB_NAME', 'LAB_SHORT', 'BLOG_POSTS')))
 
 with open(path.join(path.dirname(__file__), "config.ini")) as f:
     for line in f:
@@ -138,7 +141,9 @@ with open(path.join(path.dirname(__file__), "config.ini")) as f:
             k = k.strip()
             v = v.strip()
             if k in ('UPLOAD_PATH', 'PORTAL_BASE', 'SECRET_KEY', 'HOST', 'PORT', 'DEBUG',
-                     'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME'):
+                     'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME',
+                     'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD', 'REDIS_TTL', 'REDIS_JOB_TIMEOUT',
+                     'LAB_NAME', 'LAB_SHORT', 'BLOG_POSTS'):
                 globals()[k] = int(v) if v.isdigit() else v
         except:
             pass
