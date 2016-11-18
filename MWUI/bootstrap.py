@@ -26,6 +26,7 @@ from flask_nav.elements import View, NavigationItem, Navbar, Separator, Subgroup
 from flask_bootstrap.nav import BootstrapRenderer
 from hashlib import sha1
 from dominate import tags
+from .config import LAB_SHORT
 
 
 class LeftSubgroup(NavigationItem):
@@ -154,4 +155,4 @@ def top_nav():
         navbar = [LeftSubgroup(View('News', '.blog'), View('About Us', '.about')),
                   RightSubgroup(View('Login', '.login'))]
 
-    return Navbar(View('Predictor', '.predictor'), *navbar)
+    return Navbar(View(LAB_SHORT, '.index'), *navbar)

@@ -2,20 +2,19 @@
     <header id="{{ _id }}" class="carousel slide">
         <!-- Indicators -->
         <ul class="carousel-indicators">
-            <li data-target="#{{ _id }}" data-slide-to="0" class="active"></li>
-            {% for i in data[1:] %}
-                <li data-target="#{{ _id }}" data-slide-to="{{loop.index}}"></li>
+            {% for i in data %}
+                <li data-target="#{{ _id }}" data-slide-to="{{loop.index}}" class="{{ 'active' if loop.first }}"></li>
             {% endfor %}
         </ul>
 
         <!-- Wrapper for slides -->
         <div class="carousel-inner">
             {% for i in data %}
-                <div class="{{ 'item active' if loop.index == 1 else 'item'}}">
-                    <img src="{{ url_for('static', filename=i['file']) }}" alt="{{ i['title'] }}">
+                <div class="item {{ 'active' if loop.first}}">
+                    <img class="center-block" src="{{ i.banner }}" alt="{{ i.title }}">
                     <div class="carousel-caption">
-                        <h2>{{ i['title'] }}</h2>
-                        <p>{{ i['subtitle'] }}</p>
+                        <h2>{{ i.title }}</h2>
+                        <p>{{ i.body }}</p>
                     </div>
                 </div>
             {% endfor %}
