@@ -53,7 +53,7 @@ api.add_resource(AvailableModels, '/resources/models')
 api.add_resource(RegisterModels, '/admin/models')
  */
 var ApiUrl = {
-         create_task: API_BASE+"/task/create/"+TaskType.MODELING
+         create_model_task: API_BASE+"/task/create/"+TaskType.MODELING
         ,prepare_task: API_BASE+"/task/prepare/"
         ,model_task: API_BASE+"/task/model/"
         ,task_result: API_BASE+"/task/results/"
@@ -458,7 +458,7 @@ function upload_sketcher_data()
                 return false;
             }
             else
-                upload_task_draw_data(source);
+                create_model_task(source);
 
 		}, function(error) {
 			alert("Molecule export failed:"+error);
@@ -486,9 +486,9 @@ function upload_sketcher_search_data()
 }
 
 
-function upload_task_draw_data(draw_data)
+function create_model_task(draw_data)
 {
-    //log_log('upload_task_draw_data->');
+    //log_log('create_model_task->');
 	hide_upload_sketcher_data_btn();
 	hide_save_sketcher_data_btn();
 
@@ -497,7 +497,7 @@ function upload_task_draw_data(draw_data)
     data = JSON.stringify(data);
 
     $.ajax({
-            "url": ApiUrl.create_task
+            "url": ApiUrl.create_model_task
             ,"type": "POST"
             ,"dataType": "json"
             ,"contentType": "application/json"
@@ -568,18 +568,15 @@ function check_task_mapping_status(task_id)
     //log_log('check_task_mapping_status->');
 	
     get_prepare_task_status(task_id).done(function (data, textStatus, jqXHR){
-        log_log(textStatus);
-        log_log(jqXHR);
-		if (data==MAPPING_DONE)
-		{
-			reset_timer();
-			load_task_reactions(task_id);
-		} 
+        reset_timer();
+        load_task_reactions(task_id);
 
     }).fail(function(jqXHR, textStatus, errorThrown){
+        /*
         reset_timer();
         log_log('ERROR:check_task_mapping_status->get_task_status->' + textStatus+ ' ' + errorThrown);
         handleRequestError();
+        */
     });
 
 }

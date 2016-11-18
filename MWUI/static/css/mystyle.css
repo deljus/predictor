@@ -1,0 +1,32 @@
+.hidden-sketcher-frame {
+            width: 0;
+            height: 0;
+            display: initial;
+            position: absolute;
+            left: -1000px;
+            top: -1000px;
+            margin: -1000px;
+            padding: 0;
+        }
+.sketcher-frame {
+	margin: -2px;
+	resize: none;
+	min-width: 370px;
+	min-height: 370px;
+	height: 100%;
+	width: 100%;
+	overflow: hidden;
+}
+
+.resizable{
+	border: none;
+	padding: 0px 8px 8px 0px;
+	border: 0px;
+	resize: both;
+	min-width: 510px;
+	min-height: 510px;
+	min-width: 370px;
+	min-height: 370px;
+	overflow: auto;
+	background-color: transparent;
+}
