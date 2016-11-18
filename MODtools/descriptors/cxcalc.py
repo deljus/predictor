@@ -34,11 +34,12 @@ class Pkab(Propertyextractor):
     def __init__(self, workpath='.', s_option=None, marker_rules=None, standardize=None, acid=True, base=True,
                  cgr_reverse=False, is_reaction=False,
                  cgr_marker=None, cgr_marker_prepare=None, cgr_marker_postprocess=None, cgr_stereo=False):
-        Propertyextractor.__init__(self, s_option, is_reaction=cgr_marker)
 
         self.__is_reaction = is_reaction
         if is_reaction and not cgr_marker:
-            return
+            raise Exception('only cgr marker can work with reactions')
+
+        Propertyextractor.__init__(self, s_option)
 
         self.__dragos_marker = Pharmacophoreatommarker(marker_rules, workpath) if marker_rules else None
 

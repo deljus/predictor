@@ -74,7 +74,7 @@ class Fragmentor(Propertyextractor):
 
         self.__is_reaction = is_reaction
         if is_reaction and not (cgr_type or cgr_marker):
-            return
+            raise Exception('only cgr or cgr marker can work with reactions')
 
         Propertyextractor.__init__(self, s_option)
 

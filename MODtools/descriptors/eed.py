@@ -38,7 +38,7 @@ class Eed(Propertyextractor):
 
         self.__is_reaction = is_reaction
         if is_reaction and not cgr_marker:
-            return
+            raise Exception('only cgr marker can work with reactions')
 
         Propertyextractor.__init__(self, s_option)
         self.__dragos_marker = Pharmacophoreatommarker(marker_rules, workpath) if marker_rules else None

@@ -72,7 +72,7 @@ class MBparser(object):
         for file in files:
             svm = {}
             with open(file) as f:
-                for line in f:
+                for line in (x for x in f if x.strip()):
                     opts = line.split()
                     tmp = dict(kernel=['rbf'], C=[1.0], epsilon=[.1], tol=[.001], degree=[3], gamma=[1.0], coef0=[0])
                     for x, y in zip(opts[::2], opts[1::2]):
@@ -137,7 +137,7 @@ class MBparser(object):
     def parsefragmentoropts(file):
         params = []
         with open(file) as f:
-            for line in f:
+            for line in (x for x in f if x.strip()):
                 opts = line.split()
                 tmp = {}
                 for x in opts:
