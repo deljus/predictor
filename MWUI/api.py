@@ -48,7 +48,7 @@ taskstructurefields = dict(structure=fields.Integer, data=fields.String, tempera
                            pressure=fields.Float(1),
                            todelete=fields.Boolean(False),
                            additives=fields.List(fields.Nested(dict(additive=fields.Integer, amount=fields.Float))),
-                           models=fields.List(fields.Integer))
+                           models=fields.List(fields.Nested(dict(model=fields.Integer, name=fields.String))))
 
 modelfields = dict(example=fields.String, description=fields.String, type=ModelTypeField, name=fields.String,
                    destinations=fields.List(fields.Nested(dict(host=fields.String, port=fields.Integer(6379),
@@ -331,9 +331,10 @@ class PrepareTask(AuthResource):
 
                 if result['type'] == TaskType.MODELING and d['models'] is not None and \
                         not d['data'] and prepared[s]['status'] == StructureStatus.CLEAR:
-                    prepared[s]['models'] = [models[m] for m in d['models']
-                                             if m in models and
-                                             models[m]['type'].compatible(prepared[s]['type'], TaskType.MODELING)]
+                    prepared[s]['models'] = [models[m['model']] for m in d['models']
+                                             if m['model'] in models and
+                                             models[m['model']]['type'].compatible(prepared[s]['type'],
+                                                                                   TaskType.MODELING)]
 
                 if d['data']:
                     prepared[s]['data'] = d['data']
