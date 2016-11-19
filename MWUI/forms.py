@@ -20,15 +20,37 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+from json import loads, JSONDecodeError
 from pycountry import countries
-from .models import Users
+from .models import Users, Blog
 from .config import BlogPost, UserRole, MeetingPost
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from flask_login import current_user
 from pony.orm import db_session
 from wtforms import (StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError, TextAreaField,
-                     SelectField)
+                     SelectField, IntegerField)
+
+
+class JsonValidator(object):
+    def __init__(self):
+        self.message = 'Bad Json'
+
+    def __call__(self, form, field):
+        try:
+            loads(field.data)
+        except JSONDecodeError:
+            raise ValidationError(self.message)
+
+
+class CheckParentExist(object):
+    def __init__(self):
+        self.message = 'Bad parent post id'
+
+    def __call__(self, form, field):
+        with db_session:
+            if not Blog.exists(id=field.data):
+                raise ValidationError(self.message)
 
 
 class CheckUserFree(object):
@@ -119,24 +141,20 @@ class BanUser(FlaskForm):
 
 class Meeting(FlaskForm):
     title = StringField('Title', [validators.DataRequired()])
-    part_type = SelectField('Participation Type', [validators.DataRequired()],
-                            choices=[(x.value, x.name) for x in MeetingPost], coerce=int)
+    body = TextAreaField('Message', [validators.DataRequired()])
+    special_field = SelectField('Participation Type', [validators.DataRequired()],
+                                choices=[(x.value, x.name) for x in MeetingPost], coerce=int)
     banner = FileField('Image', validators=[FileAllowed('jpg jpe jpeg png gif svg bmp'.split(), 'Images only')])
     attachment = FileField('Attachment', validators=[FileAllowed('doc docx odt rtf'.split(), 'Documents only')])
-    submit_btn = SubmitField('Participate')
-
-    @property
-    def participation(self):
-        return MeetingPost(self.part_type.data)
+    submit_btn = SubmitField('Post')
 
 
 class NewPost(Meeting):
-    slug = StringField('Slug', [validators.DataRequired()])
-    body = TextAreaField('Message', [validators.DataRequired()])
-    special = StringField('Special')
+    slug = StringField('Slug')
+    special_field = StringField('Special', [validators.Optional(), JsonValidator()])
     post_type = SelectField('Post Type', [validators.DataRequired()],
                             choices=[(x.value, x.name) for x in BlogPost], coerce=int)
-    submit_btn = SubmitField('Post')
+    parent_field = IntegerField('Parent Post', [validators.Optional(), CheckParentExist()])
 
     @property
     def type(self):

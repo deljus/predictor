@@ -149,6 +149,7 @@ def top_nav():
                                 Subgroup(current_user.name,
                                          View('Modeling Results', '.results'), View('Queries History', '.queries'),
                                          Separator(),
+                                         View('Events List', '.events'),
                                          View('Profile', '.profile'), Separator(), View('Logout', '.logout')))
                   ]
     else:

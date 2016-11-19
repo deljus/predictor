@@ -21,10 +21,11 @@
 #
 import bcrypt
 import hashlib
+import json
 from .config import (DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER, BlogPost, TaskType, ModelType, AdditiveType,
                      ResultType, StructureType, StructureStatus, UserRole)
 from datetime import datetime
-from pony.orm import Database, sql_debug, PrimaryKey, Required, Optional, Set
+from pony.orm import Database, sql_debug, PrimaryKey, Required, Optional, Set, Json
 
 
 if DEBUG:
@@ -192,14 +193,17 @@ class Additivesets(db.Entity):
 
 class Blog(db.Entity):
     title = Required(str)
-    slug = Required(str, unique=True)
+    slug = Optional(str, unique=True)
     body = Required(str)
     banner = Optional(str)
     date = Required(datetime, default=datetime.utcnow())
-    special = Optional(str)
+    special = Optional(Json)
     post_type = Required(int)
     attachment = Optional(str)
     author = Required(Users)
+
+    children = Set("Blog")
+    parent = Optional("Blog")
 
     def __init__(self, **kwargs):
         _type = kwargs.pop('type', BlogPost.COMMON).value
@@ -208,5 +212,13 @@ class Blog(db.Entity):
     @property
     def type(self):
         return BlogPost(self.post_type)
+
+    @property
+    def special_field(self):
+        return json.dumps(self.special) if self.special else None
+
+    @property
+    def parent_field(self):
+        return self.parent.id if self.parent else None
 
 db.generate_mapping(create_tables=True)
