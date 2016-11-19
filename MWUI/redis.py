@@ -92,7 +92,8 @@ class RedisCombiner(object):
             _id = str(uuid4())
             self.__tasks.set(_id, pickle.dumps((task, datetime.utcnow())), ex=self.__result_ttl)
             return dict(id=_id, created_at=datetime.utcnow())
-        except:
+        except Exception as err:
+            print("new_job->ERROR:",err)
             return None
 
     def fetch_job(self, task):
