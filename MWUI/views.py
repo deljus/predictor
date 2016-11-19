@@ -51,8 +51,10 @@ def login():
 
     if login_form.validate_on_submit():
         user = User.get(login_form.email.data, login_form.password.data)
-        login_user(user, remember=login_form.remember.data)
-        return redirect(url_for('.index'))
+        if user:
+            login_user(user, remember=login_form.remember.data)
+            return redirect(url_for('.index'))
+        flash('Invalid Credentials', 'warning')
 
     elif registration_form.validate_on_submit():
         with db_session:
@@ -109,18 +111,18 @@ def profile():
 
         if new_post_form.validate_on_submit():
             if new_post_form.banner.data:
-                banner_name = str(uuid.uuid4())
+                banner_name = '%s.%s' % (uuid.uuid4(), path.splitext(new_post_form.banner.data.filename)[-1])
                 new_post_form.banner.data.save(path.join(UPLOAD_PATH, banner_name))
             else:
                 banner_name = None
 
             if new_post_form.attachment.data:
-                file_name = str(uuid.uuid4())
-                new_post_form.banner.data.save(path.join(UPLOAD_PATH, file_name))
+                file_name = '%s.%s' % (uuid.uuid4(), path.splitext(new_post_form.attachment.data.filename)[-1])
+                new_post_form.attachment.data.save(path.join(UPLOAD_PATH, file_name))
             else:
                 file_name = None
 
-            if new_post_form.type == BlogPost.THESIS and new_post_form.part_type.data:
+            if new_post_form.type == BlogPost.THESIS:
                 special = new_post_form.participation.name
             else:
                 special = new_post_form.special.data
@@ -128,7 +130,7 @@ def profile():
             with db_session:
                 p = Blog(type=new_post_form.type, title=new_post_form.title.data, slug=new_post_form.slug.data,
                          body=new_post_form.body.data, banner=banner_name, special=special,
-                         attachment=file_name, author=current_user.get_user())
+                         attachment=file_name, author=Users.get(id=current_user.id))
 
             return redirect(url_for('.blog_post', post=p.id))
 
@@ -173,12 +175,15 @@ def blog(page=1):
         if page != pag.page:
             return redirect(url_for('.blog', page=pag.page))
 
-        msg = [dict(date=x.date.strftime('%B %d, %Y'), glyph=Glyph[x.type.name].value, title=x.title, body=x.body[:500],
-                    banner=url_for('static', filename='uploads/%s' % x.banner), url=url_for('.blog_post', post=x.id))
-               for x in q.order_by(Blog.id.desc()).page(page,
-                                                        pagesize=BLOG_POSTS)] if count > (page - 1) * BLOG_POSTS else []
+        data = []
+        for p in q.order_by(Blog.id.desc()).page(page, pagesize=BLOG_POSTS):
+            tmp = dict(date=p.date.strftime('%B %d, %Y'), glyph=Glyph[p.type.name].value, title=p.title,
+                       body=p.body[:500], url=url_for('.blog_post', post=p.id))
+            if p.banner:
+                tmp['banner'] = url_for('static', filename='uploads/%s' % p.banner)
+            data.append(tmp)
 
-    return render_template("blog.html", paginator=pag, posts=msg, title='News', subtitle='chart')
+    return render_template("blog.html", paginator=pag, posts=data, title='News', subtitle='chart')
 
 
 @view_bp.route('/blog/post/<int:post>', methods=['GET', 'POST'])
@@ -193,23 +198,29 @@ def blog_post(post):
             return redirect(url_for('.blog'))
 
         elif request.args.get('edit') == 'edit' and current_user.role_is(UserRole.ADMIN):
-            form = NewPost(prefix='Edit', obj=p)
-            if form.validate_on_submit():
-                p.body = form.body.data
-                p.title = form.title.data
-                p.slug = form.slug.data
-                p.post_type = form.type.value
+            edit_post_form = NewPost(prefix='Edit', obj=p)
+            if edit_post_form.validate_on_submit():
+                p.body = edit_post_form.body.data
+                p.title = edit_post_form.title.data
+                p.slug = edit_post_form.slug.data
+                p.post_type = edit_post_form.type.value
                 p.date = datetime.utcnow()
 
-                if form.special.data:
-                    p.special = form.special.data
+                if edit_post_form.special.data:
+                    p.special = edit_post_form.special.data
 
-                if form.banner.data:
-                    file_name = str(uuid.uuid4())
-                    form.banner.data.save(path.join(UPLOAD_PATH, file_name))
-                    p.banner = file_name
+                if edit_post_form.banner.data:
+                    banner_name = '%s.%s' % (uuid.uuid4(), path.splitext(edit_post_form.banner.data.filename)[-1])
+                    edit_post_form.banner.data.save(path.join(UPLOAD_PATH, banner_name))
+                    p.banner = banner_name
+
+                if edit_post_form.attachment.data:
+                    file_name = '%s.%s' % (uuid.uuid4(), path.splitext(edit_post_form.attachment.data.filename)[-1])
+                    edit_post_form.attachment.data.save(path.join(UPLOAD_PATH, file_name))
+                    p.attachment = file_name
+
         else:
-            form = None
+            edit_post_form = None
 
         ip = select(x for x in Blog if x.post_type == BlogPost.IMPORTANT.value and x.id != post)
         info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body[:200])
@@ -222,14 +233,21 @@ def blog_post(post):
                     pass
             else:
                 widget = None
+        elif p.type == BlogPost.THESIS:
+            widget = None
+        elif p.type in (BlogPost.CHIEF, BlogPost.TEAM):
+            widget = None
         else:
             widget = None
 
     data = dict(date=p.date.strftime('%B %d, %Y at %H:%M'), title=p.title, widget=widget,
-                body=StringIO(p.body), banner=url_for('static', filename='uploads/%s' % p.banner),
-                info=info)
+                body=StringIO(p.body), info=info)
+    if p.banner:
+        data['banner'] = url_for('static', filename='uploads/%s' % p.banner)
+    if p.attachment:
+        data['attachment'] = url_for('static', filename='uploads/%s' % p.attachment)
 
-    return render_template("post.html", title=p.title, data=data, form=form,
+    return render_template("post.html", title=p.title, post=data, form=edit_post_form,
                            editable=current_user.role_is(UserRole.ADMIN))
 
 

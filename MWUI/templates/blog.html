@@ -10,7 +10,7 @@
             </div>
             <div class="col-md-5">
                 <a href="{{ post.url }}">
-                    <img class="img-responsive img-hover" src="{{ post.banner }}" alt="">
+                    <img class="img-responsive img-hover" src="{{ post.banner if post.banner else 'http://placehold.it/600x300' }}" alt="">
                 </a>
             </div>
             <div class="col-md-6">

@@ -122,7 +122,7 @@ class Meeting(FlaskForm):
     part_type = SelectField('Participation Type', [validators.DataRequired()],
                             choices=[(x.value, x.name) for x in MeetingPost], coerce=int)
     banner = FileField('Image', validators=[FileAllowed('jpg jpe jpeg png gif svg bmp'.split(), 'Images only')])
-    attachment = FileField('Thesis', validators=[FileAllowed('doc docx odt rtf'.split(), 'Documents only')])
+    attachment = FileField('Attachment', validators=[FileAllowed('doc docx odt rtf'.split(), 'Documents only')])
     submit_btn = SubmitField('Participate')
 
     @property

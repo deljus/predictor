@@ -4,20 +4,20 @@
         <!-- Blog Post Content Column -->
         <div class="col-lg-8">
             <!-- Date/Time -->
-            <p><span class="glyphicon glyphicon-time" aria-hidden="true"></span> Posted on {{ data.date }}</p>
+            <p><span class="glyphicon glyphicon-time" aria-hidden="true"></span> Posted on {{ post.date }}</p>
             <hr>
 
             <!-- Preview Image -->
-            <img class="img-responsive" src="{{ data.banner }}" alt="900x300">
+            <img class="img-responsive" src="{{ post.banner if post.banner else 'http://placehold.it/900x300' }}" alt="">
             <hr>
 
             <!-- Post Content -->
-            {% for i in data.body %}
+            {% for i in post.body %}
                 <p class="{{ 'lead' if loop.first }}">{{ i }}</p>
             {% endfor %}
 
-            {% if data.widget != None %}
-                {{ wtf.quick_form(data.widget, form_type='horizontal', button_map={'submit_button': 'primary'})}}
+            {% if post.widget != None %}
+                {{ wtf.quick_form(post.widget, form_type='horizontal', button_map={'submit_button': 'primary'})}}
             {% endif %}
 
             {% if editable %}
@@ -40,7 +40,7 @@
 
         <!-- Blog Sidebar Widgets Column -->
         <div class="col-md-4">
-            {% for i in data.info %}
+            {% for i in post.info %}
                 <div class="panel panel-default">
                     <div class="panel-heading">
                         <h4>{{ i.title }}</h4>
