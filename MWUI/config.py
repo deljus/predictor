@@ -53,8 +53,9 @@ class StructureStatus(Enum):
 
 
 class StructureType(Enum):
-    MOLECULE = 0
-    REACTION = 1
+    UNDEFINED = 0
+    MOLECULE = 1
+    REACTION = 2
 
 
 class TaskStatus(Enum):
@@ -116,6 +117,7 @@ class BlogPost(Enum):
     CHIEF = 6
     STUDENT = 7
     MEETING = 8
+    GUEST = 9
 
 
 class Glyph(Enum):
@@ -127,6 +129,7 @@ class Glyph(Enum):
     CHIEF = 'king'
     STUDENT = 'pawn'
     MEETING = 'resize-small'
+    GUEST = ''
 
 
 if not path.exists(path.join(path.dirname(__file__), "config.ini")):

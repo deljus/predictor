@@ -21,7 +21,7 @@
 import uuid
 from os import path
 from .config import (UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, REDIS_HOST, REDIS_JOB_TIMEOUT,
-                     REDIS_PASSWORD, REDIS_PORT, REDIS_TTL)
+                     REDIS_PASSWORD, REDIS_PORT, REDIS_TTL, StructureType)
 from .models import Tasks, Structures, Additives, Models, Additivesets, Destinations
 from .redis import RedisCombiner
 from flask import Blueprint, url_for, send_from_directory, request
@@ -385,7 +385,7 @@ class CreateTask(AuthResource):
                         a.update(additives[a['additive']])
                         alist.append(a)
 
-                data.append(dict(structure=s, data=d['data'], status=StructureStatus.RAW,
+                data.append(dict(structure=s, data=d['data'], status=StructureStatus.RAW, type=StructureType.UNDEFINED,
                                  pressure=d['pressure'], temperature=d['temperature'],
                                  additives=alist, models=[preparer]))
 
@@ -433,6 +433,7 @@ class UploadTask(AuthResource):
 
         new_job = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id,
                                      structures=[dict(data=dict(url=file_url), status=StructureStatus.RAW,
+                                                      type=StructureType.UNDEFINED,
                                                       models=[get_model(ModelType.PREPARER)])]))
         if new_job is None:
             abort(500, message='modeling server error')
