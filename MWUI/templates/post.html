@@ -16,6 +16,9 @@
                 <p class="{{ 'lead' if loop.first }}">{{ i }}</p>
             {% endfor %}
 
+            {% if data.widget != None %}
+                {{ wtf.quick_form(data.widget, form_type='horizontal', button_map={'submit_button': 'primary'})}}
+            {% endif %}
 
             {% if editable %}
                 <hr>

@@ -22,7 +22,7 @@
 #
 from pycountry import countries
 from .models import Users
-from .config import BlogPost, UserRole
+from .config import BlogPost, UserRole, MeetingPost
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from flask_login import current_user
@@ -117,11 +117,22 @@ class BanUser(FlaskForm):
     submit_btn = SubmitField('Ban User')
 
 
-class NewPost(FlaskForm):
+class Meeting(FlaskForm):
     title = StringField('Title', [validators.DataRequired()])
+    part_type = SelectField('Participation Type', [validators.DataRequired()],
+                            choices=[(x.value, x.name) for x in MeetingPost], coerce=int)
+    banner = FileField('Image', validators=[FileAllowed('jpg jpe jpeg png gif svg bmp'.split(), 'Images only')])
+    attachment = FileField('Thesis', validators=[FileAllowed('doc docx odt rtf'.split(), 'Documents only')])
+    submit_btn = SubmitField('Participate')
+
+    @property
+    def participation(self):
+        return MeetingPost(self.part_type.data)
+
+
+class NewPost(Meeting):
     slug = StringField('Slug', [validators.DataRequired()])
     body = TextAreaField('Message', [validators.DataRequired()])
-    banner = FileField('Image', validators=[FileAllowed('jpg jpe jpeg png gif svg bmp'.split(), 'Images only')])
     special = StringField('Special')
     post_type = SelectField('Post Type', [validators.DataRequired()],
                             choices=[(x.value, x.name) for x in BlogPost], coerce=int)

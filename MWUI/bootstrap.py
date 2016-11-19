@@ -146,7 +146,7 @@ def top_nav():
     if current_user.is_authenticated:
         navbar = [LeftSubgroup(View('News', '.blog'), View('About Us', '.about')),
                   RightSubgroup(View('Search', '.search'), View('Modeling', '.modeling'),
-                                Subgroup(current_user.get_name(),
+                                Subgroup(current_user.name,
                                          View('Modeling Results', '.results'), View('Queries History', '.queries'),
                                          Separator(),
                                          View('Profile', '.profile'), Separator(), View('Logout', '.logout')))

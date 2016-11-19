@@ -28,41 +28,50 @@ from pony.orm import db_session
 def load_user(token):
     with db_session:
         user = Users.get(token=token)
-        if user:
-            return User(user.id, user.email, user.name, user.active, user.token, user.role)
+
+    if user:
+        return User(user)
 
     return None
 
 
 class User(UserMixin):
-    def __init__(self, _id, email, name, active, token, role):
-        self.id = _id
-        self.__email = email
-        self.__name = name
-        self.__active = active
-        self.__token = token
-        self.__role = role
+    def __init__(self, user):
+        self.__user = user
+
+    def get_user(self):
+        return self.__user
+
+    @property
+    def id(self):
+        return self.__user.id
 
     @property
     def is_active(self):
-        return self.__active
+        return self.__user.active
 
-    def get_email(self):
-        return self.__email
+    @property
+    def email(self):
+        return self.__user.email
 
-    def get_name(self):
-        return self.__name
+    @property
+    def name(self):
+        return self.__user.name
 
     def get_id(self):
-        return self.__token
+        return self.__user.token
 
-    def get_role(self):
-        return self.__role
+    @property
+    def role(self):
+        return self.__user.role
+
+    def role_is(self, role):
+        return self.__user.role == role
 
     @staticmethod
     def get(email, password):
         with db_session:
             user = Users.get(email=email)
-            if user and user.verify_password(password):
-                return User(user.id, user.email, user.name, user.active, user.token, user.role)
+        if user and user.verify_password(password):
+            return User(user)
         return None

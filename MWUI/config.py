@@ -117,7 +117,7 @@ class BlogPost(Enum):
     CHIEF = 6
     STUDENT = 7
     MEETING = 8
-    GUEST = 9
+    THESIS = 9
 
 
 class Glyph(Enum):
@@ -129,8 +129,12 @@ class Glyph(Enum):
     CHIEF = 'king'
     STUDENT = 'pawn'
     MEETING = 'resize-small'
-    GUEST = ''
+    THESIS = ''
 
+
+class MeetingPost(Enum):
+    Oral = 1
+    Poster = 2
 
 if not path.exists(path.join(path.dirname(__file__), "config.ini")):
     with open(path.join(path.dirname(__file__), "config.ini"), 'w') as f:

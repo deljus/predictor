@@ -21,8 +21,8 @@
 #
 import bcrypt
 import hashlib
-from .config import (DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER, BlogPost,
-                     TaskType, ModelType, AdditiveType, ResultType, StructureType, StructureStatus, UserRole)
+from .config import (DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER, BlogPost, TaskType, ModelType, AdditiveType,
+                     ResultType, StructureType, StructureStatus, UserRole)
 from datetime import datetime
 from pony.orm import Database, sql_debug, PrimaryKey, Required, Optional, Set
 
@@ -48,6 +48,7 @@ class Users(db.Entity):
     job = Optional(str)
     town = Optional(str)
     status = Optional(str)
+    posts = Set("Blog")
 
     def __init__(self, email, password, role=UserRole.COMMON, **kwargs):
         password = self.__hash_password(password)
@@ -197,6 +198,8 @@ class Blog(db.Entity):
     date = Required(datetime, default=datetime.utcnow())
     special = Optional(str)
     post_type = Required(int)
+    attachment = Optional(str)
+    author = Required(Users)
 
     def __init__(self, **kwargs):
         _type = kwargs.pop('type', BlogPost.COMMON).value

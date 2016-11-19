@@ -21,7 +21,8 @@
 #  MA 02110-1301, USA.
 #
 import uuid
-from .forms import Login, Registration, ReLogin, ChangePassword, NewPost, ChangeRole, BanUser, ForgotPassword
+from .forms import (Login, Registration, ReLogin, ChangePassword, NewPost, ChangeRole, BanUser, ForgotPassword,
+                    Meeting)
 from .logins import User
 from .models import Users, Blog
 from .config import UserRole, BLOG_POSTS, Glyph, UPLOAD_PATH, BlogPost
@@ -98,7 +99,7 @@ def profile():
         logout_user()
         return redirect(url_for('.login'))
 
-    if current_user.get_role() == UserRole.ADMIN:
+    if current_user.role_is(UserRole.ADMIN):
         new_post_form = NewPost(prefix='NewPost')
         change_role_form = ChangeRole(prefix='ChangeRole')
         ban_form = BanUser(prefix='BanUser')
@@ -108,14 +109,26 @@ def profile():
 
         if new_post_form.validate_on_submit():
             if new_post_form.banner.data:
+                banner_name = str(uuid.uuid4())
+                new_post_form.banner.data.save(path.join(UPLOAD_PATH, banner_name))
+            else:
+                banner_name = None
+
+            if new_post_form.attachment.data:
                 file_name = str(uuid.uuid4())
                 new_post_form.banner.data.save(path.join(UPLOAD_PATH, file_name))
             else:
                 file_name = None
 
+            if new_post_form.type == BlogPost.THESIS and new_post_form.part_type.data:
+                special = new_post_form.participation.name
+            else:
+                special = new_post_form.special.data
+
             with db_session:
                 p = Blog(type=new_post_form.type, title=new_post_form.title.data, slug=new_post_form.slug.data,
-                         body=new_post_form.body.data, banner=file_name, special=new_post_form.special.data)
+                         body=new_post_form.body.data, banner=banner_name, special=special,
+                         attachment=file_name, author=current_user.get_user())
 
             return redirect(url_for('.blog_post', post=p.id))
 
@@ -124,7 +137,7 @@ def profile():
         elif ban_form.validate_on_submit():
             pass
 
-    return render_template("forms.html", title='Profile', subtitle=current_user.get_name(), forms=forms)
+    return render_template("forms.html", title='Profile', subtitle=current_user.name, forms=forms)
 
 
 @view_bp.route('/', methods=['GET'])
@@ -154,7 +167,7 @@ def blog(page=1):
         return redirect(url_for('.blog'))
 
     with db_session:
-        q = select(x for x in Blog)
+        q = select(x for x in Blog if x.post_type != BlogPost.THESIS.value)
         count = q.count()
         pag = Pagination(page, count, pagesize=BLOG_POSTS)
         if page != pag.page:
@@ -175,12 +188,12 @@ def blog_post(post):
         if not p:
             return redirect(url_for('.blog'))
 
-        if request.args.get('edit') == 'delete' and current_user.get_role() == UserRole.ADMIN:
+        if request.args.get('edit') == 'delete' and current_user.role_is(UserRole.ADMIN):
             p.delete()
             return redirect(url_for('.blog'))
 
-        elif request.args.get('edit') == 'edit' and current_user.get_role() == UserRole.ADMIN:
-            form = NewPost(obj=p)
+        elif request.args.get('edit') == 'edit' and current_user.role_is(UserRole.ADMIN):
+            form = NewPost(prefix='Edit', obj=p)
             if form.validate_on_submit():
                 p.body = form.body.data
                 p.title = form.title.data
@@ -202,12 +215,22 @@ def blog_post(post):
         info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body[:200])
                 for x in ip.order_by(Blog.id.desc()).limit(3)]
 
-    data = dict(date=p.date.strftime('%B %d, %Y at %H:%M'), title=p.title,
+        if p.type == BlogPost.MEETING:
+            if current_user.is_authenticated:
+                widget = Meeting(prefix='Meeting')
+                if widget.validate_on_submit():
+                    pass
+            else:
+                widget = None
+        else:
+            widget = None
+
+    data = dict(date=p.date.strftime('%B %d, %Y at %H:%M'), title=p.title, widget=widget,
                 body=StringIO(p.body), banner=url_for('static', filename='uploads/%s' % p.banner),
                 info=info)
 
     return render_template("post.html", title=p.title, data=data, form=form,
-                           editable=current_user.get_role() == UserRole.ADMIN)
+                           editable=current_user.role_is(UserRole.ADMIN))
 
 
 @view_bp.route('/search', methods=['GET'])
