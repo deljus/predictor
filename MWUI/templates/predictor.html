@@ -163,13 +163,6 @@
 
             });
 
-            {% if task and task>0 %}
-                load_task({{task}});
-            {% endif %}
-
-            {% if model and model>0 %}
-                load_model_example({{model}});
-            {% endif %}
 
         },function (error) {});
 
