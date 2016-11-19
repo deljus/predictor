@@ -54,9 +54,11 @@ api.add_resource(RegisterModels, '/admin/models')
  */
 var ApiUrl = {
          create_model_task: API_BASE+"/task/create/"+TaskType.MODELING
-        ,prepare_task: API_BASE+"/task/prepare/"
-        ,model_task: API_BASE+"/task/model/"
-        ,task_result: API_BASE+"/task/results/"
+        ,prepare_task:      API_BASE+"/task/prepare/"
+        ,model_task:        API_BASE+"/task/model/"
+        ,task_result:       API_BASE+"/task/results/"
+        ,get_models:        API_BASE+"/resources/models"
+        ,get_additives:     API_BASE+"/resources/additives"
     }
 /******************************************************/
 
@@ -142,7 +144,7 @@ function get_task()
 function load_reactions()
 {
 	hide_all();
-	load_task_reactions(get_task());		
+	prepare_task(get_task());
 }
 
 function load_results()
@@ -194,6 +196,7 @@ Progress.start = function(){
 }
 
 Progress.done = function(){
+    reset_timer();
 	clearInterval(this.timer_id);
 	this.increase_progress(100);
 	setTimeout(function(){$('.progress').hide()}, 1000);	
@@ -253,7 +256,7 @@ function upload_task_file_data()
 		hide_file_upload();
 		
         $("#task_id").val(data);
-        start_task_mapping(data);
+        start_prepare_model_task(data);
 
     }).fail(handleRequestError);
 }
@@ -509,7 +512,7 @@ function create_model_task(draw_data)
         var task_id = resp.task;
         $("#task_id").val(task_id);
         setCookie('task_id',task_id);
-        start_task_mapping(task_id);
+        start_prepare_model_task(task_id);
 
     }).fail(handleRequestError);
 }
@@ -537,20 +540,10 @@ function upload_search_task_draw_data(draw_data)
     }).fail(handleRequestError);
 }
 
-function start_task_mapping(task_id)
+function start_prepare_model_task(task_id)
 {
-    //log_log('start_task_mapping->');
-	/***
-    set_task_status(task_id, REQ_MAPPING).done(function (data, textStatus, jqXHR){
-
-        TAMER_ID = setInterval(function(){check_task_mapping_status(task_id)}, TIMER_INTERVAL);
-
-    }).fail(function(jqXHR, textStatus, errorThrown){
-		log_log('start_task_mapping->set_task_status->' + textStatus+ ' ' + errorThrown);
-		handleRequestError();
-	});
-	***/
-	TAMER_ID = setInterval(function(){check_task_mapping_status(task_id)}, TIMER_INTERVAL);
+    //log_log('start_prepare_model_task->');
+	TAMER_ID = setInterval(function(){prepare_task(task_id)}, TIMER_INTERVAL);
 
 }
 
@@ -561,25 +554,7 @@ function start_task_searching(task_id)
 
 }
 
-function check_task_mapping_status(task_id)
-{
-    if (task_id==undefined)
-        task_id = get_task();
-    //log_log('check_task_mapping_status->');
-	
-    get_prepare_task_status(task_id).done(function (data, textStatus, jqXHR){
-        reset_timer();
-        load_task_reactions(task_id);
 
-    }).fail(function(jqXHR, textStatus, errorThrown){
-        /*
-        reset_timer();
-        log_log('ERROR:check_task_mapping_status->get_task_status->' + textStatus+ ' ' + errorThrown);
-        handleRequestError();
-        */
-    });
-
-}
 
 function check_searching_task_status(task_id)
 {
@@ -602,33 +577,30 @@ function check_searching_task_status(task_id)
 }
 
 
-function load_task_reactions(task_id)
+function prepare_task(task_id)
 {
-    // сбросим таймер - если функцию вызвали из левого меню
-    reset_timer();
-    //log_log('load_task_reactions->');
+    log_log('prepare_task->');
 	if (!task_id)
 		task_id = get_task();
 		
-	if (isNaN(task_id))
+	if (task_id=="")
 	{
 		alert('Session task not defined');
 		return false;	
 	}
 	
-    get_reactions_by_task(task_id).done(function (data, textStatus, jqXHR){
+    $.get(ApiUrl.prepare_task+task_id).done(function (resp, textStatus, jqXHR){
 
+        log_log('prepare_task->done:' + textStatus);
+        log_log(resp);
         Progress.done();
 
-        // загрузим все модели и отрисуем реакции
-        get_models('').done(function(models, textStatus, jqXHR){
-            display_task_reactions(data, models);
-        });
+        display_task_reactions(resp.structures);
 
 
     }).fail(function(jqXHR, textStatus, errorThrown){
-        log_log('load_task_reactions->' + textStatus+ ' ' + errorThrown)});
-    handleRequestError();
+        log_log('prepare_task->' + textStatus)});
+
     return true;
 }
 
@@ -642,7 +614,7 @@ function clear_editor()
 	catch(err){log_log(err)}
 }
 
-function display_task_reactions(reactions, models)
+function display_task_reactions(reactions)
 {
     //log_log('display_task_reactions->');
 	
@@ -651,6 +623,8 @@ function display_task_reactions(reactions, models)
 
 	// очистим редактор
 	clear_editor();
+
+    var models = [];    //   model list
 
     var jTbl = $("#reactions-tbd");
     jTbl.empty();
@@ -666,7 +640,7 @@ function display_task_reactions(reactions, models)
     for (var i=0;i<reactions.length;i++)
     {
         var _reaction = reactions[i];
-        var _r_id = _reaction.reaction_id;
+        var _r_id = _reaction.structure;
         if (i==0)
             first_reaction_id = _r_id;
         try {
@@ -1000,7 +974,7 @@ function load_modelling_results(task_id)
 	if (!task_id)
 		task_id = get_task();
 		
-	if (isNaN(task_id))
+	if (task_id=="")
 	{
 		alert('Session task not defined');
 		return false;	
@@ -1026,7 +1000,7 @@ function load_searching_results(task_id)
 	if (!task_id)
 		task_id = get_task();
 
-	if (isNaN(task_id))
+	if (task_id=="")
 	{
 		alert('Session task not defined');
 		return false;
@@ -1462,7 +1436,7 @@ function load_task(task_id)
                 {
                     case MAPPING_DONE:
                         reset_timer();
-                        load_task_reactions(task_id);
+                        prepare_task(task_id);
                         break;
 
                     case MODELLING_DONE:
