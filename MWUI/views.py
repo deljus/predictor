@@ -21,12 +21,11 @@
 #  MA 02110-1301, USA.
 #
 import uuid
-import json
 from .forms import (Login, Registration, ReLogin, ChangePassword, NewPost, ChangeRole, BanUser, ForgotPassword,
                     Meeting, Profile)
 from .logins import User
 from .models import Users, Blog
-from .config import UserRole, BLOG_POSTS, Glyph, UPLOAD_PATH, BlogPost, MeetingPost
+from .config import UserRole, BLOG_POSTS, Glyph, UPLOAD_PATH, BlogPost
 from .bootstrap import Pagination
 from flask import redirect, url_for, render_template, Blueprint, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
