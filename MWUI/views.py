@@ -25,8 +25,9 @@ from .forms import (Login, Registration, ReLogin, ChangePassword, NewPost, Chang
                     Meeting, Profile)
 from .logins import User
 from .models import Users, Blog
-from .config import UserRole, BLOG_POSTS, Glyph, UPLOAD_PATH, BlogPost
+from .config import UserRole, BLOG_POSTS, Glyph, UPLOAD_PATH, BlogPost, LAB_NAME
 from .bootstrap import Pagination
+from .sendmail import send_mail
 from flask import redirect, url_for, render_template, Blueprint, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 from pony.orm import db_session, select, commit
@@ -54,7 +55,7 @@ def blog_viewer(page, selector):
         data = []
         for p in q.order_by(Blog.id.desc()).page(page, pagesize=BLOG_POSTS):
             tmp = dict(date=p.date.strftime('%B %d, %Y'), glyph=Glyph[p.type.name].value, title=p.title,
-                       body=p.body[:500], url=url_for('.blog_post', post=p.id))
+                       body=p.body[:500], url=url_for('.blog_post', post=p.id), author=p.author.name)
             if p.banner:
                 tmp['banner'] = url_for('static', filename='uploads/%s' % p.banner)
             data.append(tmp)
@@ -85,17 +86,20 @@ def login():
 
     elif registration_form.validate_on_submit():
         with db_session:
-            Users(email=registration_form.email.data, password=registration_form.password.data,
-                  name=registration_form.name.data, job=registration_form.job.data,
-                  town=registration_form.town.data, country=registration_form.country.data,
-                  status=registration_form.status.data)
+            u = Users(email=registration_form.email.data, password=registration_form.password.data,
+                      name=registration_form.name.data, job=registration_form.job.data,
+                      town=registration_form.town.data, country=registration_form.country.data,
+                      status=registration_form.status.data)
+        send_mail('Welcome!', u.email, to_name=u.name, subject='Welcome')
         return redirect(url_for('.login'))
 
     elif forgot_form.validate_on_submit():
         with db_session:
-            if Users.exists(email=forgot_form.email.data):
-                pass
-            flash('Check your email box', 'warning')
+            u = Users.get(email=forgot_form.email.data)
+            u.gen_restore()
+        if u:
+            send_mail('Welcome! %s' % u.restore, u.email, to_name=u.name, subject='Welcome')
+        flash('Check your email box', 'warning')
         return redirect(url_for('.login'))
 
     return render_template('forms.html', forms=forms, title='Login')
@@ -112,7 +116,8 @@ def logout():
 @login_required
 def profile():
     with db_session:
-        user_form = Profile(prefix='EditProfile', obj=Users.get(id=current_user.id))
+        u = Users.get(id=current_user.id)
+        user_form = Profile(prefix='EditProfile', obj=u)
         re_login_form = ReLogin(prefix='ReLogin')
         change_passwd_form = ChangePassword(prefix='ChangePassword')
 
@@ -128,7 +133,14 @@ def profile():
                           ('Ban User', ban_form)])
 
         if user_form.validate_on_submit():
-            pass
+            u.name = user_form.name.data
+            u.country = user_form.country.data
+            if user_form.job.data:
+                u.job = user_form.job.data
+            if user_form.town.data:
+                u.town = user_form.town.data
+            if user_form.status.data:
+                u.status = user_form.status.data
         elif re_login_form.validate_on_submit():
             user = Users.get(id=current_user.id)
             user.change_token()
@@ -185,21 +197,13 @@ def index():
                 tmp['banner'] = url_for('static', filename='uploads/%s' % x.banner)
             projects.append(tmp)
 
-    return render_template("home.html", carousel=carousel, projects=projects, info=info, title='Welcome')
-
-
-@view_bp.route('/blog/', methods=['GET'])
-@view_bp.route('/blog/<int:page>', methods=['GET'])
-def blog(page=1):
-    res = blog_viewer(page, lambda x: x.post_type != BlogPost.THESIS.value)
-    if not res:
-        return redirect(url_for('.blog'))
-
-    return render_template("blog.html", paginator=res[1], posts=res[0], title='News', subtitle='chart')
+    return render_template("home.html", carousel=carousel, projects=projects, info=info, title='Welcome to',
+                           subtitle=LAB_NAME)
 
 
 @view_bp.route('/blog/post/<int:post>', methods=['GET', 'POST'])
 def blog_post(post):
+    admin = current_user.is_authenticated and current_user.role_is(UserRole.ADMIN)
     edit_post_form = None
     special_form = None
     special_field = None
@@ -208,14 +212,15 @@ def blog_post(post):
         if not p:
             return redirect(url_for('.blog'))
 
-        admin = current_user.is_authenticated and current_user.role_is(UserRole.ADMIN)
-        author = (current_user.is_authenticated and p.author.id == current_user.id
-                  and datetime.fromtimestamp(p.parent.special) > datetime.utcnow())
+        """ collect sidebar
+        """
+        ip = select(x for x in Blog if x.post_type == BlogPost.IMPORTANT.value and x.id != post)
+        info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body[:200])
+                for x in ip.order_by(Blog.id.desc()).limit(3)]
 
         if request.args.get('edit') == 'delete' and admin:
             p.delete()
             return redirect(url_for('.blog'))
-
         elif request.args.get('edit') == 'edit' and admin:
             edit_post_form = NewPost(prefix='Edit', obj=p)
             if edit_post_form.validate_on_submit():
@@ -235,21 +240,25 @@ def blog_post(post):
                 if edit_post_form.attachment.data:
                     p.attachment = save_upload(edit_post_form.attachment)
 
-        elif p.type == BlogPost.MEETING and current_user.is_authenticated \
-                and datetime.fromtimestamp(p.special) > datetime.utcnow() \
-                and not Blog.exists(author=Users.get(id=current_user.id), parent=post):
-            special_form = Meeting(prefix='Meeting')
-            if special_form.validate_on_submit():
-                banner_name = save_upload(special_form.banner) if special_form.banner.data else None
-                file_name = save_upload(special_form.attachment) if special_form.attachment.data else None
-                w = Blog(type=BlogPost.THESIS, title=special_form.title.data, body=special_form.body.data,
-                         banner=banner_name, special=special_form.special, parent=post, attachment=file_name,
-                         author=Users.get(id=current_user.id))
-                commit()
-                return redirect(url_for('.blog_post', post=w.id))
+        elif p.type == BlogPost.MEETING:
+            if (current_user.is_authenticated and datetime.fromtimestamp(p.special) > datetime.utcnow()
+                    and not Blog.exists(author=Users.get(id=current_user.id), parent=post)):
+
+                special_form = Meeting(prefix='Meeting')
+                if special_form.validate_on_submit():
+                    banner_name = save_upload(special_form.banner) if special_form.banner.data else None
+                    file_name = save_upload(special_form.attachment) if special_form.attachment.data else None
+                    w = Blog(type=BlogPost.THESIS, title=special_form.title.data, body=special_form.body.data,
+                             banner=banner_name, special=special_form.special, parent=post, attachment=file_name,
+                             author=Users.get(id=current_user.id))
+                    commit()
+                    return redirect(url_for('.blog_post', post=w.id))
+
+            info.insert(0, dict(url=url_for('.participants', event=p.id), title="Participants of", body=p.title))
 
         elif p.type == BlogPost.THESIS:
-            if author:
+            if (current_user.is_authenticated and p.author.id == current_user.id
+                    and datetime.fromtimestamp(p.parent.special) > datetime.utcnow()):
                 special_form = Meeting(prefix='Meeting', obj=p)
                 if special_form.validate_on_submit():
                     p.title = special_form.title.data
@@ -258,20 +267,11 @@ def blog_post(post):
 
                     if special_form.banner.data:
                         p.banner = save_upload(special_form.banner)
-
                     if special_form.attachment.data:
                         p.attachment = save_upload(special_form.attachment)
-            elif not admin:
-                return redirect(url_for('.blog'))
 
         elif p.type in (BlogPost.CHIEF, BlogPost.TEAM):
             special_field = None
-
-        """ collect sidebar
-        """
-        ip = select(x for x in Blog if x.post_type == BlogPost.IMPORTANT.value and x.id != post)
-        info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body[:200])
-                for x in ip.order_by(Blog.id.desc()).limit(3)]
 
         """ final data preparation
         """
@@ -282,8 +282,8 @@ def blog_post(post):
         if p.attachment:
             data['attachment'] = url_for('static', filename='uploads/%s' % p.attachment)
 
-    return render_template("post.html", title=p.title, post=data, form=edit_post_form, info=info,
-                           editable=admin, removable=admin or author)
+        return render_template("post.html", title=p.title, subtitle='by %s' % p.author.name, post=data,
+                               form=edit_post_form, info=info, editable=admin, removable=admin)
 
 
 @view_bp.route('/search', methods=['GET'])
@@ -320,6 +320,16 @@ def predictor():
     return render_template("predictor.html")
 
 
+@view_bp.route('/blog/', methods=['GET'])
+@view_bp.route('/blog/<int:page>', methods=['GET'])
+def blog(page=1):
+    res = blog_viewer(page, lambda x: x.post_type != BlogPost.THESIS.value)
+    if not res:
+        return redirect(url_for('.blog'))
+
+    return render_template("blog.html", paginator=res[1], posts=res[0], title='News', subtitle='chart')
+
+
 @view_bp.route('/events', methods=['GET'])
 @view_bp.route('/events/<int:page>', methods=['GET'])
 @login_required
@@ -328,4 +338,20 @@ def events(page=1):
     if not res:
         return redirect(url_for('.events'))
 
-    return render_template("blog.html", paginator=res[1], posts=res[0], title='Events', subtitle='list')
+    return render_template("blog.html", paginator=res[1], posts=res[0], title='My Events', subtitle='list')
+
+
+@view_bp.route('/participants/<int:event>', methods=['GET'])
+@view_bp.route('/participants/<int:event>/<int:page>', methods=['GET'])
+@login_required
+def participants(event, page=1):
+    with db_session:
+        b = Blog.get(id=event, post_type=BlogPost.MEETING.value)
+    if not b:
+        return redirect(url_for('.blog'))
+
+    res = blog_viewer(page, lambda x: x.post_type == BlogPost.THESIS.value and x.parent.id == event)
+    if not res:
+        return redirect(url_for('.participants', event=event))
+
+    return render_template("blog.html", paginator=res[1], posts=res[0], title=b.title, subtitle='Event')
