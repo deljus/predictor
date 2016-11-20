@@ -20,15 +20,37 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+from json import loads, JSONDecodeError
 from pycountry import countries
-from .models import Users
+from .models import Users, Blog
 from .config import BlogPost, UserRole, MeetingPost
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from flask_login import current_user
 from pony.orm import db_session
 from wtforms import (StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError, TextAreaField,
-                     SelectField)
+                     SelectField, IntegerField)
+
+
+class JsonValidator(object):
+    def __init__(self):
+        self.message = 'Bad Json'
+
+    def __call__(self, form, field):
+        try:
+            loads(field.data)
+        except JSONDecodeError:
+            raise ValidationError(self.message)
+
+
+class CheckParentExist(object):
+    def __init__(self):
+        self.message = 'Bad parent post id'
+
+    def __call__(self, form, field):
+        with db_session:
+            if not Blog.exists(id=field.data):
+                raise ValidationError(self.message)
 
 
 class CheckUserFree(object):
@@ -51,6 +73,24 @@ class CheckUserExist(object):
                 raise ValidationError(self.message)
 
 
+class CustomForm(FlaskForm):
+    def __iter__(self):
+        token = self.csrf_token
+        yield token
+
+        field_names = {token.name}
+        for cls in self.__class__.__bases__:
+            for field in cls():
+                field_name = field.name
+                if field_name not in field_names:
+                    field_names.add(field_name)
+                    yield self[field_name]
+
+        for field_name in self._fields:
+            if field_name not in field_names:
+                yield self[field_name]
+
+
 class VerifyPassword(object):
     def __init__(self):
         self.message = 'Bad password'
@@ -62,48 +102,53 @@ class VerifyPassword(object):
                 raise ValidationError(self.message)
 
 
-class Registration(FlaskForm):
-    email = StringField('Email', [validators.DataRequired(), validators.Email(), CheckUserFree()])
-    password = PasswordField('Password', [validators.DataRequired(),
-                                          validators.EqualTo('confirm', message='Passwords must match')])
-    confirm = PasswordField('Repeat Password', [validators.DataRequired()])
-
+class Profile(CustomForm):
     name = StringField('Name Surname', [validators.DataRequired()])
     job = StringField('Organization')
     town = StringField('Town')
     country = SelectField('Country', [validators.DataRequired()], choices=[(x.alpha_3, x.name) for x in countries])
     status = StringField('Status')
+    submit_btn = SubmitField('Update Profile')
+
+
+class Email(CustomForm):
+    email = StringField('Email', [validators.DataRequired(), validators.Email(), CheckUserExist()])
+
+
+class Password(CustomForm):
+    password = PasswordField('Password', [validators.DataRequired(),
+                                          validators.EqualTo('confirm', message='Passwords must match')])
+    confirm = PasswordField('Repeat Password', [validators.DataRequired()])
+
+
+class Registration(Profile, Password):
+    email = StringField('Email', [validators.DataRequired(), validators.Email(), CheckUserFree()])
     submit_btn = SubmitField('Register')
 
 
-class Login(FlaskForm):
-    email = StringField('Email', [validators.DataRequired(), validators.Email(), CheckUserExist()])
+class Login(Email):
     password = PasswordField('Password', [validators.DataRequired()])
     remember = BooleanField('Remember me')
     submit_btn = SubmitField('Log in')
 
 
-class ReLogin(FlaskForm):
+class ReLogin(CustomForm):
     password = PasswordField('Password', [validators.DataRequired(), VerifyPassword()])
     submit_btn = SubmitField('Log out')
 
 
-class ChangePassword(FlaskForm):
-    password = PasswordField('Old Password', [validators.DataRequired(), VerifyPassword()])
-    new_password = PasswordField('Password', [validators.DataRequired(),
-                                              validators.EqualTo('confirm', message='Passwords must match')])
-    confirm = PasswordField('Repeat Password', [validators.DataRequired()])
+class ChangePassword(Password):
+    old_password = PasswordField('Old Password', [validators.DataRequired(), VerifyPassword()])
     submit_btn = SubmitField('Change Password')
 
 
-class ForgotPassword(FlaskForm):
+class ForgotPassword(CustomForm):
     email = StringField('Email', [validators.DataRequired(), validators.Email()])
     submit_btn = SubmitField('Restore')
 
 
-class ChangeRole(FlaskForm):
-    email = StringField('User Email', validators=[validators.DataRequired(), CheckUserExist()])
-    role_type = SelectField('Post Type', [validators.DataRequired()],
+class ChangeRole(Email):
+    role_type = SelectField('Role Type', [validators.DataRequired()],
                             choices=[(x.value, x.name) for x in UserRole], coerce=int)
     submit_btn = SubmitField('Change Role')
 
@@ -112,32 +157,36 @@ class ChangeRole(FlaskForm):
         return UserRole(self.role_type.data)
 
 
-class BanUser(FlaskForm):
-    email = StringField('User Email', [validators.DataRequired(), CheckUserExist()])
+class BanUser(Email):
     submit_btn = SubmitField('Ban User')
 
 
-class Meeting(FlaskForm):
+class Meeting(CustomForm):
     title = StringField('Title', [validators.DataRequired()])
-    part_type = SelectField('Participation Type', [validators.DataRequired()],
-                            choices=[(x.value, x.name) for x in MeetingPost], coerce=int)
+    body = TextAreaField('Message', [validators.DataRequired()])
+    special_field = SelectField('Participation Type', [validators.DataRequired()],
+                                choices=[(x.value, x.name) for x in MeetingPost], coerce=int)
     banner = FileField('Image', validators=[FileAllowed('jpg jpe jpeg png gif svg bmp'.split(), 'Images only')])
     attachment = FileField('Attachment', validators=[FileAllowed('doc docx odt rtf'.split(), 'Documents only')])
-    submit_btn = SubmitField('Participate')
+    submit_btn = SubmitField('Meet Up')
 
     @property
-    def participation(self):
-        return MeetingPost(self.part_type.data)
+    def special(self):
+        return self.special_field.data
 
 
 class NewPost(Meeting):
-    slug = StringField('Slug', [validators.DataRequired()])
-    body = TextAreaField('Message', [validators.DataRequired()])
-    special = StringField('Special')
+    slug = StringField('Slug')
+    special_field = StringField('Special', [validators.Optional(), JsonValidator()])
     post_type = SelectField('Post Type', [validators.DataRequired()],
                             choices=[(x.value, x.name) for x in BlogPost], coerce=int)
+    parent_field = IntegerField('Parent Post', [validators.Optional(), CheckParentExist()])
     submit_btn = SubmitField('Post')
 
     @property
     def type(self):
         return BlogPost(self.post_type.data)
+
+    @property
+    def special(self):
+        return loads(self.special_field.data) if self.special_field.data else None
