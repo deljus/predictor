@@ -145,7 +145,7 @@ class Pagination(object):
 def top_nav():
     if current_user.is_authenticated:
         navbar = [LeftSubgroup(View('News', '.blog'), View('About Us', '.about')),
-                  RightSubgroup(View('Search', '.search'), View('Modeling', '.modeling'),
+                  RightSubgroup(View('Search', '.search'), View('Modeling', '.predictor'),
                                 Subgroup(current_user.name,
                                          View('Modeling Results', '.results'), View('Queries History', '.queries'),
                                          Separator(),
