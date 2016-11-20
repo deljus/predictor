@@ -84,6 +84,15 @@ class VerifyPassword(object):
                 raise ValidationError(self.message)
 
 
+class Profile(FlaskForm):
+    name = StringField('Name Surname', [validators.DataRequired()])
+    job = StringField('Organization')
+    town = StringField('Town')
+    country = SelectField('Country', [validators.DataRequired()], choices=[(x.alpha_3, x.name) for x in countries])
+    status = StringField('Status')
+    submit_btn = SubmitField('Update Profile')
+
+
 class Registration(FlaskForm):
     email = StringField('Email', [validators.DataRequired(), validators.Email(), CheckUserFree()])
     password = PasswordField('Password', [validators.DataRequired(),
@@ -111,9 +120,9 @@ class ReLogin(FlaskForm):
 
 
 class ChangePassword(FlaskForm):
-    password = PasswordField('Old Password', [validators.DataRequired(), VerifyPassword()])
-    new_password = PasswordField('Password', [validators.DataRequired(),
-                                              validators.EqualTo('confirm', message='Passwords must match')])
+    old_password = PasswordField('Old Password', [validators.DataRequired(), VerifyPassword()])
+    password = PasswordField('Password', [validators.DataRequired(),
+                                          validators.EqualTo('confirm', message='Passwords must match')])
     confirm = PasswordField('Repeat Password', [validators.DataRequired()])
     submit_btn = SubmitField('Change Password')
 
@@ -124,8 +133,8 @@ class ForgotPassword(FlaskForm):
 
 
 class ChangeRole(FlaskForm):
-    email = StringField('User Email', validators=[validators.DataRequired(), CheckUserExist()])
-    role_type = SelectField('Post Type', [validators.DataRequired()],
+    email = StringField('Email', [validators.DataRequired(), validators.Email(), CheckUserExist()])
+    role_type = SelectField('Role Type', [validators.DataRequired()],
                             choices=[(x.value, x.name) for x in UserRole], coerce=int)
     submit_btn = SubmitField('Change Role')
 
@@ -135,7 +144,7 @@ class ChangeRole(FlaskForm):
 
 
 class BanUser(FlaskForm):
-    email = StringField('User Email', [validators.DataRequired(), CheckUserExist()])
+    email = StringField('Email', [validators.DataRequired(), validators.Email(), CheckUserExist()])
     submit_btn = SubmitField('Ban User')
 
 
@@ -146,16 +155,29 @@ class Meeting(FlaskForm):
                                 choices=[(x.value, x.name) for x in MeetingPost], coerce=int)
     banner = FileField('Image', validators=[FileAllowed('jpg jpe jpeg png gif svg bmp'.split(), 'Images only')])
     attachment = FileField('Attachment', validators=[FileAllowed('doc docx odt rtf'.split(), 'Documents only')])
-    submit_btn = SubmitField('Post')
+    submit_btn = SubmitField('Sign In')
+
+    @property
+    def special(self):
+        return self.special_field.data
 
 
-class NewPost(Meeting):
+class NewPost(FlaskForm):
+    title = StringField('Title', [validators.DataRequired()])
+    body = TextAreaField('Message', [validators.DataRequired()])
     slug = StringField('Slug')
     special_field = StringField('Special', [validators.Optional(), JsonValidator()])
     post_type = SelectField('Post Type', [validators.DataRequired()],
                             choices=[(x.value, x.name) for x in BlogPost], coerce=int)
     parent_field = IntegerField('Parent Post', [validators.Optional(), CheckParentExist()])
+    banner = FileField('Image', validators=[FileAllowed('jpg jpe jpeg png gif svg bmp'.split(), 'Images only')])
+    attachment = FileField('Attachment', validators=[FileAllowed('doc docx odt rtf'.split(), 'Documents only')])
+    submit_btn = SubmitField('Post')
 
     @property
     def type(self):
         return BlogPost(self.post_type.data)
+
+    @property
+    def special(self):
+        return loads(self.special_field.data) if self.special_field.data else None
