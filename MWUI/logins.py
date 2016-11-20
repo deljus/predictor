@@ -72,6 +72,11 @@ class User(UserMixin):
     def get(email, password):
         with db_session:
             user = Users.get(email=email)
-        if user and user.verify_password(password):
-            return User(user)
+            if user and user.verify_password(password):
+                return User(user)
+            elif user and user.verify_restore(password):
+                user.gen_restore()
+                user.change_token()
+                user.change_password(password)
+                return User(user)
         return None

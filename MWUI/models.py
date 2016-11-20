@@ -43,6 +43,7 @@ class Users(db.Entity):
     user_role = Required(int)
     tasks = Set("Tasks")
     token = Required(str)
+    restore = Optional(str)
 
     name = Required(str)
     country = Required(str)
@@ -63,6 +64,12 @@ class Users(db.Entity):
 
     def verify_password(self, password):
         return bcrypt.hashpw(password.encode(), self.password.encode()) == self.password.encode()
+
+    def verify_restore(self, code):
+        return self.restore == code
+
+    def gen_restore(self):
+        self.restore = self.__gen_token(self.email, str(datetime.utcnow()))[:8]
 
     def change_password(self, password):
         self.password = self.__hash_password(password)
