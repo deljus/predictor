@@ -23,7 +23,7 @@
 import uuid
 import json
 from .forms import (Login, Registration, ReLogin, ChangePassword, NewPost, ChangeRole, BanUser, ForgotPassword,
-                    Meeting)
+                    Meeting, Profile)
 from .logins import User
 from .models import Users, Blog
 from .config import UserRole, BLOG_POSTS, Glyph, UPLOAD_PATH, BlogPost, MeetingPost
@@ -112,53 +112,55 @@ def logout():
 @view_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
-    re_login_form = ReLogin(prefix='ReLogin')
-    change_passwd_form = ChangePassword(prefix='ChangePassword')
-    forms = [('Log out on all devices', re_login_form), ('Change Password', change_passwd_form)]
+    with db_session:
+        user_form = Profile(prefix='EditProfile', obj=Users.get(id=current_user.id))
+        re_login_form = ReLogin(prefix='ReLogin')
+        change_passwd_form = ChangePassword(prefix='ChangePassword')
 
-    if re_login_form.validate_on_submit():
-        with db_session:
+        forms = [('Edit Profile', user_form), ('Log out on all devices', re_login_form),
+                 ('Change Password', change_passwd_form)]
+
+        if current_user.role_is(UserRole.ADMIN):
+            new_post_form = NewPost(prefix='NewPost')
+            change_role_form = ChangeRole(prefix='ChangeRole')
+            ban_form = BanUser(prefix='BanUser')
+
+            forms.extend([('New Blog Post', new_post_form), ('Change User Role', change_role_form),
+                          ('Ban User', ban_form)])
+
+        if user_form.validate_on_submit():
+            pass
+        elif re_login_form.validate_on_submit():
             user = Users.get(id=current_user.id)
             user.change_token()
-        logout_user()
-        return redirect(url_for('.login'))
-    elif change_passwd_form.validate_on_submit():
-        with db_session:
+            logout_user()
+            return redirect(url_for('.login'))
+        elif change_passwd_form.validate_on_submit():
             user = Users.get(id=current_user.id)
-            user.change_password(change_passwd_form.new_password.data)
-        logout_user()
-        return redirect(url_for('.login'))
+            user.change_password(change_passwd_form.password.data)
+            logout_user()
+            return redirect(url_for('.login'))
 
-    if current_user.role_is(UserRole.ADMIN):
-        new_post_form = NewPost(prefix='NewPost')
-        change_role_form = ChangeRole(prefix='ChangeRole')
-        ban_form = BanUser(prefix='BanUser')
+        elif current_user.role_is(UserRole.ADMIN):
+            if new_post_form.validate_on_submit():
+                banner_name = save_upload(new_post_form.banner) if new_post_form.banner.data else None
+                file_name = save_upload(new_post_form.attachment) if new_post_form.attachment.data else None
 
-        forms.extend([('Change User Role', change_role_form), ('Ban User', ban_form)])
-        forms.insert(0, ('New Blog Post', new_post_form))
+                if new_post_form.type == BlogPost.MEETING:
+                    special = datetime.utcnow().timestamp()
+                else:
+                    special = new_post_form.special
 
-        if new_post_form.validate_on_submit():
-            banner_name = save_upload(new_post_form.banner) if new_post_form.banner.data else None
-            file_name = save_upload(new_post_form.attachment) if new_post_form.attachment.data else None
-
-            if new_post_form.type == BlogPost.THESIS:
-                special = new_post_form.special_field.data
-            elif new_post_form.special_field.data:
-                special = json.loads(new_post_form.special_field.data)
-            else:
-                special = None
-
-            with db_session:
                 p = Blog(type=new_post_form.type, title=new_post_form.title.data, slug=new_post_form.slug.data,
                          body=new_post_form.body.data, banner=banner_name, special=special, attachment=file_name,
                          parent=new_post_form.parent_field.data, author=Users.get(id=current_user.id))
 
-            return redirect(url_for('.blog_post', post=p.id))
+                return redirect(url_for('.blog_post', post=p.id))
 
-        elif change_role_form.validate_on_submit():
-            pass
-        elif ban_form.validate_on_submit():
-            pass
+            elif change_role_form.validate_on_submit():
+                pass
+            elif ban_form.validate_on_submit():
+                pass
 
     return render_template("forms.html", title='Profile', subtitle=current_user.name, forms=forms)
 
@@ -199,13 +201,17 @@ def blog(page=1):
 
 @view_bp.route('/blog/post/<int:post>', methods=['GET', 'POST'])
 def blog_post(post):
+    edit_post_form = None
+    special_form = None
+    special_field = None
     with db_session:
         p = Blog.get(id=post)
         if not p:
             return redirect(url_for('.blog'))
 
         admin = current_user.is_authenticated and current_user.role_is(UserRole.ADMIN)
-        author = current_user.is_authenticated and p.author.id == current_user.id
+        author = (current_user.is_authenticated and p.author.id == current_user.id
+                  and datetime.fromtimestamp(p.parent.special) > datetime.utcnow())
 
         if request.args.get('edit') == 'delete' and admin:
             p.delete()
@@ -223,26 +229,22 @@ def blog_post(post):
                     p.slug = edit_post_form.slug.data
                 if edit_post_form.parent_field.data:
                     p.parent = edit_post_form.parent_field.data
-                if edit_post_form.special_field.data:
-                    p.special = json.loads(edit_post_form.special_field.data)
+                if edit_post_form.special:
+                    p.special = edit_post_form.special
                 if edit_post_form.banner.data:
                     p.banner = save_upload(edit_post_form.banner)
                 if edit_post_form.attachment.data:
                     p.attachment = save_upload(edit_post_form.attachment)
 
-        else:
-            edit_post_form = None
-
-        special_form = None
-        special_field = None
-        if p.type == BlogPost.MEETING and current_user.is_authenticated and \
-                not Blog.exists(author=Users.get(id=current_user.id), parent=post):
+        elif p.type == BlogPost.MEETING and current_user.is_authenticated \
+                and datetime.fromtimestamp(p.special) > datetime.utcnow() \
+                and not Blog.exists(author=Users.get(id=current_user.id), parent=post):
             special_form = Meeting(prefix='Meeting')
             if special_form.validate_on_submit():
                 banner_name = save_upload(special_form.banner) if special_form.banner.data else None
                 file_name = save_upload(special_form.attachment) if special_form.attachment.data else None
                 w = Blog(type=BlogPost.THESIS, title=special_form.title.data, body=special_form.body.data,
-                         banner=banner_name, special=special_form.special_field.data, parent=post, attachment=file_name,
+                         banner=banner_name, special=special_form.special, parent=post, attachment=file_name,
                          author=Users.get(id=current_user.id))
                 commit()
                 return redirect(url_for('.blog_post', post=w.id))
@@ -253,7 +255,7 @@ def blog_post(post):
                 if special_form.validate_on_submit():
                     p.title = special_form.title.data
                     p.body = special_form.body.data
-                    p.special = special_form.special_field.data
+                    p.special = special_form.special
 
                     if special_form.banner.data:
                         p.banner = save_upload(special_form.banner)
