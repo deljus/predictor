@@ -117,7 +117,7 @@ class Modelbuilder(MBparser):
                     [Descriptorchain(*[(g(), a) for gs in c
                                        for g, a in (gs if isinstance(gs, list) else [gs])]) for c in product(*combo)])
         else:
-            self.__descgens = [y() for x in descgenerator.values() for y in x]
+            self.__descgens = [g() for x in descgenerator.values() for g in x]
 
         if not self.__options['output']:
             if os.path.isdir(self.__options['model']) or \

@@ -8,7 +8,7 @@
             <hr>
 
             <!-- Preview Image -->
-            <img class="img-responsive" src="{{ post.banner if post.banner else 'http://placehold.it/900x300' }}" alt="">
+            <img class="img-responsive" src="{{ post.banner if post.banner else '//placehold.it/900x300' }}" alt="">
             <hr>
 
             <!-- Post Content -->
@@ -54,7 +54,7 @@
                         <h4>{{ i.title }}</h4>
                     </div>
                     <div class="panel-body">
-                        <p>{{ i.body|markdown|truncate(200, True) }}</p>
+                        {{ i.body|truncate(200, True)|markdown }}
                         <a href="{{ i.url }}" class="btn btn-default">
                             Read More <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
                         </a>

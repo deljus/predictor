@@ -12,10 +12,9 @@
             {% for i in data %}
                 <div class="item {{ 'active' if loop.first}}">
                     <a href="{{ i.url }}">
-                        <img class="center-block" src="{{ i.banner }}" alt="{{ i.title }}">
+                        <div class="fill" style="background-image:url('{{ i.banner if i.banner else '//placehold.it/1900x1080' }}');"></div>
                         <div class="carousel-caption">
                             <h2>{{ i.title }}</h2>
-                            <p>{{ i.body|markdown|truncate(150, True) }}</p>
                         </div>
                     </a>
                 </div>

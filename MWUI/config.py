@@ -123,6 +123,7 @@ class BlogPost(Enum):
     STUDENT = 7
     MEETING = 8
     THESIS = 9
+    ABOUT = 10
 
 
 class Glyph(Enum):
@@ -135,6 +136,7 @@ class Glyph(Enum):
     STUDENT = 'pawn'
     MEETING = 'resize-small'
     THESIS = ''
+    ABOUT = ''
 
 
 class MeetingPost(Enum):

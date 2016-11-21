@@ -180,7 +180,8 @@ def profile():
 @view_bp.route('/index', methods=['GET'])
 def index():
     with db_session:
-        c = select(x for x in Blog if x.post_type == BlogPost.CAROUSEL.value).order_by(Blog.id.desc()).limit(BLOG_POSTS)
+        c = select(x for x in Blog if x.post_type == BlogPost.CAROUSEL.value
+                   and x.banner is not None).order_by(Blog.id.desc()).limit(BLOG_POSTS)
         carousel = [dict(banner=url_for('static', filename='uploads/%s' % x.banner),
                          url=url_for('.blog_post', post=x.id), title=x.title, body=x.body) for x in c]
 
@@ -197,8 +198,41 @@ def index():
                 tmp['banner'] = url_for('static', filename='uploads/%s' % x.banner)
             projects.append(tmp)
 
-    return render_template("home.html", carousel=carousel, projects=projects, info=info, title='Welcome to',
-                           subtitle=LAB_NAME)
+    return render_template("home.html", carousel=carousel, projects=dict(list=projects, title='Our Projects'),
+                           info=info, title='Welcome to', subtitle=LAB_NAME)
+
+
+@view_bp.route('/about', methods=['GET'])
+def about():
+    with db_session:
+        p = select(x for x in Blog if x.post_type == BlogPost.ABOUT.value).first()
+        if p:
+            a = dict(body=p.body, title=p.title, url=url_for('.blog_post', post=p.id))
+            if p.banner:
+                a['banner'] = url_for('static', filename='uploads/%s' % p.banner)
+        else:
+            a = None
+
+        p = select(x for x in Blog if x.post_type == BlogPost.CHIEF.value)
+        chief = []
+        for x in p:
+            tmp = dict(title=x.title, url=url_for('.blog_post', post=x.id), body=x.body,
+                       role=x.special.get('role', 'Researcher'), power=x.special.get('power', 0))
+            if x.banner:
+                tmp['banner'] = url_for('static', filename='uploads/%s' % x.banner)
+            chief.append(tmp)
+
+        p = select(x for x in Blog if x.post_type == BlogPost.TEAM.value).order_by(Blog.id.desc())
+        team = []
+        for x in p:
+            tmp = dict(title=x.title, url=url_for('.blog_post', post=x.id), body=x.body)
+            if x.banner:
+                tmp['banner'] = url_for('static', filename='uploads/%s' % x.banner)
+            team.append(tmp)
+
+    return render_template("about.html", title='About', subtitle='Laboratory', about=a,
+                           data=dict(chief=sorted(chief, key=lambda x: x['power'], reverse=True),
+                                     team=team, title='Our Team'))
 
 
 @view_bp.route('/blog/post/<int:post>', methods=['GET', 'POST'])
@@ -288,7 +322,7 @@ def blog_post(post):
         if p.attachment:
             data['attachment'] = url_for('static', filename='uploads/%s' % p.attachment)
 
-        return render_template("post.html", title=p.title, subtitle='by %s' % p.author.name, post=data,
+        return render_template("post.html", title=p.title, subtitle=p.author.name, post=data,
                                form=edit_post_form, info=info, editable=admin, removable=admin)
 
 
@@ -301,11 +335,6 @@ def search():
 @view_bp.route('/modeling', methods=['GET'])
 @login_required
 def modeling():
-    return render_template("layout.html")
-
-
-@view_bp.route('/about', methods=['GET'])
-def about():
     return render_template("layout.html")
 
 

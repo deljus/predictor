@@ -12,7 +12,7 @@
                         <h4>{{ i.title }}</h4>
                     </div>
                     <div class="panel-body">
-                        <p>{{ i.body|markdown|truncate(200, True) }}</p>
+                        {{ i.body|truncate(200, True)|markdown }}
                         <a href="{{ i.url }}" class="btn btn-default">
                             Read More <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
                         </a>
@@ -24,23 +24,23 @@
 
     <div class="row">
         <div class="col-lg-12">
-            <h2 class="page-header">Our Projects</h2>
+            <h2 class="page-header">{{ projects.title }}</h2>
         </div>
         <div class="col-md-4">
             <div class="list-group">
-                {% for i in projects %}
+                {% for i in projects.list %}
                     <a href="{{ i.url }}" class="list-group-item">
                         <h4 class="list-group-item-heading">{{ i.title }}</h4>
-                        <p class="list-group-item-text">{{ i.body|markdown|truncate(100, True) }}</p>
+                        <div class="list-group-item-text">{{ i.body|truncate(100, True)|markdown }}</div>
                     </a>
                 {% endfor %}
             </div>
         </div>
         <div class="col-md-2"></div>
         <div class="col-md-6">
-            {% set selected_banner = projects|random %}
+            {% set selected_banner = projects.list|random %}
             <a href="{{ selected_banner.url }}">
-                <img class="img-responsive" src="{{ selected_banner.banner }}" alt="700x450">
+                <img class="img-responsive" src="{{ selected_banner.banner if selected_banner.banner else '//placehold.it/700x450'  }}" alt="">
             </a>
         </div>
     </div>
