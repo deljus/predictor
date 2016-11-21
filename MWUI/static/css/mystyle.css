@@ -30,3 +30,29 @@
 	overflow: auto;
 	background-color: transparent;
 }
+
+li.dropdown > a.dropdown-toggle.btn.btn-default
+{
+    width:120px;
+	padding-bottom:6px;
+	padding-top:6px;
+}
+.dropdown-menu
+{
+    width:50px;
+}
+.addivitve-amount
+{
+    float:right;
+	width: 40px;
+
+}
+#reactions-tbl th {
+	text-align: center;
+	vertical-align: middle;
+}
+
+#reactions-tbl th button.multiselect.dropdown-toggle.btn.btn-default
+{
+	font-weight: bold;
+}
