@@ -22,6 +22,7 @@
 #
 from MWUI import init
 
+app = init()
 
 if __name__ == "__main__":
-    init()
+    app.run('localhost', port=5000, debug=True)

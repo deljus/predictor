@@ -20,7 +20,7 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from json import loads, JSONDecodeError
+from json import loads
 from pycountry import countries
 from .models import Users, Blog
 from .config import BlogPost, UserRole, MeetingPost
@@ -29,7 +29,7 @@ from flask_wtf.file import FileField, FileAllowed
 from flask_login import current_user
 from pony.orm import db_session
 from wtforms import (StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError, TextAreaField,
-                     SelectField, IntegerField)
+                     SelectField)
 
 
 class JsonValidator(object):
@@ -39,7 +39,7 @@ class JsonValidator(object):
     def __call__(self, form, field):
         try:
             loads(field.data)
-        except JSONDecodeError:
+        except Exception:
             raise ValidationError(self.message)
 
 
@@ -161,26 +161,28 @@ class BanUser(Email):
     submit_btn = SubmitField('Ban User')
 
 
-class Meeting(CustomForm):
+class Post(CustomForm):
     title = StringField('Title', [validators.DataRequired()])
     body = TextAreaField('Message', [validators.DataRequired()])
-    special_field = SelectField('Participation Type', [validators.DataRequired()],
-                                choices=[(x.value, x.name) for x in MeetingPost], coerce=int)
     banner = FileField('Image', validators=[FileAllowed('jpg jpe jpeg png gif svg bmp'.split(), 'Images only')])
     attachment = FileField('Attachment', validators=[FileAllowed('doc docx odt rtf'.split(), 'Documents only')])
+
+
+class Meeting(Post):
+    participation = SelectField('Participation Type', [validators.DataRequired()],
+                                choices=[(x.value, x.name) for x in MeetingPost], coerce=int)
     submit_btn = SubmitField('Meet Up')
 
     @property
     def special(self):
-        return self.special_field.data
+        return dict(participation=self.participation.data)
 
 
-class NewPost(Meeting):
+class NewPost(Post):
     slug = StringField('Slug')
     special_field = StringField('Special', [validators.Optional(), JsonValidator()])
     post_type = SelectField('Post Type', [validators.DataRequired()],
                             choices=[(x.value, x.name) for x in BlogPost], coerce=int)
-    parent_field = IntegerField('Parent Post', [validators.Optional(), CheckParentExist()])
     submit_btn = SubmitField('Post')
 
     @property
@@ -189,4 +191,8 @@ class NewPost(Meeting):
 
     @property
     def special(self):
-        return loads(self.special_field.data) if self.special_field.data else None
+        if self.special_field.data:
+            tmp = loads(self.special_field.data)
+            if isinstance(tmp, dict):
+                return tmp
+        return None

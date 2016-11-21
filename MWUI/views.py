@@ -116,6 +116,7 @@ def logout():
 @login_required
 def profile():
     with db_session:
+        admin = current_user.role_is(UserRole.ADMIN)
         u = Users.get(id=current_user.id)
         user_form = Profile(prefix='EditProfile', obj=u)
         re_login_form = ReLogin(prefix='ReLogin')
@@ -124,7 +125,7 @@ def profile():
         forms = [('Edit Profile', user_form), ('Log out on all devices', re_login_form),
                  ('Change Password', change_passwd_form)]
 
-        if current_user.role_is(UserRole.ADMIN):
+        if admin:
             new_post_form = NewPost(prefix='NewPost')
             change_role_form = ChangeRole(prefix='ChangeRole')
             ban_form = BanUser(prefix='BanUser')
@@ -152,20 +153,15 @@ def profile():
             logout_user()
             return redirect(url_for('.login'))
 
-        elif current_user.role_is(UserRole.ADMIN):
+        elif admin:
             if new_post_form.validate_on_submit():
                 banner_name = save_upload(new_post_form.banner) if new_post_form.banner.data else None
                 file_name = save_upload(new_post_form.attachment) if new_post_form.attachment.data else None
 
-                if new_post_form.type == BlogPost.MEETING:
-                    special = datetime.utcnow().timestamp()
-                else:
-                    special = new_post_form.special
-
                 p = Blog(type=new_post_form.type, title=new_post_form.title.data, slug=new_post_form.slug.data,
-                         body=new_post_form.body.data, banner=banner_name, special=special, attachment=file_name,
-                         parent=new_post_form.parent_field.data, author=Users.get(id=current_user.id))
-
+                         body=new_post_form.body.data, banner=banner_name, special=new_post_form.special,
+                         attachment=file_name, author=Users.get(id=current_user.id))
+                commit()
                 return redirect(url_for('.blog_post', post=p.id))
 
             elif change_role_form.validate_on_submit():
@@ -231,8 +227,6 @@ def blog_post(post):
 
                 if edit_post_form.slug.data:
                     p.slug = edit_post_form.slug.data
-                if edit_post_form.parent_field.data:
-                    p.parent = edit_post_form.parent_field.data
                 if edit_post_form.special:
                     p.special = edit_post_form.special
                 if edit_post_form.banner.data:
@@ -241,15 +235,19 @@ def blog_post(post):
                     p.attachment = save_upload(edit_post_form.attachment)
 
         elif p.type == BlogPost.MEETING:
-            if (current_user.is_authenticated and datetime.fromtimestamp(p.special) > datetime.utcnow()
-                    and not Blog.exists(author=Users.get(id=current_user.id), parent=post)):
+            if (current_user.is_authenticated  # abstract submission form
+                    and datetime.fromtimestamp(p.special.get('deadline', 0)) > datetime.utcnow()
+                    and not select(x for x in Blog if x.author.id == current_user.id and  # 'meeting' in x.special and
+                                   x.special['meeting'] == post).exists()):
 
                 special_form = Meeting(prefix='Meeting')
                 if special_form.validate_on_submit():
                     banner_name = save_upload(special_form.banner) if special_form.banner.data else None
                     file_name = save_upload(special_form.attachment) if special_form.attachment.data else None
+                    special = dict(meeting=p.id)
+                    special.update(special_form.special)
                     w = Blog(type=BlogPost.THESIS, title=special_form.title.data, body=special_form.body.data,
-                             banner=banner_name, special=special_form.special, parent=post, attachment=file_name,
+                             banner=banner_name, special=special, attachment=file_name,
                              author=Users.get(id=current_user.id))
                     commit()
                     return redirect(url_for('.blog_post', post=w.id))
@@ -257,18 +255,22 @@ def blog_post(post):
             info.insert(0, dict(url=url_for('.participants', event=p.id), title="Participants of", body=p.title))
 
         elif p.type == BlogPost.THESIS:
-            if (current_user.is_authenticated and p.author.id == current_user.id
-                    and datetime.fromtimestamp(p.parent.special) > datetime.utcnow()):
-                special_form = Meeting(prefix='Meeting', obj=p)
-                if special_form.validate_on_submit():
-                    p.title = special_form.title.data
-                    p.body = special_form.body.data
-                    p.special = special_form.special
+            if current_user.is_authenticated and p.author.id == current_user.id:
+                meeting = Blog.get(id=p.special.get('meeting', 0))
+                deadline = meeting.special.get('deadline', 0) if meeting else 0
 
-                    if special_form.banner.data:
-                        p.banner = save_upload(special_form.banner)
-                    if special_form.attachment.data:
-                        p.attachment = save_upload(special_form.attachment)
+                if datetime.fromtimestamp(deadline) > datetime.utcnow():
+                    p.participation = p.special.get('participation')
+                    special_form = Meeting(prefix='Meeting', obj=p)
+                    if special_form.validate_on_submit():
+                        p.title = special_form.title.data
+                        p.body = special_form.body.data
+                        p.special.update(special_form.special)
+
+                        if special_form.banner.data:
+                            p.banner = save_upload(special_form.banner)
+                        if special_form.attachment.data:
+                            p.attachment = save_upload(special_form.attachment)
 
         elif p.type in (BlogPost.CHIEF, BlogPost.TEAM):
             special_field = None
@@ -350,7 +352,7 @@ def participants(event, page=1):
     if not b:
         return redirect(url_for('.blog'))
 
-    res = blog_viewer(page, lambda x: x.post_type == BlogPost.THESIS.value and x.parent.id == event)
+    res = blog_viewer(page, lambda x: x.post_type == BlogPost.THESIS.value and x.special['meeting'] == event)
     if not res:
         return redirect(url_for('.participants', event=event))
 

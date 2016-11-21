@@ -209,9 +209,6 @@ class Blog(db.Entity):
     attachment = Optional(str)
     author = Required(Users)
 
-    children = Set("Blog")
-    parent = Optional("Blog")
-
     def __init__(self, **kwargs):
         _type = kwargs.pop('type', BlogPost.COMMON).value
         super(Blog, self).__init__(post_type=_type, **{x: y for x, y in kwargs.items() if y})
@@ -223,9 +220,5 @@ class Blog(db.Entity):
     @property
     def special_field(self):
         return json.dumps(self.special) if self.special else None
-
-    @property
-    def parent_field(self):
-        return self.parent.id if self.parent else None
 
 db.generate_mapping(create_tables=True)
