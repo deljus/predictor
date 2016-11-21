@@ -28,12 +28,11 @@ from .models import Users, Blog
 from .config import UserRole, BLOG_POSTS, Glyph, UPLOAD_PATH, BlogPost, LAB_NAME
 from .bootstrap import Pagination
 from .sendmail import send_mail
-from flask import redirect, url_for, render_template, Blueprint, flash, request
+from flask import redirect, url_for, render_template, Blueprint, flash, request, abort
 from flask_login import login_user, logout_user, login_required, current_user
 from pony.orm import db_session, select, commit
 from datetime import datetime
 from os import path
-from io import StringIO
 
 
 def save_upload(field):
@@ -55,7 +54,7 @@ def blog_viewer(page, selector):
         data = []
         for p in q.order_by(Blog.id.desc()).page(page, pagesize=BLOG_POSTS):
             tmp = dict(date=p.date.strftime('%B %d, %Y'), glyph=Glyph[p.type.name].value, title=p.title,
-                       body=p.body[:500], url=url_for('.blog_post', post=p.id), author=p.author.name)
+                       body=p.body, url=url_for('.blog_post', post=p.id), author=p.author.name)
             if p.banner:
                 tmp['banner'] = url_for('static', filename='uploads/%s' % p.banner)
             data.append(tmp)
@@ -64,6 +63,11 @@ def blog_viewer(page, selector):
 
 
 view_bp = Blueprint('view', __name__)
+
+
+@view_bp.errorhandler(404)
+def page_not_found(e):
+    return render_template('layout.html', title='404', subtitle='Page not found'), 404
 
 
 @view_bp.route('/login', methods=['GET', 'POST'])
@@ -178,17 +182,17 @@ def index():
     with db_session:
         c = select(x for x in Blog if x.post_type == BlogPost.CAROUSEL.value).order_by(Blog.id.desc()).limit(BLOG_POSTS)
         carousel = [dict(banner=url_for('static', filename='uploads/%s' % x.banner),
-                         title=x.title, body=x.body[:200]) for x in c]
+                         url=url_for('.blog_post', post=x.id), title=x.title, body=x.body) for x in c]
 
         ip = select(x for x in Blog if x.post_type == BlogPost.IMPORTANT.value)
-        info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body[:200])
+        info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body)
                 for x in ip.order_by(Blog.id.desc()).limit(3)]
 
         pl = select(x for x in Blog if x.post_type == BlogPost.PROJECTS.value)
 
         projects = []
         for x in pl.order_by(Blog.id.desc()):
-            tmp = dict(url=url_for('.blog_post', post=x.id), body=x.body[:100], title=x.title)
+            tmp = dict(url=url_for('.blog_post', post=x.id), body=x.body, title=x.title)
             if x.banner:
                 tmp['banner'] = url_for('static', filename='uploads/%s' % x.banner)
             projects.append(tmp)
@@ -211,7 +215,7 @@ def blog_post(post):
         """ collect sidebar
         """
         ip = select(x for x in Blog if x.post_type == BlogPost.IMPORTANT.value and x.id != post)
-        info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body[:200])
+        info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body)
                 for x in ip.order_by(Blog.id.desc()).limit(3)]
 
         if request.args.get('edit') == 'delete' and admin:
@@ -277,7 +281,7 @@ def blog_post(post):
 
         """ final data preparation
         """
-        data = dict(date=p.date.strftime('%B %d, %Y at %H:%M'), title=p.title, body=StringIO(p.body),
+        data = dict(date=p.date.strftime('%B %d, %Y at %H:%M'), title=p.title, body=p.body,
                     special_form=special_form, special_field=special_field)
         if p.banner:
             data['banner'] = url_for('static', filename='uploads/%s' % p.banner)
@@ -357,3 +361,12 @@ def participants(event, page=1):
         return redirect(url_for('.participants', event=event))
 
     return render_template("blog.html", paginator=res[1], posts=res[0], title=b.title, subtitle='Event')
+
+
+@view_bp.route('/<string:slug>/')
+def slug(slug):
+    with db_session:
+        p = Blog.get(slug=slug)
+        if not p:
+            abort(404)
+    return redirect(url_for('.blog_post', post=p.id))

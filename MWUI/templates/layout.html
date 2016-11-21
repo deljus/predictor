@@ -33,12 +33,13 @@
     </div>
 {% endblock %}
 
-{% block head %}
-    {{super()}}
-    {{fixes.ie8()}}
-{% endblock %}
-
 {% block styles -%}
     {{super()}}
     <link href="{{ url_for('static', filename='css/modern-business.css') }}" rel="stylesheet">
 {% endblock styles %}
+
+{% block head %}
+    {{super()}}
+    <link rel="icon" type="image/ico" href="{{ url_for('static', filename='favicon.ico') }}">
+    {{fixes.ie8()}}
+{% endblock %}

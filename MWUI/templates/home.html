@@ -12,7 +12,7 @@
                         <h4>{{ i.title }}</h4>
                     </div>
                     <div class="panel-body">
-                        <p>{{ i.body }}</p>
+                        <p>{{ i.body|markdown|truncate(200, True) }}</p>
                         <a href="{{ i.url }}" class="btn btn-default">
                             Read More <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
                         </a>
@@ -31,7 +31,7 @@
                 {% for i in projects %}
                     <a href="{{ i.url }}" class="list-group-item">
                         <h4 class="list-group-item-heading">{{ i.title }}</h4>
-                        <p class="list-group-item-text">{{ i.body }}</p>
+                        <p class="list-group-item-text">{{ i.body|markdown|truncate(100, True) }}</p>
                     </a>
                 {% endfor %}
             </div>

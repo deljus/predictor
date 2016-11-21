@@ -23,7 +23,7 @@
 from smtplib import SMTP
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from markdown import markdown
+from flask_misaka import markdown
 from .config import LAB_NAME, SMTP_MAIL, SMPT_HOST, SMTP_LOGIN, SMTP_PASSWORD, SMTP_PORT
 
 

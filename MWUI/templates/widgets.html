@@ -11,11 +11,13 @@
         <div class="carousel-inner">
             {% for i in data %}
                 <div class="item {{ 'active' if loop.first}}">
-                    <img class="center-block" src="{{ i.banner }}" alt="{{ i.title }}">
-                    <div class="carousel-caption">
-                        <h2>{{ i.title }}</h2>
-                        <p>{{ i.body }}</p>
-                    </div>
+                    <a href="{{ i.url }}">
+                        <img class="center-block" src="{{ i.banner }}" alt="{{ i.title }}">
+                        <div class="carousel-caption">
+                            <h2>{{ i.title }}</h2>
+                            <p>{{ i.body|markdown|truncate(150, True) }}</p>
+                        </div>
+                    </a>
                 </div>
             {% endfor %}
         </div>

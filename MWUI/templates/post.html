@@ -12,9 +12,7 @@
             <hr>
 
             <!-- Post Content -->
-            {% for i in post.body %}
-                <p class="{{ 'lead' if loop.first }}">{{ i }}</p>
-            {% endfor %}
+            {{ post.body|markdown }}
 
             {% if post.special_field != None %}
                 {{ post.special_field }}
@@ -56,7 +54,7 @@
                         <h4>{{ i.title }}</h4>
                     </div>
                     <div class="panel-body">
-                        <p>{{ i.body }}</p>
+                        <p>{{ i.body|markdown|truncate(200, True) }}</p>
                         <a href="{{ i.url }}" class="btn btn-default">
                             Read More <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
                         </a>

@@ -27,6 +27,7 @@ def init():
     from flask import Flask
     from flask_bootstrap import Bootstrap
     from flask_login import LoginManager
+    from flask_misaka import Misaka
     from flask_nav import Nav, register_renderer
 
     from .api import api_bp
@@ -39,7 +40,7 @@ def init():
 
     app.config['DEBUG'] = DEBUG
     app.config['SECRET_KEY'] = SECRET_KEY
-    app.config['BOOTSTRAP_SERVE_LOCAL'] = True
+    app.config['BOOTSTRAP_SERVE_LOCAL'] = DEBUG
     app.config['ERROR_404_HELP'] = False
     app.jinja_env.globals.update(year=datetime.utcnow, laboratory=LAB_NAME)
 
@@ -47,6 +48,8 @@ def init():
     nav = Nav(app)
     nav.register_element('top_nav', top_nav)
     Bootstrap(app)
+
+    Misaka(app)
 
     login_manager = LoginManager()
     login_manager.init_app(app)
