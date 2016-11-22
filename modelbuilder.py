@@ -198,21 +198,7 @@ class Modelbuilder(MBparser):
         print('description', description['description'])
         print('tol', description['tol'])
         print('nlim', description.get('nlim'))
-        dill.dump(dict(models=models, config=description),
-                    gzip.open(self.__options['model'], 'wb'))
-
-    def __gethashes(self, inputfile, extralabels=False, stereo=False):
-        hashes = set()
-        _cgr = CGRcore(cgr_type='0', extralabels=extralabels)
-        _fear = FEAR(isotop=False, stereo=stereo, hyb=extralabels)
-
-        with open(inputfile) as f:
-            for num, data in enumerate(RDFread(f).read(), start=1):
-                if num % 100 == 1:
-                    print("reaction: %d" % num, file=sys.stderr)
-                g = _cgr.getCGR(data)
-                hashes.update(x[1] for x in _fear.chkreaction(g, gennew=True)[-1])
-        return list(hashes)
+        dill.dump(dict(models=models, config=description), gzip.open(self.__options['model'], 'wb'))
 
     def __chkest(self, estimatorparams):
         if not estimatorparams or 1 < len(estimatorparams) < len(self.__descgens) or \
@@ -230,7 +216,7 @@ class Modelbuilder(MBparser):
 
     def __gendesc(self, output, fformat='svm', header=False):
         queue = enumerate(self.__descgens, start=1)
-        workpath = tempfile.mkdtemp(dir=self.__options['workpath'])
+        workpath = tempfile.mkdtemp(prefix='svm_', dir=self.__options['workpath'])
         while True:
             if threading.active_count() < self.__options['n_jobs']:
                 tmp = next(queue, None)
@@ -254,7 +240,7 @@ class Modelbuilder(MBparser):
     def __dragossvmfit(self, tasktype):
         """ files - basename for descriptors.
         """
-        workpath = tempfile.mkdtemp(dir=self.__options['workpath'])
+        workpath = tempfile.mkdtemp(prefix='gac_', dir=self.__options['workpath'])
         files = os.path.join(workpath, 'drag')
         dragos_work = os.path.join(workpath, 'work')
 
