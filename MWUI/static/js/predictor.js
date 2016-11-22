@@ -131,6 +131,8 @@ function find(arr, what, where) {
 /*** debug fuctions ***/
 function set_task(task_id) {
     $('#task_id').val(task_id);
+    setCookie('task_id', task_id);
+
 }
 function get_task() {
     var task_id = $('#task_id').val();
@@ -145,7 +147,7 @@ function load_reactions() {
 
 function load_results() {
     hide_all();
-    load_modelling_results(get_task());
+    get_modeling_result(get_task());
 }
 
 function map_done() {
@@ -496,8 +498,7 @@ function create_model_task(draw_data) {
         log_log('задача создана:');
         log_log(resp);
         var task_id = resp.task;
-        $("#task_id").val(task_id);
-        setCookie('task_id', task_id);
+        set_task(task_id);
         start_prepare_model_task(task_id);
 
     }).fail(handleRequestError);
@@ -911,7 +912,7 @@ function upload_draw_reaction(data) {
     }
 }
 
-function upload_reaction_form() {
+function post_modeling_task() {
     if (isSketcherDataChanged) {
         if (!confirm('Reactions  in the editor has been changed. To save changes please click the button below editor.Continue without saving?')) {
             return false;
@@ -919,7 +920,7 @@ function upload_reaction_form() {
 
     }
     Progress.start();
-    //log_log('upload_reaction_form->');
+    //log_log('post_modeling_task->');
     var task_id = $("#task_id").val();
     if (isEmpty(task_id)) {
         alert('Session task not defined');
@@ -934,76 +935,42 @@ function upload_reaction_form() {
             data[x.name] = x.value;
     });
 
-    return $.post(API_BASE + "/task_modelling/" + task_id, data).done(function (data, textStatus, jqXHR) {
+    return $.post(ApiUrl.model_task+ task_id, data).done(function (resp, textStatus, jqXHR) {
 
+        // new job will be returned
+        var task_id = resp.task;
+        set_task(task_id);
         start_modelling();
 
-    }).fail(function (jqXHR, textStatus, errorThrown) {
-        alert('Upload  reactions failure');
-        log_log('upload_reaction_forms->' + textStatus + ' ' + errorThrown);
-        handleRequestError();
-    });
+    }).fail(function (jqXHR, textStatus, errorThrown) {  });
 }
 
 function start_modelling() {
     //log_log('start_modelling->');
 
-    var task_id = $("#task_id").val();
-    set_task_status(task_id, REQ_MODELLING).done(function (data, textStatus, jqXHR) {
-
-        TAMER_ID = setInterval(function () {
-            check_modelling_status(task_id)
+    TAMER_ID = setInterval(function () {
+            get_modeling_result();
         }, TIMER_INTERVAL);
 
-    }).fail(function (jqXHR, textStatus, errorThrown) {
-        log_log('start_modelling->set_task_status->' + textStatus + ' ' + errorThrown);
-        handleRequestError();
-    });
 }
 
+function get_modeling_result() {
 
-function check_modelling_status(task_id) {
-    //log_log('check_modelling_status->'+task_id);
-
-    get_task_status(task_id).done(function (data, textStatus, jqXHR) {
-
-        if (data == MODELLING_DONE) {
-            reset_timer();
-            load_modelling_results(task_id);
-        }
-
-    }).fail(function (jqXHR, textStatus, errorThrown) {
-        reset_timer();
-        log_log('ERROR:check_modelling_status->get_task_status->' + textStatus + ' ' + errorThrown);
-        handleRequestError();
-    });
-
-}
-
-function load_modelling_results(task_id) {
-    // сбросим таймер - если функцию вызвали из левого меню
-    reset_timer();
-    //log_log('load_modelling_results->');
-    if (!task_id)
-        task_id = get_task();
+    //log_log('get_modeling_result->');
+    var task_id = get_task();
 
     if (task_id == "") {
         alert('Session task not defined');
         return false;
     }
 
-    $.get(API_BASE + "/task_modelling/" + task_id).done(function (data, textStatus, jqXHR) {
+    $.get(ApiUrl.model_task + task_id).done(function (data, textStatus, jqXHR) {
 
         Progress.done();
-        try {
-            display_modelling_results(data);
-        }
-        catch (err) {
-            log_log(err)
-        }
+        display_modelling_results(data);
 
     }).fail(function (jqXHR, textStatus, errorThrown) {
-        log_log('ERROR:load_modelling_results->' + textStatus + ' ' + errorThrown)
+        log_log('ERROR:get_modeling_result->' + textStatus + ' ' + errorThrown);
     });
     return true;
 }
@@ -1438,7 +1405,7 @@ function load_task(task_id) {
 
             case MODELLING_DONE:
                 reset_timer();
-                load_modelling_results(task_id);
+                get_modeling_result(task_id);
                 break;
             default:
                 load_reactions();
