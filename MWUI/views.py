@@ -90,19 +90,23 @@ def login():
 
     elif registration_form.validate_on_submit():
         with db_session:
+            m = select(x for x in Blog if x.post_type == BlogPost.EMAIL.value and x.special['type'] == 'reg').first()
             u = Users(email=registration_form.email.data, password=registration_form.password.data,
                       name=registration_form.name.data, job=registration_form.job.data,
                       town=registration_form.town.data, country=registration_form.country.data,
                       status=registration_form.status.data)
-        send_mail('Welcome!', u.email, to_name=u.name, subject='Welcome')
+            send_mail((m and m.body or 'Welcome! %s.') % u.name, u.email,
+                      to_name=u.name, subject=m and m.title or 'Welcome')
         return redirect(url_for('.login'))
 
     elif forgot_form.validate_on_submit():
         with db_session:
             u = Users.get(email=forgot_form.email.data)
-            u.gen_restore()
-        if u:
-            send_mail('Welcome! %s' % u.restore, u.email, to_name=u.name, subject='Welcome')
+            if u:
+                m = select(x for x in Blog if x.post_type == BlogPost.EMAIL.value and x.special['type'] == 'rep').first()
+                u.gen_restore()
+                send_mail((m and m.body or '%s\n\nYour restore password: %s') % (u.name, u.restore), u.email,
+                          to_name=u.name, subject=m and m.title or 'Forgot password?')
         flash('Check your email box', 'warning')
         return redirect(url_for('.login'))
 
@@ -358,7 +362,7 @@ def predictor():
 @view_bp.route('/blog/', methods=['GET'])
 @view_bp.route('/blog/<int:page>', methods=['GET'])
 def blog(page=1):
-    res = blog_viewer(page, lambda x: x.post_type != BlogPost.THESIS.value)
+    res = blog_viewer(page, lambda x: x.post_type not in (BlogPost.THESIS.value, BlogPost.EMAIL.value))
     if not res:
         return redirect(url_for('.blog'))
 

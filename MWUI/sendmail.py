@@ -24,19 +24,21 @@ from smtplib import SMTP
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from flask_misaka import markdown
+from flask import render_template
 from .config import LAB_NAME, SMTP_MAIL, SMPT_HOST, SMTP_LOGIN, SMTP_PASSWORD, SMTP_PORT
 
 
-def send_mail(message, to_mail, to_name="Colleague", subject=None):
+def send_mail(message, to_mail, vcard=None, to_name=None, subject=None):
+    html = render_template('email.html', body=markdown(message), author=markdown(vcard) if vcard else None)
+    text = '\n'.join([message, vcard or ''])
+
+    part1 = MIMEText(text, 'plain')
+    part2 = MIMEText(html, 'html')
+
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject or ""
     msg['From'] = '%s <%s>' % (LAB_NAME, SMTP_MAIL)
-    msg['To'] = '%s <%s>' % (to_name, to_mail)
-
-    html = markdown(message)
-
-    part1 = MIMEText(message, 'plain')
-    part2 = MIMEText(html, 'html')
+    msg['To'] = '%s <%s>' % (to_name, to_mail) if to_name else to_mail
 
     msg.attach(part1)
     msg.attach(part2)

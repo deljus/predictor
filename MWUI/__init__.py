@@ -33,7 +33,7 @@ def init():
     from .api import api_bp
     from .views import view_bp
     from .bootstrap import top_nav, Customrenderer
-    from .config import PORTAL_BASE, SECRET_KEY, DEBUG, LAB_NAME
+    from .config import API_BASE, SECRET_KEY, DEBUG, LAB_NAME
     from .logins import load_user
 
     app = Flask(__name__)
@@ -56,8 +56,8 @@ def init():
     login_manager.login_view = '.login'
     login_manager.user_loader(load_user)
 
-    app.register_blueprint(api_bp, url_prefix=join('/', PORTAL_BASE, 'api'))
-    app.register_blueprint(view_bp, url_prefix=join('/', PORTAL_BASE) if PORTAL_BASE else None)
+    app.register_blueprint(api_bp, url_prefix=join('/', API_BASE, 'api'))
+    app.register_blueprint(view_bp, url_prefix=join('/', API_BASE) if API_BASE else None)
 
     # start Flask app
     return app

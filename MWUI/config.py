@@ -24,15 +24,14 @@ from os import path
 
 
 UPLOAD_PATH = 'upload'
-PORTAL_BASE = ''
+API_BASE = ''
 SECRET_KEY = 'development key'
 DEBUG = False
-HOST = '0.0.0.0'
-PORT = 5000
 
 LAB_NAME = 'Kazan Chemoinformatics and Molecular Modeling Laboratory'
 LAB_SHORT = 'CIMM'
 BLOG_POSTS = 10
+
 SMPT_HOST = 'ex.kpfu.ru'
 SMTP_PORT = 587
 SMTP_LOGIN = ''
@@ -124,6 +123,7 @@ class BlogPost(Enum):
     MEETING = 8
     THESIS = 9
     ABOUT = 10
+    EMAIL = 11
 
 
 class Glyph(Enum):
@@ -137,6 +137,7 @@ class Glyph(Enum):
     MEETING = 'resize-small'
     THESIS = ''
     ABOUT = ''
+    EMAIL = ''
 
 
 class MeetingPost(Enum):
@@ -144,7 +145,7 @@ class MeetingPost(Enum):
     Poster = 2
 
 
-config_list = ['UPLOAD_PATH', 'PORTAL_BASE', 'SECRET_KEY', 'HOST', 'PORT',
+config_list = ['UPLOAD_PATH', 'API_BASE', 'SECRET_KEY',
                'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME',
                'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD', 'REDIS_TTL', 'REDIS_JOB_TIMEOUT',
                'LAB_NAME', 'LAB_SHORT', 'BLOG_POSTS',
