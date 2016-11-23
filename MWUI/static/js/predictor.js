@@ -29,6 +29,15 @@ TaskStatus = {
     , DONE: 4
 }
 
+
+//class StructureStatus(Enum):
+StructureStatus = {
+    RAW : 0,
+    HAS_ERROR : 1,
+    CLEAR : 2
+}
+
+
 var TIMER_INTERVAL = 5000;
 var MOL_FORMAT = 'mrv';
 
@@ -62,6 +71,14 @@ var ApiUrl = {
 }
 /******************************************************/
 
+function get_status_name(arr, id) {
+    for (var key in arr) {
+        if (arr[key]==id)
+            return key;
+
+    }
+    return null;
+}
 function array_distinct(arr, fld) {
     var i = 0,
         l = arr.length,
@@ -134,15 +151,35 @@ function set_task(task_id) {
     setCookie('task_id', task_id);
 
 }
+function set_structure(structure_id)
+{
+       $('#structure_id').val(structure_id);
+        setCookie('structure_id', structure_id);
+}
+function set_structure_data(data) {
+    var structure_id = get_structure();
+    $("#structure_data"+structure_id).val(encodeURIComponent(data)).attr("data-is-changed","1");
+}
+function get_structure_data(structure_id) {
+    if (structure_id==undefined)
+        structure_id = get_structure();
+    return $("#structure_data"+structure_id).val();
+}
 function get_task() {
     var task_id = $('#task_id').val();
     if (task_id == "")
         task_id = getCookie("task_id");
     return task_id;
 }
+function get_structure() {
+    var structure_id = $('#structure_id').val();
+    if (structure_id == "")
+        structure_id = getCookie("structure_id");
+    return structure_id;
+}
 function load_reactions() {
     hide_all();
-    prepare_task(get_task());
+    get_prepare_task(get_task());
 }
 
 function load_results() {
@@ -262,10 +299,13 @@ $(function () {
         upload_task_file_data();
     });
 
-    $("#reactions-tbd").on('click', '.structure-img', function () {
+    $("#prepare-reactions-tbd,#model-reactions-tbd").on('click', '.structure-img', function () {
         //og_log('click reaction lick');
-        var data = decodeURIComponent(this.getAttribute('data-structure'));
+        var $img = $(this);
+        var _id = $img.attr("data-structure-id");
+        var data = decodeURIComponent($("#structure_data"+_id).val());
 
+        set_structure(this.getAttribute('data-structure-id'));
         draw_moldata(data);
     });
 
@@ -273,7 +313,7 @@ $(function () {
     $('.dropdown-menu input').click(function (e) {
         e.stopPropagation();
     });
-    $("#reactions-tbd").on("hidden.bs.dropdown", ".dropdown", function(event){
+    $("#model-reactions-tbd").on("hidden.bs.dropdown", ".dropdown", function(event){
         var cur_obj = this;
         var add_arr = [];
         $(this).find('.dropdown-menu li').each(function (i,e) {
@@ -281,7 +321,7 @@ $(function () {
             var amount = $(e).find('input:text').val();
             if (parseFloat(amount)>0)
             {
-                add_arr.push( e.getAttribute('data-additive') );
+                add_arr.push( e.getAttribute('data-additive-name') );
             }
 
         });
@@ -346,16 +386,7 @@ function get_prepare_task_status(task_id) {
     return $.get(API_BASE + "/task/prepare/" + task_id);
 }
 
-function get_reaction_structure(reaction_id) {
-    return $.get(API_BASE + "/reaction_structure/" + reaction_id);
-}
 
-function put_reaction_structure(reaction_id, data) {
-    //log_log('put_reaction_structure->');
-    var data = {"reaction_structure": data};
-
-    return $.post(API_BASE + "/reaction_structure/" + reaction_id, data);
-}
 
 function get_solvents() {
     return $.get(API_BASE + "/solvents");
@@ -529,7 +560,7 @@ function upload_search_task_draw_data(draw_data) {
 function start_prepare_model_task(task_id) {
     //log_log('start_prepare_model_task->');
     TAMER_ID = setInterval(function () {
-        prepare_task(task_id)
+        get_prepare_task(task_id)
     }, TIMER_INTERVAL);
 
 }
@@ -569,10 +600,9 @@ function get_additives() {
     return $.get(ApiUrl.get_additives);
 }
 
-function prepare_task(task_id) {
-    log_log('prepare_task->');
-    if (!task_id)
-        task_id = get_task();
+function __get_prepare_task() {
+    log_log('get_prepare_task->');
+    task_id = get_task();
 
     if (task_id == "") {
         alert('Session task not defined');
@@ -602,6 +632,67 @@ function prepare_task(task_id) {
     return true;
 }
 
+function get_prepare_task() {
+    log_log('get_prepare_task->');
+    task_id = get_task();
+
+    if (task_id == "") {
+        alert('Session task not defined');
+        return false;
+    }
+
+    hide_all();
+
+    $.get(ApiUrl.prepare_task + task_id).done(function (resp, textStatus, jqXHR) {
+
+        log_log('prepare_task->done:' + textStatus);
+        Progress.done();
+
+
+        display_reactions_prepare_task(resp.structures);
+
+    }).fail(function (jqXHR, textStatus, errorThrown) {
+        log_log('prepare_task->' + textStatus)
+    });
+
+    return true;
+}
+
+function post_prepare_task(structure_data)
+{
+    log_log('post_prepare_task->');
+    var task_id = get_task();
+    if (task_id == "") {
+        alert('Session task not defined');
+        return false;
+    }
+
+    var data = [];
+
+    $("#prepare-reactions-tbd input:hidden[data-is-changed='1']").each(function () {
+        var structure_id = this.getAttribute('data-structure-id');
+        var structure_data = decodeURIComponent(this.value);
+        data.push({structure: structure_id, data:structure_data});
+    });
+
+    data = JSON.stringify(data);
+    log_log(data);
+    $.ajax({
+        "url": ApiUrl.prepare_task+task_id
+        , "type": "POST"
+        , "dataType": "json"
+        , "contentType": "application/json"
+        , "data": data
+    }).done(function (resp, textStatus, jqXHR) {
+        log_log(resp);
+        var task_id = resp.task;
+        set_task(task_id);
+        start_prepare_model_task(task_id);
+
+    }).fail(function(){});
+
+}
+
 
 function clear_editor() {
     try {
@@ -612,7 +703,95 @@ function clear_editor() {
     }
 }
 
-function display_task_reactions(reactions, models, additives) {
+function display_reactions_prepare_task(reactions) {
+
+    log_log('display_reactions_prepare_task->');
+    log_log(reactions)
+
+    // если скрыт редактор - покажем его
+    show_editor();
+
+    // очистим редактор
+    //clear_editor();
+
+    //  resize editor
+    $("#editor-div").parent().removeClass("col-md-12").addClass("col-md-6");
+
+    var jTbl = $("#prepare-reactions-tbd");
+    jTbl.empty();
+    var str = '';
+    var reaction_ids = '';
+    var first_reaction_id = '';
+
+    for (var i = 0; i < reactions.length; i++) {
+        var _reaction = reactions[i];
+        var _r_id = _reaction.structure;
+        if (i == 0)
+            first_reaction_id = _r_id;
+
+        str += '<tr  data-structure-id="' + _r_id + '">';
+
+        str += '<td>';
+        str += '<input type="hidden" id="structure_data'+_r_id+'"  name="structure_data'+_r_id+'" class=""  value="'+encodeURIComponent(_reaction.data)+'" data-is-changed="0" data-structure-id="' + _r_id + '" >';
+        str += '<a href="#"><img class="structure-img"   width="150" height="100" border="0" data-structure-id="' + _r_id + '" ></a>';
+        str += '</td>';
+
+        str += '<td>' + get_status_name(StructureStatus,_reaction.status) + '</td>';
+
+        str += '<td>';
+        str += '<button class="btn btn-danger" data-structure-id="' + _r_id + '"  data-role="todelete-btn" >Delete</button>';
+        str += '<input  type="hidden" data-role="todelete" name="todelete'+_r_id+'" value="0">';
+        str += '</td>';
+        str += '</tr>';
+
+    }
+
+    jTbl.append(str);
+
+
+    var settings = {
+        'carbonLabelVisible': false,
+        'cpkColoring': true,
+        'implicitHydrogen': false,
+        'width': 150,
+        'height': 100,
+        'zoomMode': 'autoshrink'
+    };
+
+    jTbl.find("img.structure-img").each(function () {
+        var $img = $(this);
+        var _id = $img.attr("data-structure-id");
+        var data = decodeURIComponent($("#structure_data"+_id).val());
+        var dataUrl = marvin.ImageExporter.mrvToDataUrl(data, "image/png", settings);
+        $img.attr('src', dataUrl);
+    });
+
+    $("#prepare-reactions-div").show("normal");
+
+    /*********** Add reaction save button to the editor ***************/
+    var jso = {
+        "name": "saveButton", // JS String
+        "image-url": "/static/images/save.png", // JS String */
+        "toolbar": "S" // JS String: "W" as West, "E" as East, "N" as North, "S" as South toolbar
+
+    }
+
+    // проверим - не были ли уже добавлена кнопка
+    if (!isSaveMrvBtnExists) {
+        // добавили кнопку под редактором
+        //marvinSketcherInstance.addButton(jso, save_structure_from_editor );
+        isSaveMrvBtnExists = true;
+    }
+
+    /*
+     if(first_reaction_id!='')
+     load_reaction(first_reaction_id);
+     */
+
+}
+
+
+function display_reactions_model_task(reactions, models, additives) {
 
     //log_log('display_task_reactions->');
 
@@ -669,15 +848,12 @@ function display_task_reactions(reactions, models, additives) {
             reaction_additives = []
         }
 
-        if (models.length == 0)
-            str += '<tr class="info">';   // если нет моделей - выделим строку
-        else
-            str += '<tr>';
-
-        str += '<td structure_id="' + _r_id + '" ><a href="#"><img class="structure-img"   width="150" height="100" border="0" data-structure="' + encodeURIComponent(_reaction.data) + '" ></a></td>';
+        str += '<tr  data-structure-id="' + _r_id + '"  data-is-changed="0">';
+        str += '<input type="text" name="structure_data'+_r_id+'" value="'+encodeURIComponent(_reaction.data)+'">';
+        str += '<td><a href="#"><img class="structure-img"   width="150" height="100" border="0" data-structure-id="' + _r_id + '" ></a></td>';
         str += '<td>';
 
-        str += '<select  multiple="multiple" role="model" name="model_' + _r_id + '" id="model_' + _r_id + '">';
+        str += '<select  multiple="multiple" data-role="model" name="model_' + _r_id + '" id="model_' + _r_id + '">';
         //str+='<option value=""></option>';
         try {
             for (var j = 0; j < models.length; j++) {
@@ -698,14 +874,13 @@ function display_task_reactions(reactions, models, additives) {
 
         str += '<td>';
 
-
         str += '<ul class="nav" role="navigation">\
             <li class="dropdown"> <a href="#" role="button" class="dropdown-toggle btn btn-default" data-toggle="dropdown">Select</a>\
                 <ul class="dropdown-menu" role="menu">';
                 for (var si=0;si<additives.length;si++)
                 {
                     var add = additives[si];
-                    str+='<li data-additive="'+add.name+'"><a role="menuitem" tabindex="-1" href="#"><div>'+add.name+'  <input type="text" class="addivitve-amount" id="additive_amount'+si+'" placeholder=""/></div></a></li>';
+                    str+='<li data-additive-name="'+add.name+'"><a role="menuitem" tabindex="-1" href="#"><div>'+add.name+'  <input data-additive-id="'+add.additive+'" type="text" class="addivitve-amount" id="additive_amount'+si+'" placeholder=""/></div></a></li>';
                 }
         str+='\
                 </ul>\
@@ -715,7 +890,7 @@ function display_task_reactions(reactions, models, additives) {
         str += '</td>';
 
 
-        str += '<td><input  class="form-control" name="temperature_' + _r_id + '" type="text" value="' + _temperature + '" size="5"/></td>';
+        str += '<td><input  class="form-control" data-role="temperature" name="temperature_' + _r_id + '" type="text" value="' + _temperature + '" size="5"/></td>';
         str += '<td>' + _status + '</td>';
         str += '</tr>';
 
@@ -762,7 +937,7 @@ function display_task_reactions(reactions, models, additives) {
     // проверим - не были ли уже добавлена кнопка
     if (!isSaveMrvBtnExists) {
         // добавили кнопку под редактором
-        //marvinSketcherInstance.addButton(jso, save_draw_reaction );
+        //marvinSketcherInstance.addButton(jso, save_structure_from_editor );
         isSaveMrvBtnExists = true;
     }
 
@@ -828,34 +1003,6 @@ function display_task_reactions(reactions, models, additives) {
 }
 
 
-function load_reaction(reaction_id) {
-    //log_log('load_reaction->');
-
-    if (isNaN(reaction_id)) {
-        alert('An error occurred when loading the reaction');
-        log_log('load_reaction-> reaction_id isNaN:' + reaction_id);
-        return false;
-    }
-    Progress.start();
-
-    get_reaction_structure(reaction_id).done(function (data, textStatus, jqXHR) {
-
-        Progress.done();
-        $('#reaction_id').val(reaction_id);
-
-        try {
-            draw_moldata(data);
-        }
-        catch (err) {
-            log_log(err)
-        }
-
-    }).fail(function (jqXHR, textStatus, errorThrown) {
-        log_log('ERROR:show_reaction->' + textStatus + ' ' + errorThrown)
-    });
-    return true;
-
-}
 
 function draw_moldata(data) {
     try {
@@ -877,7 +1024,7 @@ function draw_moldata(data) {
     }
 }
 
-function save_draw_reaction() {
+function save_structure_from_editor() {
     marvinSketcherInstance.exportStructure(MOL_FORMAT).then(function (source) {
 
         if (isMolEmpty(source)) {
@@ -885,7 +1032,11 @@ function save_draw_reaction() {
             return false;
         }
         else
-            upload_draw_reaction(source);
+        {
+            hide_save_sketcher_data_btn();
+            set_structure_data(source);
+        }
+
 
     }, function (error) {
         alert("Molecule export failed:" + error);
@@ -893,24 +1044,6 @@ function save_draw_reaction() {
 
 }
 
-function upload_draw_reaction(data) {
-    //log_log('upload_draw_reaction->');
-
-    var reaction_id = $('#reaction_id').val();
-    if (reaction_id != '') {
-        Progress.start();
-        put_reaction_structure(reaction_id, data).done(function (data, textStatus, jqXHR) {
-
-            isSketcherDataChanged = false;
-            Progress.done();
-            alert('Reaction has been saved successfully');
-
-        }).fail(handleRequestError);
-    }
-    else {
-        alert('Please, select a reaction from table');
-    }
-}
 
 function post_modeling_task() {
     if (isSketcherDataChanged) {
@@ -928,6 +1061,10 @@ function post_modeling_task() {
         return false;
     }
     var data = {};
+    $("#reactions-tbd tr").each(function () {
+
+    });
+
     $("#reactions-form").serializeArray().map(function (x) {
         if (data[x.name])
             data[x.name] = data[x.name] + ',' + x.value;
@@ -1004,10 +1141,6 @@ function load_searching_results(task_id) {
 }
 
 
-function load_reaction_img(reaction_id) {
-    return $.get(API_BASE + "/reaction_img/" + reaction_id);
-
-}
 /*** DEBUG ***/
 
 
@@ -1400,7 +1533,7 @@ function load_task(task_id) {
         switch (data) {
             case MAPPING_DONE:
                 reset_timer();
-                prepare_task(task_id);
+                get_prepare_task(task_id);
                 break;
 
             case MODELLING_DONE:
