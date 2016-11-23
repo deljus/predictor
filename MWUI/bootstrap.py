@@ -21,6 +21,7 @@
 #  MA 02110-1301, USA.
 #
 from math import ceil
+from flask import request
 from flask_login import current_user
 from flask_nav.elements import View, NavigationItem, Navbar, Separator, Subgroup
 from flask_bootstrap.nav import BootstrapRenderer
@@ -156,6 +157,6 @@ def top_nav():
                   ]
     else:
         navbar = [LeftSubgroup(View('News', '.blog'), View('About Us', '.about')),
-                  RightSubgroup(View('Login', '.login'))]
+                  RightSubgroup(View('Login', '.login', next=request.path))]
 
     return Navbar(View(LAB_SHORT, '.index'), *navbar)
