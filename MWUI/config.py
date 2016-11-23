@@ -124,6 +124,7 @@ class BlogPost(Enum):
     THESIS = 9
     ABOUT = 10
     EMAIL = 11
+    SERVICE = 12
 
 
 class Glyph(Enum):
@@ -138,6 +139,7 @@ class Glyph(Enum):
     THESIS = 'blackboard'
     ABOUT = 'eye-open'
     EMAIL = 'send'
+    SERVICE = ''
 
 
 class MeetingPost(Enum):

@@ -25,28 +25,14 @@ from collections import OrderedDict
 from pycountry import countries
 from .models import Users, Blog
 from .config import BlogPost, UserRole, MeetingPost
-from flask import request, url_for, redirect
+from .redirect import get_redirect_target, is_safe_url
+from flask import url_for, redirect
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from flask_login import current_user
 from pony.orm import db_session
 from wtforms import (StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError, TextAreaField,
                      SelectField, HiddenField)
-from urllib.parse import urlparse, urljoin
-
-
-def is_safe_url(target):
-    ref_url = urlparse(request.host_url)
-    test_url = urlparse(urljoin(request.host_url, target))
-    return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
-
-
-def get_redirect_target():
-    for target in request.args.get('next'), request.referrer:
-        if not target:
-            continue
-        if is_safe_url(target):
-            return target
 
 
 class JsonValidator(object):
