@@ -25,12 +25,28 @@ from collections import OrderedDict
 from pycountry import countries
 from .models import Users, Blog
 from .config import BlogPost, UserRole, MeetingPost
+from flask import request, url_for, redirect
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from flask_login import current_user
 from pony.orm import db_session
 from wtforms import (StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError, TextAreaField,
-                     SelectField)
+                     SelectField, HiddenField)
+from urllib.parse import urlparse, urljoin
+
+
+def is_safe_url(target):
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
+
+
+def get_redirect_target():
+    for target in request.args.get('next'), request.referrer:
+        if not target:
+            continue
+        if is_safe_url(target):
+            return target
 
 
 class JsonValidator(object):
@@ -75,12 +91,24 @@ class CheckUserExist(object):
 
 
 class CustomForm(FlaskForm):
+    next = HiddenField()
     _order = None
 
     def __iter__(self):
         collect = OrderedDict((x.name, x) for x in super(CustomForm, self).__iter__())
         for name in self._order or collect:
             yield collect[name]
+
+    def __init__(self, *args, **kwargs):
+        super(CustomForm, self).__init__(*args, **kwargs)
+        if not self.next.data:
+            self.next.data = get_redirect_target() or ''
+
+    def redirect(self, endpoint='index', **values):
+        if is_safe_url(self.next.data):
+            return redirect(self.next.data)
+
+        return redirect(get_redirect_target() or url_for(endpoint, **values))
 
 
 class VerifyPassword(object):
@@ -117,7 +145,8 @@ class Registration(Profile, Password):
     email = StringField('Email', [validators.DataRequired(), validators.Email(), CheckUserFree()])
     submit_btn = SubmitField('Register')
 
-    __order = ('csrf_token', 'email', 'password', 'confirm', 'name', 'status', 'job', 'town', 'country', 'submit_btn')
+    __order = ('csrf_token', 'next', 'email', 'password', 'confirm', 'name',
+               'status', 'job', 'town', 'country', 'submit_btn')
 
     def __init__(self, *args, **kwargs):
         self._order = ['%s%s' % ('prefix' in kwargs and '%s-' % kwargs['prefix'] or '', x) for x in self.__order]
