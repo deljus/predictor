@@ -21,6 +21,7 @@
 #  MA 02110-1301, USA.
 #
 from json import loads
+from collections import OrderedDict
 from pycountry import countries
 from .models import Users, Blog
 from .config import BlogPost, UserRole, MeetingPost
@@ -74,21 +75,12 @@ class CheckUserExist(object):
 
 
 class CustomForm(FlaskForm):
+    _order = None
+
     def __iter__(self):
-        token = self.csrf_token
-        yield token
-
-        field_names = {token.name}
-        for cls in self.__class__.__bases__:
-            for field in cls():
-                field_name = field.name
-                if field_name not in field_names:
-                    field_names.add(field_name)
-                    yield self[field_name]
-
-        for field_name in self._fields:
-            if field_name not in field_names:
-                yield self[field_name]
+        collect = OrderedDict((x.name, x) for x in super(CustomForm, self).__iter__())
+        for name in self._order or collect:
+            yield collect[name]
 
 
 class VerifyPassword(object):
@@ -104,10 +96,10 @@ class VerifyPassword(object):
 
 class Profile(CustomForm):
     name = StringField('Name Surname', [validators.DataRequired()])
+    status = StringField('Status')
     job = StringField('Organization')
     town = StringField('Town')
     country = SelectField('Country', [validators.DataRequired()], choices=[(x.alpha_3, x.name) for x in countries])
-    status = StringField('Status')
     submit_btn = SubmitField('Update Profile')
 
 
@@ -124,6 +116,12 @@ class Password(CustomForm):
 class Registration(Profile, Password):
     email = StringField('Email', [validators.DataRequired(), validators.Email(), CheckUserFree()])
     submit_btn = SubmitField('Register')
+
+    __order = ('csrf_token', 'email', 'password', 'confirm', 'name', 'status', 'job', 'town', 'country', 'submit_btn')
+
+    def __init__(self, *args, **kwargs):
+        self._order = ['%s%s' % ('prefix' in kwargs and '%s-' % kwargs['prefix'] or '', x) for x in self.__order]
+        super(Registration, self).__init__(*args, **kwargs)
 
 
 class Login(Email):
