@@ -131,13 +131,13 @@ class Glyph(Enum):
     CAROUSEL = 'camera'
     IMPORTANT = 'bullhorn'
     PROJECTS = 'hdd'
-    TEAM = 'queen'
-    CHIEF = 'king'
+    TEAM = 'knight'
+    CHIEF = 'queen'
     STUDENT = 'pawn'
     MEETING = 'resize-small'
-    THESIS = ''
-    ABOUT = ''
-    EMAIL = ''
+    THESIS = 'blackboard'
+    ABOUT = 'eye-open'
+    EMAIL = 'send'
 
 
 class MeetingPost(Enum):

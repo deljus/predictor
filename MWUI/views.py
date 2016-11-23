@@ -52,7 +52,7 @@ def blog_viewer(page, selector):
             return None
 
         data = []
-        for p in q.order_by(Blog.id.desc()).page(page, pagesize=BLOG_POSTS):
+        for p in q.order_by(Blog.date.desc()).page(page, pagesize=BLOG_POSTS):
             tmp = dict(date=p.date.strftime('%B %d, %Y'), glyph=Glyph[p.type.name].value, title=p.title,
                        body=p.body, url=url_for('.blog_post', post=p.id), author=p.author.name)
             if p.banner:
@@ -394,6 +394,20 @@ def participants(event, page=1):
         return redirect(url_for('.participants', event=event))
 
     return render_template("blog.html", paginator=res[1], posts=res[0], title=b.title, subtitle='Event')
+
+
+@view_bp.route('/emails', methods=['GET'])
+@view_bp.route('/emails/<int:page>', methods=['GET'])
+@login_required
+def emails(page=1):
+    if not current_user.role_is(UserRole.ADMIN):
+        return redirect(url_for('.index'))
+
+    res = blog_viewer(page, lambda x: x.post_type == BlogPost.EMAIL.value)
+    if not res:
+        return redirect(url_for('.emails'))
+
+    return render_template("blog.html", paginator=res[1], posts=res[0], title='E-mail templates', subtitle='list')
 
 
 @view_bp.route('/<string:slug>/')

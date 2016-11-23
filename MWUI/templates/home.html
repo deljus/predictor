@@ -9,7 +9,7 @@
             <div class="col-md-4">
                 <div class="panel panel-default">
                     <div class="panel-heading">
-                        <h4>{{ i.title }}</h4>
+                        <h4><span class="glyphicon glyphicon-bullhorn" aria-hidden="true"></span> {{ i.title }}</h4>
                     </div>
                     <div class="panel-body">
                         {{ i.body|truncate(200, True)|markdown }}
