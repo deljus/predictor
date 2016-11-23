@@ -79,7 +79,7 @@ def login():
     login_form = Login(prefix='Login')
     forgot_form = ForgotPassword(prefix='ForgotPassword')
 
-    forms = [('Welcome Back!', login_form), ('Not Registered?', registration_form), ('Forgot Password?', forgot_form)]
+    forms = [('Not Registered?', registration_form), ('Welcome Back!', login_form), ('Forgot Password?', forgot_form)]
 
     if login_form.validate_on_submit():
         user = User.get(login_form.email.data, login_form.password.data)
@@ -97,13 +97,15 @@ def login():
                       status=registration_form.status.data)
             send_mail((m and m.body or 'Welcome! %s.') % u.name, u.email,
                       to_name=u.name, subject=m and m.title or 'Welcome')
-        return redirect(url_for('.login'))
+        login_user(User(u), remember=False)
+        return redirect(url_for('.index'))
 
     elif forgot_form.validate_on_submit():
         with db_session:
             u = Users.get(email=forgot_form.email.data)
             if u:
-                m = select(x for x in Blog if x.post_type == BlogPost.EMAIL.value and x.special['type'] == 'rep').first()
+                m = select(x for x in Blog if x.post_type == BlogPost.EMAIL.value and
+                           x.special['type'] == 'rep').first()
                 u.gen_restore()
                 send_mail((m and m.body or '%s\n\nYour restore password: %s') % (u.name, u.restore), u.email,
                           to_name=u.name, subject=m and m.title or 'Forgot password?')
