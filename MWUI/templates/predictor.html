@@ -74,7 +74,7 @@
                         <p>After changing data in the editor, press the Save button.
                            You can correct mapping by dragging from atom to atom. For more detailed information please refer to <a href="https://www.youtube.com/watch?v=m9hPU_JpqMI">link</a>
                         </p>
-                        <button class="btn btn-primary" onclick="save_draw_reaction()">Save</button>
+                        <button class="btn btn-primary" onclick="save_structure_from_editor()">Save</button>
                 </div>
 
             </div>
@@ -82,13 +82,40 @@
         </div>
 
         <div class="col-md-6">
-            <div id="reactions-div" style="display:none">
+            <div id="prepare-reactions-div" style="display:none">
 
-                <h3>Reactions</h3>
-                <form id="reactions-form" name="reactions-form" enctype="multipart/form-data">
+                <h3>Prepare reactions</h3>
+                <form id="prepare-reactions-form" name="model-reactions-form" enctype="multipart/form-data">
                     <input id="task_id" name="task_id" type="hidden" value=""/>
-                    <input id="reaction_id" name="reaction_id" type="hidden" value=""/>
-                    <table id="reactions-tbl" class="table table-hover table-bordered">
+                    <input id="structure_id" name="structure_id" type="hidden" value=""/>
+                    <table id="prepare-reactions-tbl" class="table table-hover table-bordered">
+                        <colgroup>
+                            <col width="80%">
+                            <col width="20%">
+                        </colgroup>
+                        <thead>
+                        <tr>
+                            <th>Reaction</th>
+                            <th>Status</th>
+                            <th>Delete</th>
+                        </tr>
+                        </thead>
+                        <tbody id="prepare-reactions-tbd"></tbody>
+
+                    </table>
+                </form>
+                <div style="text-align:center">
+                    <button onclick="post_prepare_task()" class="btn btn-primary">Validate</button>
+                </div>
+
+            </div>
+            <div id="model-reactions-div" style="display:none">
+
+                <h3>Model Reactions</h3>
+                <form id="model-reactions-form" name="model-reactions-form" enctype="multipart/form-data">
+                    <input id="task_id" name="task_id" type="hidden" value=""/>
+                    <input id="structure_id" name="structure_id" type="hidden" value=""/>
+                    <table id="model-reactions-tbl" class="table table-hover table-bordered">
                         <colgroup>
                             <col width="10%">
                             <col width="20%">
@@ -105,10 +132,9 @@
                             <th>Status</th>
                         </tr>
                         </thead>
-                        <tbody id="reactions-tbd"></tbody>
+                        <tbody id="model-reactions-tbd"></tbody>
 
                     </table>
-                    <input type="hidden" id="task_reaction_ids" name="task_reaction_ids" value="" />
                 </form>
                 <div style="text-align:center">
                     <button onclick="post_modeling_task()" class="btn btn-primary">Start modelling</button>

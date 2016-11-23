@@ -51,6 +51,10 @@ li.dropdown > a.dropdown-toggle.btn.btn-default
 	text-align: center;
 	vertical-align: middle;
 }
+#reactions-tbl .td {
+	text-align: center;
+	vertical-align: middle;
+}
 
 #reactions-tbl th button.multiselect.dropdown-toggle.btn.btn-default
 {
