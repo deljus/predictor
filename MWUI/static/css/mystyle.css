@@ -47,16 +47,24 @@ li.dropdown > a.dropdown-toggle.btn.btn-default
 	width: 40px;
 
 }
-#reactions-tbl th {
+.reactions-tbl th {
 	text-align: center;
 	vertical-align: middle;
 }
-#reactions-tbl .td {
+.reactions-tbl .td {
 	text-align: center;
 	vertical-align: middle;
 }
 
-#reactions-tbl th button.multiselect.dropdown-toggle.btn.btn-default
+.reactions-tbl th button.multiselect.dropdown-toggle.btn.btn-default
 {
 	font-weight: bold;
+}
+
+.hdn {
+	display: none;
+}
+
+tr.delete-structure-tr td {
+	background-color: #c12e2a;
 }

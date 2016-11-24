@@ -113,10 +113,14 @@ function array_select(arr, fld, cond) {
 }
 
 function reset_timer() {
-    clearInterval(TAMER_ID);
+    try{
+        clearInterval(TAMER_ID);
+    }
+    catch(err){}
+
 }
 
-function log_log(str) {
+function log(str) {
     try {
         if (str instanceof Error)
             console.log(str.name + ":" + str.message);
@@ -140,7 +144,7 @@ function find(arr, what, where) {
         }
     }
     catch (err) {
-        log_log('find->' + err);
+        log('find->' + err);
     }
     return -1;
 }
@@ -159,6 +163,8 @@ function set_structure(structure_id)
 function set_structure_data(data) {
     var structure_id = get_structure();
     $("#structure_data"+structure_id).val(encodeURIComponent(data)).attr("data-is-changed","1");
+    update_structure_image(document.getElementById("structure-img"+structure_id));
+
 }
 function get_structure_data(structure_id) {
     if (structure_id==undefined)
@@ -199,7 +205,7 @@ function model_done() {
 var Progress = {}
 Progress.increase_progress = function (value) {
 
-    //log_log('increase_progress->');
+    //log('increase_progress->');
     try {
         var jPrg = $('.progress div[role=progressbar]');
         if (value)
@@ -217,7 +223,7 @@ Progress.increase_progress = function (value) {
         jPrg.width(prc + '%');//.text(prc+'%');
     }
     catch (err) {
-        log_log(err);
+        log(err);
     }
 }
 
@@ -260,21 +266,9 @@ function select_mode(mode) {
     }
 }
 
-function upload_file(data) {
-    return $.ajax({
-        type: 'POST',
-        url: API_BASE + '/upload',
-        data: data,
-        contentType: false,
-        cache: false,
-        processData: false,
-        async: false,
-    });
-
-}
 
 function upload_task_file_data() {
-    //log_log('upload_task_file_data->');
+    //log('upload_task_file_data->');
     Progress.start();
 
     var form_data = new FormData($('#upload-file-form')[0]);
@@ -307,6 +301,15 @@ $(function () {
 
         set_structure(this.getAttribute('data-structure-id'));
         draw_moldata(data);
+    });
+
+    $("#prepare-reactions-tbd,#model-reactions-tbd").on('click', 'button[data-role="todelete-btn"]', function () {
+        var _id = this.getAttribute("data-structure-id");
+        $("#todelete"+_id).val(1);
+        $("#structure_data"+_id).attr('data-is-changed','1');
+        $(this).closest('tr').addClass('delete-structure-tr');
+        return false;
+
     });
 
     // for additive control
@@ -365,7 +368,7 @@ function isMolEmpty(data) {
 }
 
 function set_task_status(task_id, status) {
-    //log_log('set_task_status->'+status);
+    //log('set_task_status->'+status);
     var data = JSON.stringify({"task_status": status});
     return $.ajax({
         "url": API_BASE + "/task_status/" + task_id
@@ -377,23 +380,8 @@ function set_task_status(task_id, status) {
 }
 
 function get_task_status(task_id) {
-    //log_log('get_task_status->'+task_id);
+    //log('get_task_status->'+task_id);
     return $.get(API_BASE + "/task_status/" + task_id);
-}
-
-function get_prepare_task_status(task_id) {
-    //log_log('get_task_status->'+task_id);
-    return $.get(API_BASE + "/task/prepare/" + task_id);
-}
-
-
-
-function get_solvents() {
-    return $.get(API_BASE + "/solvents");
-}
-
-function get_reactions_by_task(task_id) {
-    return $.get(API_BASE + "/task_reactions/" + task_id)
 }
 
 function get_model(model_id) {
@@ -411,6 +399,8 @@ function initControl() {
     });
 }
 
+/******* Hide/Show function ******/
+
 function hide_all() {
     hide_select_mode();
     hide_editor();
@@ -418,7 +408,20 @@ function hide_all() {
     hide_file_upload();
     hide_modelling_results();
 
+    hide_prepare_reactions();
+    hide_model_reactions();
+
 }
+
+function hide_prepare_reactions()
+{
+    $("#prepare-reactions-div").hide();
+}
+function hide_model_reactions()
+{
+    $("#model-reactions-div").hide();
+}
+
 
 function hide_modelling_results() {
     $('#results-div').hide();
@@ -443,9 +446,19 @@ function show_save_sketcher_data_btn() {
     $('#btn-save-sketcher-data-div').show();
 }
 
+function show_prepare_reactions()
+{
+    $("#prepare-reactions-div").show();
+}
+function show_model_reactions()
+{
+    $("#model-reactions-div").show();
+}
+
 function hide_editor() {
     //$('#editor-div').hide();
     $('#sketch').removeClass('sketcher-frame').addClass('hidden-sketcher-frame');
+    $("#editor-div").removeClass("resizable")
     hide_upload_sketcher_data_btn();
     hide_save_sketcher_data_btn();
 }
@@ -453,6 +466,7 @@ function hide_editor() {
 function show_editor(show_upload_reaction_button) {
     //$('#editor-div').show(1000);
     $('#sketch').removeClass('hidden-sketcher-frame').addClass('sketcher-frame');
+    $("#editor-div").addClass("resizable")
     if (show_upload_reaction_button) {
         show_upload_sketcher_data_btn();
     }
@@ -470,6 +484,75 @@ function hide_file_upload() {
 function show_file_upload() {
     $('#file-upload-div').show(1000);
 }
+
+
+/*************************************/
+
+/********** Get/Post functions  ******/
+
+function post_prepare_task(data)
+{
+    log('upload_data_for_prepare_task->');
+    var task_id = get_task();
+    if (task_id == "") {
+        alert('Session task not defined');
+        return false;
+    }
+
+    return     $.ajax({
+        "url": ApiUrl.prepare_task+task_id
+        , "type": "POST"
+        , "dataType": "json"
+        , "contentType": "application/json"
+        , "data": data
+    });
+}
+
+function post_new_model_task(data)
+{
+   return     $.ajax({
+        "url": ApiUrl.create_model_task
+        , "type": "POST"
+        , "dataType": "json"
+        , "contentType": "application/json"
+        , "data": data
+    })
+}
+
+function upload_file(data) {
+    return $.ajax({
+        type: 'POST',
+        url: API_BASE + '/upload',
+        data: data,
+        contentType: false,
+        cache: false,
+        processData: false,
+        async: false,
+    });
+
+}
+
+function get_prepare_task()
+{
+    var task_id = get_task();
+
+    if (task_id == "") {
+        alert('Session task not defined');
+        return false;
+    }
+
+    return $.get(ApiUrl.prepare_task + task_id);
+
+}
+
+function get_models() {
+    return $.get(ApiUrl.get_models);
+}
+
+function get_additives() {
+    return $.get(ApiUrl.get_additives);
+}
+/*************************************/
 
 
 function upload_sketcher_data() {
@@ -510,7 +593,7 @@ function upload_sketcher_search_data() {
 
 
 function create_model_task(draw_data) {
-    //log_log('create_model_task->');
+    //log('create_model_task->');
     hide_upload_sketcher_data_btn();
     hide_save_sketcher_data_btn();
 
@@ -518,16 +601,10 @@ function create_model_task(draw_data) {
     var data = {"data": draw_data};
     data = JSON.stringify(data);
 
-    $.ajax({
-        "url": ApiUrl.create_model_task
-        , "type": "POST"
-        , "dataType": "json"
-        , "contentType": "application/json"
-        , "data": data
-    }).done(function (resp, textStatus, jqXHR) {
+    post_new_model_task(data).done(function (resp, textStatus, jqXHR) {
 
-        log_log('задача создана:');
-        log_log(resp);
+        log('задача создана:');
+        log(resp);
         var task_id = resp.task;
         set_task(task_id);
         start_prepare_model_task(task_id);
@@ -536,7 +613,7 @@ function create_model_task(draw_data) {
 }
 
 function upload_search_task_draw_data(draw_data) {
-    //log_log('upload_search_task_draw_data->');
+    //log('upload_search_task_draw_data->');
     hide_upload_sketcher_data_btn();
     $('#btn-upload-sketcher-data-div').hide();
 
@@ -550,7 +627,7 @@ function upload_search_task_draw_data(draw_data) {
         , "data": data
     }).done(function (data, textStatus, jqXHR) {
 
-        //log_log('TASK_ID = '+data);
+        //log('TASK_ID = '+data);
         $("#task_id").val(data);
         start_task_searching(data);
 
@@ -558,9 +635,9 @@ function upload_search_task_draw_data(draw_data) {
 }
 
 function start_prepare_model_task(task_id) {
-    //log_log('start_prepare_model_task->');
+    //log('start_prepare_model_task->');
     TAMER_ID = setInterval(function () {
-        get_prepare_task(task_id)
+        load_prepare_task(task_id)
     }, TIMER_INTERVAL);
 
 }
@@ -575,7 +652,7 @@ function start_task_searching(task_id) {
 
 
 function check_searching_task_status(task_id) {
-    //log_log('check_searching_task_status->');
+    //log('check_searching_task_status->');
 
     get_task_status(task_id).done(function (data, textStatus, jqXHR) {
 
@@ -586,34 +663,23 @@ function check_searching_task_status(task_id) {
 
     }).fail(function (jqXHR, textStatus, errorThrown) {
         reset_timer();
-        log_log('ERROR:check_task_searching_status->get_task_status->' + textStatus + ' ' + errorThrown);
+        log('ERROR:check_task_searching_status->get_task_status->' + textStatus + ' ' + errorThrown);
         handleRequestError();
     });
 
 }
 
-function get_models() {
-    return $.get(ApiUrl.get_models);
-}
 
-function get_additives() {
-    return $.get(ApiUrl.get_additives);
-}
 
-function __get_prepare_task() {
-    log_log('get_prepare_task->');
-    task_id = get_task();
-
-    if (task_id == "") {
-        alert('Session task not defined');
-        return false;
-    }
+function load_data_for_modeling() {
+    log('load_data_for_modeling->');
 
     hide_all();
+    Progress.start();
 
-    $.get(ApiUrl.prepare_task + task_id).done(function (resp, textStatus, jqXHR) {
+    get_prepare_task().done(function (resp, textStatus, jqXHR) {
 
-        log_log('prepare_task->done:' + textStatus);
+        log('prepare_task->done:' + textStatus);
         Progress.done();
 
         $.when(
@@ -622,69 +688,56 @@ function __get_prepare_task() {
         ).then(function (models_data, additives_data) {
             var models = models_data[0];
             var additives = additives_data[0];
-            display_task_reactions(resp.structures, models, additives);
+            display_reactions_for_modeling(resp.structures, models, additives);
         });
 
     }).fail(function (jqXHR, textStatus, errorThrown) {
-        log_log('prepare_task->' + textStatus)
+        log('prepare_task->' + textStatus)
     });
 
     return true;
 }
 
-function get_prepare_task() {
-    log_log('get_prepare_task->');
-    task_id = get_task();
-
-    if (task_id == "") {
-        alert('Session task not defined');
-        return false;
-    }
+function load_prepare_task() {
 
     hide_all();
 
-    $.get(ApiUrl.prepare_task + task_id).done(function (resp, textStatus, jqXHR) {
+    get_prepare_task().done(function (resp, textStatus, jqXHR) {
 
-        log_log('prepare_task->done:' + textStatus);
+        log('prepare_task->done:' + textStatus);
         Progress.done();
-
 
         display_reactions_prepare_task(resp.structures);
 
     }).fail(function (jqXHR, textStatus, errorThrown) {
-        log_log('prepare_task->' + textStatus)
+        log('prepare_task->' + textStatus)
     });
 
     return true;
 }
 
-function post_prepare_task(structure_data)
-{
-    log_log('post_prepare_task->');
-    var task_id = get_task();
-    if (task_id == "") {
-        alert('Session task not defined');
-        return false;
-    }
 
+
+function upload_data_for_prepare_task()
+{
+    Progress.start();
     var data = [];
 
     $("#prepare-reactions-tbd input:hidden[data-is-changed='1']").each(function () {
         var structure_id = this.getAttribute('data-structure-id');
         var structure_data = decodeURIComponent(this.value);
-        data.push({structure: structure_id, data:structure_data});
+        var _obj = {structure: structure_id, data:structure_data};
+        var todelete = $("#todelete"+structure_id).val();
+        if (todelete=="1")
+            _obj.todelete = true;
+
+        data.push(_obj);
     });
 
     data = JSON.stringify(data);
-    log_log(data);
-    $.ajax({
-        "url": ApiUrl.prepare_task+task_id
-        , "type": "POST"
-        , "dataType": "json"
-        , "contentType": "application/json"
-        , "data": data
-    }).done(function (resp, textStatus, jqXHR) {
-        log_log(resp);
+
+    post_prepare_task(data).done(function (resp, textStatus, jqXHR) {
+        log(resp);
         var task_id = resp.task;
         set_task(task_id);
         start_prepare_model_task(task_id);
@@ -699,14 +752,14 @@ function clear_editor() {
         marvinSketcherInstance.clear();
     }
     catch (err) {
-        log_log(err)
+        log(err)
     }
 }
 
 function display_reactions_prepare_task(reactions) {
 
-    log_log('display_reactions_prepare_task->');
-    log_log(reactions)
+    log('display_reactions_prepare_task->');
+    log(reactions)
 
     // если скрыт редактор - покажем его
     show_editor();
@@ -732,15 +785,15 @@ function display_reactions_prepare_task(reactions) {
         str += '<tr  data-structure-id="' + _r_id + '">';
 
         str += '<td>';
-        str += '<input type="hidden" id="structure_data'+_r_id+'"  name="structure_data'+_r_id+'" class=""  value="'+encodeURIComponent(_reaction.data)+'" data-is-changed="0" data-structure-id="' + _r_id + '" >';
-        str += '<a href="#"><img class="structure-img"   width="150" height="100" border="0" data-structure-id="' + _r_id + '" ></a>';
+        str += '<input type="hidden" id="structure_data'+_r_id+'"  name="structure_data'+_r_id+'" value="'+encodeURIComponent(_reaction.data)+'" data-is-changed="0" data-structure-id="' + _r_id + '" >';
+        str += '<a href="#"><img class="structure-img" id="structure-img' + _r_id + '"   border="0" data-structure-id="' + _r_id + '" ></a>';
         str += '</td>';
 
         str += '<td>' + get_status_name(StructureStatus,_reaction.status) + '</td>';
 
         str += '<td>';
-        str += '<button class="btn btn-danger" data-structure-id="' + _r_id + '"  data-role="todelete-btn" >Delete</button>';
-        str += '<input  type="hidden" data-role="todelete" name="todelete'+_r_id+'" value="0">';
+        str += '<button class="btn btn-danger" data-structure-id="' + _r_id + '"  data-role="todelete-btn">Delete</button>';
+        str += '<input  type="hidden" data-role="todelete" name="todelete'+_r_id+'" id="todelete'+_r_id+'"  value="0">';
         str += '</td>';
         str += '</tr>';
 
@@ -749,24 +802,14 @@ function display_reactions_prepare_task(reactions) {
     jTbl.append(str);
 
 
-    var settings = {
-        'carbonLabelVisible': false,
-        'cpkColoring': true,
-        'implicitHydrogen': false,
-        'width': 150,
-        'height': 100,
-        'zoomMode': 'autoshrink'
-    };
+
 
     jTbl.find("img.structure-img").each(function () {
-        var $img = $(this);
-        var _id = $img.attr("data-structure-id");
-        var data = decodeURIComponent($("#structure_data"+_id).val());
-        var dataUrl = marvin.ImageExporter.mrvToDataUrl(data, "image/png", settings);
-        $img.attr('src', dataUrl);
+        update_structure_image(this);
     });
 
-    $("#prepare-reactions-div").show("normal");
+    show_prepare_reactions();
+
 
     /*********** Add reaction save button to the editor ***************/
     var jso = {
@@ -783,6 +826,15 @@ function display_reactions_prepare_task(reactions) {
         isSaveMrvBtnExists = true;
     }
 
+    for (var i = 0; i < reactions.length; i++)
+    {
+        if (reactions[i].status!=StructureStatus.CLEAR)
+        {
+            $("#validate-btn").show();
+            break;
+        }
+    }
+
     /*
      if(first_reaction_id!='')
      load_reaction(first_reaction_id);
@@ -790,71 +842,67 @@ function display_reactions_prepare_task(reactions) {
 
 }
 
+function update_structure_image(src)
+{
+        var settings = {
+        'carbonLabelVisible': false,
+        'cpkColoring': true,
+        'implicitHydrogen': false,
+        'width': 300,
+        'height': 150,
+        'zoomMode': 'autoshrink'
+    };
 
-function display_reactions_model_task(reactions, models, additives) {
+        var $img = $(src);
+        var _id = $img.attr("data-structure-id");
+        var data = decodeURIComponent($("#structure_data"+_id).val());
+        var dataUrl = marvin.ImageExporter.mrvToDataUrl(data, "image/png", settings);
+        $img.attr('src', dataUrl);
+}
 
-    //log_log('display_task_reactions->');
+function display_reactions_for_modeling(reactions, models, additives) {
 
-    // если скрыт редактор - покажем его
-    show_editor();
+    //log('display_reactions_for_modeling->');
 
-    // очистим редактор
-    //clear_editor();
+    if (models==undefined)
+        models = [];
 
-    //  resize editor
-    $("#editor-div").parent().removeClass("col-md-12").addClass("col-md-6");
+    if (additives==undefined)
+        additives = [];
 
-    var jTbl = $("#reactions-tbd");
+    var jTbl = $("#model-reactions-tbd");
     jTbl.empty();
     var str = '';
-    var reaction_ids = '';
-    var first_reaction_id = '';
-    var _temperature = '';
-    var _status = '';
-    var _solvent_id = '';
-    var reaction_models = [];
-    var reaction_model_ids = '';
 
     for (var i = 0; i < reactions.length; i++) {
         var _reaction = reactions[i];
         var _r_id = _reaction.structure;
-        if (i == 0)
-            first_reaction_id = _r_id;
-        try {
-            _temperature = _reaction.temperature;
-            if (isEmpty(_temperature))
-                _temperature = '';
-        } catch (err) {
-        }
+
+        var temperature = _reaction.temperature;
 
         try {
-            _status = _reaction.status;
-            if (isEmpty(_status))
-                _status = '';
-        } catch (err) {
-        }
-
-        try {
-            reaction_models = _reaction.models;
+            var reaction_models = _reaction.models;
         }
         catch (err) {
-            _reaction_models = []
+            var eaction_models = []
         }
 
         try {
-            reaction_additives = _reaction.additives;
+            var reaction_additives = _reaction.additives;
         }
         catch (err) {
-            reaction_additives = []
+            var reaction_additives = []
         }
 
-        str += '<tr  data-structure-id="' + _r_id + '"  data-is-changed="0">';
-        str += '<input type="text" name="structure_data'+_r_id+'" value="'+encodeURIComponent(_reaction.data)+'">';
-        str += '<td><a href="#"><img class="structure-img"   width="150" height="100" border="0" data-structure-id="' + _r_id + '" ></a></td>';
+         str += '<tr  data-structure-id="' + _r_id + '">';
+
         str += '<td>';
+        str += '<input type="hidden" id="structure_data'+_r_id+'"  name="structure_data'+_r_id+'" value="'+encodeURIComponent(_reaction.data)+'" data-structure-id="' + _r_id + '" >';
+        str += '<a href="#"><img class="structure-img" id="structure-img' + _r_id + '"   border="0" data-structure-id="' + _r_id + '" ></a>';
+        str += '</td>';
 
+        str += '<td>';
         str += '<select  multiple="multiple" data-role="model" name="model_' + _r_id + '" id="model_' + _r_id + '">';
-        //str+='<option value=""></option>';
         try {
             for (var j = 0; j < models.length; j++) {
                 _m = models[j];
@@ -866,7 +914,7 @@ function display_reactions_model_task(reactions, models, additives) {
             }
         }
         catch (err) {
-            log_log(err)
+            log(err)
         }
         str += '</select>';
         str += '</td>';
@@ -875,12 +923,12 @@ function display_reactions_model_task(reactions, models, additives) {
         str += '<td>';
 
         str += '<ul class="nav" role="navigation">\
-            <li class="dropdown"> <a href="#" role="button" class="dropdown-toggle btn btn-default" data-toggle="dropdown">Select</a>\
+            <li class="dropdown"> <a href="#" role="button" class="dropdown-toggle btn btn-default" data-toggle="dropdown">None selected</a>\
                 <ul class="dropdown-menu" role="menu">';
                 for (var si=0;si<additives.length;si++)
                 {
                     var add = additives[si];
-                    str+='<li data-additive-name="'+add.name+'"><a role="menuitem" tabindex="-1" href="#"><div>'+add.name+'  <input data-additive-id="'+add.additive+'" type="text" class="addivitve-amount" id="additive_amount'+si+'" placeholder=""/></div></a></li>';
+                    str+='<li data-additive-name="'+add.name+'"><a role="menuitem" tabindex="-1" href="#"><div>'+add.name+'  <input data-role="additive-amout" data-additive-id="'+add.additive+'" type="text" class="addivitve-amount" id="additive_amount'+si+'" placeholder=""/></div></a></li>';
                 }
         str+='\
                 </ul>\
@@ -890,61 +938,18 @@ function display_reactions_model_task(reactions, models, additives) {
         str += '</td>';
 
 
-        str += '<td><input  class="form-control" data-role="temperature" name="temperature_' + _r_id + '" type="text" value="' + _temperature + '" size="5"/></td>';
-        str += '<td>' + _status + '</td>';
+        str += '<td><input  class="form-control" data-role="temperature" name="temperature_' + _r_id + '" type="text" value="' + temperature + '" size="5"/></td>';
         str += '</tr>';
 
-        if (reaction_ids == '')
-            reaction_ids += _r_id;
-        else
-            reaction_ids += ',' + _r_id;
     }
     jTbl.append(str);
 
-
-
-
-    var settings = {
-        'carbonLabelVisible': false,
-        'cpkColoring': true,
-        'implicitHydrogen': false,
-        'width': 150,
-        'height': 100,
-        'zoomMode': 'autoshrink'
-    };
-
     jTbl.find("img.structure-img").each(function () {
-        var $img = $(this);
-        var data = decodeURIComponent($img.attr("data-structure"));
-        var dataUrl = marvin.ImageExporter.mrvToDataUrl(data, "image/png", settings);
-        $img.attr('src', dataUrl);
+        update_structure_image(this);
     });
 
+    show_model_reactions();
 
-    $('#task_reaction_ids').val(reaction_ids);
-
-
-    $("#reactions-div").show("normal");
-
-    /*********** Add reaction save button to the editor ***************/
-    var jso = {
-        "name": "saveButton", // JS String
-        "image-url": "/static/images/save.png", // JS String */
-        "toolbar": "S" // JS String: "W" as West, "E" as East, "N" as North, "S" as South toolbar
-
-    }
-
-    // проверим - не были ли уже добавлена кнопка
-    if (!isSaveMrvBtnExists) {
-        // добавили кнопку под редактором
-        //marvinSketcherInstance.addButton(jso, save_structure_from_editor );
-        isSaveMrvBtnExists = true;
-    }
-
-    /*
-     if(first_reaction_id!='')
-     load_reaction(first_reaction_id);
-     */
 
     // загрузим модели в шапку
     try {
@@ -979,7 +984,7 @@ function display_reactions_model_task(reactions, models, additives) {
                     })
                 }
                 catch (err) {
-                    log_log(err)
+                    log(err)
                 }
 
 
@@ -987,13 +992,12 @@ function display_reactions_model_task(reactions, models, additives) {
         });
     }
     catch (err) {
-        log_log('display_task_reactions->load models->' + err)
+        log('display_task_reactions->load models->' + err)
     }
 
     try {
-        jTbl.find('select[role=model]').each(function () {
-            var jSelect = $(this);
-            jSelect.multiselect();
+        jTbl.find('select[data-role=model]').each(function () {
+            $(this).multiselect();
         });
     }
     catch (err) {
@@ -1001,7 +1005,6 @@ function display_reactions_model_task(reactions, models, additives) {
 
 
 }
-
 
 
 function draw_moldata(data) {
@@ -1019,8 +1022,8 @@ function draw_moldata(data) {
 
     }
     catch (err) {
-        log_log('draw_moldata->');
-        log_log(err);
+        log('draw_moldata->');
+        log(err);
     }
 }
 
@@ -1044,35 +1047,38 @@ function save_structure_from_editor() {
 
 }
 
-
-function post_modeling_task() {
-    if (isSketcherDataChanged) {
-        if (!confirm('Reactions  in the editor has been changed. To save changes please click the button below editor.Continue without saving?')) {
+function post_model_task(data)
+{
+        var task_id = get_task();
+        if (task_id=="") {
+            alert('Session task not defined');
+            Progress.done();
             return false;
         }
+        return $.post(ApiUrl.model_task+ task_id, data);
+}
+function upload_task_for_modeling() {
 
-    }
+    //log('upload_task_for_modeling->');
+
     Progress.start();
-    //log_log('post_modeling_task->');
-    var task_id = $("#task_id").val();
-    if (isEmpty(task_id)) {
-        alert('Session task not defined');
-        Progress.done();
-        return false;
-    }
-    var data = {};
-    $("#reactions-tbd tr").each(function () {
 
+    var data = [];
+    $("#model-reactions-tbd tr").each(function () {
+        var _obj = {};
+        var $tr = $(this);
+
+        _obj.structure = $tr.attr("data-structure-id");
+        _obj.temperature = $tr.find('input[data-role=temperature]').val();
+        _obj.models = $tr.find('select[data-role=model] option:selected').map(function(){return {model:this.value}}).toArray();
+        _obj.additives = $tr.find('input[data-role="additive-amout"]').map(function(){if (this.value!='') return {amount:this.value, additive:this.getAttribute('data-additive-id')} }).toArray();
+
+        data.push(_obj);
     });
 
-    $("#reactions-form").serializeArray().map(function (x) {
-        if (data[x.name])
-            data[x.name] = data[x.name] + ',' + x.value;
-        else
-            data[x.name] = x.value;
-    });
+    log(data);
 
-    return $.post(ApiUrl.model_task+ task_id, data).done(function (resp, textStatus, jqXHR) {
+    return post_model_task(JSON.stringify(data)).done(function (resp, textStatus, jqXHR) {
 
         // new job will be returned
         var task_id = resp.task;
@@ -1083,7 +1089,7 @@ function post_modeling_task() {
 }
 
 function start_modelling() {
-    //log_log('start_modelling->');
+    //log('start_modelling->');
 
     TAMER_ID = setInterval(function () {
             get_modeling_result();
@@ -1093,7 +1099,7 @@ function start_modelling() {
 
 function get_modeling_result() {
 
-    //log_log('get_modeling_result->');
+    //log('get_modeling_result->');
     var task_id = get_task();
 
     if (task_id == "") {
@@ -1107,7 +1113,7 @@ function get_modeling_result() {
         display_modelling_results(data);
 
     }).fail(function (jqXHR, textStatus, errorThrown) {
-        log_log('ERROR:get_modeling_result->' + textStatus + ' ' + errorThrown);
+        log('ERROR:get_modeling_result->' + textStatus + ' ' + errorThrown);
     });
     return true;
 }
@@ -1131,11 +1137,11 @@ function load_searching_results(task_id) {
             display_searching_results(data);
         }
         catch (err) {
-            log_log(err)
+            log(err)
         }
 
     }).fail(function (jqXHR, textStatus, errorThrown) {
-        log_log('ERROR:load_searching_results->' + textStatus + ' ' + errorThrown)
+        log('ERROR:load_searching_results->' + textStatus + ' ' + errorThrown)
     });
     return true;
 }
@@ -1151,7 +1157,7 @@ var mrv_result_structures = {};
 var reaction_structures = {};
 
 function display_modelling_results(results) {
-    //log_log('display_modelling_results->');
+    //log('display_modelling_results->');
     // скроем редактор
     hide_editor();
     // скроем таблицу с реакциями
@@ -1298,7 +1304,7 @@ function display_modelling_results(results) {
                     });
                 }
                 catch (err) {
-                    log_log(err);
+                    log(err);
                 }
             });
         }
@@ -1328,7 +1334,7 @@ function display_modelling_results(results) {
             });
         }
         catch (err) {
-            log_log(err);
+            log(err);
         }
     });
     // на клик по картинке посадим загрузку в модальное окно большой картинки
@@ -1344,14 +1350,14 @@ function display_modelling_results(results) {
             });
         }
         catch (err) {
-            log_log(err);
+            log(err);
         }
     });
 
 }
 
 function display_searching_results(results) {
-    //log_log('display_searching_results->');
+    //log('display_searching_results->');
     // скроем редактор
     hide_editor();
     // скроем таблицу с реакциями
@@ -1469,7 +1475,7 @@ function display_searching_results(results) {
                     });
                 }
                 catch (err) {
-                    log_log(err);
+                    log(err);
                 }
             });
         }
@@ -1499,7 +1505,7 @@ function display_searching_results(results) {
             });
         }
         catch (err) {
-            log_log(err);
+            log(err);
         }
     });
     // на клик по картинке посадим загрузку в модальное окно большой картинки
@@ -1515,7 +1521,7 @@ function display_searching_results(results) {
             });
         }
         catch (err) {
-            log_log(err);
+            log(err);
         }
     });
 
@@ -1548,7 +1554,7 @@ function load_task(task_id) {
 
     }).fail(function (jqXHR, textStatus, errorThrown) {
         reset_timer();
-        log_log('ERROR:check_task_mapping_status->get_task_status->' + textStatus + ' ' + errorThrown);
+        log('ERROR:check_task_mapping_status->get_task_status->' + textStatus + ' ' + errorThrown);
         handleRequestError();
     });
 }
@@ -1563,11 +1569,11 @@ function load_model_example(model_id) {
             show_editor(true);
         }
         catch (err) {
-            log_log(err)
+            log(err)
         }
 
     }).fail(function (jqXHR, textStatus, errorThrown) {
-        log_log('ERROR:load_model_example->' + textStatus + ' ' + errorThrown)
+        log('ERROR:load_model_example->' + textStatus + ' ' + errorThrown)
     });
     return true;
 }
