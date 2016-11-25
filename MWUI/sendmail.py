@@ -28,11 +28,10 @@ from flask import render_template
 from .config import LAB_NAME, SMTP_MAIL, SMPT_HOST, SMTP_LOGIN, SMTP_PASSWORD, SMTP_PORT
 
 
-def send_mail(message, to_mail, vcard=None, to_name=None, subject=None):
-    html = render_template('email.html', body=markdown(message), author=markdown(vcard) if vcard else None)
-    text = '\n'.join([message, vcard or ''])
+def send_mail(message, to_mail, to_name=None, subject=None, banner=None, title=None):
+    html = render_template('email.html', body=markdown(message), banner=banner, title=title)
 
-    part1 = MIMEText(text, 'plain')
+    part1 = MIMEText(message, 'plain')
     part2 = MIMEText(html, 'html')
 
     msg = MIMEMultipart('alternative')
