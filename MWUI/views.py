@@ -304,6 +304,7 @@ def blog_post(post):
             if remove_post_form.validate_on_submit():
                 p.delete()
                 remove_post_form.redirect('.blog')
+                return redirect(url_for('.blog'))
             elif edit_post_form.validate_on_submit():
                 p.body = edit_post_form.body.data
                 p.title = edit_post_form.title.data
@@ -326,10 +327,14 @@ def blog_post(post):
 
         """ sidebar for nested posts
         """
-        for i in p.children or p.parent and p.parent.children or []:  # need order
+        _parent = p.parent or p
+        for i in _parent.children or []:  # need order
             if i.post_type == BlogPost.SERVICE.value and i.id != post:
-                children.append(dict(title=i.title, url=url_for('.blog_post', post=i.id), active=i.id == post,
+                children.append(dict(title=i.title, url=url_for('.blog_post', post=i.id),
                                      order=i.special and i.special.get('order', 0) or 0))
+
+        if _parent.type == BlogPost.MEETING:
+            children.append(dict(title='Participants', url=url_for('.participants', event=_parent.id), order=20))
 
         """ SERVICE POST
         """
@@ -384,10 +389,10 @@ def blog_post(post):
         if p.attachment:
             data['attachment'] = url_for('static', filename='uploads/%s' % p.attachment)
 
-        return render_template("post.html", title=title or p.title, post=data, info=info,
-                               children=sorted(children, key=lambda x: x['order'], reverse=True),
-                               edit_form=edit_post_form, remove_form=remove_post_form, crumb=crumb,
-                               special_form=special_form, special_field=special_field)
+    return render_template("post.html", title=title or p.title, post=data, info=info,
+                           children=sorted(children, key=lambda x: x['order']),
+                           edit_form=edit_post_form, remove_form=remove_post_form, crumb=crumb,
+                           special_form=special_form, special_field=special_field)
 
 
 @view_bp.route('/search', methods=['GET'])
