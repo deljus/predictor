@@ -1063,7 +1063,7 @@ function get_modeling_result() {
     $.get(ApiUrl.model_task + task_id).done(function (resp, textStatus, jqXHR) {
 
         Progress.done();
-        log(resp);
+
         display_modelling_results(resp.structures);
 
     }).fail(function (jqXHR, textStatus, errorThrown) {
@@ -1086,6 +1086,9 @@ function display_modelling_results(structures) {
 
     hide_all();
 
+    // DEBUG
+    //structures = [{structure:1, data:"", temperature:300, models:[{model:1, name:"model 1", results:[{key:"param1", value:"value1", type:0}]},{model:2, name:"model 2", results:[{key:"param2", value:"value2", type:0}]}], additives:[{additive:"ethanol", amount:55}, {additive:"water", amount:44}]}]
+
     var jTbl = $("#results-tbody");
     jTbl.empty();
     var tbd = jTbl.get(0);
@@ -1093,48 +1096,70 @@ function display_modelling_results(structures) {
     /************************************/
     for (var i = 0; i < structures.length; i++) {
 
-        var structure = structures[i];
 
+        var structure_span_count = 0;
+        var structure_data, additives,temperature, structure, r_id, models,  row, cellReactionImg, cellSolvents, cellTemperature, _model, cellModel, _results, cellModelResultKey, cellModelResultValue, _result;
+
+        structure = structures[i];
         // ID реакции
         r_id = structure.structure;
+        structure_data = structure.data;
 
-        // результаты моделирования конкретной реакции
-        var models = (structure['models'] instanceof Array ? structure['models']:[]);
+        models = structure['models'] || [{model:1, name:"unmodelable structure"}];
+        temperature = structure['temperature'] | "";
+        additives = structure['additives'] || [{additive:0, name:""}];
 
-        if (models.length == 0) {
-            models = [{ model: 'unmodelable structure', results:[{key: ' ', value: '', type: 0}] }];
-        }
+        $.map(models,function (n,i) {structure_span_count+=n.results.length});
+        structure_span_count = structure_span_count || 1;
 
-        var structure_span_count = 0;   $.map(models,function (n,i) {structure_span_count+=n.results.length});
-        structure_span_count = (structure_span_count==0?structure_span_count:1);
+        row = tbd.insertRow();
 
-        var rowReaction = tbd.insertRow();
+        cellReactionImg = row.insertCell();
+        cellReactionImg.innerHTML = '<input type="hidden" id="structure_data'+r_id+'"  name="structure_data'+r_id+'" value="'+encodeURIComponent(structure_data)+'" data-structure-id="' + r_id + '" ><a href="#"><img class="structure-img" id="structure-img' + r_id + '"   border="0" data-structure-id="' + r_id + '" ></a>';
 
-        var cellReactionImg = rowReaction.insertCell();
-        cellReactionImg.innerHTML = '<img width="300" class="reaction_img" reaction_id="' + r_id + '" src="{{ url_for("static", filename="images/ajax-loader-tiny.gif") }}"  alt="Image unavailable"/>';
         cellReactionImg.rowSpan = structure_span_count;
 
-        var additives = (structure['additives'] instanceof Array ? structure['additives']:[]);
-        additives = $.map(additives,function (n,i) {return n.additive}).join(', ');
-
-        var cellSolvents = rowReaction.insertCell();
-        cellSolvents.innerHTML = additives;
+        cellSolvents = row.insertCell();
+        cellSolvents.innerHTML = $.map(additives,function (n,i) {return n.additive+" ("+n.amount+")"}).join(', ');
         cellSolvents.rowSpan = structure_span_count;
 
-        var temperature = (structure['temperature'] ? structure['temperature']:"");
-
-        var cellTemperature = rowReaction.insertCell();
+        cellTemperature = row.insertCell();
         cellTemperature.innerHTML = temperature;
         cellTemperature.rowSpan = structure_span_count;
 
         for(var mi=0;mi<models.length;mi++)
         {
-            var _model = models[mi];
+            _model = models[mi];
+            _results = _model['results'] || [{key:"", value:""}];
+            if (mi>0)
+            {
+                row = tbd.insertRow();
+            }
+            cellModel = row.insertCell();
+            cellModel.innerHTML = _model.name;
+            cellModel.rowSpan = _results.length;
+
+            for (ri=0;ri<_results.length;ri++)
+            {
+                _result = _results[ri];
+                if (ri>0)
+                {
+                    row = tbd.insertRow();
+                }
+                cellModelResultKey = row.insertCell();
+                cellModelResultKey.innerHTML = _result.key;
+
+                cellModelResultValue = row.insertCell();
+                cellModelResultValue.innerHTML = _result.value;
+            }
         }
-
-
     }
-        $("#results-div").show("normal");
+
+    $(tbd).find("img.structure-img").each(function () {
+        update_structure_image(this);
+    });
+
+    $("#results-div").show("normal");
 /*
 
     var large_settings = {
@@ -1144,8 +1169,6 @@ function display_modelling_results(structures) {
         'width': 600,
         'height': 300
     };
-
-
 
     jTbl.find('.reaction_img').each(function () {
 
