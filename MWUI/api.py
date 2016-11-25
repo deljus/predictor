@@ -87,19 +87,19 @@ def get_models_list(skip_prep=True):
 def fetchtask(task, status):
     job = redis.fetch_job(task)
     if job is None:
-        abort(404, message='invalid task id')
+        abort(404, message='Invalid task id. Perhaps this task has already been removed')
 
     if not job:
         abort(500, message='modeling server error')
 
     if not job['is_finished']:
-        abort(403, message='task not ready')
+        abort(512, message='PROCESSING.Task not ready')
 
     if job['result']['status'] != status:
-        abort(403, message='task incompatible')
+        abort(406, message='Task status is invalid. Task status is ['+job['result']['status'].name+']')
 
     if job['result']['user'] != current_user.id:
-        abort(403, message='user access deny')
+        abort(403, message='User access deny. You do not have pemission to this task')
 
     return job['result'], job['ended_at']
 
