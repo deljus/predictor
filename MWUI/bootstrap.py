@@ -146,7 +146,7 @@ class Pagination(object):
 def top_nav():
     if current_user.is_authenticated:
         user_menu = [View('Modeling Results', '.results'), View('Queries History', '.queries'), Separator(),
-                     View('Events List', '.events'),
+                     View('My Events', '.events'),
                      View('Profile', '.profile'), Separator(), View('Logout', '.logout')]
         if current_user.role_is(UserRole.ADMIN):
             user_menu.insert(4, View('Email Templates', '.emails'))
@@ -157,6 +157,7 @@ def top_nav():
                   ]
     else:
         navbar = [LeftSubgroup(View('News', '.blog'), View('About Us', '.about')),
-                  RightSubgroup(View('Login', '.login', next=request.path))]
+                  RightSubgroup(View('Login', '.login', next=request.path),
+                                View('Registration', '.registration', next=request.path))]
 
     return Navbar(View(LAB_SHORT, '.index'), *navbar)

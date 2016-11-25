@@ -32,7 +32,7 @@ from flask_wtf.file import FileField, FileAllowed
 from flask_login import current_user
 from pony.orm import db_session
 from wtforms import (StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError, TextAreaField,
-                     SelectField, HiddenField)
+                     SelectField, HiddenField, IntegerField)
 
 
 class JsonValidator(object):
@@ -90,7 +90,7 @@ class CustomForm(FlaskForm):
         if not self.next.data:
             self.next.data = get_redirect_target() or ''
 
-    def redirect(self, endpoint='index', **values):
+    def redirect(self, endpoint='.index', **values):
         if is_safe_url(self.next.data):
             return redirect(self.next.data)
 
@@ -106,6 +106,10 @@ class VerifyPassword(object):
             user = Users.get(id=current_user.id)
             if not user or not user.verify_password(field.data):
                 raise ValidationError(self.message)
+
+
+class DeleteButton(CustomForm):
+    submit_btn = SubmitField('Delete')
 
 
 class Profile(CustomForm):
@@ -160,6 +164,10 @@ class ForgotPassword(CustomForm):
     submit_btn = SubmitField('Restore')
 
 
+class Logout(CustomForm):
+    submit_btn = SubmitField('Logout')
+
+
 class ChangeRole(Email):
     role_type = SelectField('Role Type', [validators.DataRequired()],
                             choices=[(x.value, x.name) for x in UserRole], coerce=int)
@@ -176,15 +184,16 @@ class BanUser(Email):
 
 class Post(CustomForm):
     title = StringField('Title', [validators.DataRequired()])
-    body = TextAreaField('Message', [validators.DataRequired()])
-    banner = FileField('Image', validators=[FileAllowed('jpg jpe jpeg png gif svg bmp'.split(), 'Images only')])
-    attachment = FileField('Attachment', validators=[FileAllowed('doc docx odt rtf'.split(), 'Documents only')])
+    body = TextAreaField('Short Abstract', [validators.DataRequired()])
+    banner = FileField('Graphical Abstract',
+                       validators=[FileAllowed('jpg jpe jpeg png gif svg bmp'.split(), 'Images only')])
+    attachment = FileField('Abstract File', validators=[FileAllowed('doc docx odt rtf'.split(), 'Documents only')])
 
 
 class Meeting(Post):
-    participation = SelectField('Participation Type', [validators.DataRequired()],
+    participation = SelectField('Presentation Type', [validators.DataRequired()],
                                 choices=[(x.value, x.name) for x in MeetingPost], coerce=int)
-    submit_btn = SubmitField('Meet Up')
+    submit_btn = SubmitField('Confirm')
 
     @property
     def special(self):
@@ -196,6 +205,7 @@ class NewPost(Post):
     special_field = StringField('Special', [validators.Optional(), JsonValidator()])
     post_type = SelectField('Post Type', [validators.DataRequired()],
                             choices=[(x.value, x.name) for x in BlogPost], coerce=int)
+    parent_field = IntegerField('Parent', [validators.optional()])
     submit_btn = SubmitField('Post')
 
     @property

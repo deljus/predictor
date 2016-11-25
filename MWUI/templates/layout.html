@@ -16,9 +16,19 @@
                 <h1 class="page-header">{{ title }}
                     <small>{{ subtitle }}</small>
                 </h1>
+                {% if crumb is defined %}
+                    <ol class="breadcrumb">
+                        <li><a href="{{ crumb.url }}">{{ crumb.parent }}</a></li>
+                        <li class="active">{{ crumb.title }}</li>
+                    </ol>
+                {% endif %}
             </div>
         </div>
-
+        <div class="row">
+            <div class="col-md-12">
+                {{ utils.flashed_messages(container=False) }}
+            </div>
+        </div>
         {% block page %}{% endblock %}
 
         <hr>
@@ -26,7 +36,7 @@
         <footer>
             <div class="row">
                 <div class="col-lg-12">
-                    <p>Copyright &copy; {{ laboratory }} {{ year().strftime("%Y") }}</p>
+                    <p>&copy; {{ laboratory }} {{ year().strftime("%Y") }}</p>
                 </div>
             </div>
         </footer>

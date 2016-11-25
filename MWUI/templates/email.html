@@ -22,10 +22,10 @@
                                   <tbody>
                                     <tr>
                                       <td class="three sub-columns">
-                                        <img src="https://cimm.kpfu.ru/static/logo.png">
+                                        <img src="{{ banner or 'https://cimm.kpfu.ru/static/logo.png'}}">
                                       </td>
                                       <td class="nine sub-columns last" style="text-align:right; vertical-align:middle;" align="right">
-                                          <span class="template-label">Kazan Chemoinformatics and Molecular Modeling Laboratory</span>
+                                          <span class="template-label">{{ title or 'Kazan Chemoinformatics and Molecular Modeling Laboratory' }}</span>
                                       </td>
                                       <td class="expander"><br>
                                       </td>
