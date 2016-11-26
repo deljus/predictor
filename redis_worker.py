@@ -20,7 +20,7 @@ def run(structures=None, model=None):
         tmp = cycle2(structures) if isinstance(structures[0]['data'], dict) else structures
 
         for s, r in zip(tmp, results):
-            _res = dict(results=r.pop('results'))
+            _res = dict(results=r.pop('results', []))
             _res.update(model)
             r['models'] = [_res]
             s.update(r)

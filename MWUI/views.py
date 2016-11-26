@@ -37,6 +37,7 @@ from os import path
 
 
 conf_pages = (BlogPost.THESIS, BlogPost.SERVICE, BlogPost.MEETING)
+view_bp = Blueprint('view', __name__)
 
 
 def save_upload(field):
@@ -64,9 +65,6 @@ def blog_viewer(page, selector):
             data.append(tmp)
 
     return data, pag
-
-
-view_bp = Blueprint('view', __name__)
 
 
 @view_bp.errorhandler(404)

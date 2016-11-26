@@ -64,10 +64,12 @@ class RedisCombiner(object):
 
         for s in task['structures']:
             # check for models in structures
-            models = ((x['model'], x) for x in s.pop('models') if x['type'] != ModelType.PREPARER) \
-                if task['status'] == TaskStatus.MODELING else \
-                ((x['model'], x) for x in s.pop('models') if x['type'] == ModelType.PREPARER) \
-                if s['status'] == StructureStatus.RAW else []
+            if task['status'] == TaskStatus.MODELING:
+                models = ((x['model'], x) for x in s.pop('models') if x['type'] != ModelType.PREPARER)
+            elif s['status'] == StructureStatus.RAW:
+                models = ((x['model'], x) for x in s.pop('models') if x['type'] == ModelType.PREPARER)
+            else:
+                models = []
 
             populate = [model_struct[m].append(s) for m, model in models
                         if (model_worker.get(m) or
@@ -93,7 +95,7 @@ class RedisCombiner(object):
             self.__tasks.set(_id, pickle.dumps((task, datetime.utcnow())), ex=self.__result_ttl)
             return dict(id=_id, created_at=datetime.utcnow())
         except Exception as err:
-            print("new_job->ERROR:",err)
+            print("new_job->ERROR:", err)
             return None
 
     def fetch_job(self, task):

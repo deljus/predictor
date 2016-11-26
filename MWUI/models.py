@@ -105,19 +105,18 @@ class Tasks(db.Entity):
 class Structures(db.Entity):
     id = PrimaryKey(int, auto=True)
     additives = Set("Additivesets")
-    models = Set("Models")
     pressure = Optional(float)
     results = Set("Results")
     structure = Optional(str)
     structure_type = Required(int)
-    structures_status = Required(int)
+    structure_status = Required(int)
     task = Required(Tasks)
     temperature = Optional(float)
 
     def __init__(self, **kwargs):
         _type = kwargs.pop('type', StructureType.MOLECULE).value
         status = kwargs.pop('status', StructureStatus.CLEAR).value
-        super(Structures, self).__init__(structure_type=_type, structures_status=status, **kwargs)
+        super(Structures, self).__init__(structure_type=_type, structure_status=status, **kwargs)
 
     @property
     def type(self):
@@ -125,7 +124,7 @@ class Structures(db.Entity):
 
     @property
     def status(self):
-        return StructureStatus(self.structures_status)
+        return StructureStatus(self.structure_status)
 
 
 class Results(db.Entity):
@@ -153,7 +152,6 @@ class Models(db.Entity):
     model_type = Required(int)
     name = Required(str, unique=True)
     results = Set(Results)
-    structures = Set(Structures)
 
     def __init__(self, **kwargs):
         _type = kwargs.pop('type', ModelType.MOLECULE_MODELING).value

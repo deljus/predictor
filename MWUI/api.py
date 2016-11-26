@@ -19,10 +19,11 @@
 #  MA 02110-1301, USA.
 #
 import uuid
+from collections import defaultdict
 from os import path
 from .config import (UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, REDIS_HOST, REDIS_JOB_TIMEOUT,
                      REDIS_PASSWORD, REDIS_PORT, REDIS_TTL, StructureType)
-from .models import Tasks, Structures, Additives, Models, Additivesets, Destinations
+from .models import Tasks, Structures, Additives, Models, Additivesets, Destinations, Users, Results
 from .redis import RedisCombiner
 from flask import Blueprint, url_for, send_from_directory, request
 from flask_login import current_user
@@ -74,14 +75,18 @@ def get_additives():
                 for a in select(a for a in Additives)}
 
 
-def get_models_list(skip_prep=True):
+def get_models_list(skip_prep=True, skip_dest_and_example=False):
     with db_session:
-        return {m.id: dict(model=m.id, name=m.name, description=m.description, type=m.type, example=m.example,
-                           destinations=[dict(host=x.host, port=x.port, password=x.password, name=x.name)
-                                         for x in m.destinations])
-                for m in (select(m for m in Models if m.model_type in (ModelType.MOLECULE_MODELING.value,
-                                                                       ModelType.REACTION_MODELING.value))
-                if skip_prep else select(m for m in Models))}
+        res = {}
+        for m in (select(m for m in Models if m.model_type in (ModelType.MOLECULE_MODELING.value,
+                                                               ModelType.REACTION_MODELING.value))
+                  if skip_prep else select(m for m in Models)):
+            res[m.id] = dict(model=m.id, name=m.name, description=m.description, type=m.type)
+            if not skip_dest_and_example:
+                res[m.id]['example'] = m.example
+                res[m.id]['destinations'] = [dict(host=x.host, port=x.port, password=x.password, name=x.name)
+                                             for x in m.destinations]
+        return res
 
 
 def fetchtask(task, status):
@@ -96,10 +101,10 @@ def fetchtask(task, status):
         abort(512, message='PROCESSING.Task not ready')
 
     if job['result']['status'] != status:
-        abort(406, message='Task status is invalid. Task status is ['+job['result']['status'].name+']')
+        abort(406, message='Task status is invalid. Task status is [%s]' % job['result']['status'].name)
 
     if job['result']['user'] != current_user.id:
-        abort(403, message='User access deny. You do not have pemission to this task')
+        abort(403, message='User access deny. You do not have permission to this task')
 
     return job['result'], job['ended_at']
 
@@ -116,8 +121,9 @@ def format_results(task, status):
         s['type'] = s['type'].value
         for m in s['models']:
             m.pop('destinations', None)
+            m.pop('example', None)
             m['type'] = m['type'].value
-            for r in m.get('results', []):
+            for r in m['results']:
                 r['type'] = r['type'].value
         for a in s['additives']:
             a['type'] = a['type'].value
@@ -212,110 +218,91 @@ class ResultsTask(AuthResource):
         try:
             task = int(task)
         except ValueError:
-            abort(403, message='invalid task id')
+            abort(404, message='invalid task id. Use int Luke')
 
         with db_session:
             result = Tasks.get(id=task)
             if not result:
-                return dict(message='invalid task id'), 403
+                abort(404, message='Invalid task id. Perhaps this task has already been removed')
+
             if result.user.id != current_user.id:
-                return dict(message='user access deny'), 403
+                abort(403, message='User access deny. You do not have permission to this task')
 
-            structures = select(s for s in Structures if s.task == result)
-            resulsts = left_join((s.id, r.attrib, r.value, r.type, m.name)
-                                 for s in Structures for r in s.results for m in r.model
-                                 if s.task == result)
-            additives = left_join((s.id, a.amount, p.id, p.name, p.type, p.structure)
-                                  for s in Structures for a in s.additives for p in a.additive
-                                  if s.task == result)
+            models = get_models_list(skip_dest_and_example=True)
+            additives = get_additives()
 
-            tmp1, tmp2 = {}, {}
+            s = select(s for s in Structures if s.task == result)
 
-            # todo: result refactoring
-            for s, ra, rv, rt, m in resulsts:
-                tmp1.setdefault(s, {}).setdefault(m, []).append(dict(key=ra, value=rv, type=rt))
+            r = left_join((s.id, m.id, r.key, r.value, r.result_type)
+                          for s in Structures for r in s.results for m in r.model if s.task == result)
 
-            for s, aa, aid, an, at, af in additives:
-                if aid:
-                    tmp2.setdefault(s, []).append(dict(additive=aid, name=an, structure=af, type=at, amount=aa))
-                else:
-                    tmp2[s] = []
+            a = left_join((s.id, a.additive.id, a.amount)
+                          for s in Structures for a in s.additives if s.task == result)
 
-            return dict(task=result.id, status=TaskStatus.DONE.value,
-                        date=result.create_date.strftime("%Y-%m-%d %H:%M:%S"),
-                        type=result.task_type, user=result.user.id if result.user else None,
-                        structures=[dict(structure=s.id, data=s.structure, is_reaction=s.isreaction,
-                                         temperature=s.temperature, pressure=s.pressure, status=s.status,
-                                         models=[dict(model=m, results=r) for m, r in tmp1[s.id].items()],
-                                         additives=tmp2[s.id]) for s in structures]), 200
+            structures = {x.id: dict(structure=x.id, data=x.structure, temperature=x.temperature, pressure=x.pressure,
+                                     type=x.structure_type, status=x.structure_status, additives=[], models=[])
+                          for x in s}
+
+            for s, a, aa in a:
+                tmp = dict(amount=aa)
+                tmp.update(additives[a])
+                structures[s]['additives'].append(tmp)
+
+            tmp_models = defaultdict(dict)
+            for s, m, rk, rv, rt in r:
+                tmp_models[s].setdefault(m, []).append(dict(key=rk, value=rv, type=rt))
+
+            for s, mr in tmp_models.items():
+                for m, r in mr.items():
+                    tmp = dict(results=r)
+                    tmp.update(models[m])
+                    structures[s]['models'].append(tmp)
+
+        return dict(task=result.id, status=TaskStatus.DONE.value, date=result.date.strftime("%Y-%m-%d %H:%M:%S"),
+                    type=result.task_type, user=result.user.id if result.user else None,
+                    structures=structures.values()), 200
 
     def post(self, task):
         result, ended_at = fetchtask(task, TaskStatus.DONE)
 
         with db_session:
-            _task = Tasks(task_type=result['type'], date=ended_at)
+            _task = Tasks(type=result['type'], date=ended_at, user=Users[current_user.id])
             for s in result['structures']:
-                _structure = Structures(structure=s['data'], isreaction=s['is_reaction'], temperature=s['temperature'],
-                                        pressure=s['pressure'], status=s['status'])
+                _structure = Structures(structure=s['data'], type=s['type'], temperature=s['temperature'],
+                                        pressure=s['pressure'], status=s['status'], task=_task)
                 for a in s['additives']:
                     Additivesets(additive=Additives[a['additive']], structure=_structure, amount=a['amount'])
 
-                    # todo: save results
+                for m in s['models']:
+                    _model = Models[m['model']]
+                    for r in m.get('results', []):
+                        Results(model=_model, structure=_structure, type=r['type'], key=r['key'], value=r['value'])
 
         return dict(task=_task.id, status=TaskStatus.DONE.value, date=ended_at.strftime("%Y-%m-%d %H:%M:%S"),
-                    type=_task.task_type, user=_task.user.id), 201
-
-
-''' ===================================================
-    api for task modeling.
-    ===================================================
-'''
+                    type=result['type'].value, user=current_user.id), 201
 
 
 class ModelTask(AuthResource):
-    def get(self, task):
-        return format_results(task, TaskStatus.DONE), 200
-
-    def post(self, task):
-        result = fetchtask(task, TaskStatus.PREPARED)[0]
-        if result['type'] != TaskType.MODELING:  # for search tasks assign compatible models
-            for s in result['structures']:
-                s['models'] = [get_model(ModelType.select(s['type'], result['type']))]
-
-        result['status'] = TaskStatus.MODELING
-
-        newjob = redis.new_job(result)
-        return dict(task=newjob['id'], status=result['status'].value, type=result['type'].value,
-                    date=newjob['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=result['user']), 201
-
-
-class PrepareTask(AuthResource):
     """ ===================================================
-        api for task preparation.
+        api for task modeling.
         ===================================================
     """
     def get(self, task):
-        return format_results(task, TaskStatus.PREPARED), 200
+        return format_results(task, TaskStatus.DONE), 200
 
     def post(self, task):
         data = marshal(request.get_json(force=True), taskstructurefields)
         result = fetchtask(task, TaskStatus.PREPARED)[0]
 
-        additives = get_additives()
-        models = get_models_list()
-        preparer = get_model(ModelType.PREPARER)
-
-        prepared = {}
-        for s in result['structures']:
-            if s['status'] == StructureStatus.RAW:  # for raw structures restore preparer
-                s['models'] = [preparer]
-            prepared[s['structure']] = s
-
+        prepared = {s['structure']: s for s in result['structures']}
         structures = data if isinstance(data, list) else [data]
         tmp = {x['structure']: x for x in structures if x['structure'] in prepared}
 
         if 0 in tmp:
             abort(400, message='invalid structure data')
+
+        additives = get_additives()
+        models = get_models_list()
 
         for s, d in tmp.items():
             if d['todelete']:
@@ -329,16 +316,71 @@ class PrepareTask(AuthResource):
                             alist.append(a)
                     prepared[s]['additives'] = alist
 
-                if result['type'] == TaskType.MODELING and d['models'] is not None and \
-                        not d['data'] and prepared[s]['status'] == StructureStatus.CLEAR:
+                if result['type'] != TaskType.MODELING:  # for search tasks assign compatible models
+                    prepared[s]['models'] = [get_model(ModelType.select(prepared[s]['type'], result['type']))]
+
+                elif d['models'] is not None and prepared[s]['status'] == StructureStatus.CLEAR:
                     prepared[s]['models'] = [models[m['model']] for m in d['models']
                                              if m['model'] in models and
                                              models[m['model']]['type'].compatible(prepared[s]['type'],
                                                                                    TaskType.MODELING)]
 
+                if d['temperature']:
+                    prepared[s]['temperature'] = d['temperature']
+
+                if d['pressure']:
+                    prepared[s]['pressure'] = d['pressure']
+
+        result['structures'] = list(prepared.values())
+        result['status'] = TaskStatus.MODELING
+
+        new_job = redis.new_job(result)
+        if new_job is None:
+            abort(500, message='modeling server error')
+
+        return dict(task=new_job['id'], status=result['status'].value, type=result['type'].value,
+                    date=new_job['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=result['user']), 201
+
+
+class PrepareTask(AuthResource):
+    """ ===================================================
+        api for task preparation.
+        ===================================================
+    """
+    def get(self, task):
+        return format_results(task, TaskStatus.PREPARED), 200
+
+    def post(self, task):
+        data = marshal(request.get_json(force=True), taskstructurefields)
+        result = fetchtask(task, TaskStatus.PREPARED)[0]
+        preparer = get_model(ModelType.PREPARER)
+
+        prepared = {s['structure']: s for s in result['structures']}
+        structures = data if isinstance(data, list) else [data]
+        tmp = {x['structure']: x for x in structures if x['structure'] in prepared}
+
+        if 0 in tmp:
+            abort(400, message='invalid structure data')
+
+        additives = get_additives()
+
+        for s, d in tmp.items():
+            if d['todelete']:
+                prepared.pop(s)
+            else:
+                if d['additives'] is not None:
+                    alist = []
+                    for a in d['additives']:
+                        if a['additive'] in additives and 0 < a['amount'] < 1:
+                            a.update(additives[a['additive']])
+                            alist.append(a)
+                    prepared[s]['additives'] = alist
+
                 if d['data']:
                     prepared[s]['data'] = d['data']
                     prepared[s]['status'] = StructureStatus.RAW
+                    prepared[s]['models'] = [preparer]
+                elif s['status'] == StructureStatus.RAW:
                     prepared[s]['models'] = [preparer]
 
                 if d['temperature']:
@@ -349,8 +391,8 @@ class PrepareTask(AuthResource):
 
         result['structures'] = list(prepared.values())
         result['status'] = TaskStatus.PREPARING
-        new_job = redis.new_job(result)
 
+        new_job = redis.new_job(result)
         if new_job is None:
             abort(500, message='modeling server error')
 
@@ -409,6 +451,10 @@ uf_post.add_argument('structures', type=datastructures.FileStorage, location='fi
 
 
 class UploadTask(AuthResource):
+    """ ===================================================
+        api for structures upload.
+        ===================================================
+    """
     def post(self, _type):
         try:
             _type = TaskType(_type)
@@ -447,7 +493,7 @@ api.add_resource(CreateTask, '/task/create/<int:_type>')
 api.add_resource(UploadTask, '/task/upload/<int:_type>')
 api.add_resource(PrepareTask, '/task/prepare/<string:task>')
 api.add_resource(ModelTask, '/task/model/<string:task>')
-# api.add_resource(ResultsTask, '/task/results/<string:task>')
+api.add_resource(ResultsTask, '/task/results/<string:task>')
 api.add_resource(AvailableAdditives, '/resources/additives')
 api.add_resource(AvailableModels, '/resources/models')
 api.add_resource(RegisterModels, '/admin/models')
