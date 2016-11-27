@@ -229,15 +229,18 @@ class ResultsTask(AuthResource):
                 abort(403, message='User access deny. You do not have permission to this task')
 
             models = get_models_list(skip_dest_and_example=True)
+            for v in models.values():
+                v['type'] = v['type'].value
+
             additives = get_additives()
 
             s = select(s for s in Structures if s.task == result)
 
-            r = left_join((s.id, m.id, r.key, r.value, r.result_type)
-                          for s in Structures for r in s.results for m in r.model if s.task == result)
+            r = left_join((s.id, r.model.id, r.key, r.value, r.result_type)
+                          for s in Structures for r in s.results if s.task == result and r is not None)
 
             a = left_join((s.id, a.additive.id, a.amount)
-                          for s in Structures for a in s.additives if s.task == result)
+                          for s in Structures for a in s.additives if s.task == result and a is not None)
 
             structures = {x.id: dict(structure=x.id, data=x.structure, temperature=x.temperature, pressure=x.pressure,
                                      type=x.structure_type, status=x.structure_status, additives=[], models=[])
@@ -260,7 +263,7 @@ class ResultsTask(AuthResource):
 
         return dict(task=result.id, status=TaskStatus.DONE.value, date=result.date.strftime("%Y-%m-%d %H:%M:%S"),
                     type=result.task_type, user=result.user.id if result.user else None,
-                    structures=structures.values()), 200
+                    structures=list(structures.values())), 200
 
     def post(self, task):
         result, ended_at = fetchtask(task, TaskStatus.DONE)
