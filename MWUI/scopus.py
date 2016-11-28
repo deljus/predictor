@@ -84,7 +84,8 @@ class OrderedSet(MutableSet):
 
 
 def get_articles(author_id):
-    resp = get("https://api.elsevier.com/content/search/scopus?query=AU-ID(%s)&view=COMPLETE&"
+    resp = get("https://api.elsevier.com/content/search/scopus?"
+               "query=AU-ID(%s)&view=COMPLETE&sort=-coverDate,title&"
                "field=dc:title,prism:publicationName,prism:volume,prism:issueIdentifier,"
                "prism:pageRange,prism:coverDate,prism:doi,dc:description,"
                "citedby-count,affiliation,author" % author_id,
