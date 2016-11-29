@@ -23,7 +23,7 @@
 from requests import get
 from redis import Redis, ConnectionError
 from collections import MutableSet
-from .config import SCOPUS_API_KEY, REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, REDIS_TTL
+from .config import SCOPUS_API_KEY, REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, SCOPUS_TTL
 
 
 cache = Redis(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD)
@@ -127,7 +127,7 @@ def get_articles(author_id):
             arts.append('* **{date}:** *{title}* / {authors} // ***{journal}.*** V.{volume}. Is.{issue}. P.{pages} '
                         '[cited count: {cited}, [doi](//dx.doi.org/{doi})]'.format(**reformatted))
         result = '\n'.join(arts)
-        cache.set('SCOPUS_%s' % author_id, result.encode(), ex=REDIS_TTL)
+        cache.set('SCOPUS_%s' % author_id, result.encode(), ex=SCOPUS_TTL)
     else:
         result = result.decode()
     return result
