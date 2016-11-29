@@ -89,7 +89,7 @@ class Pkab(Propertyextractor):
             writer = SDFwrite(f)
             for s_numb, s in enumerate(data):
                 if self.__cgr_marker:
-                    meta = s[0][0][1]['meta']
+                    meta = s[0][0][1].graph['meta']
                     for d in s:
                         tmp = [s_numb]
                         for x, y in d:
@@ -99,11 +99,11 @@ class Pkab(Propertyextractor):
                         doubles.extend([tmp] * len(d))
                 elif self.__dragos_marker:
                     writer.write(s[0][0][1])
-                    prop.extend([self.get_property(d[0][1]['meta'], marks=[x[0] for x in d]) for d in s])
+                    prop.extend([self.get_property(d[0][1].graph['meta'], marks=[x[0] for x in d]) for d in s])
                     doubles.append([([s_numb] + [x[0] for x in d]) for d in s])
                 else:
                     writer.write(s)
-                    prop.append(self.get_property(s['meta']))
+                    prop.append(self.get_property(s.graph['meta']))
                     doubles.append(s_numb)
 
             res = p.communicate(input=f.getvalue().encode())[0].decode()

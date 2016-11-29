@@ -85,7 +85,7 @@ class Eed(Propertyextractor):
 
         for s_numb, s in enumerate(data):
             if isinstance(s, list):
-                meta = s[0][0][1]['meta']
+                meta = s[0][0][1].graph['meta']
                 for d in s:  # d = ((n1, tmp1), (n2, tmp2), ...)
                     tmp = [s_numb]
                     for w, (x, y) in zip(writers, d):
@@ -95,7 +95,7 @@ class Eed(Propertyextractor):
                     doubles.append(tmp)
             else:
                 writers[0].write(s)
-                prop.append(self.get_property(s['meta']))
+                prop.append(self.get_property(s.graph['meta']))
                 doubles.append(s_numb)
 
         tX, tD = [], []
