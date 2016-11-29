@@ -29,7 +29,8 @@ from .models import Users, Blog
 from .config import UserRole, BLOG_POSTS, Glyph, UPLOAD_PATH, BlogPost, LAB_NAME
 from .bootstrap import Pagination
 from .sendmail import send_mail
-from flask import redirect, url_for, render_template, Blueprint, flash, request, abort
+from .scopus import get_articles
+from flask import redirect, url_for, render_template, Blueprint, flash, abort
 from flask_login import login_user, logout_user, login_required, current_user
 from pony.orm import db_session, select, commit
 from datetime import datetime
@@ -374,6 +375,10 @@ def blog_post(post):
 
         elif p.type in (BlogPost.CHIEF, BlogPost.TEAM):
             crumb = dict(url=url_for('.about'), title='Member', parent='Laboratory')
+            scopus = p.special.get('scopus')
+            if scopus:
+                special_field = get_articles(scopus)
+
         elif p.type == BlogPost.ABOUT:
             crumb = dict(url=url_for('.about'), title='Description', parent='Laboratory')
         else:

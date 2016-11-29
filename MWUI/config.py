@@ -31,6 +31,7 @@ DEBUG = False
 LAB_NAME = 'Kazan Chemoinformatics and Molecular Modeling Laboratory'
 LAB_SHORT = 'CIMM'
 BLOG_POSTS = 10
+SCOPUS_API_KEY = ''
 
 SMPT_HOST = 'ex.kpfu.ru'
 SMTP_PORT = 587
@@ -150,7 +151,7 @@ class MeetingPost(Enum):
 config_list = ['UPLOAD_PATH', 'API_BASE', 'SECRET_KEY',
                'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME',
                'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD', 'REDIS_TTL', 'REDIS_JOB_TIMEOUT',
-               'LAB_NAME', 'LAB_SHORT', 'BLOG_POSTS',
+               'LAB_NAME', 'LAB_SHORT', 'BLOG_POSTS', 'SCOPUS_API_KEY',
                'SMPT_HOST', 'SMTP_PORT', 'SMTP_LOGIN', 'SMTP_PASSWORD', 'SMTP_MAIL']
 
 if not path.exists(path.join(path.dirname(__file__), "config.ini")):

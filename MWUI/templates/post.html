@@ -16,7 +16,7 @@
             {{ post.body|markdown }}
 
             {% if special_field %}
-                {{ special_field }}
+                {{ special_field|markdown }}
             {% endif %}
 
             {% if post.attachment %}
