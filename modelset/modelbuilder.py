@@ -20,6 +20,7 @@
 #
 import gzip
 from collections import defaultdict
+from math import ceil
 
 import dill
 import hashlib
@@ -43,10 +44,8 @@ class Model(ConsensusDragos):
 
         self.Nlim = self.__conf.get('nlim', 1)
         self.TOL = self.__conf.get('tol', 1e10)
-        self.unit = self.__conf.get('report_units')
+        self.__units = self.__conf.get('report_units')
         self.__show_structures = self.__conf.get('show_structures')
-
-        ConsensusDragos.__init__(self)
 
     def get_example(self):
         return self.__conf.get('example')
@@ -72,6 +71,10 @@ class Model(ConsensusDragos):
     @staticmethod
     def __merge_wrap(x, y):
         return pd.merge(x, y, how='outer', left_index=True, right_index=True)
+
+    @staticmethod
+    def __report_atoms(atoms):
+        return atoms and ' [Modeled site atoms: %s]' % ', '.join(atoms) or ''
 
     def get_results(self, structures):
         # prepare input file
@@ -106,16 +109,17 @@ class Model(ConsensusDragos):
         res = []
         for m in self.__models:
             with StringIO(data) as f:
-                res.append(m.predict(f, additions))
-                # todo: parser
+                res.append(m.predict(f, **additions))
 
-        report = defaultdict(list)
+        err_report = defaultdict(dict)
+        trust_report = defaultdict(dict)
+        res_report = defaultdict(dict)
 
         # all_y_domains = reduce(merge_wrap, (x['y_domain'] for x in res))
         all_domains = reduce(self.__merge_wrap, (x['domain'] for x in res)).fillna(False)
 
         all_predictions = reduce(self.__merge_wrap, (x['prediction'] for x in res))
-        in_predictions = all_predictions.mask(all_domains != True)
+        in_predictions = all_predictions.mask(all_domains ^ True)
 
         trust = pd.Series(5, index=all_predictions.index)
 
@@ -126,36 +130,61 @@ class Model(ConsensusDragos):
         avg_in = in_predictions.mean(axis=1)
         sigma_in = in_predictions.var(axis=1)
 
-        avg_diff = (avg_in - avg_all).abs()
-        avg_diff_tol = avg_diff > self.TOL
+        avg_diff = (avg_in - avg_all).abs()  # difference bt in AD and all predictions. NaN for empty in predictions.
+        avg_diff_tol = avg_diff > self.TOL  # ignore NaN
         trust.loc[avg_diff_tol] -= 1
-        for r, d in avg_diff.loc[avg_diff_tol]:
+        for r, d in avg_diff.loc[avg_diff_tol].items():
             s, *n = r if isinstance(r, tuple) else (r,)
-            report[s].append((n, self.errors['diff'] % d))
+            err_report[s].setdefault(self.__report_atoms(n), []).append(self.errors['diff'] % d)
 
-        avg_diff_nul = avg_diff.isnull()
-        trust.loc[avg_diff_nul] -= 1  # not in domain
-        for r, _ in avg_diff.loc[avg_diff_nul]:
+        avg_in_nul = avg_in.isnull()
+        trust.loc[avg_in_nul] -= 2  # totally not in domain
+        for r in avg_in_nul.loc[avg_in_nul].index:
             s, *n = r if isinstance(r, tuple) else (r,)
-            report[s].append((n, self.errors['zad']))
+            err_report[s].setdefault(self.__report_atoms(n), []).append(self.errors['zad'])
 
-        proportion = len(self.__INlist) / len(self.__ALLlist)
-        if proportion > self.Nlim:
-            sigma = sigmaIN
-            Pavg = PavgIN
-        else:
-            sigma = sigmaALL
-            Pavg = PavgALL
-            self.__TRUST -= 1
-            if self.__INlist:
-                reason.append(self.__errors['lad'] % ceil(100 * proportion))
-        # mean predicted property on AD-True
-        t1ad_H = all_predictions.mask(all_domains != True)
-        # part of AD-True models
-        t1ad_M = pd.DataFrame([mm['domain'].mean(axis=1) for mm in Test1]).mean()
+        avg_domain = all_domains.mean(axis=1)
+        avg_domain_bad = (avg_domain < self.Nlim) ^ avg_in_nul  # ignore totally not in domain
+        trust.loc[avg_domain_bad] -= 1
+        for r, d in avg_domain.loc[avg_domain_bad].items():
+            s, *n = r if isinstance(r, tuple) else (r,)
+            err_report[s].setdefault(self.__report_atoms(n), []).append(self.errors['lad'] % ceil(100 * d))
 
-        if len(structures) == len(results):
-            return results
+        # update avg and sigma based on consensus
+        good = avg_domain >= self.Nlim
+        avg_all.loc[good] = avg_in.loc[good]
+        sigma_all.loc[good] = sigma_in.loc[good]
+
+        proportion = sigma_all / self.TOL
+        proportion_bad = proportion > 1
+        trust.loc[proportion_bad] -= 1
+        for r, d in proportion.loc[proportion_bad].items():
+            s, *n = r if isinstance(r, tuple) else (r,)
+            err_report[s].setdefault(self.__report_atoms(n), []).append(self.errors['stp'] % (d * 100 - 100))
+
+        for r, d in trust.items():
+            s, *n = r if isinstance(r, tuple) else (r,)
+            trust_report[s][self.__report_atoms(n)] = self.trust_desc[d]
+
+        for (r, av), sg in zip(avg_all.items(), sigma_all.loc[avg_all.index]):
+            s, *n = r if isinstance(r, tuple) else (r,)
+            res_report[s][self.__report_atoms(n)] = '%.2f ± %.2f' % (av, sg)
+
+        report = []
+        for s, res_val in res_report.items():
+            tmp = []
+            for atoms, value in res_val.items():
+                tmp.append(dict(key='Predicted value ± sigma%s%s' % ((self.__units and ' (%s)' % self.__units or ''),
+                                                                     atoms), value=value, type=ResultType.TEXT))
+                tmp.append(dict(key='Trust of prediction%s' % atoms,
+                                value=trust_report[s][atoms], type=ResultType.TEXT))
+
+                tmp.append(dict(key='Distrust reason%s' % atoms, value='; '.join(err_report[s].get(atoms, [])),
+                                type=ResultType.TEXT))
+            report.append(dict(results=tmp))
+
+        if len(structures) == len(report):
+            return report
 
         return False
 
