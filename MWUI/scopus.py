@@ -21,8 +21,12 @@
 #  MA 02110-1301, USA.
 #
 from requests import get
+from redis import Redis, ConnectionError
 from collections import MutableSet
-from .config import SCOPUS_API_KEY
+from .config import SCOPUS_API_KEY, REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, REDIS_TTL
+
+
+cache = Redis(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD)
 
 
 class OrderedSet(MutableSet):
@@ -84,17 +88,31 @@ class OrderedSet(MutableSet):
 
 
 def get_articles(author_id):
-    resp = get("https://api.elsevier.com/content/search/scopus?"
-               "query=AU-ID(%s)&view=COMPLETE&sort=-coverDate,title&"
-               "field=dc:title,prism:publicationName,prism:volume,prism:issueIdentifier,"
-               "prism:pageRange,prism:coverDate,prism:doi,dc:description,"
-               "citedby-count,affiliation,author" % author_id,
-               headers={'Accept': 'application/json', 'X-ELS-APIKey': SCOPUS_API_KEY})
+    try:
+        cache.ping()
+    except ConnectionError:
+        return None
 
-    arts = ['**List of published articles** (*Provided by SCOPUS API*)\n']
-    if resp.status_code == 200:
-        resp = resp.json()
-        for i in resp["search-results"]["entry"]:
+    result = cache.get('SCOPUS_%s' % author_id)
+    if not result:
+        metrics = get("https://api.elsevier.com/content/author/author_id/%s?view=METRICS" % author_id,
+                      headers={'Accept': 'application/json', 'X-ELS-APIKey': SCOPUS_API_KEY})
+        articles = get("https://api.elsevier.com/content/search/scopus?"
+                       "query=AU-ID(%s)&view=COMPLETE&sort=-coverDate,title&suppressNavLinks=true&"
+                       "field=dc:title,prism:publicationName,prism:volume,prism:issueIdentifier,"
+                       "prism:pageRange,prism:coverDate,prism:doi,dc:description,"
+                       "citedby-count,affiliation,author" % author_id,
+                       headers={'Accept': 'application/json', 'X-ELS-APIKey': SCOPUS_API_KEY})
+
+        if metrics.status_code != 200 or articles.status_code != 200:
+            return None
+
+        author = metrics.json()['author-retrieval-response'][0]
+        arts = ['***h***-index: **%s**, citations count: **%s** *[Provided by SCOPUS API]*\n ' %
+                (author['h-index'], author['coredata']['citation-count']),
+                '**List of last published articles** (total: **%s**)\n' % author['coredata']['document-count']]
+
+        for i in articles.json()["search-results"]["entry"]:
             authors = OrderedSet('{initials} {surname}'.format(initials=x['initials'], surname=x['surname'])
                                  for x in i["author"])
             reformatted = dict(title=i["dc:title"],
@@ -108,6 +126,8 @@ def get_articles(author_id):
                                authors=', '.join(authors))
             arts.append('* **{date}:** *{title}* / {authors} // ***{journal}.*** V.{volume}. Is.{issue}. P.{pages} '
                         '[cited count: {cited}, [doi](//dx.doi.org/{doi})]'.format(**reformatted))
-        return '\n'.join(arts)
-
-    return None
+        result = '\n'.join(arts)
+        cache.set('SCOPUS_%s' % author_id, result.encode(), ex=REDIS_TTL)
+    else:
+        result = result.decode()
+    return result
