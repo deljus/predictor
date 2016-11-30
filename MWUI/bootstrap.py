@@ -28,6 +28,7 @@ from flask_bootstrap.nav import BootstrapRenderer
 from hashlib import sha1
 from dominate import tags
 from .config import LAB_SHORT, UserRole
+from .redirect import get_redirect_target
 
 
 class LeftSubgroup(NavigationItem):
@@ -157,7 +158,7 @@ def top_nav():
                   ]
     else:
         navbar = [LeftSubgroup(View('News', '.blog'), View('About Us', '.about')),
-                  RightSubgroup(View('Login', '.login', next=request.path),
-                                View('Registration', '.registration', next=request.path))]
+                  RightSubgroup(View('Login', '.login', next=get_redirect_target() or request.path),
+                                View('Registration', '.registration', next=get_redirect_target() or request.path))]
 
     return Navbar(View(LAB_SHORT, '.index'), *navbar)

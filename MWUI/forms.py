@@ -113,11 +113,11 @@ class DeleteButton(CustomForm):
 
 
 class Profile(CustomForm):
-    name = StringField('Name Surname', [validators.DataRequired()])
+    name = StringField('Name Surname *', [validators.DataRequired()])
     status = StringField('Status')
     job = StringField('Organization')
     town = StringField('Town')
-    country = SelectField('Country', [validators.DataRequired()], choices=[(x.alpha_3, x.name) for x in countries])
+    country = SelectField('Country *', [validators.DataRequired()], choices=[(x.alpha_3, x.name) for x in countries])
     submit_btn = SubmitField('Update Profile')
 
 
@@ -126,9 +126,9 @@ class Email(CustomForm):
 
 
 class Password(CustomForm):
-    password = PasswordField('Password', [validators.DataRequired(),
-                                          validators.EqualTo('confirm', message='Passwords must match')])
-    confirm = PasswordField('Repeat Password', [validators.DataRequired()])
+    password = PasswordField('Password *', [validators.DataRequired(),
+                                            validators.EqualTo('confirm', message='Passwords must match')])
+    confirm = PasswordField('Repeat Password *', [validators.DataRequired()])
 
 
 class Registration(Profile, Password):
@@ -155,7 +155,7 @@ class ReLogin(CustomForm):
 
 
 class ChangePassword(Password):
-    old_password = PasswordField('Old Password', [validators.DataRequired(), VerifyPassword()])
+    old_password = PasswordField('Old Password *', [validators.DataRequired(), VerifyPassword()])
     submit_btn = SubmitField('Change Password')
 
 
@@ -183,15 +183,15 @@ class BanUser(Email):
 
 
 class Post(CustomForm):
-    title = StringField('Title', [validators.DataRequired()])
-    body = TextAreaField('Short Abstract', [validators.DataRequired()])
+    title = StringField('Title *', [validators.DataRequired()])
+    body = TextAreaField('Short Abstract *', [validators.DataRequired()])
     banner = FileField('Graphical Abstract',
                        validators=[FileAllowed('jpg jpe jpeg png gif svg bmp'.split(), 'Images only')])
     attachment = FileField('Abstract File', validators=[FileAllowed('doc docx odt rtf'.split(), 'Documents only')])
 
 
 class Meeting(Post):
-    participation = SelectField('Presentation Type', [validators.DataRequired()],
+    participation = SelectField('Presentation Type *', [validators.DataRequired()],
                                 choices=[(x.value, x.name) for x in MeetingPost], coerce=int)
     submit_btn = SubmitField('Confirm')
 

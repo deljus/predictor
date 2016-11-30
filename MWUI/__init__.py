@@ -49,7 +49,7 @@ def init():
     nav.register_element('top_nav', top_nav)
     Bootstrap(app)
 
-    Misaka(app)
+    Misaka(app, underline=True, math=True, strikethrough=True, superscript=True, tables=True, footnotes=True)
 
     login_manager = LoginManager()
     login_manager.init_app(app)
