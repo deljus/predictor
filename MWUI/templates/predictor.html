@@ -2,15 +2,11 @@
 {% block page %}
 
 
+<div id="modal-loader" class="modal" style="display: none">
+    <div id="loader"></div>
+</div>
 
-     <div class="row">
-    <div id="openModal" class="modalDialog" style="display:none" >
-        <div>
-            <a href="#" title="Close" class="close" onclick="$('#openModal').hide();return false;">X</a>
-            <img id="modal-img" src="{{ url_for('static', filename='images/ajax-loader-big.gif') }}" alt="image not enabled" width="100%">
-        </div>
-    </div>
-    </div>
+
 
       <div class="row">
     <div class="heading">
@@ -105,8 +101,8 @@
                     </table>
                 </form>
                 <div style="text-align:center">
-                    <button id="validate-btn" onclick="upload_data_for_prepare_task()" class="btn btn-primary" >Validate</button>
-                    <button id="goto-model-btn" onclick="load_data_for_modeling()" class="btn btn-primary">Go to Modeling</button>
+                    <button id="validate-btn" data-role="validate-task-btn" onclick="upload_data_for_prepare_task()" class="btn btn-primary" >Validate</button>
+                    <button data-role="load-task-for-modeling-btn" id="goto-model-btn" onclick="load_task_data_for_modeling()" class="btn btn-primary">Go to Modeling</button>
                 </div>
             </div>
 

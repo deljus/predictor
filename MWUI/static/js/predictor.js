@@ -203,7 +203,7 @@ function load_reactions() {
 
 function load_results() {
     hide_all();
-    get_modeling_result(get_task());
+    load_modeling_result(get_task());
 }
 
 function map_done() {
@@ -241,17 +241,23 @@ Progress.increase_progress = function (value) {
 }
 
 Progress.start = function () {
+    /***
     $('.progress').show();
     this.timer_id = setInterval(this.increase_progress, 1000);
+     ***/
+    $('#modal-loader').show();
 }
 
 Progress.done = function () {
     reset_timer();
+    /***
     clearInterval(this.timer_id);
     this.increase_progress(100);
     setTimeout(function () {
         $('.progress').hide()
     }, 1000);
+     ***/
+        $('#modal-loader').hide();
 }
 
 function handleRequestError() {
@@ -310,6 +316,8 @@ $(function () {
         //og_log('click reaction lick');
         var $img = $(this);
         var _id = $img.attr("data-structure-id");
+        if ($("#todelete"+_id).val()=='1')
+            return false;
         var data = decodeURIComponent($("#structure_data"+_id).val());
 
         set_structure(this.getAttribute('data-structure-id'));
@@ -321,6 +329,7 @@ $(function () {
         $("#todelete"+_id).val(1);
         $("#structure_data"+_id).attr('data-is-changed','1');
         $(this).closest('tr').addClass('delete-structure-tr');
+        $(this).addClass('disabled');
         return false;
 
     });
@@ -610,13 +619,14 @@ function create_model_task(draw_data) {
 function start_prepare_model_task(task_id) {
     //log('start_prepare_model_task->');
     TAMER_ID = setInterval(function () {
-        load_prepare_task(task_id)
+        load_prepared_task(task_id)
     }, TIMER_INTERVAL);
 
 }
 
-function load_data_for_modeling() {
-    log('load_data_for_modeling->');
+///!!!! LOAD PREPARED TASK DATA FOR MODELING(SELECT MODEL PARAMETERS)
+function load_task_data_for_modeling() {
+    log('load_task_data_for_modeling->');
 
     hide_all();
     Progress.start();
@@ -653,7 +663,8 @@ function load_data_for_modeling() {
     return true;
 }
 
-function load_prepare_task() {
+///!!!! LOAD PREPARED TASK STRUCTURES
+function load_prepared_task() {
 
     hide_all();
 
@@ -762,6 +773,8 @@ function display_reactions_prepare_task(reactions) {
     });
 
     show_prepare_reactions();
+
+
 
 
     /*********** Add reaction save button to the editor ***************/
@@ -1045,14 +1058,15 @@ function start_modelling() {
     //log('start_modelling->');
     Progress.start();
     TAMER_ID = setInterval(function () {
-            get_modeling_result();
+            load_modeling_result();
         }, TIMER_INTERVAL);
 
 }
 
-function get_modeling_result() {
+///!!!! LOAD MODELING TASK RESULTS
+function load_modeling_result() {
 
-    //log('get_modeling_result->');
+    //log('load_modeling_result->');
     var task_id = get_task();
 
     if (task_id == "") {
@@ -1267,7 +1281,7 @@ function load_task(task_id) {
 
             case MODELLING_DONE:
                 reset_timer();
-                get_modeling_result(task_id);
+                load_modeling_result(task_id);
                 break;
             default:
                 load_reactions();
