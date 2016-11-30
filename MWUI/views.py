@@ -404,12 +404,6 @@ def search():
     return render_template("layout.html")
 
 
-@view_bp.route('/modeling', methods=['GET'])
-@login_required
-def modeling():
-    return render_template("layout.html")
-
-
 @view_bp.route('/queries', methods=['GET'])
 @login_required
 def queries():

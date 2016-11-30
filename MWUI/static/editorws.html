@@ -21,16 +21,15 @@
 		}
 	}, false);
 	
-		// called when Marvin JS loaded
-		function sketchOnLoad() {
-			if(marvin.Sketch.isSupported()) {
-				marvin.sketcherInstance = new marvin.Sketch("sketch");
-				marvin.sketcherInstance.setServices(getDefaultServices());
-			} else {
-				alert("Cannot initiate sketcher. Current browser may not support HTML canvas or may run in Compatibility Mode.");
-			}
+	// called when Marvin JS loaded
+	function sketchOnLoad() {
+		if(marvin.Sketch.isSupported()) {
+			marvin.sketcherInstance = new marvin.Sketch("sketch");
+			marvin.sketcherInstance.setServices(getDefaultServices());
+		} else {
+			alert("Cannot initiate sketcher. Current browser may not support HTML canvas or may run in Compatibility Mode.");
 		}
-
+	}
 	</script>
 </head>
 <body class="mjs-body">
