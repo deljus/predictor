@@ -32,9 +32,10 @@ def init():
 
     from .api import api_bp
     from .views import view_bp
-    from .bootstrap import top_nav, Customrenderer
+    from .bootstrap import top_nav, CustomBootstrapRenderer
     from .config import API_BASE, SECRET_KEY, DEBUG, LAB_NAME
     from .logins import load_user
+    from .markdown import CustomMisakaRenderer
 
     app = Flask(__name__)
 
@@ -44,12 +45,13 @@ def init():
     app.config['ERROR_404_HELP'] = False
     app.jinja_env.globals.update(year=datetime.utcnow, laboratory=LAB_NAME)
 
-    register_renderer(app, 'myrenderer', Customrenderer)
+    register_renderer(app, 'myrenderer', CustomBootstrapRenderer)
     nav = Nav(app)
     nav.register_element('top_nav', top_nav)
     Bootstrap(app)
 
-    Misaka(app, underline=True, math=True, strikethrough=True, superscript=True, tables=True, footnotes=True)
+    Misaka(app, renderer=CustomMisakaRenderer(),
+           underline=True, math=True, strikethrough=True, superscript=True, tables=True, footnotes=True)
 
     login_manager = LoginManager()
     login_manager.init_app(app)
@@ -59,5 +61,4 @@ def init():
     app.register_blueprint(api_bp, url_prefix=join('/', API_BASE, 'api'))
     app.register_blueprint(view_bp, url_prefix=join('/', API_BASE) if API_BASE else None)
 
-    # start Flask app
     return app

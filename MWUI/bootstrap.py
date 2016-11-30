@@ -57,7 +57,7 @@ class RightSubgroup(NavigationItem):
         return any(item.active for item in self.items)
 
 
-class Customrenderer(BootstrapRenderer):
+class CustomBootstrapRenderer(BootstrapRenderer):
     def __init__(self, **kwargs):
         BootstrapRenderer.__init__(self)
 
