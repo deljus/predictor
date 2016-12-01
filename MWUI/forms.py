@@ -132,7 +132,7 @@ class Password(CustomForm):
 
 
 class Registration(Profile, Password):
-    email = StringField('Email', [validators.DataRequired(), validators.Email(), CheckUserFree()])
+    email = StringField('Email *', [validators.DataRequired(), validators.Email(), CheckUserFree()])
     submit_btn = SubmitField('Register')
 
     __order = ('csrf_token', 'next', 'email', 'password', 'confirm', 'name',
