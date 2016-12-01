@@ -417,6 +417,7 @@ def results():
 
 
 @view_bp.route('/predictor', methods=['GET'])
+@login_required
 def predictor():
     return render_template("predictor.html")
 
