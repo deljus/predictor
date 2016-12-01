@@ -21,7 +21,6 @@
 import sys
 import operator
 import pandas as pd
-import numpy as np
 from collections import defaultdict
 from functools import reduce
 from CGRtools.files.SDFrw import SDFread
@@ -49,14 +48,7 @@ class Descriptorchain(object):
         """
         :param structures: opened structure file or stringio
         :param kwargs: generators specific arguments
-        :return: dict(X=DataFrame, AD=Series, Y=Series, BOX=Series)
-        >>> from MODtools.descriptors.fragmentor import Fragmentor
-        >>> f = Fragmentor(workpath='tests',version='last', s_option='shift', fragment_type=1, min_length=2, max_length=11, \
-        marked_atom=3, marker_rules='tests/test.xml')
-        >>> d = Descriptorsdict({'CdId': None, 'Formula': {'key': pd.Series(['H3O4P']), \
-        'value': pd.DataFrame([{'form':2.}])}})
-        >>> r = Descriptorchain(f, d).get(open('tests/test.sdf'), parsesdf=True)
-        >>> print(r) # надо дописать
+        :return: dict(X=DataFrame, AD=Series, Y=Series, BOX=Series, structures=DataFrame)
         """
         res = defaultdict(list)
 
@@ -87,17 +79,23 @@ class Propertyextractor(object):
         self.__name = name
 
     def get_property(self, meta, marks=None):
-        if marks:
-            pass
-        else:
-            tmp = meta.get(self.__name)
+        """
+        for marked atom property can named property_name.1-2-3 - where 1-2-3 sorted marked atoms.
+        for correct work NEED in rdf mapping started from 1 without breaks.
+        or used common property with key property_name
+        :param meta: dict of data
+        :param marks: list of marked atoms
+        :return: float property or None
+        """
+        tmp = marks and meta.get('%s.%s' % (self.__name,
+                                            '-'.join(str(x) for x in sorted(marks)))) or meta.get(self.__name)
 
         return float(tmp) if tmp else None
 
 
-class Descriptorsdict(object):
-    def __init__(self, data=None, s_option=None, is_reaction=False):
-        self.__s_option = s_option
+class Descriptorsdict(Propertyextractor):
+    def __init__(self, data=None, s_option=None, is_reaction=False, ):
+        Propertyextractor.__init__(self, s_option)
         self.__is_reaction = is_reaction
         self.__extention = data
         self.__extheader = self.__prepareextheader(data)
@@ -111,9 +109,6 @@ class Descriptorsdict(object):
         """
         :param data: dict
         :return: list of strings. descriptors header
-         >>> sorted(Descriptorsdict({})._Descriptorsdict__prepareextheader({'1': None, '2': \
-         {'value': pd.DataFrame([{'3':1}])}}))
-         ['1', '3']
         """
         tmp = []
         for i, j in data.items():
@@ -128,11 +123,6 @@ class Descriptorsdict(object):
         parse SDF or RDF on known keys-headers.
         :param structures: opened file
         :return: DataFrame of descriptors. indexes is the numbers of structures in file, columns - names of descriptors
-         >>> s = Descriptorsdict({'CdId': None, 'Formula': {'key': pd.Series(['H3O4P']), \
-         'value': pd.DataFrame([{'3':1.}])}})._Descriptorsdict__parsefile(open('tests/test_1.sdf'))
-         >>> r = pd.DataFrame([{'3': 1., 'CdId': 1.0}], index=pd.Index([0], name='structure'), columns=s.columns)
-         >>> s.equals(r)
-         True
         """
         extblock = []
         props = []
@@ -149,8 +139,7 @@ class Descriptorsdict(object):
                         tmp.append(data)
             extblock.append(pd.concat(tmp, axis=1) if tmp else pd.DataFrame([{}]))
 
-            tmp = meta.get(self.__s_option)
-            props.append(float(tmp) if tmp else np.NaN)
+            props.append(self.get_property(meta))
 
         res = pd.DataFrame(pd.concat(extblock), columns=self.__extheader)
         res.index = pd.Index(range(len(res.index)), name='structure')
@@ -206,7 +195,3 @@ class Descriptorsdict(object):
             return False
 
         return dict(X=extblock, AD=-extblock.isnull().any(axis=1), Y=prop)
-
-if __name__ == '__main__':
-    import doctest
-    doctest.testmod()
