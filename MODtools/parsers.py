@@ -21,6 +21,7 @@
 #  MA 02110-1301, USA.
 #
 import pandas as pd
+from copy import deepcopy
 from .estimators.kernels import tanimoto_kernel
 
 
@@ -62,7 +63,7 @@ class MBparser(object):
 
     def getsvmparam(self, files):
         res = []
-        repl = {'-t': ('kernel', lambda x: [self.__kernel[i] for i in x.split(',')]),
+        repl = {'-t': ('kernel', lambda x: [self.__kernel[x] for x in x.split(',')]),
                 '-c': ('C', lambda x: self.__parsesvmopts(x, float, unpac=self.__pow10)),
                 '-d': ('degree', lambda x: self.__parsesvmopts(x, int)),
                 '-e': ('tol', lambda x: self.__parsesvmopts(x, float, unpac=self.__pow10)),
@@ -74,13 +75,14 @@ class MBparser(object):
             with open(file) as f:
                 for line in (x for x in f if x.strip()):
                     opts = line.split()
-                    tmp = dict(kernel=['rbf'], C=[1.0], epsilon=[.1], tol=[.001], degree=[3], gamma=[1.0], coef0=[0])
+                    parsed = dict(kernel=['rbf'], C=[1.0], epsilon=[.1], tol=[.001], degree=[3], gamma=[1.0], coef0=[0])
                     for x, y in zip(opts[::2], opts[1::2]):
                         z = repl.get(x)
                         if z:
-                            tmp[z[0]] = z[1](y)
+                            parsed[z[0]] = z[1](y)
 
-                    for i in tmp['kernel']:
+                    for i in parsed['kernel']:
+                        tmp = deepcopy(parsed)
                         if i == 'linear':  # u'*v
                             if svm.get(i):
                                 for k in ('C', 'epsilon', 'tol'):

@@ -330,7 +330,7 @@ class BaseModel(object):
         if prob:
             out['probability'] = pd.concat(prob, axis=1, keys=range(len(prob)))
 
-        if d_s:
+        if d_s is not None:
             out['structures'] = d_s
 
         return out
