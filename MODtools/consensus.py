@@ -21,11 +21,11 @@
 
 
 class ConsensusDragos(object):
-    errors = dict(lad='Too few (less than %d %%) local models have applicability domains covering this structure',
+    errors = dict(lad='Too few (less than %d %%) local models have applicability domains covering this structure. ',
                   diff='The other local models disagree (prediction value difference = %.2f) with the prediction of '
-                       'the minority containing structure inside their applicability domain',
+                       'the minority containing structure inside their applicability domain. ',
                   stp='Individual models failed to reach unanimity - prediction variance exceeds %d %% '
-                      'of the property range width',
-                  zad='None of the local models have applicability domains covering this structure')
+                      'of the property range width. ',
+                  zad='None of the local models have applicability domains covering this structure. ')
 
     trust_desc = {5: 'Optimal', 4: 'Good', 3: 'Medium', 2: 'Low', 1: 'Bad'}
