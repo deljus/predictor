@@ -185,8 +185,7 @@ class Descriptorsdict(Propertyextractor):
             extblock = self.__parseadditions0(**kwargs)
             prop = pd.Series(index=extblock.index)
 
-        elif not any(isinstance(x, list) or isinstance(x, dict) for y, x in kwargs.items() if
-                     y in self.__extention):
+        elif not any(isinstance(x, list) or isinstance(x, dict) for y, x in kwargs.items() if y in self.__extention):
             extblock = self.__parseadditions1(**kwargs)
             prop = pd.Series(index=extblock.index)
 
