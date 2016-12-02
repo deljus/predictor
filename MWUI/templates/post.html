@@ -9,7 +9,7 @@
             <hr>
 
             <!-- Preview Image -->
-            <img class="img-responsive" src="{{ post.banner or '//placehold.it/900x300' }}" alt="">
+            <img class="img-responsive" src="{{ post.banner and post.banner|resize('900x300', upscale=False) or '//placehold.it/900x300' }}" alt="">
             <hr>
 
             <!-- Post Content -->

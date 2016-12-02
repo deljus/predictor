@@ -3,7 +3,7 @@
     {% if about != None %}
         <div class="row">
             <div class="col-md-6">
-                <img class="img-responsive" src="{{ about.banner if about.banner else '//placehold.it/750x450' }}" alt="">
+                <img class="img-responsive" src="{{ about.banner and about.banner|resize('750x450', upscale=False) or '//placehold.it/750x450' }}" alt="">
             </div>
             <div class="col-md-6">
                 <h2>{{ about.title }}</h2>
@@ -19,7 +19,7 @@
         {% for i in data.chief %}
             <div class="col-md-4 text-center">
                 <div class="thumbnail">
-                    <img class="img-responsive" src="{{ i.banner if i.banner else '//placehold.it/750x450' }}" alt="">
+                    <img class="img-responsive" src="{{ i.banner and i.banner|resize('750x450', upscale=False) or '//placehold.it/750x450' }}" alt="">
                     <div class="caption">
                         <h3>{{ i.title }}<br>
                             <small>{{ i.role }}</small>
@@ -35,7 +35,7 @@
     <div class="row">
         {% for i in data.team %}
             <div class="col-md-4 img-portfolio">
-                <img class="img-responsive img-hover" src="{{ i.banner if i.banner else '//placehold.it/700x400' }}" alt="">
+                <img class="img-responsive img-hover" src="{{ i.banner and i.banner|resize('700x400', upscale=False) or '//placehold.it/700x400' }}" alt="">
                 <h3>
                     <a href="{{ i.url }}">{{ i.title }}</a>
                 </h3>

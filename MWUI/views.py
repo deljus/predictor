@@ -26,7 +26,7 @@ from .forms import (Login, Registration, ReLogin, ChangePassword, NewPost, Chang
 from .redirect import get_redirect_target
 from .logins import User
 from .models import Users, Blog
-from .config import UserRole, BLOG_POSTS, Glyph, UPLOAD_PATH, BlogPost, LAB_NAME
+from .config import UserRole, BLOG_POSTS, Glyph, UPLOAD_PATH, IMAGES_ROOT, BlogPost, LAB_NAME, MeetingPost
 from .bootstrap import Pagination
 from .sendmail import send_mail
 from .scopus import get_articles
@@ -41,9 +41,9 @@ conf_pages = (BlogPost.THESIS, BlogPost.SERVICE, BlogPost.MEETING)
 view_bp = Blueprint('view', __name__)
 
 
-def save_upload(field):
+def save_upload(field, images=False):
     file_name = '%s%s' % (uuid.uuid4(), path.splitext(field.data.filename)[-1])
-    field.data.save(path.join(UPLOAD_PATH, file_name))
+    field.data.save(path.join(IMAGES_ROOT if images else UPLOAD_PATH, file_name))
     return file_name
 
 
@@ -60,9 +60,7 @@ def blog_viewer(page, selector):
         data = []
         for p in q.order_by(Blog.date.desc()).page(page, pagesize=BLOG_POSTS):
             tmp = dict(date=p.date.strftime('%B %d, %Y'), glyph=Glyph[p.type.name].value, title=p.title,
-                       body=p.body, url=url_for('.blog_post', post=p.id), author=p.author.name)
-            if p.banner:
-                tmp['banner'] = url_for('static', filename='uploads/%s' % p.banner)
+                       body=p.body, url=url_for('.blog_post', post=p.id), author=p.author.name, banner=p.banner)
             data.append(tmp)
 
     return data, pag
@@ -187,7 +185,7 @@ def profile():
         elif admin:
             if new_post_form.validate_on_submit():
                 def add_post(parent=None):
-                    banner_name = save_upload(new_post_form.banner) if new_post_form.banner.data else None
+                    banner_name = save_upload(new_post_form.banner, images=True) if new_post_form.banner.data else None
                     file_name = save_upload(new_post_form.attachment) if new_post_form.attachment.data else None
                     p = Blog(type=new_post_form.type, title=new_post_form.title.data, slug=new_post_form.slug.data,
                              body=new_post_form.body.data, banner=banner_name, special=new_post_form.special,
@@ -220,8 +218,7 @@ def index():
     with db_session:
         c = select(x for x in Blog if x.post_type == BlogPost.CAROUSEL.value
                    and x.banner is not None).order_by(Blog.id.desc()).limit(BLOG_POSTS)
-        carousel = [dict(banner=url_for('static', filename='uploads/%s' % x.banner),
-                         url=url_for('.blog_post', post=x.id), title=x.title, body=x.body) for x in c]
+        carousel = [dict(banner=x.banner, url=url_for('.blog_post', post=x.id), title=x.title, body=x.body) for x in c]
 
         ip = select(x for x in Blog if x.post_type == BlogPost.IMPORTANT.value)
         info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body)
@@ -231,10 +228,7 @@ def index():
 
         projects = []
         for x in pl.order_by(Blog.date.desc()):
-            tmp = dict(url=url_for('.blog_post', post=x.id), body=x.body, title=x.title)
-            if x.banner:
-                tmp['banner'] = url_for('static', filename='uploads/%s' % x.banner)
-            projects.append(tmp)
+            projects.append(dict(url=url_for('.blog_post', post=x.id), body=x.body, title=x.title, banner=x.banner))
 
     return render_template("home.html", carousel=carousel, projects=dict(list=projects, title='Our Projects'),
                            info=info, title='Welcome to', subtitle=LAB_NAME)
@@ -245,29 +239,21 @@ def about():
     with db_session:
         a = select(x for x in Blog if x.post_type == BlogPost.ABOUT.value).first()
         if a:
-            about_us = dict(body=a.body, title=a.title, url=url_for('.blog_post', post=a.id))
-            if a.banner:
-                about_us['banner'] = url_for('static', filename='uploads/%s' % a.banner)
+            about_us = dict(body=a.body, title=a.title, url=url_for('.blog_post', post=a.id), banner=a.banner)
         else:
             about_us = None
 
         p = select(x for x in Blog if x.post_type == BlogPost.CHIEF.value)
         chief = []
         for x in p:
-            tmp = dict(title=x.title, url=url_for('.blog_post', post=x.id), body=x.body,
-                       role=x.special and x.special.get('role', 'Researcher') or 'Researcher',
-                       order=x.special and x.special.get('order', 0) or 0)
-            if x.banner:
-                tmp['banner'] = url_for('static', filename='uploads/%s' % x.banner)
-            chief.append(tmp)
+            chief.append(dict(title=x.title, url=url_for('.blog_post', post=x.id), body=x.body, banner=x.banner,
+                              role=x.special and x.special.get('role', 'Researcher') or 'Researcher',
+                              order=x.special and x.special.get('order', 0) or 0))
 
         p = select(x for x in Blog if x.post_type == BlogPost.TEAM.value).order_by(Blog.id.desc())
         team = []
         for x in p:
-            tmp = dict(title=x.title, url=url_for('.blog_post', post=x.id), body=x.body)
-            if x.banner:
-                tmp['banner'] = url_for('static', filename='uploads/%s' % x.banner)
-            team.append(tmp)
+            team.append(dict(title=x.title, url=url_for('.blog_post', post=x.id), body=x.body, banner=x.banner))
 
     return render_template("about.html", title='About', subtitle='Laboratory', about=about_us,
                            data=dict(chief=sorted(chief, key=lambda x: x['order'], reverse=True),
@@ -320,7 +306,7 @@ def blog_post(post):
                 if edit_post_form.special:
                     p.special = edit_post_form.special
                 if edit_post_form.banner.data:
-                    p.banner = save_upload(edit_post_form.banner)
+                    p.banner = save_upload(edit_post_form.banner, images=True)
                 if edit_post_form.attachment.data:
                     p.attachment = save_upload(edit_post_form.attachment)
 
@@ -349,7 +335,8 @@ def blog_post(post):
                                                                     and x.parent.id == post).exists():
                         special_form = Meeting(prefix='Meeting')
                         if special_form.validate_on_submit():
-                            banner_name = save_upload(special_form.banner) if special_form.banner.data else None
+                            banner_name = save_upload(special_form.banner,
+                                                      images=True) if special_form.banner.data else None
                             file_name = save_upload(special_form.attachment) if special_form.attachment.data else None
                             w = Blog(type=BlogPost.THESIS, title=special_form.title.data, body=special_form.body.data,
                                      banner=banner_name, special=special_form.special, attachment=file_name,
@@ -358,7 +345,6 @@ def blog_post(post):
                             return redirect(url_for('.blog_post', post=w.id))
 
         elif p.type == BlogPost.THESIS:
-            crumb = dict(url=url_for('.blog_post', post=p.parent.id), title='Abstract', parent='Event')
             if current_user.is_authenticated and p.author.id == current_user.id and \
                     datetime.fromtimestamp(p.parent.special.get('deadline', 0)) > datetime.utcnow():
                 p.participation = p.special.get('participation')
@@ -369,10 +355,12 @@ def blog_post(post):
                     p.special.update(special_form.special)
 
                     if special_form.banner.data:
-                        p.banner = save_upload(special_form.banner)
+                        p.banner = save_upload(special_form.banner, images=True)
                     if special_form.attachment.data:
                         p.attachment = save_upload(special_form.attachment)
 
+            crumb = dict(url=url_for('.blog_post', post=p.parent.id), title='Abstract', parent='Event')
+            special_field = '**Presentation Type**: *%s*' % MeetingPost(p.special.get('participation')).name
         elif p.type in (BlogPost.CHIEF, BlogPost.TEAM):
             crumb = dict(url=url_for('.about'), title='Member', parent='Laboratory')
             scopus = p.special.get('scopus')
@@ -386,9 +374,8 @@ def blog_post(post):
 
         """ final data preparation
         """
-        data = dict(date=p.date.strftime('%B %d, %Y at %H:%M'), title=p.title, body=p.body, author=p.author.name)
-        if p.banner:
-            data['banner'] = url_for('static', filename='uploads/%s' % p.banner)
+        data = dict(date=p.date.strftime('%B %d, %Y at %H:%M'), title=p.title, body=p.body, author=p.author.name,
+                    banner=p.banner)
         if p.attachment:
             data['attachment'] = url_for('static', filename='uploads/%s' % p.attachment)
 

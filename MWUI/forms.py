@@ -20,6 +20,7 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+import imghdr
 from json import loads
 from collections import OrderedDict
 from pycountry import countries
@@ -76,6 +77,27 @@ class CheckUserExist(object):
                 raise ValidationError(self.message)
 
 
+class VerifyPassword(object):
+    def __init__(self):
+        self.message = 'Bad password'
+
+    def __call__(self, form, field):
+        with db_session:
+            user = Users.get(id=current_user.id)
+            if not user or not user.verify_password(field.data):
+                raise ValidationError(self.message)
+
+
+class VerifyImage(object):
+    def __init__(self, _type):
+        self._type = _type
+        self.message = 'Invalid image'
+
+    def __call__(self, form, field):
+        if field.has_file() and imghdr.what(field.data.stream) not in self._type:
+            raise ValidationError(self.message)
+
+
 class CustomForm(FlaskForm):
     next = HiddenField()
     _order = None
@@ -95,17 +117,6 @@ class CustomForm(FlaskForm):
             return redirect(self.next.data)
 
         return redirect(get_redirect_target() or url_for(endpoint, **values))
-
-
-class VerifyPassword(object):
-    def __init__(self):
-        self.message = 'Bad password'
-
-    def __call__(self, form, field):
-        with db_session:
-            user = Users.get(id=current_user.id)
-            if not user or not user.verify_password(field.data):
-                raise ValidationError(self.message)
 
 
 class DeleteButton(CustomForm):
@@ -186,7 +197,8 @@ class Post(CustomForm):
     title = StringField('Title *', [validators.DataRequired()])
     body = TextAreaField('Short Abstract *', [validators.DataRequired()])
     banner = FileField('Graphical Abstract',
-                       validators=[FileAllowed('jpg jpe jpeg png gif svg bmp'.split(), 'Images only')])
+                       validators=[FileAllowed('jpg jpe jpeg png'.split(), 'JPEG or PNG images only'),
+                                   VerifyImage('jpeg png'.split())])
     attachment = FileField('Abstract File', validators=[FileAllowed('doc docx odt rtf'.split(), 'Documents only')])
 
 

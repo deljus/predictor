@@ -24,6 +24,9 @@ from os import path
 
 
 UPLOAD_PATH = 'upload'
+MAX_UPLOAD_SIZE = 16 * 1024 * 1024
+IMAGES_ROOT = path.join(UPLOAD_PATH, 'images')
+RESIZE_URL = '/static/images'
 API_BASE = ''
 SECRET_KEY = 'development key'
 DEBUG = False
@@ -149,7 +152,7 @@ class MeetingPost(Enum):
     Poster = 2
 
 
-config_list = ['UPLOAD_PATH', 'API_BASE', 'SECRET_KEY',
+config_list = ['UPLOAD_PATH', 'API_BASE', 'SECRET_KEY', 'RESIZE_URL', 'MAX_UPLOAD_SIZE',
                'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME',
                'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD', 'REDIS_TTL', 'REDIS_JOB_TIMEOUT',
                'LAB_NAME', 'LAB_SHORT', 'BLOG_POSTS', 'SCOPUS_API_KEY', 'SCOPUS_TTL',

@@ -12,7 +12,7 @@
             {% for i in data %}
                 <div class="item {{ 'active' if loop.first}}">
                     <a href="{{ i.url }}">
-                        <div class="fill" style="background-image:url('{{ i.banner or '//placehold.it/1900x1080' }}');"></div>
+                        <div class="fill" style="background-image:url('{{ i.banner and i.banner|resize('1900x1080', upscale=False) or '//placehold.it/1900x1080' }}');"></div>
                         <div class="carousel-caption">
                             <h2>{{ i.title }}</h2>
                         </div>
