@@ -22,7 +22,7 @@
                                   <tbody>
                                     <tr>
                                       <td class="three sub-columns">
-                                        <img src="{{ banner | banner|resize('125x125', upscale=False) or 'https://cimm.kpfu.ru/static/logo.png'}}">
+                                        <img src="{{ banner and banner|resize('125x125', upscale=False) or 'https://cimm.kpfu.ru/static/logo.png'}}">
                                       </td>
                                       <td class="nine sub-columns last" style="text-align:right; vertical-align:middle;" align="right">
                                           <span class="template-label">{{ title or 'Kazan Chemoinformatics and Molecular Modeling Laboratory' }}</span>
