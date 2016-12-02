@@ -377,7 +377,7 @@ def blog_post(post):
         data = dict(date=p.date.strftime('%B %d, %Y at %H:%M'), title=p.title, body=p.body, author=p.author.name,
                     banner=p.banner)
         if p.attachment:
-            data['attachment'] = url_for('static', filename='uploads/%s' % p.attachment)
+            data['attachment'] = url_for('static', filename='docs/%s' % p.attachment)
 
     return render_template("post.html", title=title or p.title, post=data, info=info,
                            children=sorted(children, key=lambda x: x['order']),
