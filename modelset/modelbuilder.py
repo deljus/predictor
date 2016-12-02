@@ -19,14 +19,13 @@
 #  MA 02110-1301, USA.
 #
 import gzip
-from collections import defaultdict
-from math import ceil
-
 import dill
 import hashlib
 import os
 import subprocess as sp
 import pandas as pd
+from collections import defaultdict
+from math import ceil
 from functools import reduce
 from io import StringIO
 from MODtools.config import MOLCONVERT
@@ -111,7 +110,7 @@ class Model(ConsensusDragos):
             with StringIO(data) as f:
                 res.append(m.predict(f, **additions))
 
-        err_report = defaultdict(dict)
+        #err_report = defaultdict(dict)
         trust_report = defaultdict(dict)
         res_report = defaultdict(dict)
 
@@ -122,6 +121,7 @@ class Model(ConsensusDragos):
         in_predictions = all_predictions.mask(all_domains ^ True)
 
         trust = pd.Series(5, index=all_predictions.index)
+        report = pd.Series('', index=all_predictions.index)
 
         # mean predicted property
         avg_all = all_predictions.mean(axis=1)
@@ -133,22 +133,16 @@ class Model(ConsensusDragos):
         avg_diff = (avg_in - avg_all).abs()  # difference bt in AD and all predictions. NaN for empty in predictions.
         avg_diff_tol = avg_diff > self.TOL  # ignore NaN
         trust.loc[avg_diff_tol] -= 1
-        for r, d in avg_diff.loc[avg_diff_tol].items():
-            s, *n = r if isinstance(r, tuple) else (r,)
-            err_report[s].setdefault(self.__report_atoms(n), []).append(self.errors['diff'] % d)
+        report.loc[avg_diff_tol] += [self.errors['diff'] % x for x in avg_diff.loc[avg_diff_tol]]
 
         avg_in_nul = avg_in.isnull()
         trust.loc[avg_in_nul] -= 2  # totally not in domain
-        for r in avg_in_nul.loc[avg_in_nul].index:
-            s, *n = r if isinstance(r, tuple) else (r,)
-            err_report[s].setdefault(self.__report_atoms(n), []).append(self.errors['zad'])
+        report.loc[avg_in_nul] += [self.errors['zad']] * len(avg_in_nul.loc[avg_in_nul].index)
 
         avg_domain = all_domains.mean(axis=1)
         avg_domain_bad = (avg_domain < self.Nlim) ^ avg_in_nul  # ignore totally not in domain
         trust.loc[avg_domain_bad] -= 1
-        for r, d in avg_domain.loc[avg_domain_bad].items():
-            s, *n = r if isinstance(r, tuple) else (r,)
-            err_report[s].setdefault(self.__report_atoms(n), []).append(self.errors['lad'] % ceil(100 * d))
+        report.loc[avg_domain_bad] += [self.errors['lad'] % ceil(100 * x) for x in avg_domain.loc[avg_domain_bad]]
 
         # update avg and sigma based on consensus
         good = avg_domain >= self.Nlim
@@ -158,9 +152,7 @@ class Model(ConsensusDragos):
         proportion = sigma_all / self.TOL
         proportion_bad = proportion > 1
         trust.loc[proportion_bad] -= 1
-        for r, d in proportion.loc[proportion_bad].items():
-            s, *n = r if isinstance(r, tuple) else (r,)
-            err_report[s].setdefault(self.__report_atoms(n), []).append(self.errors['stp'] % (d * 100 - 100))
+        report[s].setdefault(self.__report_atoms(n), []).append(self.errors['stp'] % (d * 100 - 100))
 
         for r, d in trust.items():
             s, *n = r if isinstance(r, tuple) else (r,)
