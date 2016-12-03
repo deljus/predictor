@@ -29,6 +29,12 @@ from hashlib import sha1
 from dominate import tags
 from .config import LAB_SHORT, UserRole
 from .redirect import get_redirect_target
+from misaka import HtmlRenderer
+
+
+class CustomMisakaRenderer(HtmlRenderer):
+    def table(self, content):
+        return '<table class="table">{}</table>'.format(content)
 
 
 class LeftSubgroup(NavigationItem):

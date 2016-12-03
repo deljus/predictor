@@ -33,10 +33,9 @@ def init():
 
     from .api import api_bp
     from .views import view_bp
-    from .bootstrap import top_nav, CustomBootstrapRenderer
+    from .bootstrap import top_nav, CustomBootstrapRenderer, CustomMisakaRenderer
     from .config import API_BASE, SECRET_KEY, DEBUG, LAB_NAME, RESIZE_URL, UPLOAD_PATH, IMAGES_ROOT, MAX_UPLOAD_SIZE
     from .logins import load_user
-    from .markdown import CustomMisakaRenderer
 
     app = Flask(__name__)
 
