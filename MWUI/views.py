@@ -363,7 +363,7 @@ def blog_post(post):
             special_field = '**Presentation Type**: *%s*' % MeetingPost(p.special.get('participation')).name
         elif p.type in (BlogPost.CHIEF, BlogPost.TEAM):
             crumb = dict(url=url_for('.about'), title='Member', parent='Laboratory')
-            scopus = p.special.get('scopus')
+            scopus = p.special and p.special.get('scopus')
             if scopus:
                 special_field = get_articles(scopus)
 
