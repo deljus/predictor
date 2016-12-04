@@ -153,6 +153,18 @@ class MeetingPost(Enum):
     Poster = 2
 
 
+class FormRoute(Enum):
+    LOGIN = 1
+    REGISTER = 2
+    FORGOT = 3
+    EDIT_PROFILE = 4
+    LOGOUT_ALL = 5
+    CHANGE_PASSWORD = 6
+    NEW_POST = 7
+    BAN_USER = 8
+    CHANGE_USER_ROLE = 9
+
+
 config_list = ['UPLOAD_PATH', 'API_BASE', 'SECRET_KEY', 'RESIZE_URL', 'MAX_UPLOAD_SIZE', 'IMAGES_ROOT',
                'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME', 'YANDEX_METRIKA',
                'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD', 'REDIS_TTL', 'REDIS_JOB_TIMEOUT',

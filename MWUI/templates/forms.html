@@ -2,25 +2,19 @@
 {% block page %}
     <div class="row">
         <div class="col-lg-12">
-            <div class="panel-group" id="accordion">
-                {% for message, form in forms %}
-                    <div class="panel panel-default">
-                        <div class="panel-heading">
-                            <h4 class="panel-title">
-                                <a class="accordion-toggle" data-toggle="collapse" data-parent="#accordion" href="#collapse{{ loop.index }}">
-                                    {{ message }}
-                                </a>
-                            </h4>
-                        </div>
-                        <div id="collapse{{ loop.index }}" class="panel-collapse collapse">
-                            <div class="panel-body">
-                                <div class="col-md-8">
-                                    {{ wtf.quick_form(form, form_type='horizontal', button_map={'submit_button': 'primary'})}}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <ul class="nav nav-tabs">
+                {% for tab in tabs %}
+                    <li class="{{ tab.active and 'active' or '' }}">
+                        <a href="{{ tab.url }}">
+                            <span class="glyphicon glyphicon-{{ tab.glyph }}" aria-hidden="true"></span> {{ tab.title }}
+                        </a>
+                    </li>
                 {% endfor %}
+            </ul>
+
+            <h3>{{ message }}</h3>
+            <div class="col-md-8">
+                {{ wtf.quick_form(form, form_type='horizontal', button_map={'submit_button': 'primary'})}}
             </div>
         </div>
     </div>

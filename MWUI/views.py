@@ -26,7 +26,7 @@ from .forms import (Login, Registration, ReLogin, ChangePassword, NewPost, Chang
 from .redirect import get_redirect_target
 from .logins import User
 from .models import Users, Blog
-from .config import UserRole, BLOG_POSTS, Glyph, UPLOAD_PATH, IMAGES_ROOT, BlogPost, LAB_NAME, MeetingPost
+from .config import UserRole, BLOG_POSTS, Glyph, UPLOAD_PATH, IMAGES_ROOT, BlogPost, LAB_NAME, MeetingPost, FormRoute
 from .bootstrap import Pagination
 from .sendmail import send_mail
 from .scopus import get_articles
@@ -71,62 +71,76 @@ def page_not_found(*args, **kwargs):
     return render_template('layout.html', title='404', subtitle='Page not found'), 404
 
 
-@view_bp.route('/registration', methods=['GET', 'POST'])
-def registration():
+@view_bp.route('/login/', methods=['GET', 'POST'])
+@view_bp.route('/login/<int:action>', methods=['GET', 'POST'])
+def login(action=1):
     if current_user.is_authenticated:
         return redirect(get_redirect_target() or url_for('.index'))
 
-    registration_form = Registration(prefix='Registration')
-    forms = [('Not Registered?', registration_form)]
-
-    if registration_form.validate_on_submit():
-        with db_session:
-            m = select(x for x in Blog if x.post_type == BlogPost.EMAIL.value and x.special['type'] == 'reg').first()
-            u = Users(email=registration_form.email.data, password=registration_form.password.data,
-                      name=registration_form.name.data, job=registration_form.job.data,
-                      town=registration_form.town.data, country=registration_form.country.data,
-                      status=registration_form.status.data)
-
-            send_mail((m and m.body or 'Welcome! %s.') % u.name, u.email, to_name=u.name,
-                      subject=m and m.title or 'Welcome', banner=m and m.banner or None, title=m and m.title or None)
-
-        login_user(User(u), remember=False)
-        return registration_form.redirect()
-
-    return render_template('forms.html', forms=forms, title='Registration')
-
-
-@view_bp.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        return redirect(get_redirect_target() or url_for('.index'))
-
-    login_form = Login(prefix='Login')
-    forgot_form = ForgotPassword(prefix='ForgotPassword')
-
-    forms = [('Welcome Back!', login_form), ('Forgot Password?', forgot_form)]
-
-    if login_form.validate_on_submit():
-        user = User.get(login_form.email.data, login_form.password.data)
-        if user:
-            login_user(user, remember=login_form.remember.data)
-            return login_form.redirect()
-        flash('Invalid Credentials', 'warning')
-
-    elif forgot_form.validate_on_submit():
-        with db_session:
-            u = Users.get(email=forgot_form.email.data)
-            if u:
-                m = select(x for x in Blog if x.post_type == BlogPost.EMAIL.value and
-                           x.special['type'] == 'rep').first()
-                u.gen_restore()
-                send_mail((m and m.body or '%s\n\nYour restore password: %s') % (u.name, u.restore), u.email,
-                          to_name=u.name, subject=m and m.title or 'Forgot password?',
-                          banner=m and m.banner or None, title=m and m.title or None)
-        flash('Check your email box', 'warning')
+    if not 1 <= action <= 3:
         return redirect(url_for('.login'))
 
-    return render_template('forms.html', forms=forms, title='Login')
+    form = FormRoute(action)
+
+    tabs = [dict(title='Welcome Back!', glyph='', active=False,
+                 url=url_for('.login', action=FormRoute.LOGIN.value, next=get_redirect_target())),
+            dict(title='Not Registered?', glyph='', active=False,
+                 url=url_for('.login', action=FormRoute.REGISTER.value, next=get_redirect_target())),
+            dict(title='Forgot Password?', glyph='', active=False,
+                 url=url_for('.login', action=FormRoute.FORGOT.value, next=get_redirect_target()))]
+
+    if form == FormRoute.LOGIN:
+        message = 'Log in'
+        tabs[0]['active'] = True
+        active_form = Login(prefix='Login')
+        if active_form.validate_on_submit():
+            user = User.get(active_form.email.data, active_form.password.data)
+            if user:
+                login_user(user, remember=active_form.remember.data)
+                return active_form.redirect()
+            flash('Invalid Credentials', 'warning')
+
+    elif form == FormRoute.REGISTER:
+        message = 'Registration'
+        tabs[1]['active'] = True
+        active_form = Registration(prefix='Registration')
+        if active_form.validate_on_submit():
+            with db_session:
+                m = select(x for x in Blog
+                           if x.post_type == BlogPost.EMAIL.value and x.special['type'] == 'reg').first()
+                u = Users(email=active_form.email.data, password=active_form.password.data,
+                          name=active_form.name.data, job=active_form.job.data,
+                          town=active_form.town.data, country=active_form.country.data,
+                          status=active_form.status.data)
+
+                send_mail((m and m.body or 'Welcome! %s.') % u.name, u.email, to_name=u.name,
+                          subject=m and m.title or 'Welcome', banner=m and m.banner or None,
+                          title=m and m.title or None)
+
+            login_user(User(u), remember=False)
+            return active_form.redirect()
+
+    elif form == FormRoute.FORGOT:
+        message = 'Restore password'
+        tabs[2]['active'] = True
+        active_form = ForgotPassword(prefix='ForgotPassword')
+        if active_form.validate_on_submit():
+            with db_session:
+                u = Users.get(email=active_form.email.data)
+                if u:
+                    m = select(x for x in Blog if x.post_type == BlogPost.EMAIL.value and
+                               x.special['type'] == 'rep').first()
+                    u.gen_restore()
+                    send_mail((m and m.body or '%s\n\nYour restore password: %s') % (u.name, u.restore), u.email,
+                              to_name=u.name, subject=m and m.title or 'Forgot password?',
+                              banner=m and m.banner or None, title=m and m.title or None)
+            flash('Check your email box', 'warning')
+            return redirect(url_for('.login', next=get_redirect_target()))
+
+    else:
+        return redirect(url_for('.login'))
+
+    return render_template('forms.html', form=active_form, title='Authorization', tabs=tabs, message=message)
 
 
 @view_bp.route('/logout', methods=['GET'])
@@ -136,80 +150,114 @@ def logout():
     return redirect(url_for('.login'))
 
 
-@view_bp.route('/profile', methods=['GET', 'POST'])
+@view_bp.route('/profile/', methods=['GET', 'POST'])
+@view_bp.route('/profile/<int:action>', methods=['GET', 'POST'])
 @login_required
-def profile():
+def profile(action=4):
+    if not 4 <= action <= 9:
+        return redirect(url_for('.profile'))
+
+    form = FormRoute(action)
+    tabs = [dict(title='Edit Profile', glyph='', active=False,
+                 url=url_for('.profile', action=FormRoute.EDIT_PROFILE.value)),
+            dict(title='Log out on all devices', glyph='', active=False,
+                 url=url_for('.profile', action=FormRoute.LOGOUT_ALL.value)),
+            dict(title='Change Password', glyph='', active=False,
+                 url=url_for('.profile', action=FormRoute.CHANGE_PASSWORD.value))]
+
+    admin = current_user.role_is(UserRole.ADMIN)
+    if admin:
+        tabs.extend([dict(title='New Blog Post', glyph='', active=False,
+                          url=url_for('.profile', action=FormRoute.NEW_POST.value)),
+                     dict(title='Ban User', glyph='', active=False,
+                          url=url_for('.profile', action=FormRoute.BAN_USER.value)),
+                     dict(title='Change Role', glyph='', active=False,
+                          url=url_for('.profile', action=FormRoute.CHANGE_USER_ROLE.value))])
+
     with db_session:
-        admin = current_user.role_is(UserRole.ADMIN)
-        user_form = Profile(prefix='EditProfile', obj=current_user.get_user())
-        re_login_form = ReLogin(prefix='ReLogin')
-        change_passwd_form = ChangePassword(prefix='ChangePassword')
+        if form == FormRoute.EDIT_PROFILE:
+            message = 'Edit Profile'
+            tabs[0]['active'] = True
+            active_form = Profile(prefix='EditProfile', obj=current_user.get_user())
+            if active_form.validate_on_submit():
+                u = Users.get(id=current_user.id)
+                u.name = active_form.name.data
+                u.country = active_form.country.data
+                if active_form.job.data:
+                    u.job = active_form.job.data
+                if active_form.town.data:
+                    u.town = active_form.town.data
+                if active_form.status.data:
+                    u.status = active_form.status.data
+                flash('Profile updated')
 
-        forms = [('Edit Profile', user_form), ('Log out on all devices', re_login_form),
-                 ('Change Password', change_passwd_form)]
+        elif form == FormRoute.LOGOUT_ALL:
+            message = 'Log out on all devices'
+            tabs[1]['active'] = True
+            active_form = ReLogin(prefix='ReLogin')
+            if active_form.validate_on_submit():
+                u = Users.get(id=current_user.id)
+                u.change_token()
+                logout_user()
+                flash('Successfully logged out from all devices')
+                return redirect(url_for('.login'))
 
-        if admin:
-            new_post_form = NewPost(prefix='NewPost')
-            change_role_form = ChangeRole(prefix='ChangeRole')
-            ban_form = BanUser(prefix='BanUser')
+        elif form == FormRoute.CHANGE_PASSWORD:
+            message = 'Change Password'
+            tabs[2]['active'] = True
+            active_form = ChangePassword(prefix='ChangePassword')
+            if active_form.validate_on_submit():
+                u = Users.get(id=current_user.id)
+                u.change_password(active_form.password.data)
+                logout_user()
+                flash('Successfully changed password')
+                return redirect(url_for('.login'))
 
-            forms.extend([('New Blog Post', new_post_form), ('Change User Role', change_role_form),
-                          ('Ban User', ban_form)])
-
-        """ forms parsing
-        """
-        if user_form.validate_on_submit():
-            u = Users.get(id=current_user.id)
-            u.name = user_form.name.data
-            u.country = user_form.country.data
-            if user_form.job.data:
-                u.job = user_form.job.data
-            if user_form.town.data:
-                u.town = user_form.town.data
-            if user_form.status.data:
-                u.status = user_form.status.data
-            flash('Profile updated')
-        elif re_login_form.validate_on_submit():
-            u = Users.get(id=current_user.id)
-            u.change_token()
-            logout_user()
-            flash('Successfully logged out from all devices')
-            return redirect(url_for('.login'))
-        elif change_passwd_form.validate_on_submit():
-            u = Users.get(id=current_user.id)
-            u.change_password(change_passwd_form.password.data)
-            logout_user()
-            flash('Successfully changed password')
-            return redirect(url_for('.login'))
-
-        elif admin:
-            if new_post_form.validate_on_submit():
+        elif admin and form == FormRoute.NEW_POST:
+            message = 'New Blog Post'
+            tabs[3]['active'] = True
+            active_form = NewPost(prefix='NewPost')
+            if active_form.validate_on_submit():
                 def add_post(parent=None):
-                    banner_name = save_upload(new_post_form.banner, images=True) if new_post_form.banner.data else None
-                    file_name = save_upload(new_post_form.attachment) if new_post_form.attachment.data else None
-                    p = Blog(type=new_post_form.type, title=new_post_form.title.data, slug=new_post_form.slug.data,
-                             body=new_post_form.body.data, banner=banner_name, special=new_post_form.special,
+                    banner_name = save_upload(active_form.banner, images=True) if active_form.banner.data else None
+                    file_name = save_upload(active_form.attachment) if active_form.attachment.data else None
+                    p = Blog(type=active_form.type, title=active_form.title.data, slug=active_form.slug.data,
+                             body=active_form.body.data, banner=banner_name, special=active_form.special,
                              attachment=file_name, author=Users.get(id=current_user.id), parent=parent)
                     commit()
                     return redirect(url_for('.blog_post', post=p.id))
 
-                if new_post_form.type == BlogPost.SERVICE:
-                    if new_post_form.parent_field.data:
-                        r = Blog.get(id=new_post_form.parent_field.data)
+                if active_form.type == BlogPost.SERVICE:
+                    if active_form.parent_field.data:
+                        r = Blog.get(id=active_form.parent_field.data)
                         if r and r.type == BlogPost.MEETING:
                             return add_post(r)
-                    new_post_form.parent_field.errors = ['Need parent']
+
+                    active_form.parent_field.errors = ['Need parent']
                 else:
                     return add_post()
 
-            elif change_role_form.validate_on_submit():
-                u = Users.get(email=change_role_form.email.data)
-                u.user_role = change_role_form.type.value
-                flash('Successfully changed %s (%s) role' % (u.name, u.email))
-            elif ban_form.validate_on_submit():
+        elif admin and form == FormRoute.BAN_USER:
+            message = 'Ban User'
+            tabs[4]['active'] = True
+            active_form = BanUser(prefix='BanUser')
+            if active_form.validate_on_submit():
                 pass
 
-    return render_template("forms.html", title='Profile', subtitle=current_user.name, forms=forms)
+        elif admin and form == FormRoute.CHANGE_USER_ROLE:
+            message = 'Change Role'
+            tabs[5]['active'] = True
+            active_form = ChangeRole(prefix='ChangeRole')
+            if active_form.validate_on_submit():
+                u = Users.get(email=active_form.email.data)
+                u.user_role = active_form.type.value
+                flash('Successfully changed %s (%s) role' % (u.name, u.email))
+
+        else:  # admin or GTFO
+            return redirect(url_for('.profile'))
+
+    return render_template("forms.html", title='Profile', subtitle=current_user.name, tabs=tabs, form=active_form,
+                           message=message)
 
 
 @view_bp.route('/', methods=['GET'])
