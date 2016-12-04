@@ -312,7 +312,7 @@ $(function () {
         upload_task_file_data();
     });
 
-    $("#prepare-reactions-tbd,#model-reactions-tbd").on('click', '.structure-img', function () {
+    $("#prepare-reactions-tbd").on('click', '.structure-img', function () {
         //og_log('click reaction lick');
         var $img = $(this);
         var _id = $img.attr("data-structure-id");
@@ -328,7 +328,7 @@ $(function () {
         var _id = this.getAttribute("data-structure-id");
         $("#todelete"+_id).val(1);
         $("#structure_data"+_id).attr('data-is-changed','1');
-        $(this).closest('tr').addClass('delete-structure-tr');
+        $(this).closest('tr').addClass('hdn');
         $(this).addClass('disabled');
         return false;
 
@@ -480,7 +480,7 @@ function show_model_reactions()
 function hide_editor() {
     //$('#editor-div').hide();
     $('#sketch').removeClass('sketcher-frame').addClass('hidden-sketcher-frame');
-    $("#editor-div").removeClass("resizable")
+    //$("#editor-div").removeClass("resizable")
     hide_upload_sketcher_data_btn();
     hide_save_sketcher_data_btn();
 }
@@ -488,7 +488,7 @@ function hide_editor() {
 function show_editor(show_upload_reaction_button) {
     //$('#editor-div').show(1000);
     $('#sketch').removeClass('hidden-sketcher-frame').addClass('sketcher-frame');
-    $("#editor-div").addClass("resizable")
+    //$("#editor-div").addClass("resizable")
     if (show_upload_reaction_button) {
         show_upload_sketcher_data_btn();
     }
@@ -753,10 +753,18 @@ function display_reactions_prepare_task(reactions) {
         str += '<a href="#"><img class="structure-img" id="structure-img' + _r_id + '"   border="0" data-structure-id="' + _r_id + '" ></a>';
         str += '</td>';
 
-        str += '<td>' + get_status_name(StructureStatus,_reaction.status) + '</td>';
+        str += '<td>';
+        if (_reaction.status=='2')
+            str +='<h3><span class="label label-success"><span class="glyphicon glyphicon-ok-circle" aria-hidden="true">  Success</span> </span></h3>';
+        else
+            str +='<h3><span class="label label-danger"><span class="glyphicon glyphicon-remove-circle" aria-hidden="true">  Error</span> </span></h3>';
+
+        str += '</td>';
 
         str += '<td>';
-        str += '<button class="btn btn-danger" data-structure-id="' + _r_id + '"  data-role="todelete-btn">Delete</button>';
+        str += '<h3><button type="button" data-structure-id="' + _r_id + '"  data-role="todelete-btn" class="btn btn-default" aria-label="Left Align">';
+        str += '<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>';
+        str += '</button></h3>';
         str += '<input  type="hidden" data-role="todelete" name="todelete'+_r_id+'" id="todelete'+_r_id+'"  value="0">';
         str += '</td>';
         str += '</tr>';
@@ -864,7 +872,7 @@ function display_reactions_for_modeling(reactions, models, additives) {
 
         str += '<td>';
         str += '<input type="hidden" id="structure_data'+_r_id+'"  name="structure_data'+_r_id+'" value="'+encodeURIComponent(_reaction.data)+'" data-structure-id="' + _r_id + '" >';
-        str += '<a href="#"><img class="structure-img" id="structure-img' + _r_id + '"   border="0" data-structure-id="' + _r_id + '" ></a>';
+        str += '<img class="structure-img" id="structure-img' + _r_id + '"   border="0" data-structure-id="' + _r_id + '" >';
         str += '</td>';
 
         str += '<td>';
@@ -1129,7 +1137,7 @@ function display_modelling_results(structures) {
         row = tbd.insertRow();
 
         cellReactionImg = row.insertCell();
-        cellReactionImg.innerHTML = '<input type="hidden" id="structure_data'+r_id+'"  name="structure_data'+r_id+'" value="'+encodeURIComponent(structure_data)+'" data-structure-id="' + r_id + '" ><a href="#"><img class="structure-img" id="structure-img' + r_id + '"   border="0" data-structure-id="' + r_id + '" ></a>';
+        cellReactionImg.innerHTML = '<input type="hidden" id="structure_data'+r_id+'"  name="structure_data'+r_id+'" value="'+encodeURIComponent(structure_data)+'" data-structure-id="' + r_id + '" ><img class="structure-img" id="structure-img' + r_id + '"   border="0" data-structure-id="' + r_id + '" >';
 
         cellReactionImg.rowSpan = structure_span_count;
 

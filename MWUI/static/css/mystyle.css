@@ -47,11 +47,7 @@ li.dropdown > a.dropdown-toggle.btn.btn-default
 	width: 40px;
 
 }
-.reactions-tbl th {
-	text-align: center;
-	vertical-align: middle;
-}
-.reactions-tbl .td {
+.table.reactions-tbl th, .table.reactions-tbl td {
 	text-align: center;
 	vertical-align: middle;
 }
