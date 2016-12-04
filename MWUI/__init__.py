@@ -28,6 +28,7 @@ def init():
     from flask_bootstrap import Bootstrap
     from flask_login import LoginManager
     from flask_misaka import Misaka
+    from misaka import HTML_ESCAPE
     from flask_nav import Nav, register_renderer
     from flask_resize import Resize
 
@@ -56,7 +57,7 @@ def init():
     nav.register_element('top_nav', top_nav)
     Bootstrap(app)
 
-    Misaka(app, renderer=CustomMisakaRenderer(),
+    Misaka(app, renderer=CustomMisakaRenderer(flags=0 | HTML_ESCAPE),
            underline=True, math=True, strikethrough=True, superscript=True, tables=True, footnotes=True)
 
     login_manager = LoginManager()
