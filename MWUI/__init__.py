@@ -35,7 +35,8 @@ def init():
     from .api import api_bp
     from .views import view_bp
     from .bootstrap import top_nav, CustomBootstrapRenderer, CustomMisakaRenderer
-    from .config import API_BASE, SECRET_KEY, DEBUG, LAB_NAME, RESIZE_URL, UPLOAD_PATH, IMAGES_ROOT, MAX_UPLOAD_SIZE
+    from .config import (API_BASE, SECRET_KEY, DEBUG, LAB_NAME, RESIZE_URL, UPLOAD_PATH, IMAGES_ROOT, MAX_UPLOAD_SIZE,
+                         YANDEX_METRIKA)
     from .logins import load_user
 
     app = Flask(__name__)
@@ -48,7 +49,7 @@ def init():
     app.config['RESIZE_ROOT'] = IMAGES_ROOT
     app.config['MAX_CONTENT_LENGTH'] = MAX_UPLOAD_SIZE
 
-    app.jinja_env.globals.update(year=datetime.utcnow, laboratory=LAB_NAME)
+    app.jinja_env.globals.update(year=datetime.utcnow, laboratory=LAB_NAME, yandex=YANDEX_METRIKA)
 
     Resize(app)
 

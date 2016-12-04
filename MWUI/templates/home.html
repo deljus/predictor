@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
-{% import "widgets.html" as widgets %}
+{% from "macroses.html" import carousel as carousel_macros %}
 {% block carousel %}
-    {{ widgets.carousel(carousel) }}
+    {{ carousel_macros(carousel) }}
 {% endblock %}
 {% block page %}
     <div class="row">
