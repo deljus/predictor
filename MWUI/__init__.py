@@ -58,8 +58,8 @@ def init():
     nav.register_element('top_nav', top_nav)
     Bootstrap(app)
 
-    Misaka(app, renderer=CustomMisakaRenderer(flags=0 | HTML_ESCAPE),
-           underline=True, math=True, strikethrough=True, superscript=True, tables=True, footnotes=True)
+    Misaka(app, renderer=CustomMisakaRenderer(flags=0 | HTML_ESCAPE), tables=True,
+           underline=True, math=True, strikethrough=True, superscript=True, footnotes=True, smartypants=False)
 
     login_manager = LoginManager()
     login_manager.init_app(app)
