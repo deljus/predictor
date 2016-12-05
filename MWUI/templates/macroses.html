@@ -1,0 +1,63 @@
+{% macro carousel(data, _id="myCarousel") -%}
+    <header id="{{ _id }}" class="carousel slide">
+        <!-- Indicators -->
+        <ul class="carousel-indicators">
+            {% for i in data %}
+                <li data-target="#{{ _id }}" data-slide-to="{{loop.index}}" class="{{ 'active' if loop.first }}"></li>
+            {% endfor %}
+        </ul>
+
+        <!-- Wrapper for slides -->
+        <div class="carousel-inner">
+            {% for i in data %}
+                <div class="item {{ 'active' if loop.first}}">
+                    <a href="{{ i.url }}">
+                        <div class="fill" style="background-image:url('{{ i.banner and i.banner|resize('1900x1080', upscale=False) or '//placehold.it/1900x1080' }}');"></div>
+                        <div class="carousel-caption">
+                            <h2>{{ i.title }}</h2>
+                        </div>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Controls -->
+        <a class="left carousel-control" href="#{{ _id }}" data-slide="prev">
+            <span class="icon-prev"></span>
+        </a>
+        <a class="right carousel-control" href="#{{ _id }}" data-slide="next">
+            <span class="icon-next"></span>
+        </a>
+    </header>
+{%- endmacro %}
+
+{% macro metrika(id) -%}
+    <!-- Yandex.Metrika counter -->
+    <script type="text/javascript">
+        (function (d, w, c) {
+            (w[c] = w[c] || []).push(function() {
+                try {
+                    w.yaCounter{{ id }} = new Ya.Metrika({
+                        id:{{ id }},
+                        clickmap:true,
+                        trackLinks:true,
+                        accurateTrackBounce:true
+                    });
+                } catch(e) { }
+            });
+
+            var n = d.getElementsByTagName("script")[0],
+                s = d.createElement("script"),
+                f = function () { n.parentNode.insertBefore(s, n); };
+            s.type = "text/javascript";
+            s.async = true;
+            s.src = "https://mc.yandex.ru/metrika/watch.js";
+
+            if (w.opera == "[object Opera]") {
+                d.addEventListener("DOMContentLoaded", f, false);
+            } else { f(); }
+        })(document, window, "yandex_metrika_callbacks");
+    </script>
+    <noscript><div><img src="https://mc.yandex.ru/watch/34698660" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+    <!-- /Yandex.Metrika counter -->
+{% endmacro %}

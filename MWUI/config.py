@@ -24,8 +24,12 @@ from os import path
 
 
 UPLOAD_PATH = 'upload'
+MAX_UPLOAD_SIZE = 16 * 1024 * 1024
+IMAGES_ROOT = path.join(UPLOAD_PATH, 'images')
+RESIZE_URL = '/static/images'
 API_BASE = ''
 SECRET_KEY = 'development key'
+YANDEX_METRIKA = None
 DEBUG = False
 
 LAB_NAME = 'Kazan Chemoinformatics and Molecular Modeling Laboratory'
@@ -149,8 +153,20 @@ class MeetingPost(Enum):
     Poster = 2
 
 
-config_list = ['UPLOAD_PATH', 'API_BASE', 'SECRET_KEY',
-               'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME',
+class FormRoute(Enum):
+    LOGIN = 1
+    REGISTER = 2
+    FORGOT = 3
+    EDIT_PROFILE = 4
+    LOGOUT_ALL = 5
+    CHANGE_PASSWORD = 6
+    NEW_POST = 7
+    BAN_USER = 8
+    CHANGE_USER_ROLE = 9
+
+
+config_list = ['UPLOAD_PATH', 'API_BASE', 'SECRET_KEY', 'RESIZE_URL', 'MAX_UPLOAD_SIZE', 'IMAGES_ROOT',
+               'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME', 'YANDEX_METRIKA',
                'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD', 'REDIS_TTL', 'REDIS_JOB_TIMEOUT',
                'LAB_NAME', 'LAB_SHORT', 'BLOG_POSTS', 'SCOPUS_API_KEY', 'SCOPUS_TTL',
                'SMPT_HOST', 'SMTP_PORT', 'SMTP_LOGIN', 'SMTP_PASSWORD', 'SMTP_MAIL']

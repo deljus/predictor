@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
-{% import "widgets.html" as widgets %}
+{% from "macroses.html" import carousel as carousel_macros %}
 {% block carousel %}
-    {{ widgets.carousel(carousel) }}
+    {{ carousel_macros(carousel) }}
 {% endblock %}
 {% block page %}
     <div class="row">
@@ -40,7 +40,7 @@
         <div class="col-md-6">
             {% set selected_banner = projects.list|random %}
             <a href="{{ selected_banner.url }}">
-                <img class="img-responsive" src="{{ selected_banner.banner if selected_banner.banner else '//placehold.it/700x450'  }}" alt="">
+                <img class="img-responsive" src="{{ selected_banner.banner and selected_banner.banner|resize('700x450', upscale=False) or '//placehold.it/700x450' }}" alt="">
             </a>
         </div>
     </div>

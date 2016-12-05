@@ -28,14 +28,16 @@ def init():
     from flask_bootstrap import Bootstrap
     from flask_login import LoginManager
     from flask_misaka import Misaka
+    from misaka import HTML_ESCAPE
     from flask_nav import Nav, register_renderer
+    from flask_resize import Resize
 
     from .api import api_bp
     from .views import view_bp
-    from .bootstrap import top_nav, CustomBootstrapRenderer
-    from .config import API_BASE, SECRET_KEY, DEBUG, LAB_NAME
+    from .bootstrap import top_nav, CustomBootstrapRenderer, CustomMisakaRenderer
+    from .config import (API_BASE, SECRET_KEY, DEBUG, LAB_NAME, RESIZE_URL, UPLOAD_PATH, IMAGES_ROOT, MAX_UPLOAD_SIZE,
+                         YANDEX_METRIKA)
     from .logins import load_user
-    from .markdown import CustomMisakaRenderer
 
     app = Flask(__name__)
 
@@ -43,14 +45,20 @@ def init():
     app.config['SECRET_KEY'] = SECRET_KEY
     app.config['BOOTSTRAP_SERVE_LOCAL'] = DEBUG
     app.config['ERROR_404_HELP'] = False
-    app.jinja_env.globals.update(year=datetime.utcnow, laboratory=LAB_NAME)
+    app.config['RESIZE_URL'] = RESIZE_URL
+    app.config['RESIZE_ROOT'] = IMAGES_ROOT
+    app.config['MAX_CONTENT_LENGTH'] = MAX_UPLOAD_SIZE
+
+    app.jinja_env.globals.update(year=datetime.utcnow, laboratory=LAB_NAME, yandex=YANDEX_METRIKA)
+
+    Resize(app)
 
     register_renderer(app, 'myrenderer', CustomBootstrapRenderer)
     nav = Nav(app)
     nav.register_element('top_nav', top_nav)
     Bootstrap(app)
 
-    Misaka(app, renderer=CustomMisakaRenderer(),
+    Misaka(app, renderer=CustomMisakaRenderer(flags=0 | HTML_ESCAPE),
            underline=True, math=True, strikethrough=True, superscript=True, tables=True, footnotes=True)
 
     login_manager = LoginManager()

@@ -29,6 +29,15 @@ from hashlib import sha1
 from dominate import tags
 from .config import LAB_SHORT, UserRole
 from .redirect import get_redirect_target
+from misaka import HtmlRenderer
+
+
+class CustomMisakaRenderer(HtmlRenderer):
+    def __init__(self, flags=0):
+        super(CustomMisakaRenderer, self).__init__(flags=flags)
+
+    def table(self, content):
+        return '<table class="table">{}</table>'.format(content)
 
 
 class LeftSubgroup(NavigationItem):
@@ -158,7 +167,6 @@ def top_nav():
                   ]
     else:
         navbar = [LeftSubgroup(View('News', '.blog'), View('About Us', '.about')),
-                  RightSubgroup(View('Login', '.login', next=get_redirect_target() or request.path),
-                                View('Registration', '.registration', next=get_redirect_target() or request.path))]
+                  RightSubgroup(View('Login', '.login', next=get_redirect_target() or request.path))]
 
     return Navbar(View(LAB_SHORT, '.index'), *navbar)

@@ -2,6 +2,7 @@
 {% import "bootstrap/wtf.html" as wtf %}
 {% import "bootstrap/fixes.html" as fixes %}
 {% import "bootstrap/utils.html" as utils %}
+{% from "macroses.html" import metrika %}
 
 {% block navbar %}
     {{ nav.top_nav.render(renderer='myrenderer') }}
@@ -52,4 +53,5 @@
     {{super()}}
     <link rel="icon" type="image/ico" href="{{ url_for('static', filename='favicon.ico') }}">
     {{fixes.ie8()}}
+    {{ yandex and metrika(yandex) or '' }}
 {% endblock %}
