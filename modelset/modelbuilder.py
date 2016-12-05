@@ -104,15 +104,10 @@ class Model(ConsensusDragos):
                     additions.setdefault('additive.%d' % n, {})[m] = a['name']
                     additions.setdefault('amount.%d' % n, {})[m] = a['amount']
 
-        print(additions)
         res = []
         for m in self.__models:
             with StringIO(data) as f:
                 res.append(m.predict(f, **additions))
-
-        #err_report = defaultdict(dict)
-        trust_report = defaultdict(dict)
-        res_report = defaultdict(dict)
 
         # all_y_domains = reduce(merge_wrap, (x['y_domain'] for x in res))
         all_domains = reduce(self.__merge_wrap, (x['domain'] for x in res)).fillna(False)
@@ -152,31 +147,23 @@ class Model(ConsensusDragos):
         proportion = sigma_all / self.TOL
         proportion_bad = proportion > 1
         trust.loc[proportion_bad] -= 1
-        report[s].setdefault(self.__report_atoms(n), []).append(self.errors['stp'] % (d * 100 - 100))
+        report.loc[proportion_bad] += [self.errors['stp'] % (x * 100 - 100) for x in proportion.loc[proportion_bad]]
 
+        collector = defaultdict(list)
         for r, d in trust.items():
             s, *n = r if isinstance(r, tuple) else (r,)
-            trust_report[s][self.__report_atoms(n)] = self.trust_desc[d]
+            atoms = self.__report_atoms(n)
+            collector[s].extend([dict(key='Predicted ± sigma%s%s' % ((self.__units and ' (%s)' % self.__units or ''),
+                                                                     atoms),
+                                      value='%.2f ± %.2f' % (avg_all.loc[r], sigma_all.loc[r]), type=ResultType.TEXT),
+                                 dict(key='Trust of prediction%s' % atoms, value=d, type=ResultType.TEXT),
+                                 dict(key='Distrust reason%s' % atoms, value=report.loc[r], type=ResultType.TEXT)])
 
-        for (r, av), sg in zip(avg_all.items(), sigma_all.loc[avg_all.index]):
-            s, *n = r if isinstance(r, tuple) else (r,)
-            res_report[s][self.__report_atoms(n)] = '%.2f ± %.2f' % (av, sg)
-
-        report = []
-        for s, res_val in res_report.items():
-            tmp = []
-            for atoms, value in res_val.items():
-                tmp.append(dict(key='Predicted value ± sigma%s%s' % ((self.__units and ' (%s)' % self.__units or ''),
-                                                                     atoms), value=value, type=ResultType.TEXT))
-                tmp.append(dict(key='Trust of prediction%s' % atoms,
-                                value=trust_report[s][atoms], type=ResultType.TEXT))
-
-                tmp.append(dict(key='Distrust reason%s' % atoms, value='; '.join(err_report[s].get(atoms, [])),
-                                type=ResultType.TEXT))
-            report.append(dict(results=tmp))
-
-        if len(structures) == len(report):
-            return report
+        if len(structures) == len(collector):
+            out = []
+            for s in sorted(collector):
+                out.append(dict(results=collector[s]))
+            return out
 
         return False
 
