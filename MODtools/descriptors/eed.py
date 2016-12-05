@@ -89,7 +89,7 @@ class Eed(Propertyextractor):
                 for d in s:  # d = ((n1, tmp1), (n2, tmp2), ...)
                     tmp = [s_numb]
                     for w, (x, y) in zip(writers, d):
-                        w.writedata(y)
+                        w.write(y)
                         tmp.append(x)
                     prop.append(self.get_property(meta, marks=tmp[1:]))
                     doubles.append(tmp)
