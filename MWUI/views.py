@@ -295,8 +295,8 @@ def about():
         chief = []
         for x in p:
             chief.append(dict(title=x.title, url=url_for('.blog_post', post=x.id), body=x.body, banner=x.banner,
-                              role=x.special and x.special.get('role', 'Researcher') or 'Researcher',
-                              order=x.special and x.special.get('order', 0) or 0))
+                              role=x.special and x.special.get('role') or 'Researcher',
+                              order=x.special and x.special.get('order') or 0))
 
         p = select(x for x in Blog if x.post_type == BlogPost.TEAM.value).order_by(Blog.id.desc())
         team = []
@@ -364,7 +364,7 @@ def blog_post(post):
         for i in _parent.children or []:  # need order
             if i.post_type == BlogPost.SERVICE.value and i.id != post:
                 children.append(dict(title=i.title, url=url_for('.blog_post', post=i.id),
-                                     order=i.special and i.special.get('order', 0) or 0))
+                                     order=i.special and i.special.get('order') or 0))
 
         if _parent.type == BlogPost.MEETING:
             children.append(dict(title='Participants', url=url_for('.participants', event=_parent.id), order=20))
@@ -376,7 +376,7 @@ def blog_post(post):
             title = p.parent.title
             _type = p.special and p.special.get('type')
             if _type == 'reg':
-                if datetime.fromtimestamp(p.parent.special.get('deadline', 0)) > datetime.utcnow():
+                if datetime.fromtimestamp(p.parent and p.parent.special.get('deadline') or 0) > datetime.utcnow():
                     if current_user.is_authenticated and not select(x for x in Blog
                                                                     if x.author.id == current_user.id
                                                                     and x.post_type == BlogPost.THESIS.value
@@ -394,7 +394,7 @@ def blog_post(post):
 
         elif p.type == BlogPost.THESIS:
             if current_user.is_authenticated and p.author.id == current_user.id and \
-                    datetime.fromtimestamp(p.parent.special.get('deadline', 0)) > datetime.utcnow():
+                    datetime.fromtimestamp(p.parent and p.parent.special.get('deadline') or 0) > datetime.utcnow():
                 p.participation = p.special.get('participation')
                 special_form = Meeting(prefix='Meeting', obj=p)
                 if special_form.validate_on_submit():
