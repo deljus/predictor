@@ -317,7 +317,7 @@ class BaseModel(object):
             pred.append(y_p)
 
             if hasattr(model['model'], 'predict_proba'):
-                y_pa = pd.Series(model['model'].predict_proba(x_t), index=d_x.index)
+                y_pa = pd.DataFrame(model['model'].predict_proba(x_t), index=d_x.index, columns=model['model'].classes_)
                 prob.append(y_pa)
 
             y_ad.append((y_p >= model['y_min']) & (y_p <= model['y_max']))
