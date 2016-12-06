@@ -436,7 +436,7 @@ def blog_post(post):
 @view_bp.route('/search', methods=['GET'])
 @login_required
 def search():
-    return render_template("layout.html")
+    return render_template("search.html")
 
 
 @view_bp.route('/queries', methods=['GET'])

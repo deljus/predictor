@@ -48,6 +48,9 @@ var isSaveMrvBtnExists = false;
 
 var isSketcherDataChanged = false;
 
+// Currect TaskType
+var TASK_TYPE = TaskType.MODELING;  // by default
+
 // все модели
 var MODELS = new Array();
 var API_BASE = getApiUrl();
@@ -63,6 +66,7 @@ var API_BASE = getApiUrl();
  */
 var ApiUrl = {
     create_model_task: API_BASE + "/task/create/" + TaskType.MODELING
+    , create_task: API_BASE + "/task/create/"
     , prepare_task: API_BASE + "/task/prepare/"
     , model_task: API_BASE + "/task/model/"
     , task_result: API_BASE + "/task/results/"
@@ -70,7 +74,14 @@ var ApiUrl = {
     , get_additives: API_BASE + "/resources/additives"
 }
 /******************************************************/
-
+function get_task_type()
+{
+    return TASK_TYPE;
+}
+function set_task_type(val)
+{
+    TASK_TYPE=val;
+}
 function get_status_name(arr, id) {
     for (var key in arr) {
         if (arr[key]==id)
@@ -164,8 +175,8 @@ function find(arr, what, where) {
 
 /*** debug fuctions ***/
 function set_task(task_id) {
-    $('#task_id').val(task_id);
     setCookie('task_id', task_id);
+    $('#task_id').val(task_id);
 
 }
 function set_structure(structure_id)
@@ -186,7 +197,7 @@ function get_structure_data(structure_id) {
 }
 function get_task() {
     var task_id = $('#task_id').val();
-    if (task_id == "")
+    if (task_id==undefined || task_id == "")
         task_id = getCookie("task_id");
     return task_id;
 }
@@ -303,6 +314,17 @@ function upload_task_file_data() {
 
 /***** ON PAGE LOAD ******/
 $(function () {
+    /***
+     * FOR SEARCH
+     */
+     $("#search-type-selector").on("shown.bs.dropdown",function () {
+         log(this)
+     });
+
+
+    /*********************************/
+
+
     $('#upload-file-btn').click(function () {
 
         if ($('#file').val() == '') {
@@ -416,9 +438,6 @@ function initControl() {
         upload_sketcher_data();
     });
 
-    $("#btn-search-upload-sketcher-data").on("click", function (e) {
-        upload_sketcher_search_data();
-    });
 }
 
 /******* Hide/Show function ******/
@@ -541,6 +560,17 @@ function post_new_model_task(data)
     })
 }
 
+function post_new_search_task(data, search_type)
+{
+   return     $.ajax({
+        "url": ApiUrl.create_task+search_type
+        , "type": "POST"
+        , "dataType": "json"
+        , "contentType": "application/json"
+        , "data": data
+    })
+}
+
 function upload_file(data) {
     return $.ajax({
         type: 'POST',
@@ -588,11 +618,40 @@ function upload_sketcher_data() {
             return false;
         }
         else
-            create_model_task(source);
+        {
+            var _this = event.srcElement;
+            var task_type = _this.getAttribute('data-task-type');
+
+            if (task_type==TaskType.MODELING)
+                create_model_task(source);
+            else
+                create_search_task(source, task_type);
+        }
+
 
     }, function (error) {
         alert("Molecule export failed:" + error);
     });
+}
+
+function create_search_task(draw_data, task_type) {
+    //log('create_search_task->');
+    hide_upload_sketcher_data_btn();
+    hide_save_sketcher_data_btn();
+
+    //var data = {"structures":[{"data":draw_data}]};
+    var data = {"data": draw_data};
+    data = JSON.stringify(data);
+
+    post_new_search_task(data, task_type).done(function (resp, textStatus, jqXHR) {
+
+        log('задача создана:');
+        log(resp);
+        var task_id = resp.task;
+        set_task(task_id);
+        start_prepare_model_task(task_id);
+
+    }).fail(handleRequestError);
 }
 
 
@@ -1062,6 +1121,38 @@ function upload_task_for_modeling() {
     }).fail(function (jqXHR, textStatus, errorThrown) {  });
 }
 
+function upload_task_for_searching() {
+
+    //log('upload_task_for_searching->');
+
+    Progress.start();
+
+    var data = [];
+    $("#prepare-reactions-tbd tr").each(function () {
+        var _obj = {};
+        var $tr = $(this);
+
+        _obj.structure = $tr.attr("data-structure-id");
+        var todelete = $("#todelete"+_obj.structure).val();
+        if (todelete=="1")
+            _obj.todelete = true;
+
+        data.push(_obj);
+    });
+
+    log(data);
+
+    return post_model_task(JSON.stringify(data)).done(function (resp, textStatus, jqXHR) {
+
+        // new job will be returned
+        var task_id = resp.task;
+        set_task(task_id);
+        start_modelling();
+
+    }).fail(function (jqXHR, textStatus, errorThrown) {  });
+}
+
+
 function start_modelling() {
     //log('start_modelling->');
     Progress.start();
@@ -1086,7 +1177,12 @@ function load_modeling_result() {
 
         Progress.done();
 
-        display_modelling_results(resp.structures);
+        log(resp)
+
+        if (get_task_type()==TaskType.MODELING)
+            display_modelling_results(resp.structures);
+        else
+            display_search_results(resp.structures);
 
     }).fail(function (jqXHR, textStatus, errorThrown) {
 
@@ -1161,6 +1257,162 @@ function display_modelling_results(structures) {
             cellModel.innerHTML = _model.name;
             cellModel.rowSpan = _results.length;
 
+            for (ri=0;ri<_results.length;ri++)
+            {
+                _result = _results[ri];
+                if (ri>0)
+                {
+                    row = tbd.insertRow();
+                }
+                cellModelResultKey = row.insertCell();
+                cellModelResultKey.innerHTML = _result.key;
+
+                cellModelResultValue = row.insertCell();
+                cellModelResultValue.innerHTML = _result.value;
+            }
+        }
+    }
+
+    $(tbd).find("img.structure-img").each(function () {
+        update_structure_image(this);
+    });
+
+    $("#results-div").show("normal");
+/*
+
+    var large_settings = {
+        'carbonLabelVisible': false,
+        'cpkColoring': true,
+        'implicitHydrogen': false,
+        'width': 600,
+        'height': 300
+    };
+
+    jTbl.find('.reaction_img').each(function () {
+
+        var jImg = $(this);
+        if (jImg.attr('reaction_id')) {
+            var reaction_id = jImg.attr('reaction_id');
+            get_reaction_structure(reaction_id).done(function (data, textStatus, jqXHR) {
+
+                var settings = {
+                    'carbonLabelVisible': false,
+                    'cpkColoring': true,
+                    'implicitHydrogen': false,
+                    'width': 300,
+                    'height': 100,
+                    'zoomMode': 'autoshrink'
+                };
+                try {
+                    reaction_structures[reaction_id] = data;
+                    var dataUrl = marvin.ImageExporter.mrvToDataUrl(data, "image/png", settings);
+                    jImg.attr('src', dataUrl);
+                    jImg.click(function () {
+                        var reaction_id = $(this).attr('reaction_id');
+                        var data = reaction_structures[reaction_id];
+                        var dataUrl = marvin.ImageExporter.mrvToDataUrl(data, "image/png", large_settings);
+                        $('#modal-img').attr('src', dataUrl);
+                        $('#openModal').show();
+
+                    });
+                }
+                catch (err) {
+                    log(err);
+                }
+            });
+        }
+
+
+    });
+
+    var small_settings = {
+        'carbonLabelVisible': false,
+        'cpkColoring': true,
+        'implicitHydrogen': false,
+        'width': 200,
+        'height': 100
+    };
+
+    // сначала загрузим маленькие картинки и сохраним конвертированные в mrv данные
+
+    jTbl.find('img.result-structure').each(function () {
+        try {
+            var jImg = $(this);
+            var img_id = this.id;
+            var data = result_structures[img_id];
+            reactionToMrv(data).done(function (result, textStatus, jqXHR) {
+                var dataUrl = marvin.ImageExporter.mrvToDataUrl(result, "image/png", small_settings);
+                jImg.attr('src', dataUrl);
+                mrv_result_structures [img_id] = result;
+            });
+        }
+        catch (err) {
+            log(err);
+        }
+    });
+    // на клик по картинке посадим загрузку в модальное окно большой картинки
+    jTbl.find('img.result-structure').each(function () {
+        try {
+            var jImg = $(this);
+            jImg.click(function () {
+                // при клике откроем большую картинку
+                $('#openModal').show();
+                var data = mrv_result_structures[this.id];
+                var dataUrl = marvin.ImageExporter.mrvToDataUrl(data, "image/png", large_settings);
+                $('#modal-img').attr('src', dataUrl);
+            });
+        }
+        catch (err) {
+            log(err);
+        }
+    });
+*/
+}
+
+function display_search_results(structures) {
+    //log('display_search_results->');
+
+    var models, structure_data,  structure, r_id, row, _model, _results, cellModelResultKey, cellModelResultValue, _result, structure_span_count;
+
+    hide_all();
+
+    // DEBUG
+    //structures = [{structure:1, data:"", temperature:300, models:[{model:1, name:"model 1", results:[{key:"param1", value:"value1", type:0}]},{model:2, name:"model 2", results:[{key:"param2", value:"value2", type:0}]}], additives:[{additive:"ethanol", amount:55}, {additive:"water", amount:44}]}]
+
+    var jTbl = $("#results-tbody");
+    jTbl.empty();
+    var tbd = jTbl.get(0);
+
+    /************************************/
+    for (var i = 0; i < structures.length; i++) {
+
+
+        structure_span_count = 0;
+
+        structure = structures[i];
+        // ID реакции
+        r_id = structure.structure;
+        structure_data = structure.data;
+        models = structure['models'] || [{model:1, name:"unmodelable structure"}];
+
+        row = tbd.insertRow();
+
+        cellReactionImg = row.insertCell();
+        cellReactionImg.innerHTML = '<input type="hidden" id="structure_data'+r_id+'"  name="structure_data'+r_id+'" value="'+encodeURIComponent(structure_data)+'" data-structure-id="' + r_id + '" ><img class="structure-img" id="structure-img' + r_id + '"   border="0" data-structure-id="' + r_id + '" >';
+
+        for(var mi=0;mi<models.length;mi++)
+        {
+            _model = models[mi];
+            _results = _model['results'] || [{key:"", value:""}];
+            if (mi>0)
+            {
+                row = tbd.insertRow();
+            }
+            /*
+            cellModel = row.insertCell();
+            cellModel.innerHTML = _model.name;
+            cellModel.rowSpan = _results.length;
+            */
             for (ri=0;ri<_results.length;ri++)
             {
                 _result = _results[ri];
@@ -1592,3 +1844,34 @@ function load_searching_results(task_id) {
     return true;
 }
 
+$(document).ready(function handleDocumentReady (e) {
+    initControl();
+    MarvinJSUtil.getEditor("#sketch").then(function (sketcherInstance) {
+        marvinSketcherInstance = sketcherInstance;
+
+        // повесим функцию на изменение в редакторе
+        marvinSketcherInstance.on('molchange', function(){
+
+            if (isSketcherDataChanged)
+            {
+                if ($('#btn-upload-sketcher-data-div').is(':hidden'))
+                {
+                    show_save_sketcher_data_btn();
+                }
+            }
+            isSketcherDataChanged=true;
+
+        });
+
+
+    },function (error) {});
+
+    MarvinJSUtil.getPackage("#sketch").then(function (marvinNameSpace) {
+        marvinNameSpace.onReady(function () {
+            marvin = marvinNameSpace;
+        });
+    }, function () {
+        alert("Cannot retrieve marvin instance from iframe");
+    });
+
+});
