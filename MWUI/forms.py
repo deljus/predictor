@@ -176,7 +176,7 @@ class ForgotPassword(CustomForm):
 
 
 class Logout(CustomForm):
-    submit_btn = SubmitField('Logout')
+    submit_btn = SubmitField('Log out')
 
 
 class ChangeRole(Email):

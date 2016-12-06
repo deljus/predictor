@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+{% block page %}
+    <div class="row">
+        <div class="col-md-8">
+            <form method="POST">
+                {{ form.csrf_token }}
+                <input class="btn btn-default" id="{{ form.submit_btn.id }}" name="{{ form.submit_btn.name }}"
+                       value="{{ form.submit_btn.label.text }}" type="submit">
+            </form>
+        </div>
+    </div>
+{% endblock %}

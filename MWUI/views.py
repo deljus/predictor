@@ -22,7 +22,7 @@
 #
 import uuid
 from .forms import (Login, Registration, ReLogin, ChangePassword, NewPost, ChangeRole, BanUser, ForgotPassword,
-                    Meeting, Profile, DeleteButton)
+                    Meeting, Profile, DeleteButton, Logout)
 from .redirect import get_redirect_target
 from .logins import User
 from .models import Users, Blog
@@ -92,7 +92,7 @@ def login(action=1):
     if form == FormRoute.LOGIN:
         message = 'Log in'
         tabs[0]['active'] = True
-        active_form = Login(prefix='Login')
+        active_form = Login()
         if active_form.validate_on_submit():
             user = User.get(active_form.email.data, active_form.password.data)
             if user:
@@ -103,7 +103,7 @@ def login(action=1):
     elif form == FormRoute.REGISTER:
         message = 'Registration'
         tabs[1]['active'] = True
-        active_form = Registration(prefix='Registration')
+        active_form = Registration()
         if active_form.validate_on_submit():
             with db_session:
                 m = select(x for x in Blog
@@ -123,7 +123,7 @@ def login(action=1):
     elif form == FormRoute.FORGOT:
         message = 'Restore password'
         tabs[2]['active'] = True
-        active_form = ForgotPassword(prefix='ForgotPassword')
+        active_form = ForgotPassword()
         if active_form.validate_on_submit():
             with db_session:
                 u = Users.get(email=active_form.email.data)
@@ -143,11 +143,15 @@ def login(action=1):
     return render_template('forms.html', form=active_form, title='Authorization', tabs=tabs, message=message)
 
 
-@view_bp.route('/logout', methods=['GET'])
+@view_bp.route('/logout', methods=['GET', 'POST'])
 @login_required
 def logout():
-    logout_user()
-    return redirect(url_for('.login'))
+    form = Logout()
+    if form.validate_on_submit():
+        logout_user()
+        return redirect(url_for('.login'))
+
+    return render_template('logout.html', form=form, title='Logout')
 
 
 @view_bp.route('/profile/', methods=['GET', 'POST'])
@@ -178,7 +182,7 @@ def profile(action=4):
         if form == FormRoute.EDIT_PROFILE:
             message = 'Edit Profile'
             tabs[0]['active'] = True
-            active_form = Profile(prefix='EditProfile', obj=current_user.get_user())
+            active_form = Profile(obj=current_user.get_user())
             if active_form.validate_on_submit():
                 u = Users.get(id=current_user.id)
                 u.name = active_form.name.data
@@ -194,7 +198,7 @@ def profile(action=4):
         elif form == FormRoute.LOGOUT_ALL:
             message = 'Log out on all devices'
             tabs[1]['active'] = True
-            active_form = ReLogin(prefix='ReLogin')
+            active_form = ReLogin()
             if active_form.validate_on_submit():
                 u = Users.get(id=current_user.id)
                 u.change_token()
@@ -205,7 +209,7 @@ def profile(action=4):
         elif form == FormRoute.CHANGE_PASSWORD:
             message = 'Change Password'
             tabs[2]['active'] = True
-            active_form = ChangePassword(prefix='ChangePassword')
+            active_form = ChangePassword()
             if active_form.validate_on_submit():
                 u = Users.get(id=current_user.id)
                 u.change_password(active_form.password.data)
@@ -216,7 +220,7 @@ def profile(action=4):
         elif admin and form == FormRoute.NEW_POST:
             message = 'New Blog Post'
             tabs[3]['active'] = True
-            active_form = NewPost(prefix='NewPost')
+            active_form = NewPost()
             if active_form.validate_on_submit():
                 def add_post(parent=None):
                     banner_name = save_upload(active_form.banner, images=True) if active_form.banner.data else None
@@ -240,14 +244,14 @@ def profile(action=4):
         elif admin and form == FormRoute.BAN_USER:
             message = 'Ban User'
             tabs[4]['active'] = True
-            active_form = BanUser(prefix='BanUser')
+            active_form = BanUser()
             if active_form.validate_on_submit():
                 pass
 
         elif admin and form == FormRoute.CHANGE_USER_ROLE:
             message = 'Change Role'
             tabs[5]['active'] = True
-            active_form = ChangeRole(prefix='ChangeRole')
+            active_form = ChangeRole()
             if active_form.validate_on_submit():
                 u = Users.get(email=active_form.email.data)
                 u.user_role = active_form.type.value
