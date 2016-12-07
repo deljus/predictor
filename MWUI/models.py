@@ -23,7 +23,7 @@ import bcrypt
 import hashlib
 import json
 from .config import (DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER, BlogPost, TaskType, ModelType, AdditiveType,
-                     ResultType, StructureType, StructureStatus, UserRole)
+                     ResultType, StructureType, StructureStatus, UserRole, ProfileDegree, ProfileStatus)
 from datetime import datetime
 from pony.orm import Database, sql_debug, PrimaryKey, Required, Optional, Set, Json
 
@@ -46,10 +46,15 @@ class Users(db.Entity):
     restore = Optional(str)
 
     name = Required(str)
+    surname = Required(str)
+    degree = Required(int, default=ProfileDegree.NO_DEGREE.value)
+    status = Required(int, default=ProfileStatus.COMMON.value)
+
     country = Required(str)
-    job = Optional(str)
     town = Optional(str)
-    status = Optional(str)
+    affiliation = Optional(str)
+    position = Optional(str)
+
     posts = Set("Blog")
 
     def __init__(self, email, password, role=UserRole.COMMON, **kwargs):

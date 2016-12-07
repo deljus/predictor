@@ -60,7 +60,8 @@ def blog_viewer(page, selector):
         data = []
         for p in q.order_by(Blog.date.desc()).page(page, pagesize=BLOG_POSTS):
             tmp = dict(date=p.date.strftime('%B %d, %Y'), glyph=Glyph[p.type.name].value, title=p.title,
-                       body=p.body, url=url_for('.blog_post', post=p.id), author=p.author.name, banner=p.banner)
+                       banner=p.banner, body=p.body, url=url_for('.blog_post', post=p.id),
+                       author='%s %s' % (p.author.name, p.author.surname))
             data.append(tmp)
 
     return data, pag
@@ -109,11 +110,13 @@ def login(action=1):
                 m = select(x for x in Blog
                            if x.post_type == BlogPost.EMAIL.value and x.special['type'] == 'reg').first()
                 u = Users(email=active_form.email.data, password=active_form.password.data,
-                          name=active_form.name.data, job=active_form.job.data,
+                          name=active_form.name.data, surname=active_form.surname.data,
+                          affiliation=active_form.affiliation.data, position=active_form.position.data,
                           town=active_form.town.data, country=active_form.country.data,
-                          status=active_form.status.data)
+                          status=active_form.status.data, degree=active_form.degree.data)
 
-                send_mail((m and m.body or 'Welcome! %s.') % u.name, u.email, to_name=u.name,
+                send_mail((m and m.body or 'Welcome! %s.') % ('%s %s' % (u.name, u.surname)), u.email,
+                          to_name='%s %s' % (u.name, u.surname),
                           subject=m and m.title or 'Welcome', banner=m and m.banner or None,
                           title=m and m.title or None)
 
@@ -131,8 +134,9 @@ def login(action=1):
                     m = select(x for x in Blog if x.post_type == BlogPost.EMAIL.value and
                                x.special['type'] == 'rep').first()
                     u.gen_restore()
-                    send_mail((m and m.body or '%s\n\nYour restore password: %s') % (u.name, u.restore), u.email,
-                              to_name=u.name, subject=m and m.title or 'Forgot password?',
+                    send_mail((m and m.body or '%s\n\nNew password: %s') % ('%s %s' % (u.name, u.surname), u.restore),
+                              u.email, to_name='%s %s' % (u.name, u.surname),
+                              subject=m and m.title or 'Forgot password?',
                               banner=m and m.banner or None, title=m and m.title or None)
             flash('Check your email box', 'warning')
             return redirect(url_for('.login', next=get_redirect_target()))
@@ -186,13 +190,26 @@ def profile(action=4):
             if active_form.validate_on_submit():
                 u = Users.get(id=current_user.id)
                 u.name = active_form.name.data
+                u.surname = active_form.surname.data
                 u.country = active_form.country.data
-                if active_form.job.data:
-                    u.job = active_form.job.data
+                u.degree = active_form.degree.data
+                u.status = active_form.status.data
+
+                if active_form.affiliation.data:
+                    u.affiliation = active_form.affiliation.data
+                elif u.affiliation:
+                    u.affiliation = ''
+
+                if active_form.position.data:
+                    u.position = active_form.position.data
+                elif u.position:
+                    u.position = ''
+
                 if active_form.town.data:
                     u.town = active_form.town.data
-                if active_form.status.data:
-                    u.status = active_form.status.data
+                elif u.town:
+                    u.town = ''
+
                 flash('Profile updated')
 
         elif form == FormRoute.LOGOUT_ALL:
@@ -255,13 +272,13 @@ def profile(action=4):
             if active_form.validate_on_submit():
                 u = Users.get(email=active_form.email.data)
                 u.user_role = active_form.type.value
-                flash('Successfully changed %s (%s) role' % (u.name, u.email))
+                flash('Successfully changed %s %s (%s) role' % (u.name, u.surname, u.email))
 
         else:  # admin or GTFO
             return redirect(url_for('.profile'))
 
-    return render_template("forms.html", title='Profile', subtitle=current_user.name, tabs=tabs, form=active_form,
-                           message=message)
+    return render_template("forms.html", title='Profile', subtitle=current_user.name,
+                           tabs=tabs, form=active_form, message=message)
 
 
 @view_bp.route('/', methods=['GET'])
@@ -355,8 +372,12 @@ def blog_post(post):
                         p.parent = parent
                 if edit_post_form.slug.data:
                     p.slug = edit_post_form.slug.data
+
                 if edit_post_form.special:
                     p.special = edit_post_form.special
+                elif p.special:
+                    p.special = None
+
                 if edit_post_form.banner.data:
                     p.banner = save_upload(edit_post_form.banner, images=True)
                 if edit_post_form.attachment.data:
@@ -412,7 +433,7 @@ def blog_post(post):
                         p.attachment = save_upload(special_form.attachment)
 
             crumb = dict(url=url_for('.blog_post', post=p.parent.id), title='Abstract', parent='Event')
-            special_field = '**Presentation Type**: *%s*' % MeetingPost(p.special.get('participation')).name
+            special_field = '**Presentation Type**: *%s*' % MeetingPost(p.special.get('participation')).fancy
         elif p.type in (BlogPost.CHIEF, BlogPost.TEAM):
             crumb = dict(url=url_for('.about'), title='Member', parent='Laboratory')
             scopus = p.special and p.special.get('scopus')
@@ -426,8 +447,8 @@ def blog_post(post):
 
         """ final data preparation
         """
-        data = dict(date=p.date.strftime('%B %d, %Y at %H:%M'), title=p.title, body=p.body, author=p.author.name,
-                    banner=p.banner)
+        data = dict(date=p.date.strftime('%B %d, %Y at %H:%M'), title=p.title, body=p.body, banner=p.banner,
+                    author='%s %s' % (p.author.name, p.author.surname))
         if p.attachment:
             data['attachment'] = url_for('static', filename='docs/%s' % p.attachment)
 

@@ -149,8 +149,14 @@ class Glyph(Enum):
 
 
 class MeetingPost(Enum):
-    Oral = 1
-    Poster = 2
+    ORAL = 1
+    POSTER = 2
+    PLENARY = 3
+
+    @property
+    def fancy(self):
+        names = {1: 'Oral', 2: 'Poster', 3: 'Plenary'}
+        return names[self.value]
 
 
 class FormRoute(Enum):
@@ -163,6 +169,33 @@ class FormRoute(Enum):
     NEW_POST = 7
     BAN_USER = 8
     CHANGE_USER_ROLE = 9
+
+
+class ProfileDegree(Enum):
+    NO_DEGREE = 1
+    PHD = 2
+    SCID = 3
+
+    @property
+    def fancy(self):
+        names = {1: 'No Degree', 2: 'Doctor of Philosophy', 3: 'Doctor of Science'}
+        return names[self.value]
+
+
+class ProfileStatus(Enum):
+    COMMON = 1
+    FOREIGN = 2
+    RUS_SCIENTIST = 3
+    RUS_YOUNG = 4
+    PHD_STUDENT = 5
+    STUDENT = 6
+    INTERN = 7
+
+    @property
+    def fancy(self):
+        names = {1: 'Common', 2: 'Foreign participant', 3: 'Russian Scientist (from 40 year old)',
+                 4: 'Russian young scientist (up to 39 year old)', 5: 'Ph.D. student', 6: 'Student', 7: 'Intern'}
+        return names[self.value]
 
 
 config_list = ['UPLOAD_PATH', 'API_BASE', 'SECRET_KEY', 'RESIZE_URL', 'MAX_UPLOAD_SIZE', 'IMAGES_ROOT',

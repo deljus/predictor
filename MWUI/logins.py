@@ -56,7 +56,7 @@ class User(UserMixin):
 
     @property
     def name(self):
-        return self.__user.name
+        return '%s %s' % (self.__user.name, self.__user.surname)
 
     def get_id(self):
         return self.__user.token

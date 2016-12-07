@@ -25,7 +25,7 @@ from json import loads
 from collections import OrderedDict
 from pycountry import countries
 from .models import Users, Blog
-from .config import BlogPost, UserRole, MeetingPost
+from .config import BlogPost, UserRole, MeetingPost, ProfileDegree, ProfileStatus
 from .redirect import get_redirect_target, is_safe_url
 from flask import url_for, redirect
 from flask_wtf import FlaskForm
@@ -124,11 +124,18 @@ class DeleteButton(CustomForm):
 
 
 class Profile(CustomForm):
-    name = StringField('Name Surname *', [validators.DataRequired()])
-    status = StringField('Status')
-    job = StringField('Organization')
-    town = StringField('Town')
+    name = StringField('Name *', [validators.DataRequired()])
+    surname = StringField('Surname *', [validators.DataRequired()])
+    degree = SelectField('Degree *', [validators.DataRequired()], choices=[(x.value, x.fancy) for x in ProfileDegree],
+                         coerce=int)
+    status = SelectField('Status *', [validators.DataRequired()], choices=[(x.value, x.fancy) for x in ProfileStatus],
+                         coerce=int)
+
     country = SelectField('Country *', [validators.DataRequired()], choices=[(x.alpha_3, x.name) for x in countries])
+    town = StringField('Town')
+    affiliation = StringField('Affiliation')
+    position = StringField('Position')
+
     submit_btn = SubmitField('Update Profile')
 
 
@@ -146,8 +153,8 @@ class Registration(Profile, Password):
     email = StringField('Email *', [validators.DataRequired(), validators.Email(), CheckUserFree()])
     submit_btn = SubmitField('Register')
 
-    __order = ('csrf_token', 'next', 'email', 'password', 'confirm', 'name',
-               'status', 'job', 'town', 'country', 'submit_btn')
+    __order = ('csrf_token', 'next', 'email', 'password', 'confirm', 'name', 'surname', 'degree',
+               'status', 'country', 'town', 'affiliation', 'position', 'submit_btn')
 
     def __init__(self, *args, **kwargs):
         self._order = ['%s%s' % ('prefix' in kwargs and '%s-' % kwargs['prefix'] or '', x) for x in self.__order]
@@ -204,7 +211,7 @@ class Post(CustomForm):
 
 class Meeting(Post):
     participation = SelectField('Presentation Type *', [validators.DataRequired()],
-                                choices=[(x.value, x.name) for x in MeetingPost], coerce=int)
+                                choices=[(x.value, x.fancy) for x in MeetingPost], coerce=int)
     submit_btn = SubmitField('Confirm')
 
     @property
@@ -217,7 +224,7 @@ class NewPost(Post):
     special_field = StringField('Special', [validators.Optional(), JsonValidator()])
     post_type = SelectField('Post Type', [validators.DataRequired()],
                             choices=[(x.value, x.name) for x in BlogPost], coerce=int)
-    parent_field = IntegerField('Parent', [validators.optional()])
+    parent_field = IntegerField('Parent', [validators.Optional()])
     submit_btn = SubmitField('Post')
 
     @property
