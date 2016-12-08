@@ -86,7 +86,7 @@ class Model(ConsensusDragos):
             additions = dict(pressure=structures[0]['pressure'], temperature=structures[0]['temperature'])
             for n, a in enumerate(structures[0]['additives'], start=1):
                 additions['additive.%d' % n] = a['name']
-                additions['amount.%d' % n] = '%f' % a['amount']
+                additions['amount.%d' % n] = a['amount']
 
             data = chemaxed['structure']
         else:

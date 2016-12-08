@@ -188,14 +188,14 @@ class Model(CGRcombo):
                 $DATUM 0.5
             """
 
-            additives = []
             tmp_add = {}
             for k, v in _meta.items():
                 if k.startswith('additive.amount.'):
+                    key = k[16:]
                     try:
                         a_name, *_, a_amount = re.split('[:=]+', v)
                         additive = self.__additives.get(a_name.strip().lower())
-                        if additive:
+                        if additive and key:
                             if '%' in a_amount:
                                 _v = a_amount.replace('%', '')
                                 grader = 100
@@ -203,18 +203,14 @@ class Model(CGRcombo):
                                 _v = a_amount
                                 grader = 1
 
-                            tmp = dict(amount=float(_v) / grader)
-                            tmp.update(additive)
-                            additives.append(tmp)
+                            tmp_add.setdefault(key, dict(amount=float(_v) / grader)).update(additive)
                     except:
                         pass
                 elif k.startswith('additive.'):
                     key = k[9:]
                     additive = self.__additives.get(v.lower())
                     if additive and key:
-                        tmp = tmp_add.get(key, dict(amount=1))
-                        tmp.update(additive)
-                        tmp_add[key] = tmp
+                        tmp_add.setdefault(key, dict(amount=1)).update(additive)
 
                 elif k.startswith('amount.'):
                     key = k[7:]
@@ -227,16 +223,15 @@ class Model(CGRcombo):
                                 _v = v
                                 grader = 1
 
-                            amount = dict(amount=float(_v) / grader)
-                            tmp = tmp_add.get(key, {})
-                            tmp.update(amount)
-                            tmp_add[key] = tmp
+                            amount = float(_v) / grader
+                            tmp_add.setdefault(key, {})['amount'] = amount
                         except:
                             pass
 
-            for i in tmp_add.values():
-                if 'name' in i:
-                    additives.append(i)
+            additives = []
+            for i in sorted(tmp_add):
+                if 'name' in tmp_add[i]:
+                    additives.append(tmp_add[i])
 
             tmp = _meta.pop('pressure', 1)
             try:
