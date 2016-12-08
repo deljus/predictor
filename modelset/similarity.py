@@ -19,24 +19,26 @@
 #  MA 02110-1301, USA.
 #
 import subprocess as sp
+from os import path
 from io import StringIO
-from CGRtools.CGRcore import CGRcore
-from CGRtools.files.RDFrw import RDFread
 from MWUI.config import ModelType, ResultType
 from MODtools.utils import chemaxpost
 from MODtools.config import MOLCONVERT
+from MODtools.descriptors.fragmentor import Fragmentor
+from MODtools.parsers import MBparser
 
 
 model_name = 'Reaction Similarity'
 
 
-class Model(CGRcore):
+class Model(object):
     def __init__(self):
+        parser = MBparser()
+        config_path = path.join(path.dirname(__file__), 'similarity')
+        frag_cfg = path.join(config_path, 'frag.cfg')
+
+        self.__fragmentor = Fragmentor(is_reaction=True, **parser.parsefragmentoropts(frag_cfg)[0])
         self.__workpath = '.'
-
-        CGRcore.__init__(self, cgr_type='0', extralabels=True)
-
-        config_path = path.join(path.dirname(__file__), 'preparer')
 
     @staticmethod
     def get_example():
@@ -56,13 +58,13 @@ class Model(CGRcore):
 
     def setworkpath(self, workpath):
         self.__workpath = workpath
+        self.__fragmentor.setworkpath(workpath)
 
     def get_results(self, structures):
         # prepare input file
         if len(structures) == 1:
             chemaxed = chemaxpost('calculate/molExport',
-                                  dict(structure=structures[0]['data'],
-                                       parameters='rdf'))
+                                  dict(structure=structures[0]['data'], parameters='rdf'))
             if not chemaxed:
                 return False
 
@@ -75,8 +77,7 @@ class Model(CGRcore):
                     return False
 
         with StringIO(data) as f:
-            for reaction in RDFread(f).read():
-                pass
+            descriptors = self.__fragmentor.get(f)['X']
 
 
 class ModelLoader(object):

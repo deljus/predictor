@@ -79,8 +79,7 @@ class Model(ConsensusDragos):
         # prepare input file
         if len(structures) == 1:
             chemaxed = chemaxpost('calculate/molExport',
-                                  dict(structure=structures[0]['data'],
-                                       parameters=self.__format))
+                                  dict(structure=structures[0]['data'], parameters=self.__format))
             if not chemaxed:
                 return False
             additions = dict(pressure=structures[0]['pressure'], temperature=structures[0]['temperature'])
