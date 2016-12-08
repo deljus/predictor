@@ -32,6 +32,9 @@ from MODtools.utils import get_additives, chemaxpost
 from MWUI.config import ModelType, ResultType, StructureType, StructureStatus
 
 
+model_name = 'Preparer'
+
+
 class Model(CGRcombo):
     def __init__(self):
         self.__workpath = '.'
@@ -72,7 +75,7 @@ class Model(CGRcombo):
 
     @staticmethod
     def get_name():
-        return 'Preparer'
+        return model_name
 
     @staticmethod
     def get_type():
@@ -202,8 +205,9 @@ class Model(CGRcombo):
                             else:
                                 _v = a_amount
                                 grader = 1
-
-                            tmp_add.setdefault(key, dict(amount=float(_v) / grader)).update(additive)
+                            tmp = dict(amount=float(_v) / grader)
+                            tmp.update(additive)
+                            tmp_add[key] = tmp
                     except:
                         pass
                 elif k.startswith('additive.'):
@@ -299,11 +303,11 @@ class ModelLoader(object):
 
     @staticmethod
     def load_model(name):
-        if name == 'Preparer':
+        if name == model_name:
             return Model()
 
     @staticmethod
     def get_models():
         model = Model()
         return [dict(example=model.get_example(), description=model.get_description(),
-                     type=model.get_type(), name=model.get_name())]
+                     type=model.get_type(), name=model_name)]
