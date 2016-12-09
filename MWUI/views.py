@@ -255,8 +255,10 @@ def profile(action=4):
                             return add_post(r)
 
                     active_form.parent_field.errors = ['Need parent']
-                else:
+                elif active_form.type != BlogPost.THESIS:
                     return add_post()
+                else:
+                    active_form.parent_field.errors = ["DON'T post Thesis!"]
 
         elif admin and form == FormRoute.BAN_USER:
             message = 'Ban User'
@@ -332,7 +334,7 @@ def about():
 @view_bp.route('/blog/post/<int:post>', methods=['GET', 'POST'])
 def blog_post(post):
     admin = current_user.is_authenticated and current_user.role_is(UserRole.ADMIN)
-    edit_post_form = None
+    edit_post = None
     remove_post_form = None
     special_form = None
     special_field = None
@@ -354,34 +356,34 @@ def blog_post(post):
         """
         if admin:
             remove_post_form = DeleteButton(prefix='Delete')
-            edit_post_form = NewPost(prefix='Edit', obj=p)
+            edit_post = NewPost(prefix='Edit', obj=p)
             if remove_post_form.validate_on_submit():
                 p.delete()
                 remove_post_form.redirect('.blog')
                 return redirect(url_for('.blog'))
-            elif edit_post_form.validate_on_submit():
-                p.body = edit_post_form.body.data
-                p.title = edit_post_form.title.data
+            elif edit_post.validate_on_submit():
+                p.body = edit_post.body.data
+                p.title = edit_post.title.data
                 p.date = datetime.utcnow()
 
-                if p.type not in conf_pages and edit_post_form.type not in conf_pages:
-                    p.post_type = edit_post_form.type.value
-                if edit_post_form.parent_field.data and p.type == BlogPost.SERVICE:
-                    parent = edit_post_form.parent_field.data != post and Blog.get(id=edit_post_form.parent_field.data)
-                    if parent:
+                if p.type not in conf_pages and edit_post.type not in conf_pages:
+                    p.post_type = edit_post.type.value
+                if edit_post.parent_field.data and p.type == BlogPost.SERVICE and edit_post.parent_field.data != post:
+                    parent = Blog.get(id=edit_post.parent_field.data)
+                    if parent and parent.type == BlogPost.MEETING:
                         p.parent = parent
-                if edit_post_form.slug.data:
-                    p.slug = edit_post_form.slug.data
+                if edit_post.slug.data:
+                    p.slug = edit_post.slug.data
 
-                if edit_post_form.special:
-                    p.special = edit_post_form.special
+                if edit_post.special:
+                    p.special = edit_post.special
                 elif p.special:
                     p.special = None
 
-                if edit_post_form.banner.data:
-                    p.banner = save_upload(edit_post_form.banner, images=True)
-                if edit_post_form.attachment.data:
-                    p.attachment = save_upload(edit_post_form.attachment)
+                if edit_post.banner.data:
+                    p.banner = save_upload(edit_post.banner, images=True)
+                if edit_post.attachment.data:
+                    p.attachment = save_upload(edit_post.attachment)
 
         """ sidebar for nested posts
         """
@@ -401,7 +403,8 @@ def blog_post(post):
             title = p.parent.title
             _type = p.special and p.special.get('type')
             if _type == 'reg':
-                if datetime.fromtimestamp(p.parent and p.parent.special.get('deadline') or 0) > datetime.utcnow():
+                if datetime.fromtimestamp(p.parent.special and p.parent.special.get('deadline') or 0) > \
+                        datetime.utcnow():
                     if current_user.is_authenticated and not select(x for x in Blog
                                                                     if x.author.id == current_user.id
                                                                     and x.post_type == BlogPost.THESIS.value
@@ -415,11 +418,20 @@ def blog_post(post):
                                      banner=banner_name, special=special_form.special, attachment=file_name,
                                      author=Users.get(id=current_user.id), parent=p.parent)
                             commit()
+
+                            m = select(x for x in Blog if x.post_type == BlogPost.EMAIL.value and
+                                       x.special['meeting'] == p.parent.id).first()
+                            send_mail((m and m.body or '%s\n\nYou registered to meeting') % current_user.name,
+                                      current_user.email, to_name=current_user.name,
+                                      subject=m and m.title or 'Welcome to meeting',
+                                      banner=m and m.banner or None, title=m and m.title or None)
+                            flash('Welcome to meeting!')
                             return redirect(url_for('.blog_post', post=w.id))
 
         elif p.type == BlogPost.THESIS:
             if current_user.is_authenticated and p.author.id == current_user.id and \
-                    datetime.fromtimestamp(p.parent and p.parent.special.get('deadline') or 0) > datetime.utcnow():
+                    datetime.fromtimestamp(p.parent.special and p.parent.special.get('deadline') or 0) > \
+                    datetime.utcnow():
                 p.participation = p.special.get('participation')
                 special_form = Meeting(prefix='Meeting', obj=p)
                 if special_form.validate_on_submit():
@@ -454,7 +466,7 @@ def blog_post(post):
 
     return render_template("post.html", title=title or p.title, post=data, info=info,
                            children=sorted(children, key=lambda x: x['order']),
-                           edit_form=edit_post_form, remove_form=remove_post_form, crumb=crumb,
+                           edit_form=edit_post, remove_form=remove_post_form, crumb=crumb,
                            special_form=special_form, special_field=special_field)
 
 
