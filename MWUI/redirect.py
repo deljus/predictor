@@ -22,6 +22,7 @@
 #
 from urllib.parse import urlparse, urljoin
 from flask import request
+from os import path
 
 
 def is_safe_url(target):
@@ -34,3 +35,7 @@ def get_redirect_target():
     target = request.args.get('next')
     if target and is_safe_url(target):
         return target
+
+
+def split_url_path(target):
+    return path.split(urlparse(target).path)

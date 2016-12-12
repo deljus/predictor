@@ -108,9 +108,8 @@ def login(action=1):
         if active_form.validate_on_submit():
             with db_session:
                 m = active_form.welcome and \
-                    select(x for x in Blog
-                           if x.post_type == BlogPost.EMAIL.value and x.id == active_form.welcome
-                           and (x.special is None or x.special['type'] != 'rep')).first() or \
+                    select(x for x in Blog if x.post_type == BlogPost.EMAIL.value
+                           and x.special['welcome'] == active_form.welcome).first() or \
                     select(x for x in Blog
                            if x.post_type == BlogPost.EMAIL.value and x.special['type'] == 'reg').first()
 
