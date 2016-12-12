@@ -26,8 +26,8 @@ from collections import OrderedDict
 from pycountry import countries
 from .models import Users, Blog
 from .config import BlogPost, UserRole, MeetingPost, ProfileDegree, ProfileStatus
-from .redirect import get_redirect_target, is_safe_url
-from flask import url_for, redirect, request
+from .redirect import get_redirect_target, is_safe_url, split_url_path
+from flask import url_for, redirect
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from flask_login import current_user
@@ -150,23 +150,22 @@ class Password(CustomForm):
 
 
 class Registration(Profile, Password):
-    welcome_field = HiddenField()
     email = StringField('Email *', [validators.DataRequired(), validators.Email(), CheckUserFree()])
     submit_btn = SubmitField('Register')
 
-    __order = ('csrf_token', 'next', 'welcome_field', 'email', 'password', 'confirm', 'name', 'surname', 'degree',
+    __order = ('csrf_token', 'next', 'email', 'password', 'confirm', 'name', 'surname', 'degree',
                'status', 'country', 'town', 'affiliation', 'position', 'submit_btn')
 
     def __init__(self, *args, **kwargs):
         self._order = ['%s%s' % ('prefix' in kwargs and '%s-' % kwargs['prefix'] or '', x) for x in self.__order]
         super(Registration, self).__init__(*args, **kwargs)
-        if not self.welcome_field.data:
-            self.welcome_field.data = request.args.get('welcome')
 
     @property
     def welcome(self):
-        if self.welcome_field.data and self.welcome_field.data.isdigit():
-            return int(self.welcome_field.data)
+        if self.next.data and is_safe_url(self.next.data):
+            base, page = split_url_path(self.next.data)
+            if base == '/blog/post' and page.isdigit():
+                return int(page)
         return None
 
 
