@@ -27,7 +27,7 @@ from pycountry import countries
 from .models import Users, Blog
 from .config import BlogPost, UserRole, MeetingPost, ProfileDegree, ProfileStatus
 from .redirect import get_redirect_target, is_safe_url
-from flask import url_for, redirect
+from flask import url_for, redirect, request
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from flask_login import current_user
@@ -110,13 +110,13 @@ class CustomForm(FlaskForm):
     def __init__(self, *args, **kwargs):
         super(CustomForm, self).__init__(*args, **kwargs)
         if not self.next.data:
-            self.next.data = get_redirect_target() or ''
+            self.next.data = get_redirect_target()
 
     def redirect(self, endpoint='.index', **values):
-        if is_safe_url(self.next.data):
+        if self.next.data and is_safe_url(self.next.data):
             return redirect(self.next.data)
 
-        return redirect(get_redirect_target() or url_for(endpoint, **values))
+        return redirect(url_for(endpoint, **values))
 
 
 class DeleteButton(CustomForm):
@@ -150,15 +150,24 @@ class Password(CustomForm):
 
 
 class Registration(Profile, Password):
+    welcome_field = HiddenField()
     email = StringField('Email *', [validators.DataRequired(), validators.Email(), CheckUserFree()])
     submit_btn = SubmitField('Register')
 
-    __order = ('csrf_token', 'next', 'email', 'password', 'confirm', 'name', 'surname', 'degree',
+    __order = ('csrf_token', 'next', 'welcome_field', 'email', 'password', 'confirm', 'name', 'surname', 'degree',
                'status', 'country', 'town', 'affiliation', 'position', 'submit_btn')
 
     def __init__(self, *args, **kwargs):
         self._order = ['%s%s' % ('prefix' in kwargs and '%s-' % kwargs['prefix'] or '', x) for x in self.__order]
         super(Registration, self).__init__(*args, **kwargs)
+        if not self.welcome_field.data:
+            self.welcome_field.data = request.args.get('welcome')
+
+    @property
+    def welcome(self):
+        if self.welcome_field.data and self.welcome_field.data.isdigit():
+            return int(self.welcome_field.data)
+        return None
 
 
 class Login(Email):

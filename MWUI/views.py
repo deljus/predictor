@@ -107,8 +107,13 @@ def login(action=1):
         active_form = Registration()
         if active_form.validate_on_submit():
             with db_session:
-                m = select(x for x in Blog
+                m = active_form.welcome and \
+                    select(x for x in Blog
+                           if x.post_type == BlogPost.EMAIL.value and x.id == active_form.welcome
+                           and (x.special is None or x.special['type'] != 'rep')).first() or \
+                    select(x for x in Blog
                            if x.post_type == BlogPost.EMAIL.value and x.special['type'] == 'reg').first()
+
                 u = Users(email=active_form.email.data, password=active_form.password.data,
                           name=active_form.name.data, surname=active_form.surname.data,
                           affiliation=active_form.affiliation.data, position=active_form.position.data,

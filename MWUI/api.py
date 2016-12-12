@@ -314,7 +314,7 @@ class ModelTask(AuthResource):
                 if d['additives'] is not None:
                     alist = []
                     for a in d['additives']:
-                        if a['additive'] in additives and 0 < a['amount'] < 1:
+                        if a['additive'] in additives and 0 < a['amount'] <= 1:
                             a.update(additives[a['additive']])
                             alist.append(a)
                     prepared[s]['additives'] = alist
