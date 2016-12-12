@@ -42,6 +42,11 @@ def send_mail(message, to_mail, to_name=None, subject=None, banner=None, title=N
     msg.attach(part1)
     msg.attach(part2)
 
-    with SMTP(SMPT_HOST, SMTP_PORT) as smtp:
-        smtp.login(SMTP_LOGIN, SMTP_PASSWORD)
-        smtp.sendmail(SMTP_MAIL, to_mail, msg.as_string())
+    try:
+        with SMTP(SMPT_HOST, SMTP_PORT) as smtp:
+            smtp.login(SMTP_LOGIN, SMTP_PASSWORD)
+            smtp.sendmail(SMTP_MAIL, to_mail, msg.as_string())
+    except:
+        pass
+
+
