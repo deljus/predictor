@@ -619,8 +619,7 @@ function upload_sketcher_data() {
         }
         else
         {
-            var _this = event.srcElement;
-            var task_type = _this.getAttribute('data-task-type');
+            var task_type = get_task_type();
 
             if (task_type==TaskType.MODELING)
                 create_model_task(source);
