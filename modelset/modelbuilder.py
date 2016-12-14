@@ -155,7 +155,8 @@ class Model(ConsensusDragos):
             collector[s].extend([dict(key='Predicted ± sigma%s%s' % ((self.__units and ' (%s)' % self.__units or ''),
                                                                      atoms),
                                       value='%.2f ± %.2f' % (avg_all.loc[r], sigma_all.loc[r]), type=ResultType.TEXT),
-                                 dict(key='Trust of prediction%s' % atoms, value=str(d), type=ResultType.TEXT),
+                                 dict(key='Trust of prediction%s' % atoms, value=self.trust_desc[d],
+                                      type=ResultType.TEXT),
                                  dict(key='Distrust reason%s' % atoms, value=report.loc[r], type=ResultType.TEXT)])
 
         if len(structures) == len(collector):
