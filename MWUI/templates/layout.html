@@ -44,14 +44,18 @@
     </div>
 {% endblock %}
 
-{% block styles -%}
+{% block styles %}
     {{super()}}
     <link href="{{ url_for('static', filename='css/modern-business.css') }}" rel="stylesheet">
 {% endblock styles %}
+
+{% block scripts %}
+    {{super()}}
+    {{ yandex and metrika(yandex) or '' }}
+{% endblock scripts %}
 
 {% block head %}
     {{super()}}
     <link rel="icon" type="image/ico" href="{{ url_for('static', filename='favicon.ico') }}">
     {{fixes.ie8()}}
-    {{ yandex and metrika(yandex) or '' }}
 {% endblock %}
