@@ -110,7 +110,7 @@ def get_articles(author_id):
         author = metrics.json()['author-retrieval-response'][0]
         arts = ['***h***-index: **%s**, citations count: **%s** *[Provided by SCOPUS API]*\n ' %
                 (author['h-index'], author['coredata']['citation-count']),
-                '**List of last published articles** (total: **%s**)\n' % author['coredata']['document-count']]
+                '**List of recently published articles** (total: **%s**)\n' % author['coredata']['document-count']]
 
         for i in articles.json()["search-results"]["entry"]:
             authors = OrderedSet('{initials} {surname}'.format(initials=x['initials'], surname=x['surname'])
