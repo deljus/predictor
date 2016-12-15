@@ -28,7 +28,8 @@ from flask import render_template
 from .config import LAB_NAME, SMTP_MAIL, SMPT_HOST, SMTP_LOGIN, SMTP_PASSWORD, SMTP_PORT
 
 
-def send_mail(message, to_mail, to_name=None, subject=None, banner=None, title=None):
+def send_mail(message, to_mail, to_name=None, from_name=None, subject=None, banner=None, title=None,
+              reply_name=None, reply_mail=None):
     html = render_template('email.html', body=markdown(message), banner=banner, title=title)
 
     part1 = MIMEText(message, 'plain')
@@ -36,8 +37,10 @@ def send_mail(message, to_mail, to_name=None, subject=None, banner=None, title=N
 
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject or ""
-    msg['From'] = '%s <%s>' % (LAB_NAME, SMTP_MAIL)
+    msg['From'] = '%s <%s>' % (from_name or LAB_NAME, SMTP_MAIL)
     msg['To'] = '%s <%s>' % (to_name, to_mail) if to_name else to_mail
+    if reply_mail:
+        msg['Reply-To'] = '%s <%s>' % (reply_name, reply_mail) if reply_name else reply_mail
 
     msg.attach(part1)
     msg.attach(part2)
@@ -48,5 +51,3 @@ def send_mail(message, to_mail, to_name=None, subject=None, banner=None, title=N
             smtp.sendmail(SMTP_MAIL, to_mail, msg.as_string())
     except:
         pass
-
-

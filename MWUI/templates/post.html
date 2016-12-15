@@ -3,11 +3,6 @@
     <div class="row">
         <!-- Blog Post Content Column -->
         <div class="col-lg-8">
-            <!-- Date/Time -->
-            <p><span class="glyphicon glyphicon-time" aria-hidden="true"></span> Posted on {{ post.date }}</p>
-            <p><span class="glyphicon glyphicon-pencil" aria-hidden="true"></span> {{ post.author }}</p>
-            <hr>
-
             <!-- Preview Image -->
             <img class="img-responsive" src="{{ post.banner and post.banner|resize('900x300', upscale=False) or '//placehold.it/900x300' }}" alt="">
             <hr>
@@ -29,6 +24,10 @@
                 <hr>
                 {{ wtf.quick_form(special_form, form_type='horizontal', button_map={'submit_button': 'primary'})}}
             {% endif %}
+
+            <hr><!-- Date/Time -->
+            <p><span class="glyphicon glyphicon-time" aria-hidden="true"></span> {{ post.date }}. <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span> {{ post.author }}</p>
+
             {% if remove_form and edit_form %}
                 <div class="panel-group" id="accordion">
                     <div class="panel panel-default">
@@ -78,19 +77,21 @@
                     {% endfor %}
                 </ul>
             {% endif %}
-            {% for i in info %}
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <h4>{{ i.title }}</h4>
+            {% if info %}
+                {% for i in info %}
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h4><span class="glyphicon glyphicon-{{ i.glyph }}" aria-hidden="true"></span> {{ i.title }}</h4>
+                        </div>
+                        <div class="panel-body">
+                            {{ i.body|truncate(200, True)|markdown }}
+                            <a href="{{ i.url }}" class="btn btn-default">
+                                Read More <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
+                            </a>
+                        </div>
                     </div>
-                    <div class="panel-body">
-                        {{ i.body|truncate(200, True)|markdown }}
-                        <a href="{{ i.url }}" class="btn btn-default">
-                            Show <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
-                        </a>
-                    </div>
-                </div>
-            {% endfor %}
+                {% endfor %}
+            {% endif %}
         </div>
     </div>
 {% endblock %}

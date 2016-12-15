@@ -120,9 +120,10 @@ def login(action=1):
                           status=active_form.status.data, degree=active_form.degree.data)
 
                 send_mail((m and m.body or 'Welcome! %s.') % ('%s %s' % (u.name, u.surname)), u.email,
-                          to_name='%s %s' % (u.name, u.surname),
-                          subject=m and m.title or 'Welcome', banner=m and m.banner or None,
-                          title=m and m.title or None)
+                          to_name='%s %s' % (u.name, u.surname), subject=m and m.title or 'Welcome',
+                          banner=m and m.banner or None, title=m and m.title or None,
+                          from_name=m.special.get('from'), reply_mail=m.special.get('mail'),
+                          reply_name=m.special.get('name'))
 
             login_user(User(u), remember=False)
             return active_form.redirect()
@@ -295,8 +296,8 @@ def index():
                    and x.banner is not None).order_by(Blog.id.desc()).limit(BLOG_POSTS)
         carousel = [dict(banner=x.banner, url=url_for('.blog_post', post=x.id), title=x.title, body=x.body) for x in c]
 
-        ip = select(x for x in Blog if x.post_type == BlogPost.IMPORTANT.value)
-        info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body)
+        ip = select(x for x in Blog if x.post_type in (BlogPost.IMPORTANT.value, BlogPost.MEETING.value))
+        info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body, glyph=Glyph[x.type.name].value)
                 for x in ip.order_by(Blog.id.desc()).limit(3)]
 
         pl = select(x for x in Blog if x.post_type == BlogPost.PROJECTS.value)
@@ -344,17 +345,12 @@ def blog_post(post):
     special_field = None
     children = []
     title = None
+    info = None
 
     with db_session:
         p = Blog.get(id=post)
         if not p:
             return redirect(url_for('.blog'))
-
-        """ collect sidebar
-        """
-        ip = select(x for x in Blog if x.post_type == BlogPost.IMPORTANT.value and x.id != post)
-        info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body)
-                for x in ip.order_by(Blog.date.desc()).limit(3)]
 
         """ admin page
         """
@@ -391,13 +387,12 @@ def blog_post(post):
 
         """ sidebar for nested posts
         """
-        _parent = p.parent or p
-        for i in _parent.children or []:  # need order
-            if i.post_type == BlogPost.SERVICE.value and i.id != post:
-                children.append(dict(title=i.title, url=url_for('.blog_post', post=i.id),
-                                     order=i.special and i.special.get('order') or 0))
-
-        if _parent.type == BlogPost.MEETING:
+        if p.type in (BlogPost.MEETING, BlogPost.THESIS, BlogPost.SERVICE):
+            _parent = p.parent or p
+            for i in _parent.children or []:  # need order
+                if i.post_type == BlogPost.SERVICE.value and i.id != post:
+                    children.append(dict(title=i.title, url=url_for('.blog_post', post=i.id),
+                                         order=i.special and i.special.get('order') or 0))
             children.append(dict(title='Participants', url=url_for('.participants', event=_parent.id), order=20))
 
         """ SERVICE POST
@@ -412,7 +407,7 @@ def blog_post(post):
                     if current_user.is_authenticated and not select(x for x in Blog
                                                                     if x.author.id == current_user.id
                                                                     and x.post_type == BlogPost.THESIS.value
-                                                                    and x.parent.id == post).exists():
+                                                                    and x.parent == p.parent).exists():
                         special_form = Meeting(prefix='Meeting')
                         if special_form.validate_on_submit():
                             banner_name = save_upload(special_form.banner,
@@ -428,7 +423,9 @@ def blog_post(post):
                             send_mail((m and m.body or '%s\n\nYou registered to meeting') % current_user.name,
                                       current_user.email, to_name=current_user.name,
                                       subject=m and m.title or 'Welcome to meeting',
-                                      banner=m and m.banner or None, title=m and m.title or None)
+                                      banner=m and m.banner or None, title=m and m.title or None,
+                                      from_name=m.special.get('from'), reply_mail=m.special.get('mail'),
+                                      reply_name=m.special.get('name'))
                             flash('Welcome to meeting!')
                             return redirect(url_for('.blog_post', post=w.id))
 
@@ -460,6 +457,13 @@ def blog_post(post):
             crumb = dict(url=url_for('.about'), title='Description', parent='Laboratory')
         else:
             crumb = dict(url=url_for('.blog'), title='Post', parent='News')
+            """ collect sidebar
+            """
+            if p.type != BlogPost.MEETING:
+                ip = select(x for x in Blog if x.id != post and x.post_type in (BlogPost.IMPORTANT.value,
+                                                                                BlogPost.MEETING.value))
+                info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body,
+                             glyph=Glyph[x.type.name].value) for x in ip.order_by(Blog.date.desc()).limit(3)]
 
         """ final data preparation
         """
