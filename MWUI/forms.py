@@ -63,7 +63,7 @@ class CheckUserFree(object):
 
     def __call__(self, form, field):
         with db_session:
-            if Users.exists(email=field.data):
+            if Users.exists(email=field.data.lower()):
                 raise ValidationError(self.message)
 
 
@@ -73,7 +73,7 @@ class CheckUserExist(object):
 
     def __call__(self, form, field):
         with db_session:
-            if not Users.exists(email=field.data):
+            if not Users.exists(email=field.data.lower()):
                 raise ValidationError(self.message)
 
 

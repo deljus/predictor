@@ -95,7 +95,7 @@ def login(action=1):
         tabs[0]['active'] = True
         active_form = Login()
         if active_form.validate_on_submit():
-            user = User.get(active_form.email.data, active_form.password.data)
+            user = User.get(active_form.email.data.lower(), active_form.password.data)
             if user:
                 login_user(user, remember=active_form.remember.data)
                 return active_form.redirect()
@@ -113,7 +113,7 @@ def login(action=1):
                     select(x for x in Blog
                            if x.post_type == BlogPost.EMAIL.value and x.special['type'] == 'reg').first()
 
-                u = Users(email=active_form.email.data, password=active_form.password.data,
+                u = Users(email=active_form.email.data.lower(), password=active_form.password.data,
                           name=active_form.name.data, surname=active_form.surname.data,
                           affiliation=active_form.affiliation.data, position=active_form.position.data,
                           town=active_form.town.data, country=active_form.country.data,
@@ -134,7 +134,7 @@ def login(action=1):
         active_form = ForgotPassword()
         if active_form.validate_on_submit():
             with db_session:
-                u = Users.get(email=active_form.email.data)
+                u = Users.get(email=active_form.email.data.lower())
                 if u:
                     m = select(x for x in Blog if x.post_type == BlogPost.EMAIL.value and
                                x.special['type'] == 'rep').first()
