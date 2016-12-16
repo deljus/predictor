@@ -20,27 +20,27 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from smtplib import SMTP
+from MWUI.config import SMPT_HOST, SMTP_PORT, SMTP_LOGIN, SMTP_PASSWORD, SMTP_MAIL
 
-def send_mail(message, to_mail, to_name=None, from_name=None, subject=None, banner=None, title=None,
-              reply_name=None, reply_mail=None):
-    html = render_template('email.html', body=markdown(message), banner=banner, title=title)
+
+def run(to_mail=None, html=None, message=None, subject=None, mail_from=None, mail_to=None, reply_to=None):
 
     part1 = MIMEText(message, 'plain')
     part2 = MIMEText(html, 'html')
 
     msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject or ""
-    msg['From'] = '%s <%s>' % (from_name or LAB_NAME, SMTP_MAIL)
-    msg['To'] = '%s <%s>' % (to_name, to_mail) if to_name else to_mail
-    if reply_mail:
-        msg['Reply-To'] = '%s <%s>' % (reply_name, reply_mail) if reply_name else reply_mail
+    msg['Subject'] = subject
+    msg['From'] = mail_from
+    msg['To'] = mail_to
+    if reply_to:
+        msg['Reply-To'] = reply_to
 
     msg.attach(part1)
     msg.attach(part2)
 
-    try:
-        with SMTP(SMPT_HOST, SMTP_PORT) as smtp:
+    with SMTP(SMPT_HOST, SMTP_PORT) as smtp:
             smtp.login(SMTP_LOGIN, SMTP_PASSWORD)
             smtp.sendmail(SMTP_MAIL, to_mail, msg.as_string())
-    except:
-        pass

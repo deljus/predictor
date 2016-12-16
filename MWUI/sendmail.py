@@ -22,18 +22,27 @@
 #
 from redis import Redis, ConnectionError
 from rq import Queue
-
 from flask_misaka import markdown
 from flask import render_template
-from .config import LAB_NAME, SMTP_MAIL
+from .config import LAB_NAME, SMTP_MAIL, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_MAIL
 
 
 def send_mail(message, to_mail, to_name=None, from_name=None, subject=None, banner=None, title=None,
               reply_name=None, reply_mail=None):
 
-    #tasks = Redis(host=host, port=port, password=password)
+    r = Redis(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD)
 
-    email = dict(html=render_template('email.html', body=markdown(message), banner=banner, title=title),
-                 message=message, subject=subject or "", mail_from='%s <%s>' % (from_name or LAB_NAME, SMTP_MAIL),
-                 mail_to='%s <%s>' % (to_name, to_mail) if to_name else to_mail,
-                 reply_to='%s <%s>' % (reply_name, reply_mail) if reply_name else reply_mail)
+    try:
+        r.ping()
+        sender = Queue(connection=r, name=REDIS_MAIL, default_timeout=3600)
+    except ConnectionError:
+        return False
+
+    try:
+        email = dict(html=render_template('email.html', body=markdown(message), banner=banner, title=title),
+                     message=message, subject=subject or "", mail_from='%s <%s>' % (from_name or LAB_NAME, SMTP_MAIL),
+                     mail_to='%s <%s>' % (to_name, to_mail) if to_name else to_mail, to_mail=to_mail,
+                     reply_to='%s <%s>' % (reply_name, reply_mail) if reply_name else reply_mail)
+        return sender.enqueue_call('redis_mail.run', kwargs=email, result_ttl=60).id
+    except:
+        return False
