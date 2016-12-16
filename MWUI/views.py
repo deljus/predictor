@@ -398,7 +398,7 @@ def blog_post(post):
         """ SERVICE POST
         """
         if p.type == BlogPost.SERVICE:
-            crumb = dict(url=url_for('.blog_post', post=p.parent.id), title=p.title, parent='Event')
+            crumb = dict(url=url_for('.blog_post', post=p.parent.id), title=p.title, parent='Event main page')
             title = p.parent.title
             _type = p.special and p.special.get('type')
             if _type == 'reg':
@@ -445,7 +445,7 @@ def blog_post(post):
                     if special_form.attachment.data:
                         p.attachment = save_upload(special_form.attachment)
 
-            crumb = dict(url=url_for('.blog_post', post=p.parent.id), title='Abstract', parent='Event')
+            crumb = dict(url=url_for('.participants', event=p.parent.id), title='Abstract', parent='Event participants')
             special_field = '**Presentation Type**: *%s*' % MeetingPost(p.special.get('participation')).fancy
         elif p.type in (BlogPost.CHIEF, BlogPost.TEAM):
             crumb = dict(url=url_for('.about'), title='Member', parent='Laboratory')
@@ -538,7 +538,8 @@ def participants(event, page=1):
         return redirect(url_for('.participants', event=event))
 
     return render_template("blog.html", paginator=res[1], posts=res[0], title=b.title, subtitle='Participants',
-                           crumb=dict(url=url_for('.blog_post', post=event), title='Presentations', parent='Event'))
+                           crumb=dict(url=url_for('.blog_post', post=event), title='Presentations',
+                                      parent='Event main page'))
 
 
 @view_bp.route('/emails', methods=['GET'])
