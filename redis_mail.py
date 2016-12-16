@@ -20,20 +20,27 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from redis import Redis, ConnectionError
-from rq import Queue
-
-from flask_misaka import markdown
-from flask import render_template
-from .config import LAB_NAME, SMTP_MAIL
-
 
 def send_mail(message, to_mail, to_name=None, from_name=None, subject=None, banner=None, title=None,
               reply_name=None, reply_mail=None):
+    html = render_template('email.html', body=markdown(message), banner=banner, title=title)
 
-    #tasks = Redis(host=host, port=port, password=password)
+    part1 = MIMEText(message, 'plain')
+    part2 = MIMEText(html, 'html')
 
-    email = dict(html=render_template('email.html', body=markdown(message), banner=banner, title=title),
-                 message=message, subject=subject or "", mail_from='%s <%s>' % (from_name or LAB_NAME, SMTP_MAIL),
-                 mail_to='%s <%s>' % (to_name, to_mail) if to_name else to_mail,
-                 reply_to='%s <%s>' % (reply_name, reply_mail) if reply_name else reply_mail)
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject or ""
+    msg['From'] = '%s <%s>' % (from_name or LAB_NAME, SMTP_MAIL)
+    msg['To'] = '%s <%s>' % (to_name, to_mail) if to_name else to_mail
+    if reply_mail:
+        msg['Reply-To'] = '%s <%s>' % (reply_name, reply_mail) if reply_name else reply_mail
+
+    msg.attach(part1)
+    msg.attach(part2)
+
+    try:
+        with SMTP(SMPT_HOST, SMTP_PORT) as smtp:
+            smtp.login(SMTP_LOGIN, SMTP_PASSWORD)
+            smtp.sendmail(SMTP_MAIL, to_mail, msg.as_string())
+    except:
+        pass
