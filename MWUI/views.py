@@ -21,50 +21,50 @@
 #  MA 02110-1301, USA.
 #
 import uuid
-from .forms import (Login, Registration, ReLogin, ChangePassword, NewPost, ChangeRole, BanUser, ForgotPassword,
-                    Meeting, Profile, DeleteButton, Logout)
+from .forms import (LoginForm, RegistrationForm, ReLoginForm, ChangePasswordForm, PostForm, ChangeRoleForm, BanUserForm,
+                    ForgotPasswordForm, ProfileForm, DeleteButtonForm, LogoutForm, MeetingForm, EmailForm, ThesisForm,
+                    TeamForm)
 from .redirect import get_redirect_target
 from .logins import User
-from .models import Users, Blog
-from .config import UserRole, BLOG_POSTS, Glyph, UPLOAD_PATH, IMAGES_ROOT, BlogPost, LAB_NAME, MeetingPost, FormRoute
+from .models import Users, BlogPosts, Emails, Meetings, Posts, TeamPosts, Theses
+from .config import (UserRole, BLOG_POSTS_PER_PAGE, Glyph, UPLOAD_PATH, IMAGES_ROOT, BlogPost, LAB_NAME, MeetingPost, FormRoute,
+                     EmailPost, TeamPost, ThesisPost)
 from .bootstrap import Pagination
 from .sendmail import send_mail
 from .scopus import get_articles
-from flask import redirect, url_for, render_template, Blueprint, flash, abort
+from flask import redirect, url_for, render_template, Blueprint, flash, abort, make_response, request
 from flask_login import login_user, logout_user, login_required, current_user
 from pony.orm import db_session, select, commit
 from datetime import datetime
 from os import path
+from werkzeug.utils import secure_filename
 
 
-conf_pages = (BlogPost.THESIS, BlogPost.SERVICE, BlogPost.MEETING)
 view_bp = Blueprint('view', __name__)
 
 
 def save_upload(field, images=False):
-    file_name = '%s%s' % (uuid.uuid4(), path.splitext(field.data.filename)[-1])
-    field.data.save(path.join(IMAGES_ROOT if images else UPLOAD_PATH, file_name))
-    return file_name
+    file_name = '%s%s' % (uuid.uuid4(), path.splitext(field.filename)[-1])
+    field.save(path.join(IMAGES_ROOT if images else UPLOAD_PATH, file_name))
+    return file_name, secure_filename(field.filename)
 
 
-def blog_viewer(page, selector):
+def combo_save(banner, attachment):
+    banner_name = save_upload(banner.data, images=True)[0] if banner.data else None
+    file_name = [save_upload(attachment.data)] if attachment.data else None
+    return banner_name, file_name
+
+
+def blog_viewer(page, query, redirect_url, title, subtitle, crumb=None):
     if page < 1:
-        return None
-    with db_session:
-        q = select(x for x in Blog).filter(selector)
-        count = q.count()
-        pag = Pagination(page, count, pagesize=BLOG_POSTS)
-        if page != pag.page:
-            return None
+        return redirect(url_for(redirect_url))
 
-        data = []
-        for p in q.order_by(Blog.date.desc()).page(page, pagesize=BLOG_POSTS):
-            tmp = dict(date=p.date.strftime('%B %d, %Y'), glyph=Glyph[p.type.name].value, title=p.title,
-                       banner=p.banner, body=p.body, url=url_for('.blog_post', post=p.id),
-                       author='%s %s' % (p.author.name, p.author.surname))
-            data.append(tmp)
+    pag = Pagination(page, query.count(), pagesize=BLOG_POSTS_PER_PAGE)
+    if page != pag.page:
+        return redirect(url_for(redirect_url))
 
-    return data, pag
+    posts = list(query.page(page, pagesize=BLOG_POSTS_PER_PAGE))
+    return render_template("blog.html", paginator=pag, posts=posts, title=title, subtitle=subtitle, crumb=crumb)
 
 
 @view_bp.errorhandler(404)
@@ -78,10 +78,9 @@ def login(action=1):
     if current_user.is_authenticated:
         return redirect(get_redirect_target() or url_for('.index'))
 
-    if not 1 <= action <= 3:
+    form = FormRoute.get(action)
+    if not form or not form.is_login():
         return redirect(url_for('.login'))
-
-    form = FormRoute(action)
 
     tabs = [dict(title='Welcome Back!', glyph='', active=False,
                  url=url_for('.login', action=FormRoute.LOGIN.value, next=get_redirect_target())),
@@ -93,7 +92,7 @@ def login(action=1):
     if form == FormRoute.LOGIN:
         message = 'Log in'
         tabs[0]['active'] = True
-        active_form = Login()
+        active_form = LoginForm()
         if active_form.validate_on_submit():
             user = User.get(active_form.email.data.lower(), active_form.password.data)
             if user:
@@ -104,14 +103,19 @@ def login(action=1):
     elif form == FormRoute.REGISTER:
         message = 'Registration'
         tabs[1]['active'] = True
-        active_form = Registration()
+        active_form = RegistrationForm()
+        print(request.cookies.get('meeting'))
         if active_form.validate_on_submit():
+            m = None
             with db_session:
-                m = active_form.welcome and \
-                    select(x for x in Blog if x.post_type == BlogPost.EMAIL.value
-                           and x.special['welcome'] == active_form.welcome).first() or \
-                    select(x for x in Blog
-                           if x.post_type == BlogPost.EMAIL.value and x.special['type'] == 'reg').first()
+                meeting = request.cookies.get('meeting')
+
+                if meeting:
+                    tmp = Meetings.get(id=meeting)
+                    m = tmp and tmp.meeting and Emails.get(post_parent=tmp.meeting,
+                                                           post_type=EmailPost.MEETING_REGISTRATION.value)
+                if not m:
+                    m = select(x for x in Emails if x.post_type == EmailPost.REGISTRATION.value).first()
 
                 u = Users(email=active_form.email.data.lower(), password=active_form.password.data,
                           name=active_form.name.data, surname=active_form.surname.data,
@@ -121,9 +125,8 @@ def login(action=1):
 
                 send_mail((m and m.body or 'Welcome! %s.') % ('%s %s' % (u.name, u.surname)), u.email,
                           to_name='%s %s' % (u.name, u.surname), subject=m and m.title or 'Welcome',
-                          banner=m and m.banner or None, title=m and m.title or None,
-                          from_name=m.special.get('from'), reply_mail=m.special.get('mail'),
-                          reply_name=m.special.get('name'))
+                          banner=m and m.banner, title=m and m.title,
+                          from_name=m and m.from_name, reply_mail=m and m.reply_mail, reply_name=m and m.reply_name)
 
             login_user(User(u), remember=False)
             return active_form.redirect()
@@ -131,18 +134,18 @@ def login(action=1):
     elif form == FormRoute.FORGOT:
         message = 'Restore password'
         tabs[2]['active'] = True
-        active_form = ForgotPassword()
+        active_form = ForgotPasswordForm()
         if active_form.validate_on_submit():
             with db_session:
                 u = Users.get(email=active_form.email.data.lower())
                 if u:
-                    m = select(x for x in Blog if x.post_type == BlogPost.EMAIL.value and
-                               x.special['type'] == 'rep').first()
+                    m = select(x for x in Emails if x.post_type == EmailPost.FORGOT.value).first()
                     u.gen_restore()
                     send_mail((m and m.body or '%s\n\nNew password: %s') % ('%s %s' % (u.name, u.surname), u.restore),
                               u.email, to_name='%s %s' % (u.name, u.surname),
                               subject=m and m.title or 'Forgot password?',
-                              banner=m and m.banner or None, title=m and m.title or None)
+                              banner=m and m.banner, title=m and m.title,
+                              from_name=m and m.from_name, reply_mail=m and m.reply_mail, reply_name=m and m.reply_name)
             flash('Check your email box', 'warning')
             return redirect(url_for('.login', next=get_redirect_target()))
 
@@ -155,7 +158,7 @@ def login(action=1):
 @view_bp.route('/logout', methods=['GET', 'POST'])
 @login_required
 def logout():
-    form = Logout()
+    form = LogoutForm()
     if form.validate_on_submit():
         logout_user()
         return redirect(url_for('.login'))
@@ -166,123 +169,164 @@ def logout():
 @view_bp.route('/profile/', methods=['GET', 'POST'])
 @view_bp.route('/profile/<int:action>', methods=['GET', 'POST'])
 @login_required
+@db_session
 def profile(action=4):
-    if not 4 <= action <= 9:
+    form = FormRoute.get(action)
+    if not form or not form.is_profile():
         return redirect(url_for('.profile'))
 
-    form = FormRoute(action)
-    tabs = [dict(title='Edit Profile', glyph='', active=False,
+    tabs = [dict(title='Edit Profile', glyph='pencil', active=False,
                  url=url_for('.profile', action=FormRoute.EDIT_PROFILE.value)),
-            dict(title='Log out on all devices', glyph='', active=False,
+            dict(title='Log out on all devices', glyph='remove', active=False,
                  url=url_for('.profile', action=FormRoute.LOGOUT_ALL.value)),
-            dict(title='Change Password', glyph='', active=False,
+            dict(title='Change Password', glyph='qrcode', active=False,
                  url=url_for('.profile', action=FormRoute.CHANGE_PASSWORD.value))]
 
     admin = current_user.role_is(UserRole.ADMIN)
     if admin:
-        tabs.extend([dict(title='New Blog Post', glyph='', active=False,
-                          url=url_for('.profile', action=FormRoute.NEW_POST.value)),
-                     dict(title='Ban User', glyph='', active=False,
+        tabs.extend([dict(title='New Blog Post', glyph='font', active=False,
+                          url=url_for('.profile', action=FormRoute.NEW_BLOG_POST.value)),
+                     dict(title='New Meeting Page', glyph='resize-small', active=False,
+                          url=url_for('.profile', action=FormRoute.NEW_MEETING_PAGE.value)),
+                     dict(title='New Email Template', glyph='envelope', active=False,
+                          url=url_for('.profile', action=FormRoute.NEW_EMAIL_TEMPLATE.value)),
+                     dict(title='Ban User', glyph='remove-circle', active=False,
                           url=url_for('.profile', action=FormRoute.BAN_USER.value)),
-                     dict(title='Change Role', glyph='', active=False,
+                     dict(title='Change Role', glyph='arrow-up', active=False,
                           url=url_for('.profile', action=FormRoute.CHANGE_USER_ROLE.value))])
 
-    with db_session:
-        if form == FormRoute.EDIT_PROFILE:
-            message = 'Edit Profile'
-            tabs[0]['active'] = True
-            active_form = Profile(obj=current_user.get_user())
-            if active_form.validate_on_submit():
-                u = Users.get(id=current_user.id)
-                u.name = active_form.name.data
-                u.surname = active_form.surname.data
-                u.country = active_form.country.data
-                u.degree = active_form.degree.data
-                u.status = active_form.status.data
+    if form == FormRoute.EDIT_PROFILE:
+        message = 'Edit Profile'
+        tabs[0]['active'] = True
+        active_form = ProfileForm(obj=current_user.get_user())
+        if active_form.validate_on_submit():
+            u = Users.get(id=current_user.id)
+            u.name = active_form.name.data
+            u.surname = active_form.surname.data
+            u.country = active_form.country.data
+            u.degree = active_form.degree.data
+            u.status = active_form.status.data
 
-                if active_form.affiliation.data:
-                    u.affiliation = active_form.affiliation.data
-                elif u.affiliation:
-                    u.affiliation = ''
+            if active_form.affiliation.data:
+                u.affiliation = active_form.affiliation.data
+            elif u.affiliation:
+                u.affiliation = ''
 
-                if active_form.position.data:
-                    u.position = active_form.position.data
-                elif u.position:
-                    u.position = ''
+            if active_form.position.data:
+                u.position = active_form.position.data
+            elif u.position:
+                u.position = ''
 
-                if active_form.town.data:
-                    u.town = active_form.town.data
-                elif u.town:
-                    u.town = ''
+            if active_form.town.data:
+                u.town = active_form.town.data
+            elif u.town:
+                u.town = ''
 
-                flash('Profile updated')
+            flash('Profile updated')
 
-        elif form == FormRoute.LOGOUT_ALL:
-            message = 'Log out on all devices'
-            tabs[1]['active'] = True
-            active_form = ReLogin()
-            if active_form.validate_on_submit():
-                u = Users.get(id=current_user.id)
-                u.change_token()
-                logout_user()
-                flash('Successfully logged out from all devices')
-                return redirect(url_for('.login'))
+    elif form == FormRoute.LOGOUT_ALL:
+        message = 'Log out on all devices'
+        tabs[1]['active'] = True
+        active_form = ReLoginForm()
+        if active_form.validate_on_submit():
+            u = Users.get(id=current_user.id)
+            u.change_token()
+            logout_user()
+            flash('Successfully logged out from all devices')
+            return redirect(url_for('.login'))
 
-        elif form == FormRoute.CHANGE_PASSWORD:
-            message = 'Change Password'
-            tabs[2]['active'] = True
-            active_form = ChangePassword()
-            if active_form.validate_on_submit():
-                u = Users.get(id=current_user.id)
-                u.change_password(active_form.password.data)
-                logout_user()
-                flash('Successfully changed password')
-                return redirect(url_for('.login'))
+    elif form == FormRoute.CHANGE_PASSWORD:
+        message = 'Change Password'
+        tabs[2]['active'] = True
+        active_form = ChangePasswordForm()
+        if active_form.validate_on_submit():
+            u = Users.get(id=current_user.id)
+            u.change_password(active_form.password.data)
+            logout_user()
+            flash('Successfully changed password')
+            return redirect(url_for('.login'))
 
-        elif admin and form == FormRoute.NEW_POST:
-            message = 'New Blog Post'
-            tabs[3]['active'] = True
-            active_form = NewPost()
-            if active_form.validate_on_submit():
-                def add_post(parent=None):
-                    banner_name = save_upload(active_form.banner, images=True) if active_form.banner.data else None
-                    file_name = save_upload(active_form.attachment) if active_form.attachment.data else None
-                    p = Blog(type=active_form.type, title=active_form.title.data, slug=active_form.slug.data,
-                             body=active_form.body.data, banner=banner_name, special=active_form.special,
-                             attachment=file_name, author=Users.get(id=current_user.id), parent=parent)
-                    commit()
-                    return redirect(url_for('.blog_post', post=p.id))
+    elif admin and form == FormRoute.NEW_BLOG_POST:
+        message = 'New Blog Post'
+        tabs[3]['active'] = True
+        active_form = PostForm()
+        if active_form.validate_on_submit():
+            banner_name, file_name = combo_save(active_form.banner, active_form.attachment)
+            p = BlogPosts(type=active_form.type, title=active_form.title.data, slug=active_form.slug.data,
+                          body=active_form.body.data, banner=banner_name, attachments=file_name,
+                          author=current_user.id)
+            commit()
+            return redirect(url_for('.blog_post', post=p.id))
 
-                if active_form.type == BlogPost.SERVICE:
-                    if active_form.parent_field.data:
-                        r = Blog.get(id=active_form.parent_field.data)
-                        if r and r.type == BlogPost.MEETING:
-                            return add_post(r)
+    elif admin and form == FormRoute.NEW_MEETING_PAGE:
+        message = 'New Meeting Page'
+        tabs[4]['active'] = True
+        active_form = MeetingForm()
 
-                    active_form.parent_field.errors = ['Need parent']
-                elif active_form.type != BlogPost.THESIS:
-                    return add_post()
-                else:
-                    active_form.parent_field.errors = ["DON'T post Thesis!"]
+        def add_post():
+            banner_name, file_name = combo_save(active_form.banner, active_form.attachment)
+            p = Meetings(meeting=active_form.meeting_id.data, deadline=active_form.deadline.data,
+                         order=active_form.order.data, type=active_form.type, author=current_user.id,
+                         title=active_form.title.data, slug=active_form.slug.data,
+                         body=active_form.body.data, banner=banner_name, attachments=file_name)
+            commit()
+            return p.id
 
-        elif admin and form == FormRoute.BAN_USER:
-            message = 'Ban User'
-            tabs[4]['active'] = True
-            active_form = BanUser()
-            if active_form.validate_on_submit():
-                pass
+        if active_form.validate_on_submit():
+            if active_form.type in (MeetingPost.REGISTRATION, MeetingPost.COMMON):
+                if active_form.meeting_id.data and Meetings.exists(id=active_form.meeting_id.data,
+                                                                   post_type=MeetingPost.MEETING.value):
+                    return redirect(url_for('.blog_post', post=add_post()))
+                active_form.meeting_id.errors = ['Bad parent']
+            else:
+                if active_form.deadline.data:
+                    return redirect(url_for('.blog_post', post=add_post()))
+                active_form.deadline.errors = ["Need deadline"]
 
-        elif admin and form == FormRoute.CHANGE_USER_ROLE:
-            message = 'Change Role'
-            tabs[5]['active'] = True
-            active_form = ChangeRole()
-            if active_form.validate_on_submit():
-                u = Users.get(email=active_form.email.data)
-                u.user_role = active_form.type.value
-                flash('Successfully changed %s %s (%s) role' % (u.name, u.surname, u.email))
+    elif admin and form == FormRoute.NEW_EMAIL_TEMPLATE:
+        message = 'New Email Template'
+        tabs[5]['active'] = True
+        active_form = EmailForm()
 
-        else:  # admin or GTFO
-            return redirect(url_for('.profile'))
+        def add_post():
+            banner_name, file_name = combo_save(active_form.banner, active_form.attachment)
+            p = Emails(from_name=active_form.from_name.data, reply_name=active_form.reply_name.data,
+                       reply_mail=active_form.reply_mail.data, meeting=active_form.meeting_id.data,
+                       type=active_form.type, author=current_user.id,
+                       title=active_form.title.data, slug=active_form.slug.data,
+                       body=active_form.body.data, banner=banner_name, attachments=file_name)
+            commit()
+            return p.id
+
+        if active_form.validate_on_submit():
+            if active_form.type.is_meeting:
+                if active_form.meeting_id.data and Meetings.exists(id=active_form.meeting_id.data,
+                                                                   post_type=MeetingPost.MEETING.value):
+                    return redirect(url_for('.blog_post', post=add_post()))
+                active_form.meeting_id.errors = ['Bad parent']
+            else:
+                return redirect(url_for('.blog_post', post=add_post()))
+
+    elif admin and form == FormRoute.BAN_USER:
+        message = 'Ban User'
+        tabs[6]['active'] = True
+        active_form = BanUserForm()
+        if active_form.validate_on_submit():
+            u = Users.get(email=active_form.email.data.lower())
+            u.active = False
+            flash('Successfully banned %s %s (%s)' % (u.name, u.surname, u.email))
+
+    elif admin and form == FormRoute.CHANGE_USER_ROLE:
+        message = 'Change Role'
+        tabs[7]['active'] = True
+        active_form = ChangeRoleForm()
+        if active_form.validate_on_submit():
+            u = Users.get(email=active_form.email.data.lower())
+            u.user_role = active_form.type.value
+            flash('Successfully changed %s %s (%s) role' % (u.name, u.surname, u.email))
+
+    else:  # admin or GTFO
+        return redirect(url_for('.profile'))
 
     return render_template("forms.html", title='Profile', subtitle=current_user.name,
                            tabs=tabs, form=active_form, message=message)
@@ -290,53 +334,29 @@ def profile(action=4):
 
 @view_bp.route('/', methods=['GET'])
 @view_bp.route('/index', methods=['GET'])
+@db_session
 def index():
-    with db_session:
-        c = select(x for x in Blog if x.post_type == BlogPost.CAROUSEL.value
-                   and x.banner is not None).order_by(Blog.id.desc()).limit(BLOG_POSTS)
-        carousel = [dict(banner=x.banner, url=url_for('.blog_post', post=x.id), title=x.title, body=x.body) for x in c]
+    c = select(x for x in BlogPosts if x.post_type == BlogPost.CAROUSEL.value
+               and x.banner is not None).order_by(BlogPosts.id.desc()).limit(BLOG_POSTS_PER_PAGE)
+    ip = select(x for x in Posts if x.post_type in (BlogPost.IMPORTANT.value,
+                                                    MeetingPost.MEETING.value)).order_by(Posts.id.desc()).limit(3)
+    pl = list(select(x for x in BlogPosts if x.post_type == BlogPost.PROJECTS.value).order_by(BlogPosts.date.desc()))
 
-        ip = select(x for x in Blog if x.post_type in (BlogPost.IMPORTANT.value, BlogPost.MEETING.value))
-        info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body, glyph=Glyph[x.type.name].value)
-                for x in ip.order_by(Blog.id.desc()).limit(3)]
-
-        pl = select(x for x in Blog if x.post_type == BlogPost.PROJECTS.value)
-
-        projects = []
-        for x in pl.order_by(Blog.date.desc()):
-            projects.append(dict(url=url_for('.blog_post', post=x.id), body=x.body, title=x.title, banner=x.banner))
-
-    return render_template("home.html", carousel=carousel, projects=dict(list=projects, title='Our Projects'),
-                           info=info, title='Welcome to', subtitle=LAB_NAME)
+    return render_template("home.html", carousel=c, projects=pl, info=ip, title='Welcome to', subtitle=LAB_NAME)
 
 
 @view_bp.route('/about', methods=['GET'])
+@db_session
 def about():
-    with db_session:
-        a = select(x for x in Blog if x.post_type == BlogPost.ABOUT.value).first()
-        if a:
-            about_us = dict(body=a.body, title=a.title, url=url_for('.blog_post', post=a.id), banner=a.banner)
-        else:
-            about_us = None
+    about = select(x for x in BlogPosts if x.post_type == BlogPost.ABOUT.value).first()
+    chief = select(x for x in TeamPosts if x.post_type == TeamPost.CHIEF.value).order_by(lambda x: x.special['order'])
+    team = select(x for x in TeamPosts if x.post_type == TeamPost.TEAM.value).order_by(TeamPosts.id.desc())
 
-        p = select(x for x in Blog if x.post_type == BlogPost.CHIEF.value)
-        chief = []
-        for x in p:
-            chief.append(dict(title=x.title, url=url_for('.blog_post', post=x.id), body=x.body, banner=x.banner,
-                              role=x.special and x.special.get('role') or 'Researcher',
-                              order=x.special and x.special.get('order') or 0))
-
-        p = select(x for x in Blog if x.post_type == BlogPost.TEAM.value).order_by(Blog.id.desc())
-        team = []
-        for x in p:
-            team.append(dict(title=x.title, url=url_for('.blog_post', post=x.id), body=x.body, banner=x.banner))
-
-    return render_template("about.html", title='About', subtitle='Laboratory', about=about_us,
-                           data=dict(chief=sorted(chief, key=lambda x: x['order'], reverse=True),
-                                     team=team, title='Our Team'))
+    return render_template("about.html", title='About', subtitle='Laboratory', about=about, chief=chief, team=team)
 
 
-@view_bp.route('/blog/post/<int:post>', methods=['GET', 'POST'])
+@view_bp.route('/page/<int:post>', methods=['GET', 'POST'])
+@db_session
 def blog_post(post):
     admin = current_user.is_authenticated and current_user.role_is(UserRole.ADMIN)
     edit_post = None
@@ -346,134 +366,151 @@ def blog_post(post):
     children = []
     title = None
     info = None
+    theses = None
 
-    with db_session:
-        p = Blog.get(id=post)
-        if not p:
+    p = Posts.get(id=post)
+    if not p:
+        return redirect(url_for('.blog'))
+
+    """ admin page
+    """
+    if admin:
+        remove_post_form = DeleteButtonForm(prefix='Delete')
+        if p.classtype == 'BlogPosts':
+            edit_post = PostForm(prefix='Edit', obj=p)
+        elif p.classtype == 'Meetings':
+            edit_post = MeetingForm(prefix='Edit', obj=p)
+        elif p.classtype == 'Theses':
+            edit_post = ThesisForm(prefix='Edit', obj=p)
+        elif p.classtype == 'Emails':
+            edit_post = EmailForm(prefix='Edit', obj=p)
+        elif p.classtype == 'TeamPosts':
+            edit_post = TeamForm(prefix='Edit', obj=p)
+        else:  # BAD POST
             return redirect(url_for('.blog'))
 
-        """ admin page
-        """
-        if admin:
-            remove_post_form = DeleteButton(prefix='Delete')
-            edit_post = NewPost(prefix='Edit', obj=p)
-            if remove_post_form.validate_on_submit():
-                p.delete()
-                remove_post_form.redirect('.blog')
-                return redirect(url_for('.blog'))
-            elif edit_post.validate_on_submit():
-                p.body = edit_post.body.data
-                p.title = edit_post.title.data
-                p.date = datetime.utcnow()
+        if remove_post_form.validate_on_submit():
+            p.delete()
+            return remove_post_form.redirect('.blog')
+        elif edit_post.validate_on_submit():
+            p.body = edit_post.body.data
+            p.title = edit_post.title.data
+            p.date = datetime.utcnow()
 
-                if p.type not in conf_pages and edit_post.type not in conf_pages:
-                    p.post_type = edit_post.type.value
-                if edit_post.parent_field.data and p.type == BlogPost.SERVICE and edit_post.parent_field.data != post:
-                    parent = Blog.get(id=edit_post.parent_field.data)
-                    if parent and parent.type == BlogPost.MEETING:
-                        p.parent = parent
-                if edit_post.slug.data:
-                    p.slug = edit_post.slug.data
+            if edit_post.slug.data:
+                p.slug = edit_post.slug.data
 
-                if edit_post.special:
-                    p.special = edit_post.special
-                elif p.special:
-                    p.special = None
+            if edit_post.banner.data:
+                p.banner = save_upload(edit_post.banner, images=True)
 
-                if edit_post.banner.data:
-                    p.banner = save_upload(edit_post.banner, images=True)
-                if edit_post.attachment.data:
-                    p.attachment = save_upload(edit_post.attachment)
+            if edit_post.attachment.data:
+                p.add_attachment(save_upload(edit_post.attachment))
 
-        """ sidebar for nested posts
-        """
-        if p.type in (BlogPost.MEETING, BlogPost.THESIS, BlogPost.SERVICE):
-            _parent = p.parent or p
-            for i in _parent.children or []:  # need order
-                if i.post_type == BlogPost.SERVICE.value and i.id != post:
-                    children.append(dict(title=i.title, url=url_for('.blog_post', post=i.id),
-                                         order=i.special and i.special.get('order') or 0))
-            children.append(dict(title='Participants', url=url_for('.participants', event=_parent.id), order=20))
+            if hasattr(p, 'update_type'):
+                try:
+                    p.update_type(edit_post.type)
+                except:
+                    edit_post.post_type.errors = ['Meeting emails can be changed only to meeting Email']
 
-        """ SERVICE POST
-        """
-        if p.type == BlogPost.SERVICE:
-            crumb = dict(url=url_for('.blog_post', post=p.parent.id), title=p.title, parent='Event main page')
-            title = p.parent.title
-            _type = p.special and p.special.get('type')
-            if _type == 'reg':
-                if datetime.fromtimestamp(p.parent.special and p.parent.special.get('deadline') or 0) > \
-                        datetime.utcnow():
-                    if current_user.is_authenticated and not select(x for x in Blog
-                                                                    if x.author.id == current_user.id
-                                                                    and x.post_type == BlogPost.THESIS.value
-                                                                    and x.parent == p.parent).exists():
-                        special_form = Meeting(prefix='Meeting')
-                        if special_form.validate_on_submit():
-                            banner_name = save_upload(special_form.banner,
-                                                      images=True) if special_form.banner.data else None
-                            file_name = save_upload(special_form.attachment) if special_form.attachment.data else None
-                            w = Blog(type=BlogPost.THESIS, title=special_form.title.data, body=special_form.body.data,
-                                     banner=banner_name, special=special_form.special, attachment=file_name,
-                                     author=Users.get(id=current_user.id), parent=p.parent)
-                            commit()
+            if hasattr(p, 'update_meeting') and p.can_update_meeting() and edit_post.meeting_id.data:
+                try:
+                    p.update_meeting(edit_post.meeting_id.data)
+                except:
+                    edit_post.meeting_id.errors = ['Invalig Meeting id']
 
-                            m = select(x for x in Blog if x.post_type == BlogPost.EMAIL.value and
-                                       x.special['meeting'] == p.parent.id).first()
-                            send_mail((m and m.body or '%s\n\nYou registered to meeting') % current_user.name,
-                                      current_user.email, to_name=current_user.name,
-                                      subject=m and m.title or 'Welcome to meeting',
-                                      banner=m and m.banner or None, title=m and m.title or None,
-                                      from_name=m.special.get('from'), reply_mail=m.special.get('mail'),
-                                      reply_name=m.special.get('name'))
-                            flash('Welcome to meeting!')
-                            return redirect(url_for('.blog_post', post=w.id))
+            if hasattr(p, 'update_order') and edit_post.order.data:
+                p.update_order(edit_post.order.data)
 
-        elif p.type == BlogPost.THESIS:
-            if current_user.is_authenticated and p.author.id == current_user.id and \
-                    datetime.fromtimestamp(p.parent.special and p.parent.special.get('deadline') or 0) > \
-                    datetime.utcnow():
-                p.participation = p.special.get('participation')
-                special_form = Meeting(prefix='Meeting', obj=p)
-                if special_form.validate_on_submit():
-                    p.title = special_form.title.data
-                    p.body = special_form.body.data
-                    p.special.update(special_form.special)
+            if hasattr(p, 'update_role'):
+                p.update_role(edit_post.role.data)
 
-                    if special_form.banner.data:
-                        p.banner = save_upload(special_form.banner, images=True)
-                    if special_form.attachment.data:
-                        p.attachment = save_upload(special_form.attachment)
+            if hasattr(p, 'update_scopus'):
+                p.update_scopus(edit_post.scopus.data)
 
-            crumb = dict(url=url_for('.participants', event=p.parent.id), title='Abstract', parent='Event participants')
-            special_field = '**Presentation Type**: *%s*' % MeetingPost(p.special.get('participation')).fancy
-        elif p.type in (BlogPost.CHIEF, BlogPost.TEAM):
-            crumb = dict(url=url_for('.about'), title='Member', parent='Laboratory')
-            scopus = p.special and p.special.get('scopus')
-            if scopus:
-                special_field = get_articles(scopus)
+            if hasattr(p, 'update_from_name'):
+                p.update_from_name(edit_post.from_name.data)
 
-        elif p.type == BlogPost.ABOUT:
-            crumb = dict(url=url_for('.about'), title='Description', parent='Laboratory')
+            if hasattr(p, 'update_reply_name'):
+                p.update_reply_name(edit_post.reply_name.data)
+
+            if hasattr(p, 'update_reply_mail'):
+                p.update_reply_mail(edit_post.reply_mail.data)
+
+            if hasattr(p, 'update_body_name'):
+                p.update_body_name(edit_post.body_name.data)
+
+            if hasattr(p, 'update_deadline') and edit_post.deadline.data:
+                p.update_deadline(edit_post.deadline.data)
+
+    """ Meetings sidebar and title
+    """
+    if p.classtype == 'Meetings':
+        title = p.meeting.title
+        theses = dict(title='Participants', url=url_for('.participants', event=p.meeting_id))
+        children.append(dict(title='Event main page', id=p.meeting_id))
+        children.extend(p.meeting.children.
+                        filter(lambda x: x.classtype == 'Meetings').order_by(lambda x: x.special['order']))
+
+        if p.type != MeetingPost.MEETING:
+            crumb = dict(url=url_for('.blog_post', post=p.meeting_id), title=p.title, parent='Event main page')
+
+            if p.type == MeetingPost.REGISTRATION and p.deadline > datetime.utcnow():
+                if current_user.is_authenticated and \
+                        not select(x for x in Theses
+                                   if x.post_parent == p.meeting and x.author.id == current_user.id).exists():
+
+                    special_form = ThesisForm(prefix='Thesis', body_name=p.body_name)
+                    if special_form.validate_on_submit():
+                        banner_name, file_name = combo_save(special_form.banner, special_form.attachment)
+                        t = Theses(p.meeting_id, type=special_form.type,
+                                   title=special_form.title.data, body=special_form.body.data,
+                                   banner=banner_name, attachment=file_name, author=current_user.id)
+                        commit()
+
+                        m = Emails.get(post_parent=p.meeting, post_type=EmailPost.MEETING_THESIS.value)
+                        send_mail((m and m.body or '%s\n\nYou registered to meeting') % current_user.name,
+                                  current_user.email, to_name=current_user.name, title=m and m.title,
+                                  subject=m and m.title or 'Welcome to meeting', banner=m and m.banner,
+                                  from_name=m and m.from_name, reply_mail=m and m.reply_mail,
+                                  reply_name=m and m.reply_name)
+
+                        flash('Welcome to meeting!')
+                        return redirect(url_for('.blog_post', post=t.id))
         else:
             crumb = dict(url=url_for('.blog'), title='Post', parent='News')
-            """ collect sidebar
-            """
-            if p.type != BlogPost.MEETING:
-                ip = select(x for x in Blog if x.id != post and x.post_type in (BlogPost.IMPORTANT.value,
-                                                                                BlogPost.MEETING.value))
-                info = [dict(url=url_for('.blog_post', post=x.id), title=x.title, body=x.body,
-                             glyph=Glyph[x.type.name].value) for x in ip.order_by(Blog.date.desc()).limit(3)]
 
-        """ final data preparation
+    elif p.classtype == 'Theses':
+        if current_user.is_authenticated and p.author.id == current_user.id and \
+                p.meeting.deadline > datetime.utcnow():
+            special_form = ThesisForm(prefix='Thesis', obj=p, body_name=p.body_name)
+            if special_form.validate_on_submit():
+                p.title = special_form.title.data
+                p.body = special_form.body.data
+                p.update_type(special_form.type)
+
+                if special_form.banner.data:
+                    p.banner = save_upload(special_form.banner, images=True)
+                if special_form.attachment.data:
+                    p.add_attachment(save_upload(special_form.attachment))
+
+        crumb = dict(url=url_for('.participants', event=p.meeting_id), title='Abstract', parent='Event participants')
+        special_field = '**Presentation Type**: *%s*' % p.type.fancy
+    elif p.classtype == 'TeamPosts':
+        crumb = dict(url=url_for('.about'), title='Member', parent='Laboratory')
+        if p.scopus:
+            special_field = get_articles(p.scopus)
+    elif p.type == BlogPost.ABOUT:
+        crumb = dict(url=url_for('.about'), title='Description', parent='Laboratory')
+    else:
+        crumb = dict(url=url_for('.blog'), title='Post', parent='News')
+        """ collect sidebar news
         """
-        data = dict(date=p.date.strftime('%B %d, %Y at %H:%M'), title=p.title, body=p.body, banner=p.banner,
-                    author='%s %s' % (p.author.name, p.author.surname))
-        if p.attachment:
-            data['attachment'] = url_for('static', filename='docs/%s' % p.attachment)
+        info = select(x for x in Posts
+                      if x.id != post and x.post_type in (BlogPost.IMPORTANT.value, MeetingPost.MEETING.value)).\
+            order_by(Posts.date.desc()).limit(3)
 
-    return render_template("post.html", title=title or p.title, post=data, info=info,
-                           children=sorted(children, key=lambda x: x['order']),
+    return render_template("post.html", title=title or p.title, post=p, info=info,
+                           children=children, participants=theses,
                            edit_form=edit_post, remove_form=remove_post_form, crumb=crumb,
                            special_form=special_form, special_field=special_field)
 
@@ -502,64 +539,59 @@ def predictor():
     return render_template("predictor.html")
 
 
-@view_bp.route('/blog/', methods=['GET'])
-@view_bp.route('/blog/<int:page>', methods=['GET'])
+@view_bp.route('/news/', methods=['GET'])
+@view_bp.route('/news/<int:page>', methods=['GET'])
+@db_session
 def blog(page=1):
-    res = blog_viewer(page, lambda x: x.post_type not in (BlogPost.THESIS.value, BlogPost.EMAIL.value,
-                                                          BlogPost.SERVICE.value))
-    if not res:
-        return redirect(url_for('.blog'))
-
-    return render_template("blog.html", paginator=res[1], posts=res[0], title='News', subtitle='chart')
+    q = select(x for x in Posts
+               if x.classtype not in ('Theses', 'Emails')
+               and x.post_type not in (MeetingPost.COMMON.value,
+                                       MeetingPost.REGISTRATION.value)).order_by(Posts.date.desc())
+    return blog_viewer(page, q, '.blog', 'News', 'list')
 
 
 @view_bp.route('/events', methods=['GET'])
 @view_bp.route('/events/<int:page>', methods=['GET'])
 @login_required
+@db_session
 def events(page=1):
-    res = blog_viewer(page, lambda x: x.post_type == BlogPost.THESIS.value and x.author.id == current_user.id)
-    if not res:
-        return redirect(url_for('.events'))
-
-    return render_template("blog.html", paginator=res[1], posts=res[0], title='Events', subtitle='Presentations')
+    q = select(x for x in Theses if x.author.id == current_user.id).order_by(Theses.id.desc())
+    return blog_viewer(page, q, '.events', 'Events', 'Abstracts')
 
 
 @view_bp.route('/participants/<int:event>', methods=['GET'])
 @view_bp.route('/participants/<int:event>/<int:page>', methods=['GET'])
-@login_required
+@db_session
 def participants(event, page=1):
-    with db_session:
-        b = Blog.get(id=event, post_type=BlogPost.MEETING.value)
-    if not b:
+    m = Meetings.get(id=event, post_type=MeetingPost.MEETING.value)
+    if not m:
         return redirect(url_for('.blog'))
 
-    res = blog_viewer(page, lambda x: x.post_type == BlogPost.THESIS.value and x.parent.id == event)
-    if not res:
-        return redirect(url_for('.participants', event=event))
-
-    return render_template("blog.html", paginator=res[1], posts=res[0], title=b.title, subtitle='Participants',
-                           crumb=dict(url=url_for('.blog_post', post=event), title='Presentations',
-                                      parent='Event main page'))
+    q = select(x for x in Theses if x.post_parent == m).order_by(Theses.id.desc())
+    return blog_viewer(page, q, '.participants', m.title, 'Participants',
+                       crumb=dict(url=url_for('.blog_post', post=event), title='Presentations',
+                                  parent='Event main page'))
 
 
 @view_bp.route('/emails', methods=['GET'])
 @view_bp.route('/emails/<int:page>', methods=['GET'])
 @login_required
+@db_session
 def emails(page=1):
     if not current_user.role_is(UserRole.ADMIN):
         return redirect(url_for('.index'))
 
-    res = blog_viewer(page, lambda x: x.post_type == BlogPost.EMAIL.value)
-    if not res:
-        return redirect(url_for('.emails'))
-
-    return render_template("blog.html", paginator=res[1], posts=res[0], title='E-mail templates', subtitle='list')
+    q = select(x for x in Emails).order_by(Emails.id.desc())
+    return blog_viewer(page, q, '.emails', 'E-mail templates', 'list')
 
 
 @view_bp.route('/<string:slug>/')
 def slug(slug):
     with db_session:
-        p = Blog.get(slug=slug)
+        p = Posts.get(slug=slug)
         if not p:
             abort(404)
-    return redirect(url_for('.blog_post', post=p.id))
+        resp = make_response(redirect(url_for('.blog_post', post=p.id)))
+        if p.classtype == 'Meetings' and p.type == MeetingPost.MEETING:
+            resp.set_cookie('meeting', p.id)
+    return resp

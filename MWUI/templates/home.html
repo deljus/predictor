@@ -13,7 +13,7 @@
                     </div>
                     <div class="panel-body">
                         {{ i.body|truncate(200, True)|markdown }}
-                        <a href="{{ i.url }}" class="btn btn-default">
+                        <a href="{{ url_for('.blog_post', post=i.id) }}" class="btn btn-default">
                             Read More <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
                         </a>
                     </div>
@@ -24,12 +24,12 @@
 
     <div class="row">
         <div class="col-lg-12">
-            <h2 class="page-header">{{ projects.title }}</h2>
+            <h2 class="page-header">Our Projects</h2>
         </div>
         <div class="col-md-4">
             <div class="list-group">
-                {% for i in projects.list %}
-                    <a href="{{ i.url }}" class="list-group-item">
+                {% for i in projects %}
+                    <a href="{{ url_for('.blog_post', post=i.id) }}" class="list-group-item">
                         <h4 class="list-group-item-heading">{{ i.title }}</h4>
                         <div class="list-group-item-text">{{ i.body|truncate(100, True)|markdown }}</div>
                     </a>
@@ -38,8 +38,8 @@
         </div>
         <div class="col-md-2"></div>
         <div class="col-md-6">
-            {% set selected_banner = projects.list|random %}
-            <a href="{{ selected_banner.url }}">
+            {% set selected_banner = projects|random %}
+            <a href="{{ url_for('.blog_post', post=selected_banner.id) }}">
                 <img class="img-responsive" src="{{ selected_banner.banner and selected_banner.banner|resize('700x450', upscale=False) or '//placehold.it/700x450' }}" alt="">
             </a>
         </div>

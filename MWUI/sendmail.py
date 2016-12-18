@@ -24,11 +24,14 @@ from redis import Redis, ConnectionError
 from rq import Queue
 from flask_misaka import markdown
 from flask import render_template
-from .config import LAB_NAME, SMTP_MAIL, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_MAIL
+from .config import LAB_NAME, SMTP_MAIL, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_MAIL, DEBUG
 
 
 def send_mail(message, to_mail, to_name=None, from_name=None, subject=None, banner=None, title=None,
               reply_name=None, reply_mail=None):
+
+    if reply_name and not reply_mail:
+        reply_name = None
 
     r = Redis(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD)
 
@@ -36,7 +39,7 @@ def send_mail(message, to_mail, to_name=None, from_name=None, subject=None, bann
         r.ping()
         sender = Queue(connection=r, name=REDIS_MAIL, default_timeout=3600)
     except ConnectionError:
-        return False
+        return DEBUG or False
 
     try:
         email = dict(html=render_template('email.html', body=markdown(message), banner=banner, title=title),

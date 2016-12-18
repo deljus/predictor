@@ -21,9 +21,10 @@
 #
 import bcrypt
 import hashlib
-import json
-from .config import (DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER, BlogPost, TaskType, ModelType, AdditiveType,
-                     ResultType, StructureType, StructureStatus, UserRole, ProfileDegree, ProfileStatus)
+from .config import (DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER,
+                     TaskType, ModelType, AdditiveType, ResultType, StructureType,
+                     StructureStatus, UserRole, ProfileDegree, ProfileStatus,
+                     BlogPost, MeetingPost, ThesisPost, EmailPost, Glyph, TeamPost)
 from datetime import datetime
 from pony.orm import Database, sql_debug, PrimaryKey, Required, Optional, Set, Json
 
@@ -33,6 +34,10 @@ if DEBUG:
     sql_debug(True)
 else:
     db = Database('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST, database=DB_NAME)
+
+
+def filter_kwargs(kwargs):
+    return {x: y for x, y in kwargs.items() if y}
 
 
 class Users(db.Entity):
@@ -55,13 +60,13 @@ class Users(db.Entity):
     affiliation = Optional(str)
     position = Optional(str)
 
-    posts = Set("Blog")
+    posts = Set("Posts")
 
     def __init__(self, email, password, role=UserRole.COMMON, **kwargs):
         password = self.__hash_password(password)
         token = self.__gen_token(email, password)
         super(Users, self).__init__(email=email, password=password, token=token, user_role=role.value,
-                                    **{x: y for x, y in kwargs.items() if y})
+                                    **filter_kwargs(kwargs))
 
     @staticmethod
     def __hash_password(password):
@@ -142,7 +147,8 @@ class Results(db.Entity):
 
     def __init__(self, **kwargs):
         _type = kwargs.pop('type', ResultType.TEXT).value
-        super(Results, self).__init__(result_type=_type, **kwargs)
+        _model = Models[kwargs.pop('model')]
+        super(Results, self).__init__(result_type=_type, model=_model, **kwargs)
 
     @property
     def type(self):
@@ -160,7 +166,7 @@ class Models(db.Entity):
 
     def __init__(self, **kwargs):
         _type = kwargs.pop('type', ModelType.MOLECULE_MODELING).value
-        super(Models, self).__init__(model_type=_type, **{x: y for x, y in kwargs.items() if y})
+        super(Models, self).__init__(model_type=_type, **filter_kwargs(kwargs))
 
     @property
     def type(self):
@@ -176,7 +182,7 @@ class Destinations(db.Entity):
     port = Required(int, default=6379)
 
     def __init__(self, **kwargs):
-        super(Destinations, self).__init__(**{x: y for x, y in kwargs.items() if y})
+        super(Destinations, self).__init__(**filter_kwargs(kwargs))
 
 
 class Additives(db.Entity):
@@ -201,34 +207,254 @@ class Additivesets(db.Entity):
     structure = Required(Structures)
 
 
-class Blog(db.Entity):
-    title = Required(str)
-    slug = Optional(str, unique=True)
-    body = Required(str)
-    banner = Optional(str)
-    date = Required(datetime, default=datetime.utcnow())
-    special = Optional(Json)
-    post_type = Required(int)
-    attachment = Optional(str)
-    author = Required(Users)
+class Attachments(db.Entity):
+    file = Required(str)
+    name = Required(str)
+    post = Required('Posts')
 
-    children = Set("Blog")
-    parent = Optional("Blog")
+
+class Posts(db.Entity):
+    post_type = Required(int)
+    author = Required(Users)
+    title = Required(str)
+    body = Required(str)
+    date = Required(datetime, default=datetime.utcnow())
+    banner = Optional(str)
+    attachments = Set(Attachments)
+    slug = Optional(str, unique=True)
+
+    children = Set('Posts', cascade_delete=True)
+    post_parent = Optional('Posts')
+    special = Optional(Json)
 
     def __init__(self, **kwargs):
+        attachments = kwargs.pop('attachments', None) or []
+        user = Users[kwargs.pop('author')]
+        super(Posts, self).__init__(author=user, **filter_kwargs(kwargs))
+
+        for file, name in attachments:
+            self.add_attachment(file, name)
+
+    def add_attachment(self, file, name):
+        Attachments(file=file, name=name, post=self)
+
+    def remove_attachment(self, attachment):
+        self.attachments.remove(Attachments[attachment])
+
+    @property
+    def glyph(self):
+        return Glyph[self.type.name].value
+
+    @property
+    def author_name(self):
+        return '%s %s' % (self.author.name, self.author.surname)
+
+
+class MeetingMixin(object):
+    @property
+    def meeting_id(self):
+        return self.meeting.id
+
+    @property
+    def body_name(self):
+        return self.meeting.special['body_name']
+
+    @staticmethod
+    def _get_parent(_parent):
+        parent = Meetings[_parent]
+        if parent.type != MeetingPost.MEETING:
+            raise Exception('Only MEETING type can be parent')
+        return parent
+
+
+class BlogPosts(Posts):
+    def __init__(self, **kwargs):
         _type = kwargs.pop('type', BlogPost.COMMON).value
-        super(Blog, self).__init__(post_type=_type, **{x: y for x, y in kwargs.items() if y})
+        super(BlogPosts, self).__init__(post_type=_type, **kwargs)
 
     @property
     def type(self):
         return BlogPost(self.post_type)
 
-    @property
-    def special_field(self):
-        return self.special and json.dumps(self.special)
+    def update_type(self, _type):
+        self.post_type = _type.value
+
+
+class TeamPosts(Posts):
+    def __init__(self, role='Researcher', scopus=None, order=0, **kwargs):
+        _type = kwargs.pop('type', TeamPost.TEAM).value
+        special = dict(scopus=scopus, order=order, role=role)
+        super(TeamPosts, self).__init__(post_type=_type, special=special, **kwargs)
 
     @property
-    def parent_field(self):
-        return self.parent and self.parent.id
+    def scopus(self):
+        return self.special['scopus']
+
+    def update_scopus(self, scopus):
+        self.special['scopus'] = scopus
+
+    @property
+    def order(self):
+        return self.special['order']
+
+    def update_order(self, order):
+        self.special['order'] = order
+
+    @property
+    def role(self):
+        return self.special['role']
+
+    def update_role(self, role):
+        self.special['role'] = role
+
+    @property
+    def type(self):
+        return TeamPost(self.post_type)
+
+    def update_type(self, _type):
+        self.post_type = _type.value
+
+
+class Meetings(Posts, MeetingMixin):
+    def __init__(self, meeting=None, deadline=None, order=0, body_name=None, **kwargs):
+        _type = kwargs.pop('type', MeetingPost.MEETING)
+        special = dict(order=order)
+
+        if _type != MeetingPost.MEETING:
+            if meeting:
+                parent = self._get_parent(meeting)
+            else:
+                raise Exception('Need parent meeting post')
+        else:
+            parent = None
+            special['body_name'] = body_name
+            if deadline:
+                special['deadline'] = deadline.timestamp()
+            else:
+                raise Exception('Need deadline information')
+
+        super(Meetings, self).__init__(post_type=_type.value, post_parent=parent, special=special, **kwargs)
+
+    def update_body_name(self, name):
+        self.meeting.special['body_name'] = name
+
+    @property
+    def type(self):
+        return MeetingPost(self.post_type)
+
+    @property
+    def deadline(self):
+        return datetime.fromtimestamp(self.meeting.special['deadline'])
+
+    def update_deadline(self, deadline):
+        self.meeting.special['deadline'] = deadline.timestamp()
+
+    @property
+    def order(self):
+        return self.special['order']
+
+    def update_order(self, order):
+        self.special['order'] = order
+
+    @property
+    def meeting(self):
+        return self.post_parent or self
+
+    def can_update_meeting(self):
+        return self.type != MeetingPost.MEETING
+
+    def update_meeting(self, meeting):
+        if not self.can_update_meeting():
+            raise Exception('Parent can not be set to MEETING type post')
+        self.post_parent = self._get_parent(meeting)
+
+
+class Theses(Posts, MeetingMixin):
+    def __init__(self, meeting, **kwargs):
+        _type = kwargs.pop('type', ThesisPost.POSTER).value
+        parent = Meetings[meeting]
+
+        if parent.type != MeetingPost.MEETING:
+            raise Exception('Invalid Meeting id')
+        if parent.deadline < datetime.utcnow():
+            raise Exception('Deadline left')
+
+        super(Theses, self).__init__(post_type=_type, post_parent=parent, **filter_kwargs(kwargs))
+
+    @property
+    def type(self):
+        return ThesisPost(self.post_type)
+
+    def update_type(self, _type):
+        self.post_type = _type.value
+
+    @property
+    def meeting(self):
+        return self.post_parent
+
+
+class Emails(Posts, MeetingMixin):
+    def __init__(self, from_name=None, reply_name=None, reply_mail=None, meeting=None, **kwargs):
+        _type = kwargs.get('type', EmailPost.SPAM)
+        special = dict(from_name=from_name, reply_name=reply_name, reply_mail=reply_mail)
+
+        if _type.is_meeting:
+            if meeting:
+                parent = self._get_parent(meeting)
+            else:
+                raise Exception('Need parent meeting post')
+        else:
+            parent = None
+
+        super(Emails, self).__init__(post_type=_type.value, post_parent=parent, special=special,
+                                     **filter_kwargs(kwargs))
+
+    @property
+    def meeting(self):
+        return self.post_parent
+
+    def can_update_meeting(self):
+        return self.type.is_meeting
+
+    def update_meeting(self, meeting):
+        if not self.can_update_meeting():
+            raise Exception('Parent can not be set to non MEETING type Email')
+
+        self.post_parent = self._get_parent(meeting)
+
+    @property
+    def from_name(self):
+        return self.special['from_name']
+
+    def update_from_name(self, name):
+        self.special['from_name'] = name
+
+    @property
+    def reply_name(self):
+        return self.special['reply_name']
+
+    def update_reply_name(self, name):
+        self.special['reply_name'] = name
+
+    @property
+    def reply_mail(self):
+        return self.special['reply_mail']
+
+    def update_reply_mail(self, name):
+        self.special['reply_mail'] = name
+
+    @property
+    def type(self):
+        return EmailPost(self.post_type)
+
+    def update_type(self, _type):
+        if self.type.is_meeting:
+            if not _type.is_meeting:
+                raise Exception('Meeting Emails can be changed only to meeting Email')
+        elif _type.is_meeting:
+            raise Exception('Non meeting Emails can be changed only to non meeting Email')
+
+        self.post_type = _type.value
+
 
 db.generate_mapping(create_tables=True)

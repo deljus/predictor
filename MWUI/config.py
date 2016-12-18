@@ -34,7 +34,7 @@ DEBUG = False
 
 LAB_NAME = 'Kazan Chemoinformatics and Molecular Modeling Laboratory'
 LAB_SHORT = 'CIMM'
-BLOG_POSTS = 10
+BLOG_POSTS_PER_PAGE = 10
 SCOPUS_API_KEY = ''
 SCOPUS_TTL = 86400 * 7
 
@@ -124,14 +124,43 @@ class BlogPost(Enum):
     CAROUSEL = 2
     IMPORTANT = 3
     PROJECTS = 4
-    TEAM = 5
-    CHIEF = 6
-    STUDENT = 7
-    MEETING = 8
-    THESIS = 9
-    ABOUT = 10
-    EMAIL = 11
-    SERVICE = 12
+    ABOUT = 5
+
+
+class TeamPost(Enum):
+    TEAM = 6
+    CHIEF = 7
+    STUDENT = 8
+
+
+class EmailPost(Enum):
+    REGISTRATION = 9
+    FORGOT = 10
+    SPAM = 11
+    MEETING_REGISTRATION = 12
+    MEETING_THESIS = 13
+    MEETING_SPAM = 14
+
+    @property
+    def is_meeting(self):
+        return self.name in ('MEETING_REGISTRATION', 'MEETING_THESIS', 'MEETING_FORGOT', 'MEETING_SPAM')
+
+
+class MeetingPost(Enum):
+    MEETING = 15
+    REGISTRATION = 16
+    COMMON = 17
+
+
+class ThesisPost(Enum):
+    ORAL = 18
+    POSTER = 19
+    PLENARY = 20
+
+    @property
+    def fancy(self):
+        names = {18: 'Oral', 19: 'Poster', 20: 'Plenary'}
+        return names[self.value]
 
 
 class Glyph(Enum):
@@ -139,25 +168,24 @@ class Glyph(Enum):
     CAROUSEL = 'camera'
     IMPORTANT = 'bullhorn'
     PROJECTS = 'hdd'
+    ABOUT = 'eye-open'
+
     TEAM = 'knight'
     CHIEF = 'queen'
     STUDENT = 'pawn'
+
     MEETING = 'resize-small'
-    THESIS = 'blackboard'
-    ABOUT = 'eye-open'
-    EMAIL = 'send'
-    SERVICE = ''
 
+    REGISTRATION = 'send'
+    FORGOT = 'send'
+    SPAM = 'send'
+    MEETING_REGISTRATION = 'send'
+    MEETING_THESIS = 'send'
+    MEETING_SPAM = 'send'
 
-class MeetingPost(Enum):
-    ORAL = 1
-    POSTER = 2
-    PLENARY = 3
-
-    @property
-    def fancy(self):
-        names = {1: 'Oral', 2: 'Poster', 3: 'Plenary'}
-        return names[self.value]
+    ORAL = 'blackboard'
+    POSTER = 'blackboard'
+    PLENARY = 'blackboard'
 
 
 class FormRoute(Enum):
@@ -167,9 +195,23 @@ class FormRoute(Enum):
     EDIT_PROFILE = 4
     LOGOUT_ALL = 5
     CHANGE_PASSWORD = 6
-    NEW_POST = 7
-    BAN_USER = 8
-    CHANGE_USER_ROLE = 9
+    NEW_BLOG_POST = 7
+    NEW_EMAIL_TEMPLATE = 8
+    NEW_MEETING_PAGE = 9
+    BAN_USER = 10
+    CHANGE_USER_ROLE = 11
+
+    @staticmethod
+    def get(action):
+        if 1 <= action <= 11:
+            return FormRoute(action)
+        return None
+
+    def is_login(self):
+        return 1 <= self.value <= 3
+
+    def is_profile(self):
+        return 4 <= self.value <= 11
 
 
 class ProfileDegree(Enum):
@@ -202,7 +244,7 @@ class ProfileStatus(Enum):
 config_list = ['UPLOAD_PATH', 'API_BASE', 'SECRET_KEY', 'RESIZE_URL', 'MAX_UPLOAD_SIZE', 'IMAGES_ROOT',
                'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME', 'YANDEX_METRIKA',
                'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD', 'REDIS_TTL', 'REDIS_JOB_TIMEOUT', 'REDIS_MAIL',
-               'LAB_NAME', 'LAB_SHORT', 'BLOG_POSTS', 'SCOPUS_API_KEY', 'SCOPUS_TTL',
+               'LAB_NAME', 'LAB_SHORT', 'BLOG_POSTS_PER_PAGE', 'SCOPUS_API_KEY', 'SCOPUS_TTL',
                'SMPT_HOST', 'SMTP_PORT', 'SMTP_LOGIN', 'SMTP_PASSWORD', 'SMTP_MAIL']
 
 if not path.exists(path.join(path.dirname(__file__), "config.ini")):

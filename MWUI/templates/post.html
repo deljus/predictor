@@ -14,8 +14,8 @@
                 {{ special_field|markdown }}
             {% endif %}
 
-            {% if post.attachment %}
-                <a href="{{ post.attachment }}" class="btn btn-default">
+            {% if post.attachments and False %}
+                <a href="{{ url_for('static', filename='docs/%s' % post.attachments) }}" class="btn btn-default">
                     <span class="glyphicon glyphicon-save-file" aria-hidden="true"></span> Download
                 </a>
             {% endif %}
@@ -26,7 +26,7 @@
             {% endif %}
 
             <hr><!-- Date/Time -->
-            <p><span class="glyphicon glyphicon-time" aria-hidden="true"></span> {{ post.date }}. <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span> {{ post.author }}</p>
+            <p><span class="glyphicon glyphicon-time" aria-hidden="true"></span> {{ post.date.strftime('%B %d, %Y at %H:%M') }}. <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span> {{ post.author_name }}</p>
 
             {% if remove_form and edit_form %}
                 <div class="panel-group" id="accordion">
@@ -72,9 +72,12 @@
                 <ul class="nav list-group">
                     {% for i in children %}
                         <li>
-                            <a href="{{ i.url }}">{{ i.title }}</a>
+                            <a href="{{ url_for('.blog_post', post=i.id) }}">{{ i.title }}</a>
                         </li>
                     {% endfor %}
+                    <li>
+                        <a href="{{ participants.url }}">{{ participants.title }}</a>
+                    </li>
                 </ul>
             {% endif %}
             {% if info %}
@@ -85,7 +88,7 @@
                         </div>
                         <div class="panel-body">
                             {{ i.body|truncate(200, True)|markdown }}
-                            <a href="{{ i.url }}" class="btn btn-default">
+                            <a href="{{ url_for('.blog_post', post=i.id) }}" class="btn btn-default">
                                 Read More <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
                             </a>
                         </div>

@@ -17,7 +17,7 @@
                 <h1 class="page-header">{{ title }}
                     <small>{{ subtitle }}</small>
                 </h1>
-                {% if crumb is defined %}
+                {% if crumb is defined and crumb %}
                     <ol class="breadcrumb">
                         <li><a href="{{ crumb.url }}">{{ crumb.parent }}</a></li>
                         <li class="active">{{ crumb.title }}</li>

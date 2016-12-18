@@ -24,21 +24,20 @@ import imghdr
 from json import loads
 from collections import OrderedDict
 from pycountry import countries
-from .models import Users, Blog
-from .config import BlogPost, UserRole, MeetingPost, ProfileDegree, ProfileStatus
-from .redirect import get_redirect_target, is_safe_url, split_url_path
+from .models import Users
+from .config import BlogPost, UserRole, ThesisPost, ProfileDegree, ProfileStatus, MeetingPost, EmailPost, TeamPost
+from .redirect import get_redirect_target, is_safe_url
 from flask import url_for, redirect
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from flask_login import current_user
 from pony.orm import db_session
-from wtforms import (StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError, TextAreaField,
-                     SelectField, HiddenField, IntegerField)
+from wtforms import (StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError,
+                     TextAreaField, SelectField, HiddenField, IntegerField, DateTimeField)
 
 
 class JsonValidator(object):
-    def __init__(self):
-        self.message = 'Bad Json'
+    message = 'Bad Json'
 
     def __call__(self, form, field):
         try:
@@ -48,18 +47,19 @@ class JsonValidator(object):
 
 
 class CheckParentExist(object):
-    def __init__(self):
-        self.message = 'Bad parent post id'
+    message = 'Bad parent post id'
+
+    def __init__(self, db):
+        self.__db = db
 
     def __call__(self, form, field):
         with db_session:
-            if not Blog.exists(id=field.data):
+            if not self.__db.exists(id=field.data):
                 raise ValidationError(self.message)
 
 
 class CheckUserFree(object):
-    def __init__(self):
-        self.message = 'User exist'
+    message = 'User exist'
 
     def __call__(self, form, field):
         with db_session:
@@ -68,8 +68,7 @@ class CheckUserFree(object):
 
 
 class CheckUserExist(object):
-    def __init__(self):
-        self.message = 'User not found'
+    message = 'User not found'
 
     def __call__(self, form, field):
         with db_session:
@@ -78,8 +77,7 @@ class CheckUserExist(object):
 
 
 class VerifyPassword(object):
-    def __init__(self):
-        self.message = 'Bad password'
+    message = 'Bad password'
 
     def __call__(self, form, field):
         with db_session:
@@ -89,12 +87,24 @@ class VerifyPassword(object):
 
 
 class VerifyImage(object):
-    def __init__(self, _type):
-        self._type = _type
-        self.message = 'Invalid image'
+    message = 'Invalid image'
+
+    def __init__(self, types):
+        self.__types = types
 
     def __call__(self, form, field):
-        if field.has_file() and imghdr.what(field.data.stream) not in self._type:
+        if field.has_file() and imghdr.what(field.data.stream) not in self.__types:
+            raise ValidationError(self.message)
+
+
+class PostValidator(object):
+    message = 'Invalid Post Type'
+
+    def __init__(self, types):
+        self.__types = types
+
+    def __call__(self, form, field):
+        if field.data not in self.__types:
             raise ValidationError(self.message)
 
 
@@ -119,11 +129,11 @@ class CustomForm(FlaskForm):
         return redirect(url_for(endpoint, **values))
 
 
-class DeleteButton(CustomForm):
+class DeleteButtonForm(CustomForm):
     submit_btn = SubmitField('Delete')
 
 
-class Profile(CustomForm):
+class ProfileForm(CustomForm):
     name = StringField('Name *', [validators.DataRequired()])
     surname = StringField('Surname *', [validators.DataRequired()])
     degree = SelectField('Degree *', [validators.DataRequired()], choices=[(x.value, x.fancy) for x in ProfileDegree],
@@ -149,7 +159,7 @@ class Password(CustomForm):
     confirm = PasswordField('Repeat Password *', [validators.DataRequired()])
 
 
-class Registration(Profile, Password):
+class RegistrationForm(ProfileForm, Password):
     email = StringField('Email *', [validators.DataRequired(), validators.Email(), CheckUserFree()])
     submit_btn = SubmitField('Register')
 
@@ -158,43 +168,35 @@ class Registration(Profile, Password):
 
     def __init__(self, *args, **kwargs):
         self._order = ['%s%s' % ('prefix' in kwargs and '%s-' % kwargs['prefix'] or '', x) for x in self.__order]
-        super(Registration, self).__init__(*args, **kwargs)
-
-    @property
-    def welcome(self):
-        if self.next.data and is_safe_url(self.next.data):
-            base, page = split_url_path(self.next.data)
-            if base == '/blog/post' and page.isdigit():
-                return int(page)
-        return None
+        super(RegistrationForm, self).__init__(*args, **kwargs)
 
 
-class Login(Email):
+class LoginForm(Email):
     password = PasswordField('Password', [validators.DataRequired()])
     remember = BooleanField('Remember me')
     submit_btn = SubmitField('Log in')
 
 
-class ReLogin(CustomForm):
+class ReLoginForm(CustomForm):
     password = PasswordField('Password', [validators.DataRequired(), VerifyPassword()])
     submit_btn = SubmitField('Log out')
 
 
-class ChangePassword(Password):
+class ChangePasswordForm(Password):
     old_password = PasswordField('Old Password *', [validators.DataRequired(), VerifyPassword()])
     submit_btn = SubmitField('Change Password')
 
 
-class ForgotPassword(CustomForm):
+class ForgotPasswordForm(CustomForm):
     email = StringField('Email', [validators.DataRequired(), validators.Email()])
     submit_btn = SubmitField('Restore')
 
 
-class Logout(CustomForm):
+class LogoutForm(CustomForm):
     submit_btn = SubmitField('Log out')
 
 
-class ChangeRole(Email):
+class ChangeRoleForm(Email):
     role_type = SelectField('Role Type', [validators.DataRequired()],
                             choices=[(x.value, x.name) for x in UserRole], coerce=int)
     submit_btn = SubmitField('Change Role')
@@ -204,45 +206,81 @@ class ChangeRole(Email):
         return UserRole(self.role_type.data)
 
 
-class BanUser(Email):
+class BanUserForm(Email):
     submit_btn = SubmitField('Ban User')
 
 
-class Post(CustomForm):
+class CommonPost(CustomForm):
     title = StringField('Title *', [validators.DataRequired()])
-    body = TextAreaField('Short Abstract *', [validators.DataRequired()])
+    body = TextAreaField('Message *', [validators.DataRequired()])
     banner = FileField('Graphical Abstract',
                        validators=[FileAllowed('jpg jpe jpeg png'.split(), 'JPEG or PNG images only'),
                                    VerifyImage('jpeg png'.split())])
-    attachment = FileField('Abstract File', validators=[FileAllowed('doc docx odt rtf'.split(), 'Documents only')])
+    attachment = FileField('Abstract File', validators=[FileAllowed('doc docx odt'.split(), 'Documents only')])
 
 
-class Meeting(Post):
-    participation = SelectField('Presentation Type *', [validators.DataRequired()],
-                                choices=[(x.value, x.fancy) for x in MeetingPost], coerce=int)
+class ThesisForm(CommonPost):
+    post_type = SelectField('Presentation Type *',
+                            [validators.DataRequired(), PostValidator([x.value for x in ThesisPost])],
+                            choices=[(x.value, x.fancy) for x in ThesisPost], coerce=int)
     submit_btn = SubmitField('Confirm')
 
+    def __init__(self, *args, body_name='Short Abstract', **kwargs):
+        super(ThesisForm, self).__init__(*args, **kwargs)
+        self.body.label.text = '%s *' % body_name
+
     @property
-    def special(self):
-        return dict(participation=self.participation.data)
+    def type(self):
+        return ThesisPost(self.post_type.data)
 
 
-class NewPost(Post):
+class Post(CommonPost):
     slug = StringField('Slug')
-    special_field = StringField('Special', [validators.Optional(), JsonValidator()])
-    post_type = SelectField('Post Type', [validators.DataRequired()],
-                            choices=[(x.value, x.name) for x in BlogPost], coerce=int)
-    parent_field = IntegerField('Parent', [validators.Optional()])
     submit_btn = SubmitField('Post')
+
+
+class PostForm(Post):
+    post_type = SelectField('Post Type', [validators.DataRequired(), PostValidator([x.value for x in BlogPost])],
+                            choices=[(x.value, x.name) for x in BlogPost], coerce=int)
 
     @property
     def type(self):
         return BlogPost(self.post_type.data)
 
+
+class MeetingForm(Post):
+    post_type = SelectField('Post Type', [validators.DataRequired(), PostValidator([x.value for x in MeetingPost])],
+                            choices=[(x.value, x.name) for x in MeetingPost], coerce=int)
+    deadline = DateTimeField('Deadline', [validators.Optional()], format='%Y/%m/%d %H:%M')
+    meeting_id = IntegerField('Meeting page', [validators.Optional()])
+    order = IntegerField('Order', [validators.Optional()])
+    body_name = StringField('Body Name', [validators.DataRequired()])
+
     @property
-    def special(self):
-        if self.special_field.data:
-            tmp = loads(self.special_field.data)
-            if isinstance(tmp, dict):
-                return tmp
-        return None
+    def type(self):
+        return MeetingPost(self.post_type.data)
+
+
+class EmailForm(Post):
+    post_type = SelectField('Post Type', [validators.DataRequired(), PostValidator([x.value for x in EmailPost])],
+                            choices=[(x.value, x.name) for x in EmailPost], coerce=int)
+    from_name = StringField('From Name')
+    reply_name = StringField('Reply Name')
+    reply_mail = StringField('Reply email', [validators.Optional(), validators.Email()])
+    meeting_id = IntegerField('Meeting page', [validators.Optional()])
+
+    @property
+    def type(self):
+        return EmailPost(self.post_type.data)
+
+
+class TeamForm(Post):
+    post_type = SelectField('Member Type', [validators.DataRequired(), PostValidator([x.value for x in TeamPost])],
+                            choices=[(x.value, x.name) for x in TeamPost], coerce=int)
+    role = StringField('Role', [validators.DataRequired()])
+    order = IntegerField('Order', [validators.Optional()])
+    scopus = StringField('Scopus')
+
+    @property
+    def type(self):
+        return TeamPost(self.post_type.data)
