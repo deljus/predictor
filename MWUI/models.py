@@ -395,7 +395,7 @@ class Theses(Posts, MeetingMixin):
 
 class Emails(Posts, MeetingMixin):
     def __init__(self, from_name=None, reply_name=None, reply_mail=None, meeting=None, **kwargs):
-        _type = kwargs.get('type', EmailPost.SPAM)
+        _type = kwargs.pop('type', EmailPost.SPAM)
         special = dict(from_name=from_name, reply_name=reply_name, reply_mail=reply_mail)
 
         if _type.is_meeting:

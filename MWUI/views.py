@@ -104,18 +104,13 @@ def login(action=1):
         message = 'Registration'
         tabs[1]['active'] = True
         active_form = RegistrationForm()
-        print(request.cookies.get('meeting'))
         if active_form.validate_on_submit():
-            m = None
             with db_session:
-                meeting = request.cookies.get('meeting')
-
-                if meeting:
-                    tmp = Meetings.get(id=meeting)
-                    m = tmp and tmp.meeting and Emails.get(post_parent=tmp.meeting,
-                                                           post_type=EmailPost.MEETING_REGISTRATION.value)
-                if not m:
-                    m = select(x for x in Emails if x.post_type == EmailPost.REGISTRATION.value).first()
+                mid = request.cookies.get('meeting')
+                meeting = mid and mid.isdigit() and Meetings.get(id=int(mid))
+                m = meeting and Emails.get(post_parent=meeting.meeting,
+                                           post_type=EmailPost.MEETING_REGISTRATION.value) or \
+                    select(x for x in Emails if x.post_type == EmailPost.REGISTRATION.value).first()
 
                 u = Users(email=active_form.email.data.lower(), password=active_form.password.data,
                           name=active_form.name.data, surname=active_form.surname.data,
@@ -593,5 +588,5 @@ def slug(slug):
             abort(404)
         resp = make_response(redirect(url_for('.blog_post', post=p.id)))
         if p.classtype == 'Meetings' and p.type == MeetingPost.MEETING:
-            resp.set_cookie('meeting', p.id)
+            resp.set_cookie('meeting', str(p.id))
     return resp

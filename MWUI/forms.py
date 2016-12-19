@@ -59,7 +59,7 @@ class CheckParentExist(object):
 
 
 class CheckUserFree(object):
-    message = 'User exist'
+    message = 'User exist. Please Log in or if you forgot password use restore procedure'
 
     def __call__(self, form, field):
         with db_session:
@@ -251,7 +251,7 @@ class PostForm(Post):
 class MeetingForm(Post):
     post_type = SelectField('Post Type', [validators.DataRequired(), PostValidator([x.value for x in MeetingPost])],
                             choices=[(x.value, x.name) for x in MeetingPost], coerce=int)
-    deadline = DateTimeField('Deadline', [validators.Optional()], format='%Y/%m/%d %H:%M')
+    deadline = DateTimeField('Deadline', [validators.Optional()], format='%d/%m/%Y %H:%M')
     meeting_id = IntegerField('Meeting page', [validators.Optional()])
     order = IntegerField('Order', [validators.Optional()])
     body_name = StringField('Body Name', [validators.DataRequired()])
