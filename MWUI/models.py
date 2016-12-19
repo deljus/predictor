@@ -24,7 +24,7 @@ import hashlib
 from .config import (DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER,
                      TaskType, ModelType, AdditiveType, ResultType, StructureType,
                      StructureStatus, UserRole, ProfileDegree, ProfileStatus,
-                     BlogPost, MeetingPost, ThesisPost, EmailPost, Glyph, TeamPost)
+                     BlogPostType, MeetingPostType, ThesisPostType, EmailPostType, Glyph, TeamPostType)
 from datetime import datetime
 from pony.orm import Database, sql_debug, PrimaryKey, Required, Optional, Set, Json
 
@@ -255,26 +255,22 @@ class MeetingMixin(object):
     def meeting_id(self):
         return self.meeting.id
 
-    @property
-    def body_name(self):
-        return self.meeting.special['body_name']
-
     @staticmethod
     def _get_parent(_parent):
         parent = Meetings[_parent]
-        if parent.type != MeetingPost.MEETING:
+        if parent.type != MeetingPostType.MEETING:
             raise Exception('Only MEETING type can be parent')
         return parent
 
 
 class BlogPosts(Posts):
     def __init__(self, **kwargs):
-        _type = kwargs.pop('type', BlogPost.COMMON).value
+        _type = kwargs.pop('type', BlogPostType.COMMON).value
         super(BlogPosts, self).__init__(post_type=_type, **kwargs)
 
     @property
     def type(self):
-        return BlogPost(self.post_type)
+        return BlogPostType(self.post_type)
 
     def update_type(self, _type):
         self.post_type = _type.value
@@ -282,7 +278,7 @@ class BlogPosts(Posts):
 
 class TeamPosts(Posts):
     def __init__(self, role='Researcher', scopus=None, order=0, **kwargs):
-        _type = kwargs.pop('type', TeamPost.TEAM).value
+        _type = kwargs.pop('type', TeamPostType.TEAM).value
         special = dict(scopus=scopus, order=order, role=role)
         super(TeamPosts, self).__init__(post_type=_type, special=special, **kwargs)
 
@@ -309,7 +305,7 @@ class TeamPosts(Posts):
 
     @property
     def type(self):
-        return TeamPost(self.post_type)
+        return TeamPostType(self.post_type)
 
     def update_type(self, _type):
         self.post_type = _type.value
@@ -317,17 +313,17 @@ class TeamPosts(Posts):
 
 class Meetings(Posts, MeetingMixin):
     def __init__(self, meeting=None, deadline=None, order=0, body_name=None, **kwargs):
-        _type = kwargs.pop('type', MeetingPost.MEETING)
+        _type = kwargs.pop('type', MeetingPostType.MEETING)
         special = dict(order=order)
 
-        if _type != MeetingPost.MEETING:
+        if _type != MeetingPostType.MEETING:
             if meeting:
                 parent = self._get_parent(meeting)
             else:
                 raise Exception('Need parent meeting post')
         else:
             parent = None
-            special['body_name'] = body_name
+            special['body_name'] = body_name or None
             if deadline:
                 special['deadline'] = deadline.timestamp()
             else:
@@ -335,12 +331,16 @@ class Meetings(Posts, MeetingMixin):
 
         super(Meetings, self).__init__(post_type=_type.value, post_parent=parent, special=special, **kwargs)
 
+    @property
+    def body_name(self):
+        return self.meeting.special['body_name']
+
     def update_body_name(self, name):
-        self.meeting.special['body_name'] = name
+        self.meeting.special['body_name'] = name or None
 
     @property
     def type(self):
-        return MeetingPost(self.post_type)
+        return MeetingPostType(self.post_type)
 
     @property
     def deadline(self):
@@ -361,7 +361,7 @@ class Meetings(Posts, MeetingMixin):
         return self.post_parent or self
 
     def can_update_meeting(self):
-        return self.type != MeetingPost.MEETING
+        return self.type != MeetingPostType.MEETING
 
     def update_meeting(self, meeting):
         if not self.can_update_meeting():
@@ -371,10 +371,10 @@ class Meetings(Posts, MeetingMixin):
 
 class Theses(Posts, MeetingMixin):
     def __init__(self, meeting, **kwargs):
-        _type = kwargs.pop('type', ThesisPost.POSTER).value
+        _type = kwargs.pop('type', ThesisPostType.POSTER).value
         parent = Meetings[meeting]
 
-        if parent.type != MeetingPost.MEETING:
+        if parent.type != MeetingPostType.MEETING:
             raise Exception('Invalid Meeting id')
         if parent.deadline < datetime.utcnow():
             raise Exception('Deadline left')
@@ -382,8 +382,12 @@ class Theses(Posts, MeetingMixin):
         super(Theses, self).__init__(post_type=_type, post_parent=parent, **filter_kwargs(kwargs))
 
     @property
+    def body_name(self):
+        return self.meeting.special['body_name']
+
+    @property
     def type(self):
-        return ThesisPost(self.post_type)
+        return ThesisPostType(self.post_type)
 
     def update_type(self, _type):
         self.post_type = _type.value
@@ -395,7 +399,7 @@ class Theses(Posts, MeetingMixin):
 
 class Emails(Posts, MeetingMixin):
     def __init__(self, from_name=None, reply_name=None, reply_mail=None, meeting=None, **kwargs):
-        _type = kwargs.pop('type', EmailPost.SPAM)
+        _type = kwargs.pop('type', EmailPostType.SPAM)
         special = dict(from_name=from_name, reply_name=reply_name, reply_mail=reply_mail)
 
         if _type.is_meeting:
@@ -445,7 +449,7 @@ class Emails(Posts, MeetingMixin):
 
     @property
     def type(self):
-        return EmailPost(self.post_type)
+        return EmailPostType(self.post_type)
 
     def update_type(self, _type):
         if self.type.is_meeting:

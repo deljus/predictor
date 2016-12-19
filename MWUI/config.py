@@ -119,7 +119,7 @@ class UserRole(Enum):
     ADMIN = 2
 
 
-class BlogPost(Enum):
+class BlogPostType(Enum):
     COMMON = 1
     CAROUSEL = 2
     IMPORTANT = 3
@@ -127,13 +127,13 @@ class BlogPost(Enum):
     ABOUT = 5
 
 
-class TeamPost(Enum):
+class TeamPostType(Enum):
     TEAM = 6
     CHIEF = 7
     STUDENT = 8
 
 
-class EmailPost(Enum):
+class EmailPostType(Enum):
     REGISTRATION = 9
     FORGOT = 10
     SPAM = 11
@@ -146,13 +146,13 @@ class EmailPost(Enum):
         return self.name in ('MEETING_REGISTRATION', 'MEETING_THESIS', 'MEETING_FORGOT', 'MEETING_SPAM')
 
 
-class MeetingPost(Enum):
+class MeetingPostType(Enum):
     MEETING = 15
     REGISTRATION = 16
     COMMON = 17
 
 
-class ThesisPost(Enum):
+class ThesisPostType(Enum):
     ORAL = 18
     POSTER = 19
     PLENARY = 20

@@ -24,8 +24,9 @@ import imghdr
 from json import loads
 from collections import OrderedDict
 from pycountry import countries
-from .models import Users
-from .config import BlogPost, UserRole, ThesisPost, ProfileDegree, ProfileStatus, MeetingPost, EmailPost, TeamPost
+from .models import Users, Meetings
+from .config import (BlogPostType, UserRole, ThesisPostType, ProfileDegree, ProfileStatus, MeetingPostType,
+                     EmailPostType, TeamPostType)
 from .redirect import get_redirect_target, is_safe_url
 from flask import url_for, redirect
 from flask_wtf import FlaskForm
@@ -46,15 +47,12 @@ class JsonValidator(object):
             raise ValidationError(self.message)
 
 
-class CheckParentExist(object):
-    message = 'Bad parent post id'
-
-    def __init__(self, db):
-        self.__db = db
+class CheckMeetingExist(object):
+    message = 'Bad meeting post id'
 
     def __call__(self, form, field):
         with db_session:
-            if not self.__db.exists(id=field.data):
+            if not Meetings.exists(id=field.data, post_type=MeetingPostType.MEETING.value):
                 raise ValidationError(self.message)
 
 
@@ -221,17 +219,17 @@ class CommonPost(CustomForm):
 
 class ThesisForm(CommonPost):
     post_type = SelectField('Presentation Type *',
-                            [validators.DataRequired(), PostValidator([x.value for x in ThesisPost])],
-                            choices=[(x.value, x.fancy) for x in ThesisPost], coerce=int)
+                            [validators.DataRequired(), PostValidator([x.value for x in ThesisPostType])],
+                            choices=[(x.value, x.fancy) for x in ThesisPostType], coerce=int)
     submit_btn = SubmitField('Confirm')
 
-    def __init__(self, *args, body_name='Short Abstract', **kwargs):
+    def __init__(self, *args, body_name=None, **kwargs):
         super(ThesisForm, self).__init__(*args, **kwargs)
-        self.body.label.text = '%s *' % body_name
+        self.body.label.text = body_name and '%s *' % body_name or 'Short Abstract'
 
     @property
     def type(self):
-        return ThesisPost(self.post_type.data)
+        return ThesisPostType(self.post_type.data)
 
 
 class Post(CommonPost):
@@ -240,47 +238,47 @@ class Post(CommonPost):
 
 
 class PostForm(Post):
-    post_type = SelectField('Post Type', [validators.DataRequired(), PostValidator([x.value for x in BlogPost])],
-                            choices=[(x.value, x.name) for x in BlogPost], coerce=int)
+    post_type = SelectField('Post Type', [validators.DataRequired(), PostValidator([x.value for x in BlogPostType])],
+                            choices=[(x.value, x.name) for x in BlogPostType], coerce=int)
 
     @property
     def type(self):
-        return BlogPost(self.post_type.data)
+        return BlogPostType(self.post_type.data)
 
 
 class MeetingForm(Post):
-    post_type = SelectField('Post Type', [validators.DataRequired(), PostValidator([x.value for x in MeetingPost])],
-                            choices=[(x.value, x.name) for x in MeetingPost], coerce=int)
+    post_type = SelectField('Post Type', [validators.DataRequired(), PostValidator([x.value for x in MeetingPostType])],
+                            choices=[(x.value, x.name) for x in MeetingPostType], coerce=int)
     deadline = DateTimeField('Deadline', [validators.Optional()], format='%d/%m/%Y %H:%M')
-    meeting_id = IntegerField('Meeting page', [validators.Optional()])
+    meeting_id = IntegerField('Meeting page', [validators.Optional(), CheckMeetingExist()])
     order = IntegerField('Order', [validators.Optional()])
-    body_name = StringField('Body Name', [validators.DataRequired()])
+    body_name = StringField('Body Name')
 
     @property
     def type(self):
-        return MeetingPost(self.post_type.data)
+        return MeetingPostType(self.post_type.data)
 
 
 class EmailForm(Post):
-    post_type = SelectField('Post Type', [validators.DataRequired(), PostValidator([x.value for x in EmailPost])],
-                            choices=[(x.value, x.name) for x in EmailPost], coerce=int)
+    post_type = SelectField('Post Type', [validators.DataRequired(), PostValidator([x.value for x in EmailPostType])],
+                            choices=[(x.value, x.name) for x in EmailPostType], coerce=int)
     from_name = StringField('From Name')
     reply_name = StringField('Reply Name')
     reply_mail = StringField('Reply email', [validators.Optional(), validators.Email()])
-    meeting_id = IntegerField('Meeting page', [validators.Optional()])
+    meeting_id = IntegerField('Meeting page', [validators.Optional(), CheckMeetingExist()])
 
     @property
     def type(self):
-        return EmailPost(self.post_type.data)
+        return EmailPostType(self.post_type.data)
 
 
 class TeamForm(Post):
-    post_type = SelectField('Member Type', [validators.DataRequired(), PostValidator([x.value for x in TeamPost])],
-                            choices=[(x.value, x.name) for x in TeamPost], coerce=int)
+    post_type = SelectField('Member Type', [validators.DataRequired(), PostValidator([x.value for x in TeamPostType])],
+                            choices=[(x.value, x.name) for x in TeamPostType], coerce=int)
     role = StringField('Role', [validators.DataRequired()])
     order = IntegerField('Order', [validators.Optional()])
     scopus = StringField('Scopus')
 
     @property
     def type(self):
-        return TeamPost(self.post_type.data)
+        return TeamPostType(self.post_type.data)

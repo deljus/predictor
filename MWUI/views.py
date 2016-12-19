@@ -27,8 +27,8 @@ from .forms import (LoginForm, RegistrationForm, ReLoginForm, ChangePasswordForm
 from .redirect import get_redirect_target
 from .logins import User
 from .models import Users, BlogPosts, Emails, Meetings, Posts, TeamPosts, Theses
-from .config import (UserRole, BLOG_POSTS_PER_PAGE, Glyph, UPLOAD_PATH, IMAGES_ROOT, BlogPost, LAB_NAME, MeetingPost, FormRoute,
-                     EmailPost, TeamPost, ThesisPost)
+from .config import (UserRole, BLOG_POSTS_PER_PAGE, UPLOAD_PATH, IMAGES_ROOT, BlogPostType, LAB_NAME, MeetingPostType,
+                     FormRoute, EmailPostType, TeamPostType)
 from .bootstrap import Pagination
 from .sendmail import send_mail
 from .scopus import get_articles
@@ -46,11 +46,14 @@ view_bp = Blueprint('view', __name__)
 def save_upload(field, images=False):
     file_name = '%s%s' % (uuid.uuid4(), path.splitext(field.filename)[-1])
     field.save(path.join(IMAGES_ROOT if images else UPLOAD_PATH, file_name))
-    return file_name, secure_filename(field.filename)
+    if images:
+        return file_name
+    else:
+        return file_name, secure_filename(field.filename)
 
 
 def combo_save(banner, attachment):
-    banner_name = save_upload(banner.data, images=True)[0] if banner.data else None
+    banner_name = save_upload(banner.data, images=True) if banner.data else None
     file_name = [save_upload(attachment.data)] if attachment.data else None
     return banner_name, file_name
 
@@ -109,8 +112,8 @@ def login(action=1):
                 mid = request.cookies.get('meeting')
                 meeting = mid and mid.isdigit() and Meetings.get(id=int(mid))
                 m = meeting and Emails.get(post_parent=meeting.meeting,
-                                           post_type=EmailPost.MEETING_REGISTRATION.value) or \
-                    select(x for x in Emails if x.post_type == EmailPost.REGISTRATION.value).first()
+                                           post_type=EmailPostType.MEETING_REGISTRATION.value) or \
+                    select(x for x in Emails if x.post_type == EmailPostType.REGISTRATION.value).first()
 
                 u = Users(email=active_form.email.data.lower(), password=active_form.password.data,
                           name=active_form.name.data, surname=active_form.surname.data,
@@ -134,7 +137,7 @@ def login(action=1):
             with db_session:
                 u = Users.get(email=active_form.email.data.lower())
                 if u:
-                    m = select(x for x in Emails if x.post_type == EmailPost.FORGOT.value).first()
+                    m = select(x for x in Emails if x.post_type == EmailPostType.FORGOT.value).first()
                     u.gen_restore()
                     send_mail((m and m.body or '%s\n\nNew password: %s') % ('%s %s' % (u.name, u.surname), u.restore),
                               u.email, to_name='%s %s' % (u.name, u.surname),
@@ -262,15 +265,15 @@ def profile(action=4):
             banner_name, file_name = combo_save(active_form.banner, active_form.attachment)
             p = Meetings(meeting=active_form.meeting_id.data, deadline=active_form.deadline.data,
                          order=active_form.order.data, type=active_form.type, author=current_user.id,
-                         title=active_form.title.data, slug=active_form.slug.data,
+                         title=active_form.title.data, slug=active_form.slug.data, body_name=active_form.body_name.data,
                          body=active_form.body.data, banner=banner_name, attachments=file_name)
             commit()
             return p.id
 
         if active_form.validate_on_submit():
-            if active_form.type in (MeetingPost.REGISTRATION, MeetingPost.COMMON):
+            if active_form.type in (MeetingPostType.REGISTRATION, MeetingPostType.COMMON):
                 if active_form.meeting_id.data and Meetings.exists(id=active_form.meeting_id.data,
-                                                                   post_type=MeetingPost.MEETING.value):
+                                                                   post_type=MeetingPostType.MEETING.value):
                     return redirect(url_for('.blog_post', post=add_post()))
                 active_form.meeting_id.errors = ['Bad parent']
             else:
@@ -296,7 +299,7 @@ def profile(action=4):
         if active_form.validate_on_submit():
             if active_form.type.is_meeting:
                 if active_form.meeting_id.data and Meetings.exists(id=active_form.meeting_id.data,
-                                                                   post_type=MeetingPost.MEETING.value):
+                                                                   post_type=MeetingPostType.MEETING.value):
                     return redirect(url_for('.blog_post', post=add_post()))
                 active_form.meeting_id.errors = ['Bad parent']
             else:
@@ -331,11 +334,12 @@ def profile(action=4):
 @view_bp.route('/index', methods=['GET'])
 @db_session
 def index():
-    c = select(x for x in BlogPosts if x.post_type == BlogPost.CAROUSEL.value
+    c = select(x for x in BlogPosts if x.post_type == BlogPostType.CAROUSEL.value
                and x.banner is not None).order_by(BlogPosts.id.desc()).limit(BLOG_POSTS_PER_PAGE)
-    ip = select(x for x in Posts if x.post_type in (BlogPost.IMPORTANT.value,
-                                                    MeetingPost.MEETING.value)).order_by(Posts.id.desc()).limit(3)
-    pl = list(select(x for x in BlogPosts if x.post_type == BlogPost.PROJECTS.value).order_by(BlogPosts.date.desc()))
+    ip = select(x for x in Posts if x.post_type in (BlogPostType.IMPORTANT.value,
+                                                    MeetingPostType.MEETING.value)).order_by(Posts.id.desc()).limit(3)
+    pl = list(select(x for x in BlogPosts
+                     if x.post_type == BlogPostType.PROJECTS.value).order_by(BlogPosts.date.desc()))
 
     return render_template("home.html", carousel=c, projects=pl, info=ip, title='Welcome to', subtitle=LAB_NAME)
 
@@ -343,9 +347,10 @@ def index():
 @view_bp.route('/about', methods=['GET'])
 @db_session
 def about():
-    about = select(x for x in BlogPosts if x.post_type == BlogPost.ABOUT.value).first()
-    chief = select(x for x in TeamPosts if x.post_type == TeamPost.CHIEF.value).order_by(lambda x: x.special['order'])
-    team = select(x for x in TeamPosts if x.post_type == TeamPost.TEAM.value).order_by(TeamPosts.id.desc())
+    about = select(x for x in BlogPosts if x.post_type == BlogPostType.ABOUT.value).first()
+    chief = select(x for x in TeamPosts if x.post_type == TeamPostType.CHIEF.value).order_by(lambda x:
+                                                                                             x.special['order'])
+    team = select(x for x in TeamPosts if x.post_type == TeamPostType.TEAM.value).order_by(TeamPosts.id.desc())
 
     return render_template("about.html", title='About', subtitle='Laboratory', about=about, chief=chief, team=team)
 
@@ -396,10 +401,10 @@ def blog_post(post):
                 p.slug = edit_post.slug.data
 
             if edit_post.banner.data:
-                p.banner = save_upload(edit_post.banner, images=True)
+                p.banner = save_upload(edit_post.banner.data, images=True)
 
             if edit_post.attachment.data:
-                p.add_attachment(save_upload(edit_post.attachment))
+                p.add_attachment(*save_upload(edit_post.attachment.data))
 
             if hasattr(p, 'update_type'):
                 try:
@@ -408,10 +413,7 @@ def blog_post(post):
                     edit_post.post_type.errors = ['Meeting emails can be changed only to meeting Email']
 
             if hasattr(p, 'update_meeting') and p.can_update_meeting() and edit_post.meeting_id.data:
-                try:
-                    p.update_meeting(edit_post.meeting_id.data)
-                except:
-                    edit_post.meeting_id.errors = ['Invalig Meeting id']
+                p.update_meeting(edit_post.meeting_id.data)
 
             if hasattr(p, 'update_order') and edit_post.order.data:
                 p.update_order(edit_post.order.data)
@@ -446,10 +448,10 @@ def blog_post(post):
         children.extend(p.meeting.children.
                         filter(lambda x: x.classtype == 'Meetings').order_by(lambda x: x.special['order']))
 
-        if p.type != MeetingPost.MEETING:
+        if p.type != MeetingPostType.MEETING:
             crumb = dict(url=url_for('.blog_post', post=p.meeting_id), title=p.title, parent='Event main page')
 
-            if p.type == MeetingPost.REGISTRATION and p.deadline > datetime.utcnow():
+            if p.type == MeetingPostType.REGISTRATION and p.deadline > datetime.utcnow():
                 if current_user.is_authenticated and \
                         not select(x for x in Theses
                                    if x.post_parent == p.meeting and x.author.id == current_user.id).exists():
@@ -462,7 +464,7 @@ def blog_post(post):
                                    banner=banner_name, attachment=file_name, author=current_user.id)
                         commit()
 
-                        m = Emails.get(post_parent=p.meeting, post_type=EmailPost.MEETING_THESIS.value)
+                        m = Emails.get(post_parent=p.meeting, post_type=EmailPostType.MEETING_THESIS.value)
                         send_mail((m and m.body or '%s\n\nYou registered to meeting') % current_user.name,
                                   current_user.email, to_name=current_user.name, title=m and m.title,
                                   subject=m and m.title or 'Welcome to meeting', banner=m and m.banner,
@@ -484,9 +486,9 @@ def blog_post(post):
                 p.update_type(special_form.type)
 
                 if special_form.banner.data:
-                    p.banner = save_upload(special_form.banner, images=True)
+                    p.banner = save_upload(special_form.banner.data, images=True)
                 if special_form.attachment.data:
-                    p.add_attachment(save_upload(special_form.attachment))
+                    p.add_attachment(*save_upload(special_form.attachment.data))
 
         crumb = dict(url=url_for('.participants', event=p.meeting_id), title='Abstract', parent='Event participants')
         special_field = '**Presentation Type**: *%s*' % p.type.fancy
@@ -494,14 +496,15 @@ def blog_post(post):
         crumb = dict(url=url_for('.about'), title='Member', parent='Laboratory')
         if p.scopus:
             special_field = get_articles(p.scopus)
-    elif p.type == BlogPost.ABOUT:
+    elif p.type == BlogPostType.ABOUT:
         crumb = dict(url=url_for('.about'), title='Description', parent='Laboratory')
     else:
         crumb = dict(url=url_for('.blog'), title='Post', parent='News')
         """ collect sidebar news
         """
         info = select(x for x in Posts
-                      if x.id != post and x.post_type in (BlogPost.IMPORTANT.value, MeetingPost.MEETING.value)).\
+                      if x.id != post and x.post_type in (BlogPostType.IMPORTANT.value,
+                                                          MeetingPostType.MEETING.value)).\
             order_by(Posts.date.desc()).limit(3)
 
     return render_template("post.html", title=title or p.title, post=p, info=info,
@@ -540,8 +543,8 @@ def predictor():
 def blog(page=1):
     q = select(x for x in Posts
                if x.classtype not in ('Theses', 'Emails')
-               and x.post_type not in (MeetingPost.COMMON.value,
-                                       MeetingPost.REGISTRATION.value)).order_by(Posts.date.desc())
+               and x.post_type not in (MeetingPostType.COMMON.value,
+                                       MeetingPostType.REGISTRATION.value)).order_by(Posts.date.desc())
     return blog_viewer(page, q, '.blog', 'News', 'list')
 
 
@@ -558,7 +561,7 @@ def events(page=1):
 @view_bp.route('/participants/<int:event>/<int:page>', methods=['GET'])
 @db_session
 def participants(event, page=1):
-    m = Meetings.get(id=event, post_type=MeetingPost.MEETING.value)
+    m = Meetings.get(id=event, post_type=MeetingPostType.MEETING.value)
     if not m:
         return redirect(url_for('.blog'))
 
@@ -587,6 +590,6 @@ def slug(slug):
         if not p:
             abort(404)
         resp = make_response(redirect(url_for('.blog_post', post=p.id)))
-        if p.classtype == 'Meetings' and p.type == MeetingPost.MEETING:
+        if p.classtype == 'Meetings' and p.type == MeetingPostType.MEETING:
             resp.set_cookie('meeting', str(p.id))
     return resp
