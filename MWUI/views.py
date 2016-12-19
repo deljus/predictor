@@ -44,12 +44,16 @@ view_bp = Blueprint('view', __name__)
 
 
 def save_upload(field, images=False):
-    file_name = '%s%s' % (uuid.uuid4(), path.splitext(field.filename)[-1])
+    ext = path.splitext(field.filename)[-1].lower()
+    file_name = '%s%s' % (uuid.uuid4(), ext)
     field.save(path.join(IMAGES_ROOT if images else UPLOAD_PATH, file_name))
     if images:
         return file_name
     else:
-        return file_name, secure_filename(field.filename)
+        s_name = secure_filename(field.filename).lower()
+        if s_name == ext[1:]:
+            s_name = 'document%s' % ext
+        return file_name, s_name
 
 
 def combo_save(banner, attachment):
@@ -372,6 +376,8 @@ def blog_post(post):
     if not p:
         return redirect(url_for('.blog'))
 
+    opened_by_author = p.author.id == current_user.id
+    downloadable = admin or p.classtype != 'Theses' or opened_by_author
     """ admin page
     """
     if admin:
@@ -461,7 +467,7 @@ def blog_post(post):
                         banner_name, file_name = combo_save(special_form.banner, special_form.attachment)
                         t = Theses(p.meeting_id, type=special_form.type,
                                    title=special_form.title.data, body=special_form.body.data,
-                                   banner=banner_name, attachment=file_name, author=current_user.id)
+                                   banner=banner_name, attachments=file_name, author=current_user.id)
                         commit()
 
                         m = Emails.get(post_parent=p.meeting, post_type=EmailPostType.MEETING_THESIS.value)
@@ -477,8 +483,7 @@ def blog_post(post):
             crumb = dict(url=url_for('.blog'), title='Post', parent='News')
 
     elif p.classtype == 'Theses':
-        if current_user.is_authenticated and p.author.id == current_user.id and \
-                p.meeting.deadline > datetime.utcnow():
+        if current_user.is_authenticated and opened_by_author and p.meeting.deadline > datetime.utcnow():
             special_form = ThesisForm(prefix='Thesis', obj=p, body_name=p.body_name)
             if special_form.validate_on_submit():
                 p.title = special_form.title.data
@@ -507,7 +512,7 @@ def blog_post(post):
                                                           MeetingPostType.MEETING.value)).\
             order_by(Posts.date.desc()).limit(3)
 
-    return render_template("post.html", title=title or p.title, post=p, info=info,
+    return render_template("post.html", title=title or p.title, post=p, info=info, downloadable=downloadable,
                            children=children, participants=theses,
                            edit_form=edit_post, remove_form=remove_post_form, crumb=crumb,
                            special_form=special_form, special_field=special_field)
@@ -592,4 +597,16 @@ def slug(slug):
         resp = make_response(redirect(url_for('.blog_post', post=p.id)))
         if p.classtype == 'Meetings' and p.type == MeetingPostType.MEETING:
             resp.set_cookie('meeting', str(p.id))
+    return resp
+
+
+@view_bp.route('/download/<file>/<name>', methods=['GET'])
+def download(file, name):
+    resp = make_response()
+    resp.headers['X-Accel-Redirect'] = '/file/%s' % file
+    resp.headers['Content-Description'] = 'File Transfer'
+    resp.headers['Content-Transfer-Encoding'] = 'binary'
+    resp.headers['Content-Disposition'] = 'attachment; filename=%s' % name
+    resp.headers['Content-Type'] = 'application/octet-stream'
+
     return resp

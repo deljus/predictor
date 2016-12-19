@@ -14,10 +14,12 @@
                 {{ special_field|markdown }}
             {% endif %}
 
-            {% if post.attachments and False %}
-                <a href="{{ url_for('static', filename='docs/%s' % post.attachments) }}" class="btn btn-default">
-                    <span class="glyphicon glyphicon-save-file" aria-hidden="true"></span> Download
-                </a>
+            {% if downloadable %}
+                {% for i in post.attachments %}
+                    <a href="{{ url_for('.download', file=i.file, name=i.name) }}" class="btn btn-default">
+                        <span class="glyphicon glyphicon-save-file" aria-hidden="true"></span> {{ i.name|truncate(15, True) }}
+                    </a>
+                {% endfor %}
             {% endif %}
 
             {% if special_form %}
