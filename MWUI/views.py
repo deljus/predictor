@@ -376,7 +376,7 @@ def blog_post(post):
     if not p:
         return redirect(url_for('.blog'))
 
-    opened_by_author = p.author.id == current_user.id
+    opened_by_author = current_user.is_authenticated and p.author.id == current_user.id
     downloadable = admin or p.classtype != 'Theses' or opened_by_author
     """ admin page
     """
