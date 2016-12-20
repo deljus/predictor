@@ -64,7 +64,7 @@ class Users(db.Entity):
 
     def __init__(self, email, password, role=UserRole.COMMON, **kwargs):
         password = self.__hash_password(password)
-        token = self.__gen_token(email, password)
+        token = self.__gen_token(email, str(datetime.utcnow()))
         super(Users, self).__init__(email=email, password=password, token=token, user_role=role.value,
                                     **filter_kwargs(kwargs))
 
@@ -75,11 +75,13 @@ class Users(db.Entity):
     def verify_password(self, password):
         return bcrypt.hashpw(password.encode(), self.password.encode()) == self.password.encode()
 
-    def verify_restore(self, code):
-        return self.restore == code
+    def verify_restore(self, restore):
+        return self.restore and bcrypt.hashpw(restore.encode(), self.restore.encode()) == self.restore.encode()
 
     def gen_restore(self):
-        self.restore = self.__gen_token(self.email, str(datetime.utcnow()))[:8]
+        restore = self.__gen_token(self.email, str(datetime.utcnow()))[:8]
+        self.restore = self.__hash_password(restore)
+        return restore
 
     def change_password(self, password):
         self.password = self.__hash_password(password)

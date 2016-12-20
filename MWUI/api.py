@@ -21,12 +21,13 @@
 import uuid
 from collections import defaultdict
 from os import path
+from MWUI.logins import User
 from .config import (UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, REDIS_HOST, REDIS_JOB_TIMEOUT,
-                     REDIS_PASSWORD, REDIS_PORT, REDIS_TTL, StructureType)
+                     REDIS_PASSWORD, REDIS_PORT, REDIS_TTL, StructureType, UserRole)
 from .models import Tasks, Structures, Additives, Models, Additivesets, Destinations, Users, Results
 from .redis import RedisCombiner
-from flask import Blueprint, url_for, send_from_directory, request
-from flask_login import current_user
+from flask import Blueprint, url_for, send_from_directory, request, Response
+from flask_login import current_user, login_user
 from flask_restful import reqparse, Resource, fields, marshal, abort, Api
 from functools import wraps
 from pony.orm import db_session, select, left_join
@@ -141,32 +142,28 @@ def authenticate(func):
     return wrapper
 
 
+def auth_admin(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if auth:
+            u = User.get(auth.username.lower(), auth.password)
+            if u and u.role_is(UserRole.ADMIN):
+                return f(*args, **kwargs)
+
+        return Response('Could not verify your access level for that URL.\n'
+                        'You have to login with proper credentials', 401,
+                        {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+    return decorated
+
+
 class AuthResource(Resource):
     method_decorators = [authenticate]
 
 
 class AdminResource(Resource):
-    pass
-    #method_decorators = [authenticate]
-
-
-class AvailableModels(Resource):
-    def get(self):
-        out = []
-        for x in get_models_list().values():
-            x.pop('destinations')
-            x['type'] = x['type'].value
-            out.append(x)
-        return out, 200
-
-
-class AvailableAdditives(Resource):
-    def get(self):
-        out = []
-        for x in get_additives().values():
-            x['type'] = x['type'].value
-            out.append(x)
-        return out, 200
+    method_decorators = [auth_admin]
 
 
 class RegisterModels(AdminResource):
@@ -207,13 +204,30 @@ class RegisterModels(AdminResource):
         return report, 201
 
 
-''' ===================================================
-    collector of modeled tasks (individually). return json
-    ===================================================
-'''
+class AvailableModels(Resource):
+    def get(self):
+        out = []
+        for x in get_models_list().values():
+            x.pop('destinations')
+            x['type'] = x['type'].value
+            out.append(x)
+        return out, 200
+
+
+class AvailableAdditives(Resource):
+    def get(self):
+        out = []
+        for x in get_additives().values():
+            x['type'] = x['type'].value
+            out.append(x)
+        return out, 200
 
 
 class ResultsTask(AuthResource):
+    """ ===================================================
+        collector of modeled tasks (individually). return json
+        ===================================================
+    """
     def get(self, task):
         try:
             task = int(task)
@@ -492,6 +506,20 @@ class UploadTask(AuthResource):
                     date=new_job['created_at'].strftime("%Y-%m-%d %H:%M:%S"), user=current_user.id), 201
 
 
+class LogIn(Resource):
+    def get(self):
+        data = request.get_json(force=True)
+        if data:
+            username = data.get('user')
+            password = data.get('password')
+            if username and password:
+                user = User.get(username.lower(), password)
+                if user:
+                    login_user(user, remember=True)
+                    return dict(message='Logged in'), 200
+        return dict(message='Bad credentials'), 403
+
+
 api.add_resource(CreateTask, '/task/create/<int:_type>')
 api.add_resource(UploadTask, '/task/upload/<int:_type>')
 api.add_resource(PrepareTask, '/task/prepare/<string:task>')
@@ -500,3 +528,4 @@ api.add_resource(ResultsTask, '/task/results/<string:task>')
 api.add_resource(AvailableAdditives, '/resources/additives')
 api.add_resource(AvailableModels, '/resources/models')
 api.add_resource(RegisterModels, '/admin/models')
+api.add_resource(LogIn, '/auth')

@@ -142,8 +142,8 @@ def login(action=1):
                 u = Users.get(email=active_form.email.data.lower())
                 if u:
                     m = select(x for x in Emails if x.post_type == EmailPostType.FORGOT.value).first()
-                    u.gen_restore()
-                    send_mail((m and m.body or '%s\n\nNew password: %s') % ('%s %s' % (u.name, u.surname), u.restore),
+                    restore = u.gen_restore()
+                    send_mail((m and m.body or '%s\n\nNew password: %s') % ('%s %s' % (u.name, u.surname), restore),
                               u.email, to_name='%s %s' % (u.name, u.surname),
                               subject=m and m.title or 'Forgot password?',
                               banner=m and m.banner, title=m and m.title,
