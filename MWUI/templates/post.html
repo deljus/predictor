@@ -1,4 +1,26 @@
 {% extends "layout.html" %}
+{% block styles %}
+    {{super()}}
+    <link href="{{ url_for('static', filename='css/bootstrap-markdown-editor.css') }}" rel="stylesheet">
+{% endblock styles %}
+{% block scripts %}
+    {{super()}}
+    <script src="{{ url_for('static', filename='js/ace/ace.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap-markdown-editor.js') }}"></script>
+    <script>
+        {% if edit_form %}
+            $('#body').markdownEditor({
+                fullscreen: false
+            });
+        {% endif %}
+        {% if special_form %}
+            $('#special-body').markdownEditor({
+                fullscreen: false
+            });
+        {% endif %}
+    </script>
+{% endblock scripts %}
+
 {% block page %}
     <div class="row">
         <!-- Blog Post Content Column -->

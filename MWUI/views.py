@@ -381,17 +381,17 @@ def blog_post(post):
     """ admin page
     """
     if admin:
-        remove_post_form = DeleteButtonForm(prefix='Delete')
+        remove_post_form = DeleteButtonForm(prefix='delete')
         if p.classtype == 'BlogPosts':
-            edit_post = PostForm(prefix='Edit', obj=p)
+            edit_post = PostForm(obj=p)
         elif p.classtype == 'Meetings':
-            edit_post = MeetingForm(prefix='Edit', obj=p)
+            edit_post = MeetingForm(obj=p)
         elif p.classtype == 'Theses':
-            edit_post = ThesisForm(prefix='Edit', obj=p)
+            edit_post = ThesisForm(obj=p)
         elif p.classtype == 'Emails':
-            edit_post = EmailForm(prefix='Edit', obj=p)
+            edit_post = EmailForm(obj=p)
         elif p.classtype == 'TeamPosts':
-            edit_post = TeamForm(prefix='Edit', obj=p)
+            edit_post = TeamForm(obj=p)
         else:  # BAD POST
             return redirect(url_for('.blog'))
 
@@ -462,7 +462,7 @@ def blog_post(post):
                         not select(x for x in Theses
                                    if x.post_parent == p.meeting and x.author.id == current_user.id).exists():
 
-                    special_form = ThesisForm(prefix='Thesis', body_name=p.body_name)
+                    special_form = ThesisForm(prefix='special', body_name=p.body_name)
                     if special_form.validate_on_submit():
                         banner_name, file_name = combo_save(special_form.banner, special_form.attachment)
                         t = Theses(p.meeting_id, type=special_form.type,
@@ -484,7 +484,7 @@ def blog_post(post):
 
     elif p.classtype == 'Theses':
         if current_user.is_authenticated and opened_by_author and p.meeting.deadline > datetime.utcnow():
-            special_form = ThesisForm(prefix='Thesis', obj=p, body_name=p.body_name)
+            special_form = ThesisForm(prefix='special', obj=p, body_name=p.body_name)
             if special_form.validate_on_submit():
                 p.title = special_form.title.data
                 p.body = special_form.body.data
