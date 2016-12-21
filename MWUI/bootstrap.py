@@ -169,6 +169,7 @@ def top_nav():
                   ]
     else:
         navbar = [LeftSubgroup(View('News', '.blog'), View('About Us', '.about')),
-                  RightSubgroup(View('Login', '.login', next=get_redirect_target() or request.path))]
+                  RightSubgroup(View('Searching', '.search'), View('Modeling', '.predictor'),
+                                View('Login', '.login', next=get_redirect_target() or request.path))]
 
     return Navbar(View(LAB_SHORT, '.index'), *navbar)
