@@ -38,9 +38,17 @@
 
             {% if downloadable %}
                 {% for i in post.attachments %}
-                    <a href="{{ url_for('.download', file=i.file, name=i.name) }}" class="btn btn-default">
-                        <span class="glyphicon glyphicon-save-file" aria-hidden="true"></span> {{ i.name|truncate(15, True) }}
-                    </a>
+                    <div class="btn-group" role="group" aria-label="...">
+                        <a href="{{ url_for('.download', file=i.file, name=i.name) }}" class="btn btn-default">
+                            <span class="glyphicon glyphicon-save-file" aria-hidden="true"></span> {{ i.name|truncate(15, True) }}
+                        </a>
+                        {% if deletable %}
+                            <a href="{{ url_for('.remove', file=i.file, name=i.name,
+                                                next=url_for('.blog_post', post=post.id)) }}" class="btn btn-default">
+                                <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+                            </a>
+                        {% endif %}
+                    </div>
                 {% endfor %}
             {% endif %}
 

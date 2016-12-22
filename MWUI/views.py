@@ -26,7 +26,7 @@ from .forms import (LoginForm, RegistrationForm, ReLoginForm, ChangePasswordForm
                     TeamForm)
 from .redirect import get_redirect_target
 from .logins import User
-from .models import Users, BlogPosts, Emails, Meetings, Posts, TeamPosts, Theses
+from .models import Users, BlogPosts, Emails, Meetings, Posts, TeamPosts, Theses, Attachments
 from .config import (UserRole, BLOG_POSTS_PER_PAGE, UPLOAD_PATH, IMAGES_ROOT, BlogPostType, LAB_NAME, MeetingPostType,
                      FormRoute, EmailPostType, TeamPostType)
 from .bootstrap import Pagination
@@ -165,7 +165,7 @@ def logout():
         logout_user()
         return redirect(url_for('.login'))
 
-    return render_template('logout.html', form=form, title='Logout')
+    return render_template('button.html', form=form, title='Logout')
 
 
 @view_bp.route('/profile/', methods=['GET', 'POST'])
@@ -378,6 +378,7 @@ def blog_post(post):
 
     opened_by_author = current_user.is_authenticated and p.author.id == current_user.id
     downloadable = admin or p.classtype != 'Theses' or opened_by_author
+    deletable = admin or p.classtype == 'Theses' and opened_by_author and p.meeting.deadline > datetime.utcnow()
     """ admin page
     """
     if admin:
@@ -513,7 +514,7 @@ def blog_post(post):
             order_by(Posts.date.desc()).limit(3)
 
     return render_template("post.html", title=title or p.title, post=p, info=info, downloadable=downloadable,
-                           children=children, participants=theses,
+                           children=children, participants=theses, deletable=deletable,
                            edit_form=edit_post, remove_form=remove_post_form, crumb=crumb,
                            special_form=special_form, special_field=special_field)
 
@@ -601,12 +602,32 @@ def slug(slug):
 
 
 @view_bp.route('/download/<file>/<name>', methods=['GET'])
+@login_required
 def download(file, name):
-    resp = make_response()
-    resp.headers['X-Accel-Redirect'] = '/file/%s' % file
-    resp.headers['Content-Description'] = 'File Transfer'
-    resp.headers['Content-Transfer-Encoding'] = 'binary'
-    resp.headers['Content-Disposition'] = 'attachment; filename=%s' % name
-    resp.headers['Content-Type'] = 'application/octet-stream'
+    with db_session:
+        a = Attachments.get(file=file)
+        if current_user.role_is(UserRole.ADMIN) or a.post.classtype != 'Theses' or a.post.author.id == current_user.id:
+            resp = make_response()
+            resp.headers['X-Accel-Redirect'] = '/file/%s' % file
+            resp.headers['Content-Description'] = 'File Transfer'
+            resp.headers['Content-Transfer-Encoding'] = 'binary'
+            resp.headers['Content-Disposition'] = 'attachment; filename=%s' % name
+            resp.headers['Content-Type'] = 'application/octet-stream'
+            return resp
+        abort(404)
 
-    return resp
+
+@view_bp.route('/remove/<file>/<name>', methods=['GET', 'POST'])
+@login_required
+def remove(file, name):
+    form = DeleteButtonForm()
+    if form.validate_on_submit():
+        with db_session:
+            a = Attachments.get(file=file)
+            if a and (current_user.role_is(UserRole.ADMIN)
+                      or a.post.classtype == 'Theses' and a.post.author.id == current_user.id
+                      and a.post.meeting.deadline > datetime.utcnow()):
+                a.delete()
+        return form.redirect()
+
+    return render_template('button.html', form=form, title='Delete', subtitle=name)
