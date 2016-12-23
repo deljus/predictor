@@ -32,6 +32,8 @@ from MODtools.config import MOLCONVERT
 from MODtools.consensus import ConsensusDragos
 from MODtools.utils import chemaxpost
 from MWUI.config import ModelType, ResultType
+from CGRtools.files.SDFrw import SDFread
+from CGRtools.files.RDFrw import RDFread
 
 
 class Model(ConsensusDragos):
@@ -87,11 +89,11 @@ class Model(ConsensusDragos):
                 additions['additive.%d' % n] = a['name']
                 additions['amount.%d' % n] = a['amount']
 
-            data = chemaxed['structure']
+            data_str = chemaxed['structure']
         else:
             with sp.Popen([MOLCONVERT, self.__format],
                           stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.STDOUT, cwd=self.__workpath) as convert_mol:
-                data = convert_mol.communicate(input=''.join(s['data'] for s in structures).encode())[0].decode()
+                data_str = convert_mol.communicate(input=''.join(s['data'] for s in structures).encode())[0].decode()
                 if convert_mol.returncode != 0:
                     return False
 
@@ -104,9 +106,11 @@ class Model(ConsensusDragos):
                     additions.setdefault('amount.%d' % n, {})[m] = a['amount']
 
         res = []
+        with StringIO(data_str) as f:
+            data = list((RDFread(f) if self.get_type() == ModelType.REACTION_MODELING else SDFread(f)).read())
+
         for m in self.__models:
-            with StringIO(data) as f:
-                res.append(m.predict(f, **additions))
+            res.append(m.predict(data, **additions))
 
         # all_y_domains = reduce(merge_wrap, (x['y_domain'] for x in res))
         all_domains = reduce(self.__merge_wrap, (x['domain'] for x in res)).fillna(False)
