@@ -198,12 +198,13 @@ class FormRoute(Enum):
     NEW_BLOG_POST = 7
     NEW_EMAIL_TEMPLATE = 8
     NEW_MEETING_PAGE = 9
-    BAN_USER = 10
-    CHANGE_USER_ROLE = 11
+    NEW_MEMBER_PAGE = 10
+    BAN_USER = 11
+    CHANGE_USER_ROLE = 12
 
     @staticmethod
     def get(action):
-        if 1 <= action <= 11:
+        if 1 <= action <= 12:
             return FormRoute(action)
         return None
 
@@ -211,7 +212,7 @@ class FormRoute(Enum):
         return 1 <= self.value <= 3
 
     def is_profile(self):
-        return 4 <= self.value <= 11
+        return 4 <= self.value <= 12
 
 
 class ProfileDegree(Enum):

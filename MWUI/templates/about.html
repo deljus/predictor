@@ -11,6 +11,7 @@
                 <a class="btn btn-primary" href="{{ url_for('.blog_post', post=about.id) }}">Read More <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span></a>
             </div>
         </div>
+        <hr/>
     {% endif %}
     <div class="row">
         {% for i in chief %}
@@ -36,7 +37,7 @@
                 <h3>
                     <a href="{{ url_for('.blog_post', post=i.id) }}">{{ i.title }}</a>
                 </h3>
-                {{ i.body|truncate(200, True)|markdown }}
+                {{ i.role }}
             </div>
         {% endfor %}
     </div>

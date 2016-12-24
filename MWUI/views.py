@@ -192,6 +192,8 @@ def profile(action=4):
                           url=url_for('.profile', action=FormRoute.NEW_MEETING_PAGE.value)),
                      dict(title='New Email Template', glyph='envelope', active=False,
                           url=url_for('.profile', action=FormRoute.NEW_EMAIL_TEMPLATE.value)),
+                     dict(title='New Team Member', glyph='knight', active=False,
+                          url=url_for('.profile', action=FormRoute.NEW_MEMBER_PAGE.value)),
                      dict(title='Ban User', glyph='remove-circle', active=False,
                           url=url_for('.profile', action=FormRoute.BAN_USER.value)),
                      dict(title='Change Role', glyph='arrow-up', active=False,
@@ -309,9 +311,22 @@ def profile(action=4):
             else:
                 return redirect(url_for('.blog_post', post=add_post()))
 
+    elif admin and form == FormRoute.NEW_MEMBER_PAGE:
+        message = 'New Member'
+        tabs[6]['active'] = True
+        active_form = TeamForm()
+        if active_form.validate_on_submit():
+            banner_name, file_name = combo_save(active_form.banner, active_form.attachment)
+            p = TeamPosts(type=active_form.type, title=active_form.title.data, slug=active_form.slug.data,
+                          body=active_form.body.data, banner=banner_name, attachments=file_name,
+                          author=current_user.id, role=active_form.role.data, scopus=active_form.scopus.data,
+                          order=active_form.order.data)
+            commit()
+            return redirect(url_for('.blog_post', post=p.id))
+
     elif admin and form == FormRoute.BAN_USER:
         message = 'Ban User'
-        tabs[6]['active'] = True
+        tabs[7]['active'] = True
         active_form = BanUserForm()
         if active_form.validate_on_submit():
             u = Users.get(email=active_form.email.data.lower())
@@ -320,7 +335,7 @@ def profile(action=4):
 
     elif admin and form == FormRoute.CHANGE_USER_ROLE:
         message = 'Change Role'
-        tabs[7]['active'] = True
+        tabs[8]['active'] = True
         active_form = ChangeRoleForm()
         if active_form.validate_on_submit():
             u = Users.get(email=active_form.email.data.lower())
