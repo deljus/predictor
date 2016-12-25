@@ -314,7 +314,7 @@ class TeamPosts(Posts):
 
 
 class Meetings(Posts, MeetingMixin):
-    def __init__(self, meeting=None, deadline=None, order=0, **kwargs):
+    def __init__(self, meeting=None, deadline=None, order=0, body_name=None, **kwargs):
         _type = kwargs.pop('type', MeetingPostType.MEETING)
         special = dict(order=order)
 
@@ -325,12 +325,20 @@ class Meetings(Posts, MeetingMixin):
                 raise Exception('Need parent meeting post')
         else:
             parent = None
+            special['body_name'] = body_name or None
             if deadline:
                 special['deadline'] = deadline.timestamp()
             else:
                 raise Exception('Need deadline information')
 
         super(Meetings, self).__init__(post_type=_type.value, post_parent=parent, special=special, **kwargs)
+
+    @property
+    def body_name(self):
+        return self.meeting.special['body_name']
+
+    def update_body_name(self, name):
+        self.meeting.special['body_name'] = name or None
 
     @property
     def type(self):
@@ -374,6 +382,10 @@ class Theses(Posts, MeetingMixin):
             raise Exception('Deadline left')
 
         super(Theses, self).__init__(post_type=_type, post_parent=parent, **filter_kwargs(kwargs))
+
+    @property
+    def body_name(self):
+        return self.meeting.special['body_name']
 
     @property
     def type(self):
