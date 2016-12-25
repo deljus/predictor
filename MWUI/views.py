@@ -271,7 +271,7 @@ def profile(action=4):
             banner_name, file_name = combo_save(active_form.banner, active_form.attachment)
             p = Meetings(meeting=active_form.meeting_id.data, deadline=active_form.deadline.data,
                          order=active_form.order.data, type=active_form.type, author=current_user.id,
-                         title=active_form.title.data, slug=active_form.slug.data, body_name=active_form.body_name.data,
+                         title=active_form.title.data, slug=active_form.slug.data,
                          body=active_form.body.data, banner=banner_name, attachments=file_name)
             commit()
             return p.id
@@ -455,9 +455,6 @@ def blog_post(post):
             if hasattr(p, 'update_reply_mail'):
                 p.update_reply_mail(edit_post.reply_mail.data)
 
-            if hasattr(p, 'update_body_name'):
-                p.update_body_name(edit_post.body_name.data)
-
             if hasattr(p, 'update_deadline') and edit_post.deadline.data:
                 p.update_deadline(edit_post.deadline.data)
 
@@ -466,7 +463,7 @@ def blog_post(post):
     if p.classtype == 'Meetings':
         title = p.meeting.title
         theses = dict(title='Participants', url=url_for('.participants', event=p.meeting_id))
-        children.append(dict(title='Event main page', id=p.meeting_id))
+        children.append(dict(title='Main page', id=p.meeting_id))
         children.extend(p.meeting.children.
                         filter(lambda x: x.classtype == 'Meetings').order_by(lambda x: x.special['order']))
 
@@ -482,7 +479,7 @@ def blog_post(post):
                     if special_form.validate_on_submit():
                         banner_name, file_name = combo_save(special_form.banner, special_form.attachment)
                         t = Theses(p.meeting_id, type=special_form.type,
-                                   title=special_form.title.data, body=special_form.body.data,
+                                   title=special_form.title.data, body=special_form.body,
                                    banner=banner_name, attachments=file_name, author=current_user.id)
                         commit()
 
@@ -500,10 +497,10 @@ def blog_post(post):
 
     elif p.classtype == 'Theses':
         if current_user.is_authenticated and opened_by_author and p.meeting.deadline > datetime.utcnow():
-            special_form = ThesisForm(prefix='special', obj=p, body_name=p.body_name)
+            special_form = ThesisForm(prefix='special', obj=p)
             if special_form.validate_on_submit():
                 p.title = special_form.title.data
-                p.body = special_form.body.data
+                p.body = special_form.body
                 p.update_type(special_form.type)
 
                 if special_form.banner.data:
