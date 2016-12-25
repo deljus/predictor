@@ -22,10 +22,7 @@
 #
 import imghdr
 from json import loads
-from io import StringIO
 from collections import OrderedDict
-
-import re
 from pycountry import countries
 from .models import Users, Meetings
 from .config import (BlogPostType, UserRole, ThesisPostType, ProfileDegree, ProfileStatus, MeetingPostType,
@@ -217,6 +214,7 @@ class BanUserForm(Email):
 
 class CommonPost(CustomForm):
     title = StringField('Title *', [validators.DataRequired()])
+    body = TextAreaField('Message *', [validators.DataRequired()])
     banner = FileField('Graphical Abstract',
                        validators=[FileAllowed('jpg jpe jpeg png'.split(), 'JPEG or PNG images only'),
                                    VerifyImage('jpeg png'.split())])
@@ -224,58 +222,17 @@ class CommonPost(CustomForm):
 
 
 class ThesisForm(CommonPost):
-    authors = TextAreaField('Authors *', [validators.DataRequired()])
-    affiliation = TextAreaField('Affiliation *', [validators.DataRequired()])
-    abstract = TextAreaField('Abstract')
-    correspond = StringField('Correspond Email *', [validators.DataRequired(), validators.Email()])
-    references = TextAreaField('References')
-    acknowledgement = TextAreaField('Acknowledgement')
-
     post_type = SelectField('Presentation Type *',
                             [validators.DataRequired(), PostValidator([x.value for x in ThesisPostType])],
                             choices=[(x.value, x.fancy) for x in ThesisPostType], coerce=int)
     submit_btn = SubmitField('Confirm')
-    __order = ('csrf_token', 'title', 'authors', 'correspond', 'affiliation', 'abstract', 'references',
-               'acknowledgement', 'post_type', 'submit_btn')
 
-    def __init__(self, *args, **kwargs):
-        obj = kwargs.pop('obj', None)
+    __order = ('csrf_token', 'next', 'title', 'body', 'banner', 'attachment', 'post_type', 'submit_btn')
+
+    def __init__(self, *args, body_name=None, **kwargs):
         self._order = self.reorder(self.__order, kwargs.get('prefix'))
-        super(ThesisForm, self).__init__(*args, obj=obj, **kwargs)
-
-    @property
-    def body(self):
-        authors = []
-        for a in StringIO(self.authors.data):
-            *name, aff = a.split()
-            if aff.startswith('[') and aff.endswith(']'):
-                name.append('^, '.join('[^%s]' % x for x in aff[1:-1].split(',') if x.isdigit()))
-            authors.append(' '.join(name))
-        authors = '; '.join(authors)
-
-        affiliation = []
-        for a in StringIO(self.affiliation.data):
-            aff, *name = a.split()
-            if aff.isdigit():
-                name.insert(0, '[^%s]:' % aff)
-            affiliation.append(' '.join(name))
-        affiliation = '\n\n'.join(affiliation)
-
-        correspond = '**Correspond Email:** *%s*' % self.correspond.data
-
-        abstract = re.sub(r'(\[)([0-9]+)(\])', r'[^r\2]', self.abstract.data)
-
-        references = []
-        for a in StringIO(self.references.data):
-            ref, *name = a.split()
-            if ref.isdigit():
-                name.insert(0, '[^r%s]:' % ref)
-            references.append(' '.join(name))
-        references = '\n\n'.join(references)
-
-        acknowledgement = '*%s*' % self.acknowledgement.data
-
-        return '\n\n'.join([authors, affiliation, correspond, abstract, references, acknowledgement])
+        super(ThesisForm, self).__init__(*args, **kwargs)
+        self.body.label.text = body_name and '%s *' % body_name or 'Short Abstract'
 
     @property
     def type(self):
@@ -283,7 +240,6 @@ class ThesisForm(CommonPost):
 
 
 class Post(CommonPost):
-    body = TextAreaField('Message *', [validators.DataRequired()])
     slug = StringField('Slug')
     submit_btn = SubmitField('Post')
 
@@ -291,6 +247,12 @@ class Post(CommonPost):
 class PostForm(Post):
     post_type = SelectField('Post Type', [validators.DataRequired(), PostValidator([x.value for x in BlogPostType])],
                             choices=[(x.value, x.name) for x in BlogPostType], coerce=int)
+
+    __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner', 'attachment', 'post_type', 'submit_btn')
+
+    def __init__(self, *args, **kwargs):
+        self._order = self.reorder(self.__order, kwargs.get('prefix'))
+        super(PostForm, self).__init__(*args, **kwargs)
 
     @property
     def type(self):
@@ -303,6 +265,14 @@ class MeetingForm(Post):
     deadline = DateTimeField('Deadline', [validators.Optional()], format='%d/%m/%Y %H:%M')
     meeting_id = IntegerField('Meeting page', [validators.Optional(), CheckMeetingExist()])
     order = IntegerField('Order', [validators.Optional()])
+    body_name = StringField('Body Name')
+
+    __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner', 'attachment', 'post_type', 'deadline',
+               'meeting_id', 'order', 'body_name', 'submit_btn')
+
+    def __init__(self, *args, **kwargs):
+        self._order = self.reorder(self.__order, kwargs.get('prefix'))
+        super(MeetingForm, self).__init__(*args, **kwargs)
 
     @property
     def type(self):
@@ -317,6 +287,13 @@ class EmailForm(Post):
     reply_mail = StringField('Reply email', [validators.Optional(), validators.Email()])
     meeting_id = IntegerField('Meeting page', [validators.Optional(), CheckMeetingExist()])
 
+    __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner', 'attachment', 'post_type', 'from_name',
+               'reply_mail', 'reply_name', 'meeting_id', 'submit_btn')
+
+    def __init__(self, *args, **kwargs):
+        self._order = self.reorder(self.__order, kwargs.get('prefix'))
+        super(EmailForm, self).__init__(*args, **kwargs)
+
     @property
     def type(self):
         return EmailPostType(self.post_type.data)
@@ -328,6 +305,13 @@ class TeamForm(Post):
     role = StringField('Role', [validators.DataRequired()])
     order = IntegerField('Order', [validators.Optional()])
     scopus = StringField('Scopus')
+
+    __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner', 'attachment', 'post_type', 'role',
+               'order', 'scopus', 'submit_btn')
+
+    def __init__(self, *args, **kwargs):
+        self._order = self.reorder(self.__order, kwargs.get('prefix'))
+        super(TeamForm, self).__init__(*args, **kwargs)
 
     @property
     def type(self):
