@@ -23,12 +23,12 @@ from collections import defaultdict
 from os import path
 from MWUI.logins import User
 from .config import (UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, REDIS_HOST, REDIS_JOB_TIMEOUT,
-                     REDIS_PASSWORD, REDIS_PORT, REDIS_TTL, StructureType, UserRole)
+                     REDIS_PASSWORD, REDIS_PORT, REDIS_TTL, StructureType, UserRole, BLOG_POSTS_PER_PAGE)
 from .models import Tasks, Structures, Additives, Models, Additivesets, Destinations, Users, Results
 from .redis import RedisCombiner
 from flask import Blueprint, url_for, send_from_directory, request, Response
 from flask_login import current_user, login_user
-from flask_restful import reqparse, Resource, fields, marshal, abort, Api
+from flask_restful import reqparse, Resource, fields, marshal, abort, Api, inputs
 from functools import wraps
 from pony.orm import db_session, select, left_join
 from validators import url
@@ -110,25 +110,20 @@ def fetchtask(task, status):
     return job['result'], job['ended_at']
 
 
-def format_results(task, status):
+def format_results(task, status, page=None):
     result, ended_at = fetchtask(task, status)
-    result['task'] = task
-    result['date'] = ended_at.strftime("%Y-%m-%d %H:%M:%S")
-    result['status'] = result['status'].value
-    result['type'] = result['type'].value
-    result.pop('jobs')
-    for s in result['structures']:
-        s['status'] = s['status'].value
-        s['type'] = s['type'].value
-        for m in s['models']:
-            m.pop('destinations', None)
-            m.pop('example', None)
-            m['type'] = m['type'].value
-            for r in m['results']:
-                r['type'] = r['type'].value
-        for a in s['additives']:
-            a['type'] = a['type'].value
-    return result
+    out = dict(task=task, date=ended_at.strftime("%Y-%m-%d %H:%M:%S"), status=result['status'].value,
+               type=result['type'].value, user=result['user'], structures=[])
+
+    for s in result['structures'][(page - 1) * BLOG_POSTS_PER_PAGE: page * BLOG_POSTS_PER_PAGE] \
+            if page else result['structures']:
+        out['structures'].append(dict(status=s['status'].value, type=s['type'].value,
+                                      additives=[dict(additive=a.id, name=a.name, structure=a.structure,
+                                                      type=a['type'].value) for a in s['additives']],
+                                      models=[dict(type=m['type'].value, model=m['id'], name=m['name'],
+                                                   results=[dict(type=r['type'].value, key=r['key'], value=r['value'])
+                                                            for r in m['results']]) for m in s['models']]))
+    return out
 
 
 def authenticate(func):
@@ -223,6 +218,10 @@ class AvailableAdditives(Resource):
         return out, 200
 
 
+results_fetch = reqparse.RequestParser()
+results_fetch.add_argument('page', type=inputs.positive)
+
+
 class ResultsTask(AuthResource):
     """ ===================================================
         collector of modeled tasks (individually). return json
@@ -234,6 +233,7 @@ class ResultsTask(AuthResource):
         except ValueError:
             abort(404, message='invalid task id. Use int Luke')
 
+        page = results_fetch.parse_args().get('page')
         with db_session:
             result = Tasks.get(id=task)
             if not result:
@@ -248,17 +248,19 @@ class ResultsTask(AuthResource):
 
             additives = get_additives()
 
-            s = select(s for s in Structures if s.task == result)
-
-            r = left_join((s.id, r.model.id, r.key, r.value, r.result_type)
-                          for s in Structures for r in s.results if s.task == result and r is not None)
-
-            a = left_join((s.id, a.additive.id, a.amount)
-                          for s in Structures for a in s.additives if s.task == result and a is not None)
+            s = select(s for s in Structures if s.task == result).order_by(Structures.id)
+            if page:
+                s = s.page(page, pagesize=BLOG_POSTS_PER_PAGE)
 
             structures = {x.id: dict(structure=x.id, data=x.structure, temperature=x.temperature, pressure=x.pressure,
                                      type=x.structure_type, status=x.structure_status, additives=[], models=[])
                           for x in s}
+
+            r = left_join((s.id, r.model.id, r.key, r.value, r.result_type)
+                          for s in Structures for r in s.results if s.id in structures.keys() and r is not None)
+
+            a = left_join((s.id, a.additive.id, a.amount)
+                          for s in Structures for a in s.additives if s.id in structures.keys() and a is not None)
 
             for s, a, aa in a:
                 tmp = dict(amount=aa)
@@ -275,9 +277,8 @@ class ResultsTask(AuthResource):
                     tmp.update(models[m])
                     structures[s]['models'].append(tmp)
 
-        return dict(task=result.id, status=TaskStatus.DONE.value, date=result.date.strftime("%Y-%m-%d %H:%M:%S"),
-                    type=result.task_type, user=result.user.id if result.user else None,
-                    structures=list(structures.values())), 200
+        return dict(task=task, status=TaskStatus.DONE.value, date=result.date.strftime("%Y-%m-%d %H:%M:%S"),
+                    type=result.task_type, user=result.user.id, structures=list(structures.values())), 200
 
     def post(self, task):
         result, ended_at = fetchtask(task, TaskStatus.DONE)
@@ -305,7 +306,8 @@ class ModelTask(AuthResource):
         ===================================================
     """
     def get(self, task):
-        return format_results(task, TaskStatus.DONE), 200
+        page = results_fetch.parse_args().get('page')
+        return format_results(task, TaskStatus.DONE, page=page), 200
 
     def post(self, task):
         data = marshal(request.get_json(force=True), taskstructurefields)
@@ -365,7 +367,8 @@ class PrepareTask(AuthResource):
         ===================================================
     """
     def get(self, task):
-        return format_results(task, TaskStatus.PREPARED), 200
+        page = results_fetch.parse_args().get('page')
+        return format_results(task, TaskStatus.PREPARED, page=page), 200
 
     def post(self, task):
         data = marshal(request.get_json(force=True), taskstructurefields)
