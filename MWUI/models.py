@@ -103,7 +103,7 @@ class Tasks(db.Entity):
     date = Required(datetime, default=datetime.utcnow())
     structures = Set("Structures")
     task_type = Required(int)
-    user = Optional(Users)
+    user = Required(Users)
 
     def __init__(self, **kwargs):
         _type = kwargs.pop('type', TaskType.MODELING).value
@@ -119,7 +119,7 @@ class Structures(db.Entity):
     additives = Set("Additivesets")
     pressure = Optional(float)
     results = Set("Results")
-    structure = Optional(str)
+    structure = Required(str)
     structure_type = Required(int)
     structure_status = Required(int)
     task = Required(Tasks)
