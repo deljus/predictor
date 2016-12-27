@@ -35,8 +35,8 @@ def init():
     from .api import api_bp
     from .views import view_bp
     from .bootstrap import top_nav, CustomBootstrapRenderer, CustomMisakaRenderer
-    from .config import (API_BASE, SECRET_KEY, DEBUG, LAB_NAME, RESIZE_URL, UPLOAD_PATH, IMAGES_ROOT, MAX_UPLOAD_SIZE,
-                         YANDEX_METRIKA)
+    from .config import (PORTAL_NON_ROOT, SECRET_KEY, DEBUG, LAB_NAME, RESIZE_URL, UPLOAD_PATH, IMAGES_ROOT,
+                         MAX_UPLOAD_SIZE, YANDEX_METRIKA)
     from .logins import load_user
 
     app = Flask(__name__)
@@ -66,7 +66,7 @@ def init():
     login_manager.login_view = '.login'
     login_manager.user_loader(load_user)
 
-    app.register_blueprint(api_bp, url_prefix=join('/', API_BASE, 'api'))
-    app.register_blueprint(view_bp, url_prefix=join('/', API_BASE) if API_BASE else None)
+    app.register_blueprint(api_bp, url_prefix=join('/', PORTAL_NON_ROOT, 'api'))
+    app.register_blueprint(view_bp, url_prefix=join('/', PORTAL_NON_ROOT) if PORTAL_NON_ROOT else None)
 
     return app

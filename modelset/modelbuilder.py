@@ -30,7 +30,7 @@ from functools import reduce
 from io import StringIO
 from MODtools.config import MOLCONVERT
 from MODtools.consensus import ConsensusDragos
-from MODtools.utils import chemaxpost
+from . import chemaxpost
 from MWUI.config import ModelType, ResultType
 from CGRtools.files.SDFrw import SDFread
 from CGRtools.files.RDFrw import RDFread

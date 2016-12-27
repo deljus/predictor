@@ -28,7 +28,7 @@ from CGRtools.CGRpreparer import CGRcombo
 from CGRtools.files.RDFrw import RDFread, RDFwrite
 from CGRtools.files.SDFrw import SDFwrite
 from MODtools.config import MOLCONVERT
-from MODtools.utils import get_additives, chemaxpost
+from . import get_additives, chemaxpost
 from MWUI.config import ModelType, ResultType, StructureType, StructureStatus
 
 

@@ -22,7 +22,7 @@ import subprocess as sp
 from os import path
 from io import StringIO
 from MWUI.config import ModelType, ResultType
-from MODtools.utils import chemaxpost
+from . import chemaxpost
 from MODtools.config import MOLCONVERT
 from MODtools.descriptors.fragmentor import Fragmentor
 from MODtools.parsers import MBparser

@@ -26,7 +26,7 @@ from io import StringIO
 from itertools import count
 from MWUI.config import ModelType, ResultType
 from MODtools.config import MOLCONVERT
-from MODtools.utils import chemaxpost
+from . import chemaxpost
 from CGRtools.files.RDFrw import RDFread, RDFwrite
 from CGRtools.files.SDFrw import SDFwrite
 

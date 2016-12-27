@@ -27,7 +27,7 @@ UPLOAD_PATH = 'upload'
 MAX_UPLOAD_SIZE = 16 * 1024 * 1024
 IMAGES_ROOT = path.join(UPLOAD_PATH, 'images')
 RESIZE_URL = '/static/images'
-API_BASE = ''
+PORTAL_NON_ROOT = ''
 SECRET_KEY = 'development key'
 YANDEX_METRIKA = None
 DEBUG = False
@@ -242,7 +242,7 @@ class ProfileStatus(Enum):
         return names[self.value]
 
 
-config_list = ['UPLOAD_PATH', 'API_BASE', 'SECRET_KEY', 'RESIZE_URL', 'MAX_UPLOAD_SIZE', 'IMAGES_ROOT',
+config_list = ['UPLOAD_PATH', 'PORTAL_NON_ROOT', 'SECRET_KEY', 'RESIZE_URL', 'MAX_UPLOAD_SIZE', 'IMAGES_ROOT',
                'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME', 'YANDEX_METRIKA',
                'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD', 'REDIS_TTL', 'REDIS_JOB_TIMEOUT', 'REDIS_MAIL',
                'LAB_NAME', 'LAB_SHORT', 'BLOG_POSTS_PER_PAGE', 'SCOPUS_API_KEY', 'SCOPUS_TTL',

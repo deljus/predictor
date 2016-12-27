@@ -19,7 +19,15 @@
 #  MA 02110-1301, USA.
 #
 import pkgutil
+import json
+from requests import post, get
 from os import path
+from MWUI.config import AdditiveType
+
+
+SERVER_ROOT = 'https://cimm.kpfu.ru'
+ADDITIVES = "%s/api/resources/additives" % SERVER_ROOT
+CHEMAXON = "%s/webservices" % SERVER_ROOT
 
 
 class ModelSet(object):
@@ -48,3 +56,37 @@ class ModelSet(object):
 
     def get_models(self):
         return [x for *_, x in self.__models.values()]
+
+
+def chemaxpost(url, data):
+    for _ in range(2):
+        try:
+            q = post("%s/rest-v0/util/%s" % (CHEMAXON, url), data=json.dumps(data),
+                     headers={'content-type': 'application/json'}, timeout=20)
+        except:
+            continue
+        else:
+            if q.status_code in (201, 200):
+                return q.json()
+            else:
+                continue
+    else:
+        return False
+
+
+def get_additives():
+    for _ in range(2):
+        try:
+            q = get(ADDITIVES, timeout=20)
+        except:
+            continue
+        else:
+            if q.status_code in (201, 200):
+                res = q.json()
+                for a in res:
+                    a['type'] = AdditiveType(a['type'])
+                return res
+            else:
+                continue
+    else:
+        return []
