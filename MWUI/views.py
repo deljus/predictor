@@ -376,16 +376,14 @@ def about():
 @db_session
 def students():
     studs = select(x for x in TeamPosts if x.post_type == TeamPostType.STUDENT.value).order_by(TeamPosts.id.desc())
-
-    return render_template("students.html", title='Master', subtitle='students', students=studs)
+    return render_template("students.html", title='Laboratory', subtitle='students', students=studs)
 
 
 @view_bp.route('/lessons', methods=['GET'])
 @db_session
 def lessons():
     less = select(x for x in BlogPosts if x.post_type == BlogPostType.LESSON.value).order_by(BlogPosts.id.desc())
-
-    return render_template("lessons.html", title='Master', subtitle='curses', lessons=less)
+    return render_template("lessons.html", title='Master', subtitle='courses', lessons=less)
 
 
 @view_bp.route('/page/<int:post>', methods=['GET', 'POST'])
@@ -528,7 +526,8 @@ def blog_post(post):
         crumb = dict(url=url_for('.participants', event=p.meeting_id), title='Abstract', parent='Event participants')
         special_field = '**Presentation Type**: *%s*' % p.type.fancy
     elif p.classtype == 'TeamPosts':
-        crumb = dict(url=url_for('.about'), title='Member', parent='Laboratory')
+        crumb = dict(url=url_for('.students'), title='Student', parent='Laboratory') if p.type == TeamPostType.STUDENT \
+            else dict(url=url_for('.about'), title='Member', parent='Laboratory')
         if p.scopus:
             special_field = get_articles(p.scopus)
     elif p.type == BlogPostType.ABOUT:

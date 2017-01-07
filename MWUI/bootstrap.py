@@ -155,7 +155,7 @@ class Pagination(object):
 
 def top_nav():
     lsg = LeftSubgroup(View('News', '.blog'), View('About Us', '.about'),
-                       Subgroup('Master Program', View('Students', '.students'), View('Lessons', '.lessons')))
+                       Subgroup('Education', View('Students', '.students'), View('Lessons', '.lessons')))
     if current_user.is_authenticated:
         user_menu = [View('My Events', '.events'), View('Profile', '.profile'), Separator(), View('Logout', '.logout')]
         if current_user.role_is(UserRole.ADMIN):
