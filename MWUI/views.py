@@ -368,22 +368,25 @@ def about():
     chief = select(x for x in TeamPosts if x.post_type == TeamPostType.CHIEF.value).order_by(lambda x:
                                                                                              x.special['order'])
     team = select(x for x in TeamPosts if x.post_type == TeamPostType.TEAM.value).order_by(TeamPosts.id.desc())
-
-    return render_template("about.html", title='About', subtitle='Laboratory', about=about_us, chief=chief, team=team)
+    return render_template("about.html", title='About', subtitle='Laboratory', about=about_us,
+                           chief=(chief[x: x + 3] for x in range(0, len(chief), 3)),
+                           team=(team[x: x + 3] for x in range(0, len(team), 3)))
 
 
 @view_bp.route('/students', methods=['GET'])
 @db_session
 def students():
     studs = select(x for x in TeamPosts if x.post_type == TeamPostType.STUDENT.value).order_by(TeamPosts.id.desc())
-    return render_template("students.html", title='Laboratory', subtitle='students', students=studs)
+    return render_template("students.html", title='Laboratory', subtitle='students',
+                           students=(studs[x: x + 4] for x in range(0, len(studs), 4)))
 
 
 @view_bp.route('/lessons', methods=['GET'])
 @db_session
 def lessons():
     less = select(x for x in BlogPosts if x.post_type == BlogPostType.LESSON.value).order_by(BlogPosts.id.desc())
-    return render_template("lessons.html", title='Master', subtitle='courses', lessons=less)
+    return render_template("lessons.html", title='Master', subtitle='courses',
+                           lessons=(less[x: x + 3] for x in range(0, len(less), 3)))
 
 
 @view_bp.route('/page/<int:post>', methods=['GET', 'POST'])
