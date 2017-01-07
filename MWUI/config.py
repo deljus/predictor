@@ -125,6 +125,7 @@ class BlogPostType(Enum):
     IMPORTANT = 3
     PROJECTS = 4
     ABOUT = 5
+    LESSON = 21
 
 
 class TeamPostType(Enum):
@@ -186,6 +187,8 @@ class Glyph(Enum):
     ORAL = 'blackboard'
     POSTER = 'blackboard'
     PLENARY = 'blackboard'
+
+    LESSON = 'education'
 
 
 class FormRoute(Enum):

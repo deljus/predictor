@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+{% block page %}
+    <div class="row">
+        {% for i in lessons %}
+            <div class="col-md-4 img-portfolio">
+                <img class="img-responsive img-hover" src="{{ i.banner and i.banner|resize('700x400', upscale=False) or '//placehold.it/700x400' }}" alt="">
+                <h3>
+                    <a href="{{ url_for('.blog_post', post=i.id) }}">{{ i.title }}</a>
+                </h3>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}

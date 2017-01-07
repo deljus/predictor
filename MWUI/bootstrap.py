@@ -154,22 +154,19 @@ class Pagination(object):
 
 
 def top_nav():
+    lsg = LeftSubgroup(View('News', '.blog'), View('About Us', '.about'),
+                       Subgroup('Master Program', View('Students', '.students'), View('Lessons', '.lessons')))
     if current_user.is_authenticated:
-        user_menu = [View('My Events', '.events'),
-                     View('Profile', '.profile'), Separator(), View('Logout', '.logout')]
+        user_menu = [View('My Events', '.events'), View('Profile', '.profile'), Separator(), View('Logout', '.logout')]
         if current_user.role_is(UserRole.ADMIN):
             user_menu.insert(2, View('Email Templates', '.emails'))
 
-        navbar = [LeftSubgroup(View('News', '.blog'), View('About Us', '.about')),
-                  RightSubgroup(Subgroup('Searching', View('Search', '.search'), Separator(),
-                                         View('History', '.queries')),
-                                Subgroup('Modeling', View('Modeling', '.predictor'), Separator(),
-                                         View('History', '.results')),
-                                Subgroup(current_user.name, *user_menu))
-                  ]
+        rsg = RightSubgroup(Subgroup('Searching', View('Search', '.search'), Separator(), View('History', '.queries')),
+                            Subgroup('Modeling', View('Modeling', '.predictor'), Separator(),
+                                     View('History', '.results')),
+                            Subgroup(current_user.name, *user_menu))
     else:
-        navbar = [LeftSubgroup(View('News', '.blog'), View('About Us', '.about')),
-                  RightSubgroup(View('Searching', '.search'), View('Modeling', '.predictor'),
-                                View('Login', '.login', next=get_redirect_target() or request.path))]
+        rsg = RightSubgroup(View('Searching', '.search'), View('Modeling', '.predictor'),
+                            View('Login', '.login', next=get_redirect_target() or request.path))
 
-    return Navbar(View(LAB_SHORT, '.index'), *navbar)
+    return Navbar(View(LAB_SHORT, '.index'), *[lsg, rsg])

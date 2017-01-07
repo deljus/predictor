@@ -357,21 +357,35 @@ def index():
                and x.banner is not None).order_by(BlogPosts.id.desc()).limit(BLOG_POSTS_PER_PAGE)
     ip = select(x for x in Posts if x.post_type in (BlogPostType.IMPORTANT.value,
                                                     MeetingPostType.MEETING.value)).order_by(Posts.id.desc()).limit(3)
-    pl = list(select(x for x in BlogPosts
-                     if x.post_type == BlogPostType.PROJECTS.value).order_by(BlogPosts.date.desc()))
 
-    return render_template("home.html", carousel=c, projects=pl, info=ip, title='Welcome to', subtitle=LAB_NAME)
+    return render_template("home.html", carousel=c, info=ip, title='Welcome to', subtitle=LAB_NAME)
 
 
 @view_bp.route('/about', methods=['GET'])
 @db_session
 def about():
-    about = select(x for x in BlogPosts if x.post_type == BlogPostType.ABOUT.value).first()
+    about_us = select(x for x in BlogPosts if x.post_type == BlogPostType.ABOUT.value).first()
     chief = select(x for x in TeamPosts if x.post_type == TeamPostType.CHIEF.value).order_by(lambda x:
                                                                                              x.special['order'])
     team = select(x for x in TeamPosts if x.post_type == TeamPostType.TEAM.value).order_by(TeamPosts.id.desc())
 
-    return render_template("about.html", title='About', subtitle='Laboratory', about=about, chief=chief, team=team)
+    return render_template("about.html", title='About', subtitle='Laboratory', about=about_us, chief=chief, team=team)
+
+
+@view_bp.route('/students', methods=['GET'])
+@db_session
+def students():
+    studs = select(x for x in TeamPosts if x.post_type == TeamPostType.STUDENT.value).order_by(TeamPosts.id.desc())
+
+    return render_template("students.html", title='Master', subtitle='students', students=studs)
+
+
+@view_bp.route('/lessons', methods=['GET'])
+@db_session
+def lessons():
+    less = select(x for x in BlogPosts if x.post_type == BlogPostType.LESSON.value).order_by(BlogPosts.id.desc())
+
+    return render_template("lessons.html", title='Master', subtitle='curses', lessons=less)
 
 
 @view_bp.route('/page/<int:post>', methods=['GET', 'POST'])
