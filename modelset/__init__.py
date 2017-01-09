@@ -18,10 +18,9 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import pkgutil
 import json
 from requests import post, get
-from os import path
+from os import path, listdir
 from MWUI.config import AdditiveType
 
 
@@ -35,27 +34,29 @@ class ModelSet(object):
         self.__models = self.__scan_models()
 
     @staticmethod
-    def __scan_models():
+    def __loader(module):
+        return getattr(__import__('%s.%s' % (__name__, module), globals(), locals()), module).ModelLoader()
+
+    def __scan_models(self):
         models = {}
-        for mloader, pname, ispkg in pkgutil.iter_modules([path.dirname(__file__)]):
-            if not ispkg:
+        for module in listdir(path.dirname(__file__)):
+            if module.endswith('.py') and module != '__init__.py':
                 try:
-                    model_loader = mloader.find_module(pname).load_module().ModelLoader()
+                    model_loader = self.__loader(module[:-3])
                     for x in model_loader.get_models():
-                        models[x['name']] = (mloader, pname, x)
+                        models[x['name']] = (module[:-3], x)
                 except:
                     pass
         return models
 
     def load_model(self, name, workpath='.'):
         if name in self.__models:
-            mloader, pname, _ = self.__models[name]
-            model = mloader.find_module(pname).load_module().ModelLoader().load_model(name)
+            model = self.__loader(self.__models[name][0]).load_model(name)
             model.setworkpath(workpath)
             return model
 
     def get_models(self):
-        return [x for *_, x in self.__models.values()]
+        return [x for _, x in self.__models.values()]
 
 
 def chemaxpost(url, data):
