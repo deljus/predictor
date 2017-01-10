@@ -28,8 +28,7 @@ from CGRtools.CGRpreparer import CGRcombo
 from CGRtools.files.RDFrw import RDFread, RDFwrite
 from CGRtools.files.SDFrw import SDFwrite
 from MODtools.config import MOLCONVERT
-from . import get_additives, chemaxpost
-from MWUI.config import ModelType, ResultType, StructureType, StructureStatus
+from . import get_additives, chemaxpost, ModelType, ResultType, StructureType, StructureStatus
 
 
 model_name = 'Preparer'
@@ -160,7 +159,7 @@ class Model(CGRcombo):
         report = []
         rdf = RDFwrite(out_file)
         sdf = SDFwrite(out_file)
-        for r in RDFread(in_file).read():
+        for r in RDFread(in_file):
             _meta, r['meta'] = r['meta'], {}
             if mark in (0, 1) and r['products'] and r['substrats']:  # ONLY FULL REACTIONS
                 mark = 1

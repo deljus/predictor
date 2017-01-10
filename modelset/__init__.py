@@ -20,8 +20,8 @@
 #
 import json
 from requests import post, get
+from MWUI.config import AdditiveType, ModelType, ResultType, StructureType, StructureStatus
 from os import path, listdir
-from MWUI.config import AdditiveType
 
 
 SERVER_ROOT = 'https://cimm.kpfu.ru'

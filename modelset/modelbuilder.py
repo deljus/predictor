@@ -30,10 +30,9 @@ from functools import reduce
 from io import StringIO
 from MODtools.config import MOLCONVERT
 from MODtools.consensus import ConsensusDragos
-from . import chemaxpost
-from MWUI.config import ModelType, ResultType
 from CGRtools.files.SDFrw import SDFread
 from CGRtools.files.RDFrw import RDFread
+from . import chemaxpost, ModelType, ResultType
 
 
 class Model(ConsensusDragos):
@@ -107,7 +106,7 @@ class Model(ConsensusDragos):
 
         res = []
         with StringIO(data_str) as f:
-            data = list((RDFread(f) if self.get_type() == ModelType.REACTION_MODELING else SDFread(f)).read())
+            data = (RDFread(f) if self.get_type() == ModelType.REACTION_MODELING else SDFread(f)).read()
 
         for m in self.__models:
             res.append(m.predict(data, **additions))

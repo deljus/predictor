@@ -22,12 +22,31 @@
 #
 import argparse
 from modelset import ModelSet
-from MODtools.utils import serverpost
+from requests import post
+
+
+SERVER_ROOT = 'https://cimm.kpfu.ru'
+PREDICTOR = "%s/api/admin/models" % SERVER_ROOT
 
 
 class DefaultList(list):
     @staticmethod
     def __copy__(*_):
+        return []
+
+
+def serverpost(data, user, password):
+    for _ in range(2):
+        try:
+            q = post(PREDICTOR, json=data, timeout=20, auth=(user, password))
+        except:
+            continue
+        else:
+            if q.status_code in (201, 200):
+                return q.json()
+            else:
+                continue
+    else:
         return []
 
 
@@ -46,8 +65,9 @@ def main(redis):
         report.append(dict(type=m['type'].value, name=m['name'], example=m['example'], description=m['description'],
                            destinations=destinations))
 
-    for m in serverpost('admin/models', report):
+    for m in serverpost(report, redis['admin_user'], redis['admin_pass']):
         print(m)
+
 
 if __name__ == "__main__":
     rawopts = argparse.ArgumentParser(description="Model Register",
@@ -56,8 +76,10 @@ if __name__ == "__main__":
     rawopts.add_argument("--host", type=str, default='localhost', help="Redis host")
     rawopts.add_argument("--port", "-p", type=int, default=6379, help="Redis port")
     rawopts.add_argument("--password", "-pw", type=str, default=None, help="Redis password")
-
     rawopts.add_argument("--name", "-n", action='append', type=str, default=DefaultList(['worker']),
                          help="available workers names. -n worker1 [-n worker2]")
+
+    rawopts.add_argument("--admin_user", "-aus", type=str, default=None, help="Admin username")
+    rawopts.add_argument("--admin_pass", "-apw", type=str, default=None, help="Admin password")
 
     main(vars(rawopts.parse_args()))

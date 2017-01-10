@@ -24,11 +24,10 @@ import dill
 import subprocess as sp
 from io import StringIO
 from itertools import count
-from MWUI.config import ModelType, ResultType
 from MODtools.config import MOLCONVERT
-from . import chemaxpost
 from CGRtools.files.RDFrw import RDFread, RDFwrite
 from CGRtools.files.SDFrw import SDFwrite
+from . import chemaxpost, ModelType, ResultType
 
 
 class Model(object):
@@ -79,7 +78,7 @@ class Model(object):
         with StringIO(data) as in_file, open(structure_file, 'w') as out_file:
             rdf = RDFwrite(out_file)
             sdf = SDFwrite(out_file)
-            for r, meta in zip(RDFread(in_file).read(), structures):
+            for r, meta in zip(RDFread(in_file), structures):
                 next(counter)
                 r['meta'] = dict(pressure=meta['pressure'], temperature=meta['temperature'])
                 for n, a in enumerate(meta['additives'], start=1):
