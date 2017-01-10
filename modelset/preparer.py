@@ -27,6 +27,7 @@ from os import path
 from CGRtools.CGRpreparer import CGRcombo
 from CGRtools.files.RDFrw import RDFread, RDFwrite
 from CGRtools.files.SDFrw import SDFwrite
+from CGRtools.files import ReactionContainer, MoleculeContainer
 from MODtools.config import MOLCONVERT
 from . import get_additives, chemaxpost, ModelType, ResultType, StructureType, StructureStatus
 
@@ -155,25 +156,23 @@ class Model(CGRcombo):
         return results
 
     def __prepare(self, in_file, out_file, first_only=True):
-        mark = 0
         report = []
         rdf = RDFwrite(out_file)
-        sdf = SDFwrite(out_file)
         for r in RDFread(in_file):
-            _meta, r['meta'] = r['meta'], {}
-            if mark in (0, 1) and r['products'] and r['substrats']:  # ONLY FULL REACTIONS
-                mark = 1
+            _meta = r.meta.copy()
+            r.meta.clear()
+            if isinstance(r, ReactionContainer) and r.products and r.substrats:  # ONLY FULL REACTIONS
+                # todo: preparation for queries!!!
                 g = self.getCGR(r)
                 _type = StructureType.REACTION
                 _report = g.graph.get('CGR_REPORT', [])
                 _status = StructureStatus.HAS_ERROR if any('ERROR:' in x for x in _report) else StructureStatus.CLEAR
                 rdf.write(self.dissCGR(g))
-            elif mark in (0, 2) and r['substrats']:  # MOLECULES AND MIXTURES
-                mark = 2
+            elif isinstance(r, MoleculeContainer):  # MOLECULES AND MIXTURES
                 _type = StructureType.MOLECULE
                 _report = []
                 _status = StructureStatus.CLEAR
-                sdf.write(self.merge_mols(r)['substrats'])  # todo: molecules checks.
+                rdf.write(r)  # todo: molecules checks.
             else:
                 continue
 

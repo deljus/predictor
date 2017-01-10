@@ -27,6 +27,7 @@ from itertools import count
 from MODtools.config import MOLCONVERT
 from CGRtools.files.RDFrw import RDFread, RDFwrite
 from CGRtools.files.SDFrw import SDFwrite
+from CGRtools.files import ReactionContainer, MoleculeContainer
 from . import chemaxpost, ModelType, ResultType
 
 
@@ -73,26 +74,22 @@ class Model(object):
                 data = convert_mol.communicate(input=''.join(s['data'] for s in structures).encode())[0].decode()
                 if convert_mol.returncode != 0:
                     return False
-        mark = 0
+
         counter = count()
         with StringIO(data) as in_file, open(structure_file, 'w') as out_file:
             rdf = RDFwrite(out_file)
             sdf = SDFwrite(out_file)
             for r, meta in zip(RDFread(in_file), structures):
                 next(counter)
-                r['meta'] = dict(pressure=meta['pressure'], temperature=meta['temperature'])
+                r.meta.update(pressure=meta['pressure'], temperature=meta['temperature'])
                 for n, a in enumerate(meta['additives'], start=1):
-                    r['meta']['additive.%d' % n] = a['name']
-                    r['meta']['amount.%d' % n] = '%f' % a['amount']
+                    r.meta['additive.%d' % n] = a['name']
+                    r.meta['amount.%d' % n] = '%f' % a['amount']
 
-                if mark in (0, 1) and r['products'] and r['substrats']:  # ONLY FULL REACTIONS
-                    mark = 1
+                if self.get_type() == ModelType.REACTION_MODELING and isinstance(r, ReactionContainer):
                     rdf.write(r)
-                elif mark in (0, 2) and r['substrats']:  # MOLECULES AND MIXTURES
-                    mark = 2
-                    g = r['substrats'][0]
-                    g.graph['meta'] = r['meta']
-                    sdf.write(g)
+                elif self.get_type() == ModelType.MOLECULE_MODELING and isinstance(r, MoleculeContainer):
+                    sdf.write(r)
 
         if len(structures) != next(counter):
             return False
