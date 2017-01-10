@@ -118,9 +118,9 @@ def format_results(task, status, page=None):
     for s in result['structures'][(page - 1) * BLOG_POSTS_PER_PAGE: page * BLOG_POSTS_PER_PAGE] \
             if page else result['structures']:
         out['structures'].append(dict(status=s['status'].value, type=s['type'].value,
-                                      additives=[dict(additive=a.id, name=a.name, structure=a.structure,
+                                      additives=[dict(additive=a['additive'], name=a['name'], structure=a['structure'],
                                                       type=a['type'].value) for a in s['additives']],
-                                      models=[dict(type=m['type'].value, model=m['id'], name=m['name'],
+                                      models=[dict(type=m['type'].value, model=m['model'], name=m['name'],
                                                    results=[dict(type=r['type'].value, key=r['key'], value=r['value'])
                                                             for r in m['results']]) for m in s['models']]))
     return out
