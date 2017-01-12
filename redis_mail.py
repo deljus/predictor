@@ -20,27 +20,11 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from smtplib import SMTP
 from MWUI.config import SMPT_HOST, SMTP_PORT, SMTP_LOGIN, SMTP_PASSWORD, SMTP_MAIL
 
 
-def run(to_mail=None, html=None, message=None, subject=None, mail_from=None, mail_to=None, reply_to=None):
-
-    part1 = MIMEText(message, 'plain')
-    part2 = MIMEText(html, 'html')
-
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From'] = mail_from
-    msg['To'] = mail_to
-    if reply_to:
-        msg['Reply-To'] = reply_to
-
-    msg.attach(part1)
-    msg.attach(part2)
-
+def run(mail, message):
     with SMTP(SMPT_HOST, SMTP_PORT) as smtp:
             smtp.login(SMTP_LOGIN, SMTP_PASSWORD)
-            smtp.sendmail(SMTP_MAIL, to_mail, msg.as_string())
+            smtp.sendmail(SMTP_MAIL, mail, message)
