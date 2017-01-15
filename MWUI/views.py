@@ -434,7 +434,7 @@ def blog_post(post):
             p.title = edit_post.title.data
             p.date = datetime.utcnow()
 
-            if edit_post.slug.data:
+            if hasattr(edit_post, 'slug') and edit_post.slug.data:
                 p.slug = edit_post.slug.data
 
             if edit_post.banner.data:
