@@ -21,10 +21,14 @@
 #  MA 02110-1301, USA.
 #
 from redis import Redis, ConnectionError
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from subprocess import Popen, PIPE
 from rq import Queue
 from flask_misaka import markdown
 from flask import render_template
-from .config import LAB_NAME, SMTP_MAIL, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_MAIL, DEBUG
+from .config import (LAB_NAME, SMTP_MAIL, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_MAIL, DEBUG,
+                     MAIL_INKEY, MAIL_SIGNER)
 
 
 def send_mail(message, to_mail, to_name=None, from_name=None, subject=None, banner=None, title=None,
@@ -41,11 +45,21 @@ def send_mail(message, to_mail, to_name=None, from_name=None, subject=None, bann
     except ConnectionError:
         return DEBUG or False
 
+    out = ['Subject: %s' % subject or '',
+           'To: %s' % ('%s <%s>' % (to_name, to_mail) if to_name else to_mail),
+           'From: %s <%s>' % (from_name or LAB_NAME, SMTP_MAIL)]
+
+    if reply_mail:
+        out.append('Reply-To: %s' % ('%s <%s>' % (reply_name, reply_mail) if reply_name else reply_mail))
+
+    msg = MIMEMultipart('alternative')
+    msg.attach(MIMEText(message, 'plain'))
+    msg.attach(MIMEText(render_template('email.html', body=markdown(message), banner=banner, title=title), 'html'))
+
+    p = Popen(['openssl', 'smime', '-sign', '-inkey', MAIL_INKEY, '-signer', MAIL_SIGNER], stdin=PIPE, stdout=PIPE)
+    out.append(p.communicate(input=msg.as_bytes())[0].decode())
+
     try:
-        email = dict(html=render_template('email.html', body=markdown(message), banner=banner, title=title),
-                     message=message, subject=subject or "", mail_from='%s <%s>' % (from_name or LAB_NAME, SMTP_MAIL),
-                     mail_to='%s <%s>' % (to_name, to_mail) if to_name else to_mail, to_mail=to_mail,
-                     reply_to='%s <%s>' % (reply_name, reply_mail) if reply_name else reply_mail)
-        return sender.enqueue_call('redis_mail.run', kwargs=email, result_ttl=60).id
+        return sender.enqueue_call('redis_mail.run', args=(to_mail, '\n'.join(out)), result_ttl=60).id
     except:
         return False
