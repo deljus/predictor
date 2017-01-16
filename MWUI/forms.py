@@ -218,7 +218,7 @@ class CommonPost(CustomForm):
     banner = FileField('Graphical Abstract',
                        validators=[FileAllowed('jpg jpe jpeg png'.split(), 'JPEG or PNG images only'),
                                    VerifyImage('jpeg png'.split())])
-    attachment = FileField('Abstract File', validators=[FileAllowed('doc docx odt'.split(), 'Documents only')])
+    attachment = FileField('Abstract File', validators=[FileAllowed('doc docx odt pdf'.split(), 'Documents only')])
 
 
 class ThesisForm(CommonPost):
