@@ -21,7 +21,7 @@
 import uuid
 from collections import defaultdict
 from os import path
-from MWUI.logins import User
+from .logins import User
 from .config import (UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, REDIS_HOST, REDIS_JOB_TIMEOUT,
                      REDIS_PASSWORD, REDIS_PORT, REDIS_TTL, StructureType, UserRole, BLOG_POSTS_PER_PAGE)
 from .models import Tasks, Structures, Additives, Models, Additivesets, Destinations, Users, Results

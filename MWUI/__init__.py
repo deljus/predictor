@@ -31,13 +31,23 @@ def init():
     from misaka import HTML_ESCAPE
     from flask_nav import Nav, register_renderer
     from flask_resize import Resize
+    from pony.orm import sql_debug
 
     from .api import api_bp
     from .views import view_bp
     from .bootstrap import top_nav, CustomBootstrapRenderer, CustomMisakaRenderer
     from .config import (PORTAL_NON_ROOT, SECRET_KEY, DEBUG, LAB_NAME, RESIZE_URL, UPLOAD_PATH, IMAGES_ROOT,
-                         MAX_UPLOAD_SIZE, YANDEX_METRIKA)
+                         MAX_UPLOAD_SIZE, YANDEX_METRIKA, DB_PASS, DB_HOST, DB_NAME, DB_USER)
     from .logins import load_user
+    from .models import db
+
+    if DEBUG:
+        db.bind("sqlite", "database.sqlite", create_db=True)
+        sql_debug(True)
+    else:
+        db.bind('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST, database=DB_NAME)
+
+    db.generate_mapping(create_tables=True)
 
     app = Flask(__name__)
 

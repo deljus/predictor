@@ -21,19 +21,14 @@
 #
 import bcrypt
 import hashlib
-from .config import (DEBUG, DB_PASS, DB_HOST, DB_NAME, DB_USER,
-                     TaskType, ModelType, AdditiveType, ResultType, StructureType,
+from .config import (TaskType, ModelType, AdditiveType, ResultType, StructureType,
                      StructureStatus, UserRole, ProfileDegree, ProfileStatus,
                      BlogPostType, MeetingPostType, ThesisPostType, EmailPostType, Glyph, TeamPostType)
 from datetime import datetime
-from pony.orm import Database, sql_debug, PrimaryKey, Required, Optional, Set, Json
+from pony.orm import Database, PrimaryKey, Required, Optional, Set, Json
 
 
-if DEBUG:
-    db = Database("sqlite", "database.sqlite", create_db=True)
-    sql_debug(True)
-else:
-    db = Database('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST, database=DB_NAME)
+db = Database()
 
 
 def filter_kwargs(kwargs):
@@ -461,6 +456,3 @@ class Emails(Posts, MeetingMixin):
             raise Exception('Non meeting Emails can be changed only to non meeting Email')
 
         self.post_type = _type.value
-
-
-db.generate_mapping(create_tables=True)
