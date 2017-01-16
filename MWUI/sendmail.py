@@ -23,6 +23,7 @@
 from redis import Redis, ConnectionError
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.header import Header
 from subprocess import Popen, PIPE
 from rq import Queue
 from flask_misaka import markdown
@@ -45,12 +46,13 @@ def send_mail(message, to_mail, to_name=None, from_name=None, subject=None, bann
     except ConnectionError:
         return DEBUG or False
 
-    out = ['Subject: %s' % subject or '',
-           'To: %s' % ('%s <%s>' % (to_name, to_mail) if to_name else to_mail),
-           'From: %s <%s>' % (from_name or LAB_NAME, SMTP_MAIL)]
+    out = ['Subject: %s' % Header(subject).encode() or 'No Title',
+           'To: %s' % ('%s <%s>' % (Header(to_name).encode(), to_mail) if to_name else to_mail),
+           'From: %s <%s>' % (Header(from_name or LAB_NAME).encode(), SMTP_MAIL)]
 
     if reply_mail:
-        out.append('Reply-To: %s' % ('%s <%s>' % (reply_name, reply_mail) if reply_name else reply_mail))
+        out.append('Reply-To: %s' % ('%s <%s>' % (Header(reply_name).encode(), reply_mail) if reply_name else
+                                     reply_mail))
 
     msg = MIMEMultipart('alternative')
     msg.attach(MIMEText(message, 'plain'))
