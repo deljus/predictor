@@ -110,6 +110,7 @@ class User(db.Entity):
 
 class Attachment(db.Entity):
     _table_ = (DB_MAIN, 'attachment')
+    id = PrimaryKey(int, auto=True)
     file = Required(str)
     name = Required(str)
     post = Required('Post')
@@ -117,6 +118,7 @@ class Attachment(db.Entity):
 
 class Post(db.Entity):
     _table_ = (DB_MAIN, 'post')
+    id = PrimaryKey(int, auto=True)
     post_type = Required(int)
     author = Required('User')
     title = Required(str)
@@ -447,6 +449,7 @@ class Result(db.Entity):
 
 class Additiveset(db.Entity):
     _table_ = (DB_PRED, 'additives')
+    id = PrimaryKey(int, auto=True)
     additive = Required('Additive')
     amount = Required(float, default=1)
     structure = Required('Structure')
