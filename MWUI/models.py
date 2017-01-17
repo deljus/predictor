@@ -50,7 +50,7 @@ class MeetingMixin(object):
 
 
 class User(db.Entity):
-    _table_ = [DB_MAIN, 'user']
+    _table_ = (DB_MAIN, 'user')
     id = PrimaryKey(int, auto=True)
     active = Required(bool, default=True)
     email = Required(str, unique=True)
@@ -109,14 +109,14 @@ class User(db.Entity):
 
 
 class Attachment(db.Entity):
-    _table_ = [DB_MAIN, 'attachment']
+    _table_ = (DB_MAIN, 'attachment')
     file = Required(str)
     name = Required(str)
     post = Required('Post')
 
 
 class Post(db.Entity):
-    _table_ = [DB_MAIN, 'post']
+    _table_ = (DB_MAIN, 'post')
     post_type = Required(int)
     author = Required('User')
     title = Required(str)
@@ -352,7 +352,7 @@ class Email(Post, MeetingMixin):
 
 
 class Model(db.Entity):
-    _table_ = [DB_MAIN, 'model']
+    _table_ = (DB_MAIN, 'model')
     id = PrimaryKey(int, auto=True)
     description = Optional(str)
     destinations = Set('Destination')
@@ -371,7 +371,7 @@ class Model(db.Entity):
 
 
 class Destination(db.Entity):
-    _table_ = [DB_MAIN, 'destination']
+    _table_ = (DB_MAIN, 'destination')
     id = PrimaryKey(int, auto=True)
     host = Required(str)
     model = Required('Model')
@@ -384,7 +384,7 @@ class Destination(db.Entity):
 
 
 class Task(db.Entity):
-    _table_ = [DB_PRED, 'task']
+    _table_ = (DB_PRED, 'task')
     id = PrimaryKey(int, auto=True)
     date = Required(datetime, default=datetime.utcnow())
     structures = Set('Structure')
@@ -401,7 +401,7 @@ class Task(db.Entity):
 
 
 class Structure(db.Entity):
-    _table_ = [DB_PRED, 'structure']
+    _table_ = (DB_PRED, 'structure')
     id = PrimaryKey(int, auto=True)
     additives = Set('Additiveset')
     pressure = Optional(float)
@@ -427,7 +427,7 @@ class Structure(db.Entity):
 
 
 class Result(db.Entity):
-    _table_ = [DB_PRED, 'result']
+    _table_ = (DB_PRED, 'result')
     id = PrimaryKey(int, auto=True)
     key = Required(str)
     model = Required('Model')
@@ -446,14 +446,14 @@ class Result(db.Entity):
 
 
 class Additiveset(db.Entity):
-    _table_ = [DB_PRED, 'additives']
+    _table_ = (DB_PRED, 'additives')
     additive = Required('Additive')
     amount = Required(float, default=1)
     structure = Required('Structure')
 
 
 class Additive(db.Entity):
-    _table_ = [DB_MAIN, 'additive']
+    _table_ = (DB_MAIN, 'additive')
     id = PrimaryKey(int, auto=True)
     additive_type = Required(int)
     additiveset = Set("Additiveset")
