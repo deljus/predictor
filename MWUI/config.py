@@ -35,22 +35,24 @@ DEBUG = False
 LAB_NAME = 'Kazan Chemoinformatics and Molecular Modeling Laboratory'
 LAB_SHORT = 'CIMM'
 BLOG_POSTS_PER_PAGE = 10
-SCOPUS_API_KEY = ''
+SCOPUS_API_KEY = None
 SCOPUS_TTL = 86400 * 7
 
-SMPT_HOST = 'ex.kpfu.ru'
-SMTP_PORT = 587
-SMTP_LOGIN = ''
-SMTP_PASSWORD = ''
-SMTP_MAIL = ''
+SMPT_HOST = None
+SMTP_PORT = None
+SMTP_LOGIN = None
+SMTP_PASSWORD = None
+SMTP_MAIL = None
 
-MAIL_INKEY = ''
-MAIL_SIGNER = ''
+MAIL_INKEY = None
+MAIL_SIGNER = None
 
 DB_USER = None
 DB_PASS = None
 DB_HOST = None
-DB_NAME = None
+DB_MAIN = None
+DB_PRED = None
+DB_DATA = None
 
 REDIS_HOST = 'localhost'
 REDIS_PORT = 6379
@@ -249,7 +251,7 @@ class ProfileStatus(Enum):
 
 
 config_list = ['UPLOAD_PATH', 'PORTAL_NON_ROOT', 'SECRET_KEY', 'RESIZE_URL', 'MAX_UPLOAD_SIZE', 'IMAGES_ROOT',
-               'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME', 'YANDEX_METRIKA',
+               'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_MAIN', 'DB_PRED', 'DB_DATA', 'YANDEX_METRIKA',
                'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD', 'REDIS_TTL', 'REDIS_JOB_TIMEOUT', 'REDIS_MAIL',
                'LAB_NAME', 'LAB_SHORT', 'BLOG_POSTS_PER_PAGE', 'SCOPUS_API_KEY', 'SCOPUS_TTL',
                'SMPT_HOST', 'SMTP_PORT', 'SMTP_LOGIN', 'SMTP_PASSWORD', 'SMTP_MAIL', 'MAIL_INKEY', 'MAIL_SIGNER']

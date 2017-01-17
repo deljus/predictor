@@ -58,8 +58,11 @@ def send_mail(message, to_mail, to_name=None, from_name=None, subject=None, bann
     msg.attach(MIMEText(message, 'plain'))
     msg.attach(MIMEText(render_template('email.html', body=markdown(message), banner=banner, title=title), 'html'))
 
-    p = Popen(['openssl', 'smime', '-sign', '-inkey', MAIL_INKEY, '-signer', MAIL_SIGNER], stdin=PIPE, stdout=PIPE)
-    out.append(p.communicate(input=msg.as_bytes())[0].decode())
+    if MAIL_INKEY and MAIL_SIGNER:
+        p = Popen(['openssl', 'smime', '-sign', '-inkey', MAIL_INKEY, '-signer', MAIL_SIGNER], stdin=PIPE, stdout=PIPE)
+        out.append(p.communicate(input=msg.as_bytes())[0].decode())
+    else:
+        out.append(msg.as_string())
 
     try:
         return sender.enqueue_call('redis_mail.run', args=(to_mail, '\n'.join(out)), result_ttl=60).id

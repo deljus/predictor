@@ -37,19 +37,15 @@ def init():
     from .views import view_bp
     from .bootstrap import top_nav, CustomBootstrapRenderer, CustomMisakaRenderer
     from .config import (PORTAL_NON_ROOT, SECRET_KEY, DEBUG, LAB_NAME, RESIZE_URL, UPLOAD_PATH, IMAGES_ROOT,
-                         MAX_UPLOAD_SIZE, YANDEX_METRIKA, DB_PASS, DB_HOST, DB_NAME, DB_USER)
+                         MAX_UPLOAD_SIZE, YANDEX_METRIKA, DB_PASS, DB_HOST, DB_USER)
     from .logins import load_user
-    from .models import db_main, db_pred, db_data
+    from .models import db
 
     if DEBUG:
-        db_main.bind("sqlite", "database_main.sqlite", create_db=True)
-        db_pred.bind("sqlite", "database_pred.sqlite", create_db=True)
-        db_data.bind("sqlite", "database_data.sqlite", create_db=True)
         sql_debug(True)
-    else:
-        db_main.bind('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST, database=DB_NAME)
 
-    db_main.generate_mapping(create_tables=True)
+    db.bind('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST)
+    db.generate_mapping(create_tables=False)
 
     app = Flask(__name__)
 

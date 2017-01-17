@@ -23,14 +23,13 @@ import bcrypt
 import hashlib
 from .config import (TaskType, ModelType, AdditiveType, ResultType, StructureType,
                      StructureStatus, UserRole, ProfileDegree, ProfileStatus,
-                     BlogPostType, MeetingPostType, ThesisPostType, EmailPostType, Glyph, TeamPostType)
+                     BlogPostType, MeetingPostType, ThesisPostType, EmailPostType, Glyph, TeamPostType,
+                     DB_MAIN, DB_PRED, DB_DATA)
 from datetime import datetime
 from pony.orm import Database, PrimaryKey, Required, Optional, Set, Json
 
 
-db_main = Database()
-db_pred = Database()
-db_data = Database()
+db = Database()
 
 
 def filter_kwargs(kwargs):
@@ -44,19 +43,20 @@ class MeetingMixin(object):
 
     @staticmethod
     def _get_parent(_parent):
-        parent = Meetings[_parent]
+        parent = Meeting[_parent]
         if parent.type != MeetingPostType.MEETING:
             raise Exception('Only MEETING type can be parent')
         return parent
 
 
-class Users(db_main.Entity):
+class User(db.Entity):
+    _table_ = [DB_MAIN, 'user']
     id = PrimaryKey(int, auto=True)
     active = Required(bool, default=True)
     email = Required(str, unique=True)
     password = Required(str)
     user_role = Required(int)
-    tasks = Set('Tasks')
+    tasks = Set('Task')
     token = Required(str)
     restore = Optional(str)
 
@@ -70,12 +70,12 @@ class Users(db_main.Entity):
     affiliation = Optional(str)
     position = Optional(str)
 
-    posts = Set('Posts')
+    posts = Set('Post')
 
     def __init__(self, email, password, role=UserRole.COMMON, **kwargs):
         password = self.__hash_password(password)
         token = self.__gen_token(email, str(datetime.utcnow()))
-        super(Users, self).__init__(email=email, password=password, token=token, user_role=role.value,
+        super(User, self).__init__(email=email, password=password, token=token, user_role=role.value,
                                     **filter_kwargs(kwargs))
 
     @staticmethod
@@ -108,39 +108,41 @@ class Users(db_main.Entity):
         return UserRole(self.user_role)
 
 
-class Attachments(db_main.Entity):
+class Attachment(db.Entity):
+    _table_ = [DB_MAIN, 'attachment']
     file = Required(str)
     name = Required(str)
-    post = Required('Posts')
+    post = Required('Post')
 
 
-class Posts(db_main.Entity):
+class Post(db.Entity):
+    _table_ = [DB_MAIN, 'post']
     post_type = Required(int)
-    author = Required(Users)
+    author = Required('User')
     title = Required(str)
     body = Required(str)
     date = Required(datetime, default=datetime.utcnow())
     banner = Optional(str)
-    attachments = Set(Attachments)
+    attachments = Set('Attachment')
     slug = Optional(str, unique=True)
 
-    children = Set('Posts', cascade_delete=True)
-    post_parent = Optional('Posts')
+    children = Set('Post', cascade_delete=True)
+    post_parent = Optional('Post')
     special = Optional(Json)
 
     def __init__(self, **kwargs):
         attachments = kwargs.pop('attachments', None) or []
-        user = Users[kwargs.pop('author')]
-        super(Posts, self).__init__(author=user, **filter_kwargs(kwargs))
+        user = User[kwargs.pop('author')]
+        super(Post, self).__init__(author=user, **filter_kwargs(kwargs))
 
         for file, name in attachments:
             self.add_attachment(file, name)
 
     def add_attachment(self, file, name):
-        Attachments(file=file, name=name, post=self)
+        Attachment(file=file, name=name, post=self)
 
     def remove_attachment(self, attachment):
-        self.attachments.remove(Attachments[attachment])
+        self.attachments.remove(Attachment[attachment])
 
     @property
     def glyph(self):
@@ -151,10 +153,10 @@ class Posts(db_main.Entity):
         return '%s %s' % (self.author.name, self.author.surname)
 
 
-class BlogPosts(Posts):
+class BlogPost(Post):
     def __init__(self, **kwargs):
         _type = kwargs.pop('type', BlogPostType.COMMON).value
-        super(BlogPosts, self).__init__(post_type=_type, **kwargs)
+        super(BlogPost, self).__init__(post_type=_type, **kwargs)
 
     @property
     def type(self):
@@ -164,11 +166,11 @@ class BlogPosts(Posts):
         self.post_type = _type.value
 
 
-class TeamPosts(Posts):
+class TeamPost(Post):
     def __init__(self, role='Researcher', scopus=None, order=0, **kwargs):
         _type = kwargs.pop('type', TeamPostType.TEAM).value
         special = dict(scopus=scopus, order=order, role=role)
-        super(TeamPosts, self).__init__(post_type=_type, special=special, **kwargs)
+        super(TeamPost, self).__init__(post_type=_type, special=special, **kwargs)
 
     @property
     def scopus(self):
@@ -199,7 +201,7 @@ class TeamPosts(Posts):
         self.post_type = _type.value
 
 
-class Meetings(Posts, MeetingMixin):
+class Meeting(Post, MeetingMixin):
     def __init__(self, meeting=None, deadline=None, order=0, body_name=None, **kwargs):
         _type = kwargs.pop('type', MeetingPostType.MEETING)
         special = dict(order=order)
@@ -217,7 +219,7 @@ class Meetings(Posts, MeetingMixin):
             else:
                 raise Exception('Need deadline information')
 
-        super(Meetings, self).__init__(post_type=_type.value, post_parent=parent, special=special, **kwargs)
+        super(Meeting, self).__init__(post_type=_type.value, post_parent=parent, special=special, **kwargs)
 
     @property
     def body_name(self):
@@ -257,17 +259,17 @@ class Meetings(Posts, MeetingMixin):
         self.post_parent = self._get_parent(meeting)
 
 
-class Theses(Posts, MeetingMixin):
+class Thesis(Post, MeetingMixin):
     def __init__(self, meeting, **kwargs):
         _type = kwargs.pop('type', ThesisPostType.POSTER).value
-        parent = Meetings[meeting]
+        parent = Meeting[meeting]
 
         if parent.type != MeetingPostType.MEETING:
             raise Exception('Invalid Meeting id')
         if parent.deadline < datetime.utcnow():
             raise Exception('Deadline left')
 
-        super(Theses, self).__init__(post_type=_type, post_parent=parent, **filter_kwargs(kwargs))
+        super(Thesis, self).__init__(post_type=_type, post_parent=parent, **filter_kwargs(kwargs))
 
     @property
     def body_name(self):
@@ -285,7 +287,7 @@ class Theses(Posts, MeetingMixin):
         return self.post_parent
 
 
-class Emails(Posts, MeetingMixin):
+class Email(Post, MeetingMixin):
     def __init__(self, from_name=None, reply_name=None, reply_mail=None, meeting=None, **kwargs):
         _type = kwargs.pop('type', EmailPostType.SPAM)
         special = dict(from_name=from_name, reply_name=reply_name, reply_mail=reply_mail)
@@ -298,8 +300,8 @@ class Emails(Posts, MeetingMixin):
         else:
             parent = None
 
-        super(Emails, self).__init__(post_type=_type.value, post_parent=parent, special=special,
-                                     **filter_kwargs(kwargs))
+        super(Email, self).__init__(post_type=_type.value, post_parent=parent, special=special,
+                                    **filter_kwargs(kwargs))
 
     @property
     def meeting(self):
@@ -349,67 +351,71 @@ class Emails(Posts, MeetingMixin):
         self.post_type = _type.value
 
 
-class Models(db_main.Entity):
+class Model(db.Entity):
+    _table_ = [DB_MAIN, 'model']
     id = PrimaryKey(int, auto=True)
     description = Optional(str)
-    destinations = Set('Destinations')
+    destinations = Set('Destination')
     example = Optional(str)
     model_type = Required(int)
     name = Required(str, unique=True)
-    results = Set('Results')
+    results = Set('Result')
 
     def __init__(self, **kwargs):
         _type = kwargs.pop('type', ModelType.MOLECULE_MODELING).value
-        super(Models, self).__init__(model_type=_type, **filter_kwargs(kwargs))
+        super(Model, self).__init__(model_type=_type, **filter_kwargs(kwargs))
 
     @property
     def type(self):
         return ModelType(self.model_type)
 
 
-class Destinations(db_main.Entity):
+class Destination(db.Entity):
+    _table_ = [DB_MAIN, 'destination']
     id = PrimaryKey(int, auto=True)
     host = Required(str)
-    model = Required(Models)
+    model = Required('Model')
     name = Required(str)
     password = Optional(str)
     port = Required(int, default=6379)
 
     def __init__(self, **kwargs):
-        super(Destinations, self).__init__(**filter_kwargs(kwargs))
+        super(Destination, self).__init__(**filter_kwargs(kwargs))
 
 
-class Tasks(db_pred.Entity):
+class Task(db.Entity):
+    _table_ = [DB_PRED, 'task']
     id = PrimaryKey(int, auto=True)
     date = Required(datetime, default=datetime.utcnow())
-    structures = Set('Structures')
+    structures = Set('Structure')
     task_type = Required(int)
-    user = Required(Users)
+    user = Required('User')
 
     def __init__(self, **kwargs):
         _type = kwargs.pop('type', TaskType.MODELING).value
-        super(Tasks, self).__init__(task_type=_type, **kwargs)
+        super(Task, self).__init__(task_type=_type, **kwargs)
 
     @property
     def type(self):
         return TaskType(self.task_type)
 
 
-class Structures(db_pred.Entity):
+class Structure(db.Entity):
+    _table_ = [DB_PRED, 'structure']
     id = PrimaryKey(int, auto=True)
-    additives = Set('Additivesets')
+    additives = Set('Additiveset')
     pressure = Optional(float)
-    results = Set('Results')
+    results = Set('Result')
     structure = Required(str)
     structure_type = Required(int)
     structure_status = Required(int)
-    task = Required(Tasks)
+    task = Required('Task')
     temperature = Optional(float)
 
     def __init__(self, **kwargs):
         _type = kwargs.pop('type', StructureType.MOLECULE).value
         status = kwargs.pop('status', StructureStatus.CLEAR).value
-        super(Structures, self).__init__(structure_type=_type, structure_status=status, **kwargs)
+        super(Structure, self).__init__(structure_type=_type, structure_status=status, **kwargs)
 
     @property
     def type(self):
@@ -420,40 +426,43 @@ class Structures(db_pred.Entity):
         return StructureStatus(self.structure_status)
 
 
-class Additivesets(db_pred.Entity):
-    additive = Required('Additives')
-    amount = Required(float, default=1)
-    structure = Required(Structures)
-
-
-class Results(db_pred.Entity):
+class Result(db.Entity):
+    _table_ = [DB_PRED, 'result']
     id = PrimaryKey(int, auto=True)
     key = Required(str)
-    model = Required('Models')
+    model = Required('Model')
     result_type = Required(int)
-    structure = Required(Structures)
+    structure = Required('Structure')
     value = Required(str)
 
     def __init__(self, **kwargs):
         _type = kwargs.pop('type', ResultType.TEXT).value
-        _model = Models[kwargs.pop('model')]
-        super(Results, self).__init__(result_type=_type, model=_model, **kwargs)
+        _model = Model[kwargs.pop('model')]
+        super(Result, self).__init__(result_type=_type, model=_model, **kwargs)
 
     @property
     def type(self):
         return ResultType(self.result_type)
 
 
-class Additives(db_data.Entity):
+class Additiveset(db.Entity):
+    _table_ = [DB_PRED, 'additives']
+    additive = Required('Additive')
+    amount = Required(float, default=1)
+    structure = Required('Structure')
+
+
+class Additive(db.Entity):
+    _table_ = [DB_MAIN, 'additive']
     id = PrimaryKey(int, auto=True)
     additive_type = Required(int)
-    additivesets = Set("Additivesets")
+    additiveset = Set("Additiveset")
     name = Required(str, unique=True)
     structure = Optional(str)
 
     def __init__(self, **kwargs):
         _type = kwargs.pop('type', AdditiveType.SOLVENT).value
-        super(Additives, self).__init__(additive_type=_type, **kwargs)
+        super(Additive, self).__init__(additive_type=_type, **kwargs)
 
     @property
     def type(self):

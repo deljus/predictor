@@ -18,3 +18,4 @@ flask-resize
 flask-wtf
 flask-bootstrap
 flask-login
+psycopg2cffi

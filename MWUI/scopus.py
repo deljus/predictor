@@ -88,6 +88,9 @@ class OrderedSet(MutableSet):
 
 
 def get_articles(author_id):
+    if not SCOPUS_API_KEY:
+        return None
+
     try:
         cache.ping()
     except ConnectionError:
