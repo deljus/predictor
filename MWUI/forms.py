@@ -24,7 +24,7 @@ import imghdr
 from json import loads
 from collections import OrderedDict
 from pycountry import countries
-from .models import Users, Meetings
+from .models import User, Meeting
 from .config import (BlogPostType, UserRole, ThesisPostType, ProfileDegree, ProfileStatus, MeetingPostType,
                      EmailPostType, TeamPostType)
 from .redirect import get_redirect_target, is_safe_url
@@ -52,7 +52,7 @@ class CheckMeetingExist(object):
 
     def __call__(self, form, field):
         with db_session:
-            if not Meetings.exists(id=field.data, post_type=MeetingPostType.MEETING.value):
+            if not Meeting.exists(id=field.data, post_type=MeetingPostType.MEETING.value):
                 raise ValidationError(self.message)
 
 
@@ -61,7 +61,7 @@ class CheckUserFree(object):
 
     def __call__(self, form, field):
         with db_session:
-            if Users.exists(email=field.data.lower()):
+            if User.exists(email=field.data.lower()):
                 raise ValidationError(self.message)
 
 
@@ -70,7 +70,7 @@ class CheckUserExist(object):
 
     def __call__(self, form, field):
         with db_session:
-            if not Users.exists(email=field.data.lower()):
+            if not User.exists(email=field.data.lower()):
                 raise ValidationError(self.message)
 
 
@@ -79,7 +79,7 @@ class VerifyPassword(object):
 
     def __call__(self, form, field):
         with db_session:
-            user = Users.get(id=current_user.id)
+            user = User.get(id=current_user.id)
             if not user or not user.verify_password(field.data):
                 raise ValidationError(self.message)
 

@@ -25,8 +25,8 @@ from .forms import (LoginForm, RegistrationForm, ReLoginForm, ChangePasswordForm
                     ForgotPasswordForm, ProfileForm, DeleteButtonForm, LogoutForm, MeetingForm, EmailForm, ThesisForm,
                     TeamForm)
 from .redirect import get_redirect_target
-from .logins import User
-from .models import Users, BlogPosts, Emails, Meetings, Posts, TeamPosts, Theses, Attachments
+from .logins import UserLogin
+from .models import User, BlogPost, Email, Meeting, Post, TeamPost, Thesis, Attachment
 from .config import (UserRole, BLOG_POSTS_PER_PAGE, UPLOAD_PATH, IMAGES_ROOT, BlogPostType, LAB_NAME, MeetingPostType,
                      FormRoute, EmailPostType, TeamPostType)
 from .bootstrap import Pagination
@@ -101,7 +101,7 @@ def login(action=1):
         tabs[0]['active'] = True
         active_form = LoginForm()
         if active_form.validate_on_submit():
-            user = User.get(active_form.email.data.lower(), active_form.password.data)
+            user = UserLogin.get(active_form.email.data.lower(), active_form.password.data)
             if user:
                 login_user(user, remember=active_form.remember.data)
                 return active_form.redirect()
@@ -114,23 +114,23 @@ def login(action=1):
         if active_form.validate_on_submit():
             with db_session:
                 mid = request.cookies.get('meeting')
-                meeting = mid and mid.isdigit() and Meetings.get(id=int(mid))
-                m = meeting and Emails.get(post_parent=meeting.meeting,
-                                           post_type=EmailPostType.MEETING_REGISTRATION.value) or \
-                    select(x for x in Emails if x.post_type == EmailPostType.REGISTRATION.value).first()
+                meeting = mid and mid.isdigit() and Meeting.get(id=int(mid))
+                m = meeting and Email.get(post_parent=meeting.meeting,
+                                          post_type=EmailPostType.MEETING_REGISTRATION.value) or \
+                    select(x for x in Email if x.post_type == EmailPostType.REGISTRATION.value).first()
 
-                u = Users(email=active_form.email.data.lower(), password=active_form.password.data,
-                          name=active_form.name.data, surname=active_form.surname.data,
-                          affiliation=active_form.affiliation.data, position=active_form.position.data,
-                          town=active_form.town.data, country=active_form.country.data,
-                          status=active_form.status.data, degree=active_form.degree.data)
+                u = User(email=active_form.email.data.lower(), password=active_form.password.data,
+                         name=active_form.name.data, surname=active_form.surname.data,
+                         affiliation=active_form.affiliation.data, position=active_form.position.data,
+                         town=active_form.town.data, country=active_form.country.data,
+                         status=active_form.status.data, degree=active_form.degree.data)
 
                 send_mail((m and m.body or 'Welcome! %s.') % ('%s %s' % (u.name, u.surname)), u.email,
                           to_name='%s %s' % (u.name, u.surname), subject=m and m.title or 'Welcome',
                           banner=m and m.banner, title=m and m.title,
                           from_name=m and m.from_name, reply_mail=m and m.reply_mail, reply_name=m and m.reply_name)
 
-            login_user(User(u), remember=False)
+            login_user(UserLogin(u), remember=False)
             return active_form.redirect()
 
     elif form == FormRoute.FORGOT:
@@ -139,9 +139,9 @@ def login(action=1):
         active_form = ForgotPasswordForm()
         if active_form.validate_on_submit():
             with db_session:
-                u = Users.get(email=active_form.email.data.lower())
+                u = User.get(email=active_form.email.data.lower())
                 if u:
-                    m = select(x for x in Emails if x.post_type == EmailPostType.FORGOT.value).first()
+                    m = select(x for x in Email if x.post_type == EmailPostType.FORGOT.value).first()
                     restore = u.gen_restore()
                     send_mail((m and m.body or '%s\n\nNew password: %s') % ('%s %s' % (u.name, u.surname), restore),
                               u.email, to_name='%s %s' % (u.name, u.surname),
@@ -204,7 +204,7 @@ def profile(action=4):
         tabs[0]['active'] = True
         active_form = ProfileForm(obj=current_user.get_user())
         if active_form.validate_on_submit():
-            u = Users.get(id=current_user.id)
+            u = User.get(id=current_user.id)
             u.name = active_form.name.data
             u.surname = active_form.surname.data
             u.country = active_form.country.data
@@ -233,7 +233,7 @@ def profile(action=4):
         tabs[1]['active'] = True
         active_form = ReLoginForm()
         if active_form.validate_on_submit():
-            u = Users.get(id=current_user.id)
+            u = User.get(id=current_user.id)
             u.change_token()
             logout_user()
             flash('Successfully logged out from all devices')
@@ -244,7 +244,7 @@ def profile(action=4):
         tabs[2]['active'] = True
         active_form = ChangePasswordForm()
         if active_form.validate_on_submit():
-            u = Users.get(id=current_user.id)
+            u = User.get(id=current_user.id)
             u.change_password(active_form.password.data)
             logout_user()
             flash('Successfully changed password')
@@ -256,9 +256,9 @@ def profile(action=4):
         active_form = PostForm()
         if active_form.validate_on_submit():
             banner_name, file_name = combo_save(active_form.banner, active_form.attachment)
-            p = BlogPosts(type=active_form.type, title=active_form.title.data, slug=active_form.slug.data,
-                          body=active_form.body.data, banner=banner_name, attachments=file_name,
-                          author=current_user.id)
+            p = BlogPost(type=active_form.type, title=active_form.title.data, slug=active_form.slug.data,
+                         body=active_form.body.data, banner=banner_name, attachments=file_name,
+                         author=current_user.id)
             commit()
             return redirect(url_for('.blog_post', post=p.id))
 
@@ -269,17 +269,17 @@ def profile(action=4):
 
         def add_post():
             banner_name, file_name = combo_save(active_form.banner, active_form.attachment)
-            p = Meetings(meeting=active_form.meeting_id.data, deadline=active_form.deadline.data,
-                         order=active_form.order.data, type=active_form.type, author=current_user.id,
-                         title=active_form.title.data, slug=active_form.slug.data, body_name=active_form.body_name.data,
-                         body=active_form.body.data, banner=banner_name, attachments=file_name)
+            p = Meeting(meeting=active_form.meeting_id.data, deadline=active_form.deadline.data,
+                        order=active_form.order.data, type=active_form.type, author=current_user.id,
+                        title=active_form.title.data, slug=active_form.slug.data, body_name=active_form.body_name.data,
+                        body=active_form.body.data, banner=banner_name, attachments=file_name)
             commit()
             return p.id
 
         if active_form.validate_on_submit():
             if active_form.type in (MeetingPostType.REGISTRATION, MeetingPostType.COMMON):
-                if active_form.meeting_id.data and Meetings.exists(id=active_form.meeting_id.data,
-                                                                   post_type=MeetingPostType.MEETING.value):
+                if active_form.meeting_id.data and Meeting.exists(id=active_form.meeting_id.data,
+                                                                  post_type=MeetingPostType.MEETING.value):
                     return redirect(url_for('.blog_post', post=add_post()))
                 active_form.meeting_id.errors = ['Bad parent']
             else:
@@ -294,18 +294,18 @@ def profile(action=4):
 
         def add_post():
             banner_name, file_name = combo_save(active_form.banner, active_form.attachment)
-            p = Emails(from_name=active_form.from_name.data, reply_name=active_form.reply_name.data,
-                       reply_mail=active_form.reply_mail.data, meeting=active_form.meeting_id.data,
-                       type=active_form.type, author=current_user.id,
-                       title=active_form.title.data, slug=active_form.slug.data,
-                       body=active_form.body.data, banner=banner_name, attachments=file_name)
+            p = Email(from_name=active_form.from_name.data, reply_name=active_form.reply_name.data,
+                      reply_mail=active_form.reply_mail.data, meeting=active_form.meeting_id.data,
+                      type=active_form.type, author=current_user.id,
+                      title=active_form.title.data, slug=active_form.slug.data,
+                      body=active_form.body.data, banner=banner_name, attachments=file_name)
             commit()
             return p.id
 
         if active_form.validate_on_submit():
             if active_form.type.is_meeting:
-                if active_form.meeting_id.data and Meetings.exists(id=active_form.meeting_id.data,
-                                                                   post_type=MeetingPostType.MEETING.value):
+                if active_form.meeting_id.data and Meeting.exists(id=active_form.meeting_id.data,
+                                                                  post_type=MeetingPostType.MEETING.value):
                     return redirect(url_for('.blog_post', post=add_post()))
                 active_form.meeting_id.errors = ['Bad parent']
             else:
@@ -317,10 +317,10 @@ def profile(action=4):
         active_form = TeamForm()
         if active_form.validate_on_submit():
             banner_name, file_name = combo_save(active_form.banner, active_form.attachment)
-            p = TeamPosts(type=active_form.type, title=active_form.title.data, slug=active_form.slug.data,
-                          body=active_form.body.data, banner=banner_name, attachments=file_name,
-                          author=current_user.id, role=active_form.role.data, scopus=active_form.scopus.data,
-                          order=active_form.order.data)
+            p = TeamPost(type=active_form.type, title=active_form.title.data, slug=active_form.slug.data,
+                         body=active_form.body.data, banner=banner_name, attachments=file_name,
+                         author=current_user.id, role=active_form.role.data, scopus=active_form.scopus.data,
+                         order=active_form.order.data)
             commit()
             return redirect(url_for('.blog_post', post=p.id))
 
@@ -329,7 +329,7 @@ def profile(action=4):
         tabs[7]['active'] = True
         active_form = BanUserForm()
         if active_form.validate_on_submit():
-            u = Users.get(email=active_form.email.data.lower())
+            u = User.get(email=active_form.email.data.lower())
             u.active = False
             flash('Successfully banned %s %s (%s)' % (u.name, u.surname, u.email))
 
@@ -338,7 +338,7 @@ def profile(action=4):
         tabs[8]['active'] = True
         active_form = ChangeRoleForm()
         if active_form.validate_on_submit():
-            u = Users.get(email=active_form.email.data.lower())
+            u = User.get(email=active_form.email.data.lower())
             u.user_role = active_form.type.value
             flash('Successfully changed %s %s (%s) role' % (u.name, u.surname, u.email))
 
@@ -353,10 +353,10 @@ def profile(action=4):
 @view_bp.route('/index', methods=['GET'])
 @db_session
 def index():
-    c = select(x for x in BlogPosts if x.post_type == BlogPostType.CAROUSEL.value
-               and x.banner is not None).order_by(BlogPosts.id.desc()).limit(BLOG_POSTS_PER_PAGE)
-    ip = select(x for x in Posts if x.post_type in (BlogPostType.IMPORTANT.value,
-                                                    MeetingPostType.MEETING.value)).order_by(Posts.id.desc()).limit(3)
+    c = select(x for x in BlogPost if x.post_type == BlogPostType.CAROUSEL.value
+               and x.banner is not None).order_by(BlogPost.id.desc()).limit(BLOG_POSTS_PER_PAGE)
+    ip = select(x for x in Post if x.post_type in (BlogPostType.IMPORTANT.value,
+                                                   MeetingPostType.MEETING.value)).order_by(Post.id.desc()).limit(3)
 
     return render_template("home.html", carousel=c, info=ip, title='Welcome to', subtitle=LAB_NAME)
 
@@ -364,10 +364,10 @@ def index():
 @view_bp.route('/about', methods=['GET'])
 @db_session
 def about():
-    about_us = select(x for x in BlogPosts if x.post_type == BlogPostType.ABOUT.value).first()
-    chief = select(x for x in TeamPosts if x.post_type == TeamPostType.CHIEF.value).order_by(lambda x:
-                                                                                             x.special['order'])
-    team = select(x for x in TeamPosts if x.post_type == TeamPostType.TEAM.value).order_by(TeamPosts.id.desc())
+    about_us = select(x for x in BlogPost if x.post_type == BlogPostType.ABOUT.value).first()
+    chief = select(x for x in TeamPost if x.post_type == TeamPostType.CHIEF.value).order_by(lambda x:
+                                                                                            x.special['order'])
+    team = select(x for x in TeamPost if x.post_type == TeamPostType.TEAM.value).order_by(TeamPost.id.desc())
     return render_template("about.html", title='About', subtitle='Laboratory', about=about_us,
                            chief=(chief[x: x + 3] for x in range(0, len(chief), 3)),
                            team=(team[x: x + 3] for x in range(0, len(team), 3)))
@@ -376,7 +376,7 @@ def about():
 @view_bp.route('/students', methods=['GET'])
 @db_session
 def students():
-    studs = select(x for x in TeamPosts if x.post_type == TeamPostType.STUDENT.value).order_by(TeamPosts.id.desc())
+    studs = select(x for x in TeamPost if x.post_type == TeamPostType.STUDENT.value).order_by(TeamPost.id.desc())
     return render_template("students.html", title='Laboratory', subtitle='students',
                            students=(studs[x: x + 4] for x in range(0, len(studs), 4)))
 
@@ -384,7 +384,7 @@ def students():
 @view_bp.route('/lessons', methods=['GET'])
 @db_session
 def lessons():
-    less = select(x for x in BlogPosts if x.post_type == BlogPostType.LESSON.value).order_by(BlogPosts.id.desc())
+    less = select(x for x in BlogPost if x.post_type == BlogPostType.LESSON.value).order_by(BlogPost.id.desc())
     return render_template("lessons.html", title='Master', subtitle='courses',
                            lessons=(less[x: x + 3] for x in range(0, len(less), 3)))
 
@@ -402,7 +402,7 @@ def blog_post(post):
     info = None
     theses = None
 
-    p = Posts.get(id=post)
+    p = Post.get(id=post)
     if not p:
         return redirect(url_for('.blog'))
 
@@ -490,18 +490,18 @@ def blog_post(post):
 
             if p.type == MeetingPostType.REGISTRATION and p.deadline > datetime.utcnow():
                 if current_user.is_authenticated and \
-                        not select(x for x in Theses
+                        not select(x for x in Thesis
                                    if x.post_parent == p.meeting and x.author.id == current_user.id).exists():
 
                     special_form = ThesisForm(prefix='special', body_name=p.body_name)
                     if special_form.validate_on_submit():
                         banner_name, file_name = combo_save(special_form.banner, special_form.attachment)
-                        t = Theses(p.meeting_id, type=special_form.type,
+                        t = Thesis(p.meeting_id, type=special_form.type,
                                    title=special_form.title.data, body=special_form.body.data,
                                    banner=banner_name, attachments=file_name, author=current_user.id)
                         commit()
 
-                        m = Emails.get(post_parent=p.meeting, post_type=EmailPostType.MEETING_THESIS.value)
+                        m = Email.get(post_parent=p.meeting, post_type=EmailPostType.MEETING_THESIS.value)
                         send_mail((m and m.body or '%s\n\nYou registered to meeting') % current_user.name,
                                   current_user.email, to_name=current_user.name, title=m and m.title,
                                   subject=m and m.title or 'Welcome to meeting', banner=m and m.banner,
@@ -539,10 +539,9 @@ def blog_post(post):
         crumb = dict(url=url_for('.blog'), title='Post', parent='News')
         """ collect sidebar news
         """
-        info = select(x for x in Posts
-                      if x.id != post and x.post_type in (BlogPostType.IMPORTANT.value,
-                                                          MeetingPostType.MEETING.value)).\
-            order_by(Posts.date.desc()).limit(3)
+        info = select(x for x in Post if x.id != post and
+                      x.post_type in (BlogPostType.IMPORTANT.value,
+                                      MeetingPostType.MEETING.value)).order_by(Post.date.desc()).limit(3)
 
     return render_template("post.html", title=title or p.title, post=p, info=info, downloadable=downloadable,
                            children=children, participants=theses, deletable=deletable,
@@ -578,10 +577,10 @@ def predictor():
 @view_bp.route('/news/<int:page>', methods=['GET'])
 @db_session
 def blog(page=1):
-    q = select(x for x in Posts
+    q = select(x for x in Post
                if x.classtype not in ('Theses', 'Emails')
                and x.post_type not in (MeetingPostType.COMMON.value,
-                                       MeetingPostType.REGISTRATION.value)).order_by(Posts.date.desc())
+                                       MeetingPostType.REGISTRATION.value)).order_by(Post.date.desc())
     return blog_viewer(page, q, '.blog', 'News', 'list')
 
 
@@ -590,7 +589,7 @@ def blog(page=1):
 @login_required
 @db_session
 def events(page=1):
-    q = select(x for x in Theses if x.author.id == current_user.id).order_by(Theses.id.desc())
+    q = select(x for x in Thesis if x.author.id == current_user.id).order_by(Thesis.id.desc())
     return blog_viewer(page, q, '.events', 'Events', 'Abstracts')
 
 
@@ -598,11 +597,11 @@ def events(page=1):
 @view_bp.route('/participants/<int:event>/<int:page>', methods=['GET'])
 @db_session
 def participants(event, page=1):
-    m = Meetings.get(id=event, post_type=MeetingPostType.MEETING.value)
+    m = Meeting.get(id=event, post_type=MeetingPostType.MEETING.value)
     if not m:
         return redirect(url_for('.blog'))
 
-    q = select(x for x in Theses if x.post_parent == m).order_by(Theses.id.desc())
+    q = select(x for x in Thesis if x.post_parent == m).order_by(Thesis.id.desc())
     return blog_viewer(page, q, '.participants', m.title, 'Participants',
                        crumb=dict(url=url_for('.blog_post', post=event), title='Presentations',
                                   parent='Event main page'))
@@ -616,14 +615,14 @@ def emails(page=1):
     if not current_user.role_is(UserRole.ADMIN):
         return redirect(url_for('.index'))
 
-    q = select(x for x in Emails).order_by(Emails.id.desc())
+    q = select(x for x in Email).order_by(Email.id.desc())
     return blog_viewer(page, q, '.emails', 'E-mail templates', 'list')
 
 
 @view_bp.route('/<string:slug>/')
 def slug(slug):
     with db_session:
-        p = Posts.get(slug=slug)
+        p = Post.get(slug=slug)
         if not p:
             abort(404)
         resp = make_response(redirect(url_for('.blog_post', post=p.id)))
@@ -636,7 +635,7 @@ def slug(slug):
 @login_required
 def download(file, name):
     with db_session:
-        a = Attachments.get(file=file)
+        a = Attachment.get(file=file)
         if current_user.role_is(UserRole.ADMIN) or a.post.classtype != 'Theses' or a.post.author.id == current_user.id:
             resp = make_response()
             resp.headers['X-Accel-Redirect'] = '/file/%s' % file
@@ -654,7 +653,7 @@ def remove(file, name):
     form = DeleteButtonForm()
     if form.validate_on_submit():
         with db_session:
-            a = Attachments.get(file=file)
+            a = Attachment.get(file=file)
             if a and (current_user.role_is(UserRole.ADMIN)
                       or a.post.classtype == 'Theses' and a.post.author.id == current_user.id
                       and a.post.meeting.deadline > datetime.utcnow()):

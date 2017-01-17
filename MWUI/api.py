@@ -21,10 +21,10 @@
 import uuid
 from collections import defaultdict
 from os import path
-from .logins import User
+from .logins import UserLogin
 from .config import (UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, REDIS_HOST, REDIS_JOB_TIMEOUT,
                      REDIS_PASSWORD, REDIS_PORT, REDIS_TTL, StructureType, UserRole, BLOG_POSTS_PER_PAGE)
-from .models import Tasks, Structures, Additives, Models, Additivesets, Destinations, Users, Results
+from .models import Task, Structure, Additive, Model, Additiveset, Destination, User, Result
 from .redis import RedisCombiner
 from flask import Blueprint, url_for, send_from_directory, request, Response
 from flask_login import current_user, login_user
@@ -67,21 +67,21 @@ def get_model(_type):
         return next(dict(model=m.id, name=m.name, description=m.description, type=m.type,
                          destinations=[dict(host=x.host, port=x.port, password=x.password, name=x.name)
                                        for x in m.destinations])
-                    for m in select(m for m in Models if m.model_type == _type.value))
+                    for m in select(m for m in Model if m.model_type == _type.value))
 
 
 def get_additives():
     with db_session:
         return {a.id: dict(additive=a.id, name=a.name, structure=a.structure, type=a.type)
-                for a in select(a for a in Additives)}
+                for a in select(a for a in Additive)}
 
 
 def get_models_list(skip_prep=True, skip_dest_and_example=False):
     with db_session:
         res = {}
-        for m in (select(m for m in Models if m.model_type in (ModelType.MOLECULE_MODELING.value,
-                                                               ModelType.REACTION_MODELING.value))
-                  if skip_prep else select(m for m in Models)):
+        for m in (select(m for m in Model if m.model_type in (ModelType.MOLECULE_MODELING.value,
+                                                              ModelType.REACTION_MODELING.value))
+                  if skip_prep else select(m for m in Model)):
             res[m.id] = dict(model=m.id, name=m.name, description=m.description, type=m.type)
             if not skip_dest_and_example:
                 res[m.id]['example'] = m.example
@@ -143,7 +143,7 @@ def auth_admin(f):
     def decorated(*args, **kwargs):
         auth = request.authorization
         if auth:
-            u = User.get(auth.username.lower(), auth.password)
+            u = UserLogin.get(auth.username.lower(), auth.password)
             if u and u.role_is(UserRole.ADMIN):
                 return f(*args, **kwargs)
 
@@ -173,11 +173,11 @@ class RegisterModels(AdminResource):
             if m['destinations']:
                 if m['name'] not in available:
                     with db_session:
-                        new_m = Models(type=m['type'], name=m['name'], description=m['description'],
-                                       example=m['example'])
+                        new_m = Model(type=m['type'], name=m['name'], description=m['description'],
+                                      example=m['example'])
 
                         for d in m['destinations']:
-                            Destinations(model=new_m, **d)
+                            Destination(model=new_m, **d)
 
                     report.append(dict(model=new_m.id, name=new_m.name, description=new_m.description,
                                        type=new_m.type.value,
@@ -187,10 +187,10 @@ class RegisterModels(AdminResource):
                 else:
                     tmp = []
                     with db_session:
-                        model = Models.get(name=m['name'])
+                        model = Model.get(name=m['name'])
                         for d in m['destinations']:
                             if (d['host'], d['port'], d['name']) not in available[m['name']]:
-                                tmp.append(Destinations(model=model, **d))
+                                tmp.append(Destination(model=model, **d))
 
                     if tmp:
                         report.append(dict(model=model.id, name=model.name, description=model.description,
@@ -236,7 +236,7 @@ class ResultsTask(AuthResource):
 
         page = results_fetch.parse_args().get('page')
         with db_session:
-            result = Tasks.get(id=task)
+            result = Task.get(id=task)
             if not result:
                 abort(404, message='Invalid task id. Perhaps this task has already been removed')
 
@@ -249,7 +249,7 @@ class ResultsTask(AuthResource):
 
             additives = get_additives()
 
-            s = select(s for s in Structures if s.task == result).order_by(Structures.id)
+            s = select(s for s in Structure if s.task == result).order_by(Structure.id)
             if page:
                 s = s.page(page, pagesize=BLOG_POSTS_PER_PAGE)
 
@@ -258,10 +258,10 @@ class ResultsTask(AuthResource):
                           for x in s}
 
             r = left_join((s.id, r.model.id, r.key, r.value, r.result_type)
-                          for s in Structures for r in s.results if s.id in structures.keys() and r is not None)
+                          for s in Structure for r in s.results if s.id in structures.keys() and r is not None)
 
             a = left_join((s.id, a.additive.id, a.amount)
-                          for s in Structures for a in s.additives if s.id in structures.keys() and a is not None)
+                          for s in Structure for a in s.additives if s.id in structures.keys() and a is not None)
 
             for s, a, aa in a:
                 tmp = dict(amount=aa)
@@ -285,17 +285,17 @@ class ResultsTask(AuthResource):
         result, ended_at = fetchtask(task, TaskStatus.DONE)
 
         with db_session:
-            _task = Tasks(type=result['type'], date=ended_at, user=Users[current_user.id])
+            _task = Task(type=result['type'], date=ended_at, user=User[current_user.id])
             for s in result['structures']:
-                _structure = Structures(structure=s['data'], type=s['type'], temperature=s['temperature'],
-                                        pressure=s['pressure'], status=s['status'], task=_task)
+                _structure = Structure(structure=s['data'], type=s['type'], temperature=s['temperature'],
+                                       pressure=s['pressure'], status=s['status'], task=_task)
                 for a in s['additives']:
-                    Additivesets(additive=Additives[a['additive']], structure=_structure, amount=a['amount'])
+                    Additiveset(additive=Additive[a['additive']], structure=_structure, amount=a['amount'])
 
                 for m in s['models']:
-                    _model = Models[m['model']]
+                    _model = Model[m['model']]
                     for r in m.get('results', []):
-                        Results(model=_model, structure=_structure, type=r['type'], key=r['key'], value=r['value'])
+                        Result(model=_model, structure=_structure, type=r['type'], key=r['key'], value=r['value'])
 
         return dict(task=_task.id, status=TaskStatus.DONE.value, date=ended_at.strftime("%Y-%m-%d %H:%M:%S"),
                     type=result['type'].value, user=current_user.id), 201
@@ -517,7 +517,7 @@ class LogIn(Resource):
             username = data.get('user')
             password = data.get('password')
             if username and password:
-                user = User.get(username.lower(), password)
+                user = UserLogin.get(username.lower(), password)
                 if user:
                     login_user(user, remember=True)
                     return dict(message='Logged in'), 200

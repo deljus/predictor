@@ -20,22 +20,22 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from .models import Users
+from .models import User
 from flask_login import UserMixin
 from pony.orm import db_session
 
 
 def load_user(token):
     with db_session:
-        user = Users.get(token=token)
+        user = User.get(token=token)
 
     if user:
-        return User(user)
+        return UserLogin(user)
 
     return None
 
 
-class User(UserMixin):
+class UserLogin(UserMixin):
     def __init__(self, user):
         self.__user = user
 
@@ -71,12 +71,12 @@ class User(UserMixin):
     @staticmethod
     def get(email, password):
         with db_session:
-            user = Users.get(email=email)
+            user = User.get(email=email)
             if user and user.verify_password(password):
-                return User(user)
+                return UserLogin(user)
             elif user and user.verify_restore(password):
                 user.gen_restore()
                 user.change_token()
                 user.change_password(password)
-                return User(user)
+                return UserLogin(user)
         return None
