@@ -76,7 +76,7 @@ class User(db.Entity):
         password = self.__hash_password(password)
         token = self.__gen_token(email, str(datetime.utcnow()))
         super(User, self).__init__(email=email, password=password, token=token, user_role=role.value,
-                                    **filter_kwargs(kwargs))
+                                   **filter_kwargs(kwargs))
 
     @staticmethod
     def __hash_password(password):

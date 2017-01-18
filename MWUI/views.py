@@ -407,21 +407,21 @@ def blog_post(post):
         return redirect(url_for('.blog'))
 
     opened_by_author = current_user.is_authenticated and p.author.id == current_user.id
-    downloadable = admin or p.classtype != 'Theses' or opened_by_author
-    deletable = admin or p.classtype == 'Theses' and opened_by_author and p.meeting.deadline > datetime.utcnow()
+    downloadable = admin or p.classtype != 'Thesis' or opened_by_author
+    deletable = admin or p.classtype == 'Thesis' and opened_by_author and p.meeting.deadline > datetime.utcnow()
     """ admin page
     """
     if admin:
         remove_post_form = DeleteButtonForm(prefix='delete')
-        if p.classtype == 'BlogPosts':
+        if p.classtype == 'BlogPost':
             edit_post = PostForm(obj=p)
-        elif p.classtype == 'Meetings':
+        elif p.classtype == 'Meeting':
             edit_post = MeetingForm(obj=p)
-        elif p.classtype == 'Theses':
+        elif p.classtype == 'Thesis':
             edit_post = ThesisForm(obj=p)
-        elif p.classtype == 'Emails':
+        elif p.classtype == 'Email':
             edit_post = EmailForm(obj=p)
-        elif p.classtype == 'TeamPosts':
+        elif p.classtype == 'TeamPost':
             edit_post = TeamForm(obj=p)
         else:  # BAD POST
             return redirect(url_for('.blog'))
@@ -478,12 +478,12 @@ def blog_post(post):
 
     """ Meetings sidebar and title
     """
-    if p.classtype == 'Meetings':
+    if p.classtype == 'Meeting':
         title = p.meeting.title
         theses = dict(title='Participants', url=url_for('.participants', event=p.meeting_id))
         children.append(dict(title='Event main page', id=p.meeting_id))
         children.extend(p.meeting.children.
-                        filter(lambda x: x.classtype == 'Meetings').order_by(lambda x: x.special['order']))
+                        filter(lambda x: x.classtype == 'Meeting').order_by(lambda x: x.special['order']))
 
         if p.type != MeetingPostType.MEETING:
             crumb = dict(url=url_for('.blog_post', post=p.meeting_id), title=p.title, parent='Event main page')
@@ -513,7 +513,7 @@ def blog_post(post):
         else:
             crumb = dict(url=url_for('.blog'), title='Post', parent='News')
 
-    elif p.classtype == 'Theses':
+    elif p.classtype == 'Thesis':
         if current_user.is_authenticated and opened_by_author and p.meeting.deadline > datetime.utcnow():
             special_form = ThesisForm(prefix='special', obj=p, body_name=p.body_name)
             if special_form.validate_on_submit():
@@ -528,7 +528,7 @@ def blog_post(post):
 
         crumb = dict(url=url_for('.participants', event=p.meeting_id), title='Abstract', parent='Event participants')
         special_field = '**Presentation Type**: *%s*' % p.type.fancy
-    elif p.classtype == 'TeamPosts':
+    elif p.classtype == 'TeamPost':
         crumb = dict(url=url_for('.students'), title='Student', parent='Laboratory') if p.type == TeamPostType.STUDENT \
             else dict(url=url_for('.about'), title='Member', parent='Laboratory')
         if p.scopus:
@@ -578,7 +578,7 @@ def predictor():
 @db_session
 def blog(page=1):
     q = select(x for x in Post
-               if x.classtype not in ('Theses', 'Emails')
+               if x.classtype not in ('Thesis', 'Email')
                and x.post_type not in (MeetingPostType.COMMON.value,
                                        MeetingPostType.REGISTRATION.value)).order_by(Post.date.desc())
     return blog_viewer(page, q, '.blog', 'News', 'list')
@@ -626,7 +626,7 @@ def slug(slug):
         if not p:
             abort(404)
         resp = make_response(redirect(url_for('.blog_post', post=p.id)))
-        if p.classtype == 'Meetings' and p.type == MeetingPostType.MEETING:
+        if p.classtype == 'Meeting' and p.type == MeetingPostType.MEETING:
             resp.set_cookie('meeting', str(p.id))
     return resp
 
@@ -636,7 +636,7 @@ def slug(slug):
 def download(file, name):
     with db_session:
         a = Attachment.get(file=file)
-        if current_user.role_is(UserRole.ADMIN) or a.post.classtype != 'Theses' or a.post.author.id == current_user.id:
+        if current_user.role_is(UserRole.ADMIN) or a.post.classtype != 'Thesis' or a.post.author.id == current_user.id:
             resp = make_response()
             resp.headers['X-Accel-Redirect'] = '/file/%s' % file
             resp.headers['Content-Description'] = 'File Transfer'
@@ -655,7 +655,7 @@ def remove(file, name):
         with db_session:
             a = Attachment.get(file=file)
             if a and (current_user.role_is(UserRole.ADMIN)
-                      or a.post.classtype == 'Theses' and a.post.author.id == current_user.id
+                      or a.post.classtype == 'Thesis' and a.post.author.id == current_user.id
                       and a.post.meeting.deadline > datetime.utcnow()):
                 a.delete()
         return form.redirect()
