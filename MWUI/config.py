@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2015 Ramil Nugmanov <stsouko@live.ru>
+# Copyright 2015-2017 Ramil Nugmanov <stsouko@live.ru>
 # Copyright 2015 Oleg Varlamov <ovarlamo@gmail.com>
 # This file is part of PREDICTOR.
 #
@@ -122,6 +122,7 @@ class ResultType(Enum):
 class UserRole(Enum):
     COMMON = 1
     ADMIN = 2
+    DATA_MANAGER = 3
 
 
 class BlogPostType(Enum):

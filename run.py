@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2015 Ramil Nugmanov <stsouko@live.ru>
+# Copyright 2015-2017 Ramil Nugmanov <stsouko@live.ru>
 # Copyright 2015 Oleg Varlamov <ovarlamo@gmail.com>
 # This file is part of PREDICTOR.
 #

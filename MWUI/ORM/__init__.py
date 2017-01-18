@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.4
 # -*- coding: utf-8 -*-
 #
-#  Copyright 2016, 2017 Ramil Nugmanov <stsouko@live.ru>
+#  Copyright 2017 Ramil Nugmanov <stsouko@live.ru>
 #  This file is part of predictor.
 #
 #  predictor 
@@ -20,11 +20,4 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from smtplib import SMTP
-from MWUI.config import SMPT_HOST, SMTP_PORT, SMTP_LOGIN, SMTP_PASSWORD, SMTP_MAIL
 
-
-def run(mail, message):
-    with SMTP(SMPT_HOST, SMTP_PORT) as smtp:
-            smtp.login(SMTP_LOGIN, SMTP_PASSWORD)
-            smtp.sendmail(SMTP_MAIL, mail, message)

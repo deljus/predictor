@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.4
 # -*- coding: utf-8 -*-
 #
-#  Copyright 2016 Ramil Nugmanov <stsouko@live.ru>
+#  Copyright 2016, 2017 Ramil Nugmanov <stsouko@live.ru>
 #  This file is part of predictor.
 #
 #  predictor
