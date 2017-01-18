@@ -293,9 +293,8 @@ class ResultsTask(AuthResource):
                     Additiveset(additive=Additive[a['additive']], structure=_structure, amount=a['amount'])
 
                 for m in s['models']:
-                    _model = Model[m['model']]
                     for r in m.get('results', []):
-                        Result(model=_model, structure=_structure, type=r['type'], key=r['key'], value=r['value'])
+                        Result(model=m['model'], structure=_structure, type=r['type'], key=r['key'], value=r['value'])
 
         return dict(task=_task.id, status=TaskStatus.DONE.value, date=ended_at.strftime("%Y-%m-%d %H:%M:%S"),
                     type=result['type'].value, user=current_user.id), 201

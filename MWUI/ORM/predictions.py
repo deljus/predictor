@@ -25,7 +25,7 @@ from pony.orm import PrimaryKey, Required, Optional, Set
 from ..config import TaskType, ResultType, StructureType, StructureStatus
 
 
-def load_tables(db, schema, model):
+def load_tables(db, schema):
     class Task(db.Entity):
         _table_ = (schema, 'task')
         id = PrimaryKey(int, auto=True)
@@ -78,7 +78,7 @@ def load_tables(db, schema, model):
     
         def __init__(self, **kwargs):
             _type = kwargs.pop('type', ResultType.TEXT).value
-            _model = model[kwargs.pop('model')]
+            _model = db.Model[kwargs.pop('model')]
             super(Result, self).__init__(result_type=_type, model=_model, **kwargs)
     
         @property

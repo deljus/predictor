@@ -20,4 +20,13 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+from pony.orm import Database
+from ..config import DB_MAIN, DB_PRED, DB_DATA
+from .web import load_tables as main
+from .predictions import load_tables as save
 
+
+db = Database()
+
+main_tables = main(db, DB_MAIN)
+save_tables = save(db, DB_PRED)

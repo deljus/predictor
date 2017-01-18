@@ -19,14 +19,8 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from pony.orm import Database
-from .config import DB_MAIN, DB_PRED, DB_DATA
-from .ORM.web import load_tables as main
-from .ORM.predictions import load_tables as save
+from .ORM import db, main_tables, save_tables
 
 
-db = Database()
-
-
-User, Post, Attachment, Model, Destination, Additive, BlogPost, TeamPost, Meeting, Thesis, Email = main(db, DB_MAIN)
-Task, Structure, Result, Additiveset = save(db, DB_PRED, Model)
+User, Post, Attachment, Model, Destination, Additive, BlogPost, TeamPost, Meeting, Thesis, Email = main_tables
+Task, Structure, Result, Additiveset = save_tables
