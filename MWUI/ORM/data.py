@@ -127,6 +127,9 @@ def load_tables(db, schema):
         fear = Required(str, unique=True)
         fingerprint = Required(str, sql_type='bit(%s)' % (2 ** FP_SIZE))
 
+        children = Set('Reaction', cascade_delete=True)
+        parent = Optional('Reaction')
+
         molecules = Set('MoleculeReaction')
         reaction_classes = Optional(Json)
 
