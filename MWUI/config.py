@@ -61,6 +61,17 @@ REDIS_TTL = 86400
 REDIS_JOB_TIMEOUT = 3600
 REDIS_MAIL = 'mail'
 
+FP_SIZE = 12
+FP_ACTIVE_BITS = 2
+FRAGMENTOR_VERSION = 'last'
+FRAGMENT_TYPE_CGR = 3
+FRAGMENT_MIN_CGR = 2
+FRAGMENT_MAX_CGR = 6
+FRAGMENT_DYNBOND_CGR = 1
+FRAGMENT_TYPE_MOL = 3
+FRAGMENT_MIN_MOL = 2
+FRAGMENT_MAX_MOL = 6
+
 
 class StructureStatus(Enum):
     RAW = 0
@@ -255,7 +266,10 @@ config_list = ['UPLOAD_PATH', 'PORTAL_NON_ROOT', 'SECRET_KEY', 'RESIZE_URL', 'MA
                'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_MAIN', 'DB_PRED', 'DB_DATA', 'YANDEX_METRIKA',
                'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD', 'REDIS_TTL', 'REDIS_JOB_TIMEOUT', 'REDIS_MAIL',
                'LAB_NAME', 'LAB_SHORT', 'BLOG_POSTS_PER_PAGE', 'SCOPUS_API_KEY', 'SCOPUS_TTL',
-               'SMPT_HOST', 'SMTP_PORT', 'SMTP_LOGIN', 'SMTP_PASSWORD', 'SMTP_MAIL', 'MAIL_INKEY', 'MAIL_SIGNER']
+               'SMPT_HOST', 'SMTP_PORT', 'SMTP_LOGIN', 'SMTP_PASSWORD', 'SMTP_MAIL', 'MAIL_INKEY', 'MAIL_SIGNER',
+               'FP_SIZE', 'FP_ACTIVE_BITS', 'FRAGMENTOR_VERSION',
+               'FRAGMENT_TYPE_CGR', 'FRAGMENT_MIN_CGR', 'FRAGMENT_MAX_CGR', 'FRAGMENT_DYNBOND_CGR',
+               'FRAGMENT_TYPE_MOL', 'FRAGMENT_MIN_MOL', 'FRAGMENT_MAX_MOL']
 
 if not path.exists(path.join(path.dirname(__file__), "config.ini")):
     with open(path.join(path.dirname(__file__), "config.ini"), 'w') as f:
