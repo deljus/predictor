@@ -33,6 +33,7 @@ from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from flask_login import current_user
 from pony.orm import db_session
+from werkzeug.datastructures import FileStorage
 from wtforms import (StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError,
                      TextAreaField, SelectField, HiddenField, IntegerField, DateTimeField)
 
@@ -91,7 +92,7 @@ class VerifyImage(object):
         self.__types = types
 
     def __call__(self, form, field):
-        if field.has_file() and imghdr.what(field.data.stream) not in self.__types:
+        if isinstance(field.data, FileStorage) and field.data and imghdr.what(field.data.stream) not in self.__types:
             raise ValidationError(self.message)
 
 
@@ -215,9 +216,9 @@ class BanUserForm(Email):
 class CommonPost(CustomForm):
     title = StringField('Title *', [validators.DataRequired()])
     body = TextAreaField('Message *', [validators.DataRequired()])
-    banner = FileField('Graphical Abstract',
-                       validators=[FileAllowed('jpg jpe jpeg png'.split(), 'JPEG or PNG images only'),
-                                   VerifyImage('jpeg png'.split())])
+    banner_field = FileField('Graphical Abstract',
+                             validators=[FileAllowed('jpg jpe jpeg png'.split(), 'JPEG or PNG images only'),
+                                         VerifyImage('jpeg png'.split())])
     attachment = FileField('Abstract File', validators=[FileAllowed('doc docx odt pdf'.split(), 'Documents only')])
 
 
@@ -227,7 +228,7 @@ class ThesisForm(CommonPost):
                             choices=[(x.value, x.fancy) for x in ThesisPostType], coerce=int)
     submit_btn = SubmitField('Confirm')
 
-    __order = ('csrf_token', 'next', 'title', 'body', 'banner', 'attachment', 'post_type', 'submit_btn')
+    __order = ('csrf_token', 'next', 'title', 'body', 'banner_field', 'attachment', 'post_type', 'submit_btn')
 
     def __init__(self, *args, body_name=None, **kwargs):
         self._order = self.reorder(self.__order, kwargs.get('prefix'))
@@ -248,7 +249,7 @@ class PostForm(Post):
     post_type = SelectField('Post Type', [validators.DataRequired(), PostValidator([x.value for x in BlogPostType])],
                             choices=[(x.value, x.name) for x in BlogPostType], coerce=int)
 
-    __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner', 'attachment', 'post_type', 'submit_btn')
+    __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner_field', 'attachment', 'post_type', 'submit_btn')
 
     def __init__(self, *args, **kwargs):
         self._order = self.reorder(self.__order, kwargs.get('prefix'))
@@ -267,7 +268,7 @@ class MeetingForm(Post):
     order = IntegerField('Order', [validators.Optional()])
     body_name = StringField('Body Name')
 
-    __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner', 'attachment', 'post_type', 'deadline',
+    __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner_field', 'attachment', 'post_type', 'deadline',
                'meeting_id', 'order', 'body_name', 'submit_btn')
 
     def __init__(self, *args, **kwargs):
@@ -287,7 +288,7 @@ class EmailForm(Post):
     reply_mail = StringField('Reply email', [validators.Optional(), validators.Email()])
     meeting_id = IntegerField('Meeting page', [validators.Optional(), CheckMeetingExist()])
 
-    __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner', 'attachment', 'post_type', 'from_name',
+    __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner_field', 'attachment', 'post_type', 'from_name',
                'reply_mail', 'reply_name', 'meeting_id', 'submit_btn')
 
     def __init__(self, *args, **kwargs):
@@ -306,7 +307,7 @@ class TeamForm(Post):
     order = IntegerField('Order', [validators.Optional()])
     scopus = StringField('Scopus')
 
-    __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner', 'attachment', 'post_type', 'role',
+    __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner_field', 'attachment', 'post_type', 'role',
                'order', 'scopus', 'submit_btn')
 
     def __init__(self, *args, **kwargs):

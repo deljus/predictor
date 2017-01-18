@@ -255,7 +255,7 @@ def profile(action=4):
         tabs[3]['active'] = True
         active_form = PostForm()
         if active_form.validate_on_submit():
-            banner_name, file_name = combo_save(active_form.banner, active_form.attachment)
+            banner_name, file_name = combo_save(active_form.banner_field, active_form.attachment)
             p = BlogPost(type=active_form.type, title=active_form.title.data, slug=active_form.slug.data,
                          body=active_form.body.data, banner=banner_name, attachments=file_name,
                          author=current_user.id)
@@ -268,7 +268,7 @@ def profile(action=4):
         active_form = MeetingForm()
 
         def add_post():
-            banner_name, file_name = combo_save(active_form.banner, active_form.attachment)
+            banner_name, file_name = combo_save(active_form.banner_field, active_form.attachment)
             p = Meeting(meeting=active_form.meeting_id.data, deadline=active_form.deadline.data,
                         order=active_form.order.data, type=active_form.type, author=current_user.id,
                         title=active_form.title.data, slug=active_form.slug.data, body_name=active_form.body_name.data,
@@ -293,7 +293,7 @@ def profile(action=4):
         active_form = EmailForm()
 
         def add_post():
-            banner_name, file_name = combo_save(active_form.banner, active_form.attachment)
+            banner_name, file_name = combo_save(active_form.banner_field, active_form.attachment)
             p = Email(from_name=active_form.from_name.data, reply_name=active_form.reply_name.data,
                       reply_mail=active_form.reply_mail.data, meeting=active_form.meeting_id.data,
                       type=active_form.type, author=current_user.id,
@@ -316,7 +316,7 @@ def profile(action=4):
         tabs[6]['active'] = True
         active_form = TeamForm()
         if active_form.validate_on_submit():
-            banner_name, file_name = combo_save(active_form.banner, active_form.attachment)
+            banner_name, file_name = combo_save(active_form.banner_field, active_form.attachment)
             p = TeamPost(type=active_form.type, title=active_form.title.data, slug=active_form.slug.data,
                          body=active_form.body.data, banner=banner_name, attachments=file_name,
                          author=current_user.id, role=active_form.role.data, scopus=active_form.scopus.data,
@@ -437,8 +437,8 @@ def blog_post(post):
             if hasattr(edit_post, 'slug') and edit_post.slug.data:
                 p.slug = edit_post.slug.data
 
-            if edit_post.banner.data:
-                p.banner = save_upload(edit_post.banner.data, images=True)
+            if edit_post.banner_field.data:
+                p.banner = save_upload(edit_post.banner_field.data, images=True)
 
             if edit_post.attachment.data:
                 p.add_attachment(*save_upload(edit_post.attachment.data))
@@ -495,7 +495,7 @@ def blog_post(post):
 
                     special_form = ThesisForm(prefix='special', body_name=p.body_name)
                     if special_form.validate_on_submit():
-                        banner_name, file_name = combo_save(special_form.banner, special_form.attachment)
+                        banner_name, file_name = combo_save(special_form.banner_field, special_form.attachment)
                         t = Thesis(p.meeting_id, type=special_form.type,
                                    title=special_form.title.data, body=special_form.body.data,
                                    banner=banner_name, attachments=file_name, author=current_user.id)
@@ -521,8 +521,8 @@ def blog_post(post):
                 p.body = special_form.body.data
                 p.update_type(special_form.type)
 
-                if special_form.banner.data:
-                    p.banner = save_upload(special_form.banner.data, images=True)
+                if special_form.banner_field.data:
+                    p.banner = save_upload(special_form.banner_field.data, images=True)
                 if special_form.attachment.data:
                     p.add_attachment(*save_upload(special_form.attachment.data))
 
