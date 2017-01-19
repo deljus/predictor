@@ -148,6 +148,7 @@ def load_tables(db, schema):
             self.__cached_bitstring = fingerprint
             super(Reaction, self).__init__(fear=fear_string, fingerprint=fingerprint.bin)
 
+            new_mols, batch = [], []
             fears = dict(substrats=iter(substrats_fears or []), products=iter(products_fears or []))
             for i, is_p in (('substrats', False), ('products', True)):
                 for x in reaction[i]:
@@ -155,11 +156,18 @@ def load_tables(db, schema):
                     m = Molecule.get(fear=m_fear_string)
                     if m:
                         mapping = list(next(cgr_reactor.get_cgr_matcher(m.structure, x).isomorphisms_iter()).items())
+                        batch.append((m, is_p, mapping))
                     else:
-                        m = Molecule(x, fear_string=m_fear_string)
-                        mapping = None
+                        new_mols.append((x, is_p, m_fear_string))
 
-                    MoleculeReaction(reaction=self, molecule=m, product=is_p, mapping=mapping)
+            if new_mols:
+                for fp, (x, is_p, m_fear_string) in zip(Molecule.get_fingerprints([x for x, *_ in new_mols]),
+                                                        new_mols):
+                    m = Molecule(x, fear_string=m_fear_string, fingerprint=fp)
+                    batch.append((m, is_p, None))
+
+            for m, is_p, mapping in batch:
+                MoleculeReaction(reaction=self, molecule=m, product=is_p, mapping=mapping)
 
         @staticmethod
         def get_fingerprints(reactions, is_cgr=False):
