@@ -66,16 +66,21 @@ def load_tables(db, schema):
         _table_ = (schema, 'molecule')
         id = PrimaryKey(int, auto=True)
         date = Required(datetime, default=datetime.utcnow())
+        user = Required('User')
         data = Required(Json)
         fear = Required(str, unique=True)
         fingerprint = Required(str, sql_type='bit(%s)' % (2 ** FP_SIZE))
 
-        children = Set('Molecule', cascade_delete=True)
-        parent = Optional('Molecule')
+        children = Set('Molecule', reverse='parent', cascade_delete=True)
+        parent = Optional('Molecule', reverse='children')
+
+        merge_source = Set('Molecule', reverse='merge_target')  # molecules where self is more correct
+        merge_target = Set('Molecule', reverse='merge_source')  # links to correct molecules
 
         reactions = Set('MoleculeReaction')
 
-        def __init__(self, molecule, fingerprint=None, fear_string=None):
+        def __init__(self, molecule, user, fingerprint=None, fear_string=None):
+            u = db.User[user]
             data = node_link_data(molecule)
 
             if fear_string is None:
@@ -83,14 +88,27 @@ def load_tables(db, schema):
             if fingerprint is None:
                 fingerprint = self.get_fingerprints([molecule])[0]
 
-            self.__cached_structure = molecule
+            self.__cached_structure_raw = molecule
             self.__cached_bitstring = fingerprint
-            super(Molecule, self).__init__(data=data, fear=fear_string, fingerprint=fingerprint.bin)
+            super(Molecule, self).__init__(data=data, user=u, fear=fear_string, fingerprint=fingerprint.bin)
 
-        def update(self, molecule):
-            m = Molecule(molecule)
-            m.parent = self.parent or self
-            return m
+        def update(self, molecule, user, update_reactions=False):
+            fear_string = self.get_fear(molecule)
+            exists = Molecule.exists(fear=fear_string)
+            if not exists:
+                m = Molecule(molecule, user, fear_string=fear_string)
+                m.parent = self.parent or self
+                self.__cached_structure = molecule
+
+                if update_reactions:
+                    # todo: add new reaction record
+                    pass
+                return True
+
+            elif exists not in self.merge_target:
+                self.merge_target.add(exists)
+
+            return False
 
         @staticmethod
         def get_fear(molecule):
@@ -104,11 +122,31 @@ def load_tables(db, schema):
             return get_fingerprints(f)
 
         @property
-        def structure(self):
-            if self.__cached_structure is None:
+        def structure_raw(self):
+            if self.__cached_structure_raw is None:
                 g = node_link_graph(self.data)
                 g.__class__ = MoleculeContainer
-                self.__cached_structure = g
+                self.__cached_structure_raw = g
+            return self.__cached_structure_raw
+
+        @property
+        def structure_parent(self):
+            if self.__cached_structure_parent is None and self.parent:
+                g = node_link_graph(self.parent.data)
+                g.__class__ = MoleculeContainer
+                self.__cached_structure_parent = g
+            return self.__cached_structure_parent
+
+        @property
+        def structure(self):
+            if self.__cached_structure is None and self.__has_newest:
+                data = self.children.order_by(Molecule.date).desc().first()
+                if data:
+                    g = node_link_graph(self.parent.data)
+                    g.__class__ = MoleculeContainer
+                    self.__cached_structure = g
+                else:
+                    self.__has_newest = False
             return self.__cached_structure
 
         @property
@@ -117,8 +155,11 @@ def load_tables(db, schema):
                 self.__cached_bitstring = BitArray(bin=self.fingerprint)
             return self.__cached_bitstring
 
+        __cached_structure_parent = None
+        __cached_structure_raw = None
         __cached_structure = None
         __cached_bitstring = None
+        __has_newest = True
 
     class Reaction(db.Entity):
         _table_ = (schema, 'reaction')
@@ -131,7 +172,8 @@ def load_tables(db, schema):
         parent = Optional('Reaction')
 
         molecules = Set('MoleculeReaction')
-        reaction_classes = Optional(Json)
+        conditions = Set('Conditions')
+        special = Optional(Json)
 
         def __init__(self, reaction, conditions=None, fingerprint=None, fear_string=None, cgr=None,
                      substrats_fears=None, products_fears=None):
@@ -155,7 +197,8 @@ def load_tables(db, schema):
                     m_fear_string = next(fears[i], fear.get_cgr_string(x))
                     m = Molecule.get(fear=m_fear_string)
                     if m:
-                        mapping = list(next(cgr_reactor.get_cgr_matcher(m.structure, x).isomorphisms_iter()).items())
+                        iso = cgr_reactor.get_cgr_matcher(m.structure_raw, x).isomorphisms_iter()
+                        mapping = list(next(iso).items())
                         batch.append((m, is_p, mapping))
                     else:
                         new_mols.append((x, is_p, m_fear_string))
@@ -217,5 +260,14 @@ def load_tables(db, schema):
         molecule = Required('Molecule')
         product = Required(bool, default=False)
         mapping = Optional(Json)
+
+    class Conditions(db.Entity):
+        _table_ = (schema, 'conditions')
+        id = PrimaryKey(int, auto=True)
+
+        children = Set('Conditions', cascade_delete=True)
+        parent = Optional('Conditions')
+
+        reaction = Required('Reaction')
 
     return Molecule, Reaction
