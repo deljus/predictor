@@ -178,7 +178,7 @@ def load_tables(db, schema):
         conditions = Set('Conditions')
         special = Optional(Json)
 
-        def __init__(self, reaction, conditions=None, fingerprint=None, fear_string=None, cgr=None,
+        def __init__(self, reaction, user, conditions=None, fingerprint=None, fear_string=None, cgr=None,
                      substrats_fears=None, products_fears=None):
             if fear_string is None:
                 fear_string, cgr = self.get_fear(reaction, get_cgr=True)
@@ -209,7 +209,7 @@ def load_tables(db, schema):
             if new_mols:
                 for fp, (x, is_p, m_fear_string) in zip(Molecule.get_fingerprints([x for x, *_ in new_mols]),
                                                         new_mols):
-                    m = Molecule(x, fear_string=m_fear_string, fingerprint=fp)
+                    m = Molecule(x, user, fear_string=m_fear_string, fingerprint=fp)
                     batch.append((m, is_p, None))
 
             for m, is_p, mapping in batch:
