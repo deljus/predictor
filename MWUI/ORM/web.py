@@ -69,6 +69,7 @@ def load_tables(db, schema):
         posts = Set('Post')
 
         molecules = Set('Molecule')
+        reactions = Set('Reaction')
 
         def __init__(self, email, password, role=UserRole.COMMON, **kwargs):
             password = self.__hash_password(password)

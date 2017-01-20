@@ -73,6 +73,7 @@ def load_tables(db, schema):
 
         children = Set('Molecule', reverse='parent', cascade_delete=True)
         parent = Optional('Molecule', reverse='children')
+        last = Required(bool, default=True)
 
         merge_source = Set('Molecule', reverse='merge_target')  # molecules where self is more correct
         merge_target = Set('Molecule', reverse='merge_source',
@@ -93,20 +94,27 @@ def load_tables(db, schema):
             super(Molecule, self).__init__(data=data, user=db.User[user], fear=fear_string, fingerprint=fingerprint.bin)
 
         def update(self, molecule, user):
+            new_hash = {k: v['element'] for k, v in molecule.nodes(data=True)}
+            old_hash = {k: v['element'] for k, v in self.structure_raw.nodes(data=True)}
+            if new_hash != old_hash:
+                return False
+
             fear_string = self.get_fear(molecule)
             exists = Molecule.exists(fear=fear_string)
             if not exists:
+                self.last_edition.last = False
                 m = Molecule(molecule, user, fear_string=fear_string)
-                parent = self.parent or self
+                m.parent = self.parent or self
 
-                # todo: add new reaction record
-                q = left_join(rs.reaction for m in Molecule if m == parent or m.parent == parent for rs in m.reactions)
-                for x in q:
-                    pass
+                for rs in self.last_edition.reactions:
+                    rs.molecule = m
+                    r_fear_string, cgr = Reaction.get_fear(rs.reaction.structure, get_cgr=True)
+                    rs.reaction.fingerprint = Reaction.get_fingerprints([cgr], is_cgr=True)
+                    rs.reaction.fear = r_fear_string
 
-                m.parent = parent
-                self.__cached_structure = molecule
-                return m
+                self.__last_edition = m
+
+                return True
 
             elif exists not in self.merge_target:
                 self.merge_target.add(exists)
@@ -134,23 +142,19 @@ def load_tables(db, schema):
 
         @property
         def structure_parent(self):
-            if self.__cached_structure_parent is None and self.parent:
-                g = node_link_graph(self.parent.data)
-                g.__class__ = MoleculeContainer
-                self.__cached_structure_parent = g
-            return self.__cached_structure_parent
+            if self.parent:
+                return self.parent.structure_raw
+            return None
 
         @property
         def structure(self):
-            if self.__cached_structure is None and self.__has_newest:
-                data = self.children.order_by(Molecule.date).desc().first()
-                if data:
-                    g = node_link_graph(self.parent.data)
-                    g.__class__ = MoleculeContainer
-                    self.__cached_structure = g
-                else:
-                    self.__has_newest = False
-            return self.__cached_structure
+            return self.last_edition.structure_raw
+
+        @property
+        def last_edition(self):
+            if self.__last_edition is None:
+                self.__last_edition = self.last and self or self.children.select(lambda x: x.last).first()
+            return self.__last_edition
 
         @property
         def bitstring_fingerprint(self):
@@ -158,16 +162,15 @@ def load_tables(db, schema):
                 self.__cached_bitstring = BitArray(bin=self.fingerprint)
             return self.__cached_bitstring
 
-        __cached_structure_parent = None
         __cached_structure_raw = None
-        __cached_structure = None
+        __last_edition = None
         __cached_bitstring = None
-        __has_newest = True
 
     class Reaction(db.Entity):
         _table_ = '%s_reaction' % schema if DEBUG else (schema, 'reaction')
         id = PrimaryKey(int, auto=True)
         date = Required(datetime, default=datetime.utcnow())
+        user = Required('User')
         fear = Required(str, unique=True)
         fingerprint = Required(str) if DEBUG else Required(str, sql_type='bit(%s)' % (2 ** FP_SIZE))
 
@@ -180,29 +183,18 @@ def load_tables(db, schema):
 
         def __init__(self, reaction, user, conditions=None, fingerprint=None, fear_string=None, cgr=None,
                      substrats_fears=None, products_fears=None):
-            if fear_string is None:
-                fear_string, cgr = self.get_fear(reaction, get_cgr=True)
-            elif cgr is None:
-                cgr = cgr_core.getCGR(reaction)
-
-            if fingerprint is None:
-                fingerprint = self.get_fingerprints([cgr], is_cgr=True)[0]
-
-            self.__cached_cgr = cgr
-            self.__cached_structure = reaction
-            self.__cached_bitstring = fingerprint
-            super(Reaction, self).__init__(fear=fear_string, fingerprint=fingerprint.bin)
-
             new_mols, batch = [], []
-            fears = dict(substrats=iter(substrats_fears or []), products=iter(products_fears or []))
+            fears = dict(substrats=iter(substrats_fears if substrats_fears and
+                                        len(substrats_fears) == len(reaction.substrats) else []),
+                         products=iter(products_fears if products_fears and
+                                       len(products_fears) == len(reaction.products) else []))
             for i, is_p in (('substrats', False), ('products', True)):
                 for x in reaction[i]:
                     m_fear_string = next(fears[i], fear.get_cgr_string(x))
                     m = Molecule.get(fear=m_fear_string)
                     if m:
-                        iso = cgr_reactor.get_cgr_matcher(m.structure_raw, x).isomorphisms_iter()
-                        mapping = list(next(iso).items())
-                        batch.append((m, is_p, mapping))
+                        mapping = next(cgr_reactor.get_cgr_matcher(m.structure_raw, x).isomorphisms_iter())
+                        batch.append((m.last_edition, is_p, [(k, v) for k, v in mapping.items() if k != v] or None))
                     else:
                         new_mols.append((x, is_p, m_fear_string))
 
@@ -212,8 +204,22 @@ def load_tables(db, schema):
                     m = Molecule(x, user, fear_string=m_fear_string, fingerprint=fp)
                     batch.append((m, is_p, None))
 
+            if fear_string is None:
+                fear_string, cgr = self.get_fear(reaction, get_cgr=True)
+            elif cgr is None:
+                cgr = cgr_core.getCGR(reaction)
+
+            if fingerprint is None:
+                fingerprint = self.get_fingerprints([cgr], is_cgr=True)[0]
+
+            super(Reaction, self).__init__(user=db.User[user], fear=fear_string, fingerprint=fingerprint.bin)
+
             for m, is_p, mapping in batch:
                 MoleculeReaction(reaction=self, molecule=m, product=is_p, mapping=mapping)
+
+            self.__cached_cgr = cgr
+            self.__cached_structure = reaction
+            self.__cached_bitstring = fingerprint
 
         @staticmethod
         def get_fingerprints(reactions, is_cgr=False):
@@ -241,7 +247,7 @@ def load_tables(db, schema):
                 r = ReactionContainer()
                 for m in self.molecules.order_by(lambda x: x.id):
                     r['products' if m.product else 'substrats'].append(
-                        relabel_nodes(m.molecule.structure, dict(m.mapping)) if m.mapping else m.molecule.structure)
+                        relabel_nodes(m.molecule.structure_raw, dict(m.mapping)) if m.mapping else m.molecule.structure)
                 self.__cached_structure = r
             return self.__cached_structure
 
