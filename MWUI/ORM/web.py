@@ -24,7 +24,7 @@ import bcrypt
 import hashlib
 from datetime import datetime
 from pony.orm import PrimaryKey, Required, Optional, Set, Json
-from ..config import (ModelType, AdditiveType, UserRole, ProfileDegree, ProfileStatus, Glyph,
+from ..config import (ModelType, AdditiveType, UserRole, ProfileDegree, ProfileStatus, Glyph, DEBUG,
                       BlogPostType, MeetingPostType, ThesisPostType, EmailPostType, TeamPostType)
 
 
@@ -46,7 +46,7 @@ def load_tables(db, schema):
             return parent
 
     class User(db.Entity):
-        _table_ = (schema, 'user')
+        _table_ = '%s_user' % schema if DEBUG else (schema, 'user')
         id = PrimaryKey(int, auto=True)
         active = Required(bool, default=True)
         email = Required(str, unique=True)
@@ -67,6 +67,8 @@ def load_tables(db, schema):
         position = Optional(str)
 
         posts = Set('Post')
+
+        molecules = Set('Molecule')
 
         def __init__(self, email, password, role=UserRole.COMMON, **kwargs):
             password = self.__hash_password(password)
@@ -104,14 +106,14 @@ def load_tables(db, schema):
             return UserRole(self.user_role)
 
     class Attachment(db.Entity):
-        _table_ = (schema, 'attachment')
+        _table_ = '%s_attachment' % schema if DEBUG else (schema, 'attachment')
         id = PrimaryKey(int, auto=True)
         file = Required(str)
         name = Required(str)
         post = Required('Post')
 
     class Post(db.Entity):
-        _table_ = (schema, 'post')
+        _table_ = '%s_post' % schema if DEBUG else (schema, 'post')
         id = PrimaryKey(int, auto=True)
         post_type = Required(int)
         author = Required('User')
@@ -342,7 +344,7 @@ def load_tables(db, schema):
             self.post_type = _type.value
 
     class Model(db.Entity):
-        _table_ = (schema, 'model')
+        _table_ = '%s_model' % schema if DEBUG else (schema, 'model')
         id = PrimaryKey(int, auto=True)
         description = Optional(str)
         destinations = Set('Destination')
@@ -360,7 +362,7 @@ def load_tables(db, schema):
             return ModelType(self.model_type)
 
     class Destination(db.Entity):
-        _table_ = (schema, 'destination')
+        _table_ = '%s_destination' % schema if DEBUG else (schema, 'destination')
         id = PrimaryKey(int, auto=True)
         host = Required(str)
         model = Required('Model')
@@ -372,7 +374,7 @@ def load_tables(db, schema):
             super(Destination, self).__init__(**filter_kwargs(kwargs))
 
     class Additive(db.Entity):
-        _table_ = (schema, 'additive')
+        _table_ = '%s_additive' % schema if DEBUG else (schema, 'additive')
         id = PrimaryKey(int, auto=True)
         additive_type = Required(int)
         additiveset = Set('Additiveset')

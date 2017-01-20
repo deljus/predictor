@@ -43,9 +43,10 @@ def init():
 
     if DEBUG:
         sql_debug(True)
-
-    db.bind('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST)
-    db.generate_mapping(create_tables=False)
+        db.bind('sqlite', 'database.sqlite')
+    else:
+        db.bind('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST)
+    db.generate_mapping(create_tables=DEBUG)
 
     app = Flask(__name__)
 

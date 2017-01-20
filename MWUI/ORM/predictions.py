@@ -22,12 +22,12 @@
 #
 from datetime import datetime
 from pony.orm import PrimaryKey, Required, Optional, Set
-from ..config import TaskType, ResultType, StructureType, StructureStatus
+from ..config import TaskType, ResultType, StructureType, StructureStatus, DEBUG
 
 
 def load_tables(db, schema):
     class Task(db.Entity):
-        _table_ = (schema, 'task')
+        _table_ = '%s_task' % schema if DEBUG else (schema, 'task')
         id = PrimaryKey(int, auto=True)
         date = Required(datetime, default=datetime.utcnow())
         structures = Set('Structure')
@@ -43,7 +43,7 @@ def load_tables(db, schema):
             return TaskType(self.task_type)
 
     class Structure(db.Entity):
-        _table_ = (schema, 'structure')
+        _table_ = '%s_structure' % schema if DEBUG else (schema, 'structure')
         id = PrimaryKey(int, auto=True)
         additives = Set('Additiveset')
         pressure = Optional(float)
@@ -68,7 +68,7 @@ def load_tables(db, schema):
             return StructureStatus(self.structure_status)
 
     class Result(db.Entity):
-        _table_ = (schema, 'result')
+        _table_ = '%s_result' % schema if DEBUG else (schema, 'result')
         id = PrimaryKey(int, auto=True)
         key = Required(str)
         model = Required('Model')
@@ -86,7 +86,7 @@ def load_tables(db, schema):
             return ResultType(self.result_type)
     
     class Additiveset(db.Entity):
-        _table_ = (schema, 'additives')
+        _table_ = '%s_additives' % schema if DEBUG else (schema, 'additives')
         id = PrimaryKey(int, auto=True)
         additive = Required('Additive')
         amount = Required(float, default=1)

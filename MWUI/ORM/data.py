@@ -21,7 +21,7 @@
 #  MA 02110-1301, USA.
 #
 from datetime import datetime
-from pony.orm import PrimaryKey, Required, Optional, Set, Json
+from pony.orm import PrimaryKey, Required, Optional, Set, Json, left_join
 from networkx import relabel_nodes
 from bitstring import BitArray
 from networkx.readwrite.json_graph import node_link_graph, node_link_data
@@ -31,7 +31,7 @@ from CGRtools.CGRcore import CGRcore
 from CGRtools.files import MoleculeContainer, ReactionContainer
 from hashlib import md5
 from MODtools.descriptors.fragmentor import Fragmentor
-from ..config import (FP_SIZE, FP_ACTIVE_BITS, FRAGMENTOR_VERSION,
+from ..config import (FP_SIZE, FP_ACTIVE_BITS, FRAGMENTOR_VERSION, DEBUG,
                       FRAGMENT_TYPE_CGR, FRAGMENT_MIN_CGR, FRAGMENT_MAX_CGR, FRAGMENT_DYNBOND_CGR,
                       FRAGMENT_TYPE_MOL, FRAGMENT_MIN_MOL, FRAGMENT_MAX_MOL)
 
@@ -63,24 +63,24 @@ def get_fingerprints(df):
 
 def load_tables(db, schema):
     class Molecule(db.Entity):
-        _table_ = (schema, 'molecule')
+        _table_ = '%s_molecule' % schema if DEBUG else (schema, 'molecule')
         id = PrimaryKey(int, auto=True)
         date = Required(datetime, default=datetime.utcnow())
         user = Required('User')
         data = Required(Json)
         fear = Required(str, unique=True)
-        fingerprint = Required(str, sql_type='bit(%s)' % (2 ** FP_SIZE))
+        fingerprint = Required(str) if DEBUG else Required(str, sql_type='bit(%s)' % (2 ** FP_SIZE))
 
         children = Set('Molecule', reverse='parent', cascade_delete=True)
         parent = Optional('Molecule', reverse='children')
 
         merge_source = Set('Molecule', reverse='merge_target')  # molecules where self is more correct
-        merge_target = Set('Molecule', reverse='merge_source')  # links to correct molecules
+        merge_target = Set('Molecule', reverse='merge_source',
+                           table='%s_merge' % schema if DEBUG else (schema, 'merge'))  # links to correct molecules
 
         reactions = Set('MoleculeReaction')
 
         def __init__(self, molecule, user, fingerprint=None, fear_string=None):
-            u = db.User[user]
             data = node_link_data(molecule)
 
             if fear_string is None:
@@ -90,20 +90,23 @@ def load_tables(db, schema):
 
             self.__cached_structure_raw = molecule
             self.__cached_bitstring = fingerprint
-            super(Molecule, self).__init__(data=data, user=u, fear=fear_string, fingerprint=fingerprint.bin)
+            super(Molecule, self).__init__(data=data, user=db.User[user], fear=fear_string, fingerprint=fingerprint.bin)
 
-        def update(self, molecule, user, update_reactions=False):
+        def update(self, molecule, user):
             fear_string = self.get_fear(molecule)
             exists = Molecule.exists(fear=fear_string)
             if not exists:
                 m = Molecule(molecule, user, fear_string=fear_string)
-                m.parent = self.parent or self
-                self.__cached_structure = molecule
+                parent = self.parent or self
 
-                if update_reactions:
-                    # todo: add new reaction record
+                # todo: add new reaction record
+                q = left_join(rs.reaction for m in Molecule if m == parent or m.parent == parent for rs in m.reactions)
+                for x in q:
                     pass
-                return True
+
+                m.parent = parent
+                self.__cached_structure = molecule
+                return m
 
             elif exists not in self.merge_target:
                 self.merge_target.add(exists)
@@ -162,11 +165,11 @@ def load_tables(db, schema):
         __has_newest = True
 
     class Reaction(db.Entity):
-        _table_ = (schema, 'reaction')
+        _table_ = '%s_reaction' % schema if DEBUG else (schema, 'reaction')
         id = PrimaryKey(int, auto=True)
         date = Required(datetime, default=datetime.utcnow())
         fear = Required(str, unique=True)
-        fingerprint = Required(str, sql_type='bit(%s)' % (2 ** FP_SIZE))
+        fingerprint = Required(str) if DEBUG else Required(str, sql_type='bit(%s)' % (2 ** FP_SIZE))
 
         children = Set('Reaction', cascade_delete=True)
         parent = Optional('Reaction')
@@ -254,7 +257,7 @@ def load_tables(db, schema):
         __cached_bitstring = None
 
     class MoleculeReaction(db.Entity):
-        _table_ = (schema, 'molecule_reaction')
+        _table_ = '%s_molecule_reaction' % schema if DEBUG else (schema, 'molecule_reaction')
         id = PrimaryKey(int, auto=True)
         reaction = Required('Reaction')
         molecule = Required('Molecule')
@@ -262,7 +265,7 @@ def load_tables(db, schema):
         mapping = Optional(Json)
 
     class Conditions(db.Entity):
-        _table_ = (schema, 'conditions')
+        _table_ = '%s_conditions' % schema if DEBUG else (schema, 'conditions')
         id = PrimaryKey(int, auto=True)
 
         children = Set('Conditions', cascade_delete=True)
