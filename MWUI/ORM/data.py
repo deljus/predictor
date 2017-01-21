@@ -21,7 +21,7 @@
 #  MA 02110-1301, USA.
 #
 from datetime import datetime
-from pony.orm import PrimaryKey, Required, Optional, Set, Json, left_join
+from pony.orm import PrimaryKey, Required, Optional, Set, Json, left_join, commit
 from networkx import relabel_nodes
 from bitstring import BitArray
 from networkx.readwrite.json_graph import node_link_graph, node_link_data
@@ -100,23 +100,20 @@ def load_tables(db, schema):
                 return False
 
             fear_string = self.get_fear(molecule)
-            exists = Molecule.exists(fear=fear_string)
+            exists = Molecule.get(fear=fear_string)
             if not exists:
-                self.last_edition.last = False
                 m = Molecule(molecule, user, fear_string=fear_string)
+                for mr in self.last_edition.reactions:
+                    ''' replace current last molecule edition in all reactions.
+                    '''
+                    mr.molecule = m
+                    mr.reaction.refresh_fear_fingerprint()
+
+                self.last_edition.last = False
                 m.parent = self.parent or self
-
-                for rs in self.last_edition.reactions:
-                    rs.molecule = m
-                    r_fear_string, cgr = Reaction.get_fear(rs.reaction.structure, get_cgr=True)
-                    rs.reaction.fingerprint = Reaction.get_fingerprints([cgr], is_cgr=True)
-                    rs.reaction.fear = r_fear_string
-
                 self.__last_edition = m
-
                 return True
-
-            elif exists not in self.merge_target:
+            elif (exists.parent or exists) != (self.parent or self) and exists not in self.merge_target:
                 self.merge_target.add(exists)
 
             return False
@@ -153,7 +150,13 @@ def load_tables(db, schema):
         @property
         def last_edition(self):
             if self.__last_edition is None:
-                self.__last_edition = self.last and self or self.children.select(lambda x: x.last).first()
+                if self.last:
+                    tmp = self
+                elif self.parent and self.parent.last:
+                    tmp = self.parent
+                else:
+                    tmp = (self.parent or self).children.select(lambda x: x.last).first()
+                self.__last_edition = tmp
             return self.__last_edition
 
         @property
@@ -256,6 +259,14 @@ def load_tables(db, schema):
             if self.__cached_bitstring is None:
                 self.__cached_bitstring = BitArray(bin=self.fingerprint)
             return self.__cached_bitstring
+
+        def refresh_fear_fingerprint(self):
+            fear_string, cgr = Reaction.get_fear(self.structure, get_cgr=True)
+            fingerprint = Reaction.get_fingerprints([cgr], is_cgr=True)[0]
+            print(self.date)  # Pony BUG. AD-HOC!
+            self.fear = fear_string
+            self.fingerprint = fingerprint.bin
+            self.__cached_bitstring = fingerprint
 
         __cached_structure = None
         __cached_cgr = None
