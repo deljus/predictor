@@ -113,10 +113,39 @@ def load_tables(db, schema):
                 m.parent = self.parent or self
                 self.__last_edition = m
                 return True
-            elif (exists.parent or exists) != (self.parent or self) and exists not in self.merge_target:
-                self.merge_target.add(exists)
+
+            ex_parent = exists.parent or exists
+            if ex_parent != (self.parent or self):
+                if not any((x.parent or x) == ex_parent for x in self.merge_target):
+                    self.merge_target.add(exists)
 
             return False
+
+        def merge_molecule(self, molecule, mapping):
+            m = Molecule[molecule]
+            if m not in self.merge_target:
+                return False
+            ''' replace self in reactions to last edition of mergable molecule.
+            '''
+            mapping = [(k, v) for k, v in mapping.items() if k != v] or None
+            for mr in self.last_edition.reactions:
+                mr.mapping = mapping
+                mr.molecule = m.last_edition
+                mr.reaction.refresh_fear_fingerprint()
+
+            ''' set self.parent to molecule chain
+            '''
+            if m.parent:
+                tmp = [m.parent] + list(m.parent.children)
+            else:
+                tmp = [m] + list(m.children)
+
+            for x in tmp:
+                x.parent = self
+
+            self.last_edition.last = False
+            self.__last_edition = m.last_edition
+            return True
 
         @staticmethod
         def get_fear(molecule):
@@ -155,7 +184,7 @@ def load_tables(db, schema):
                 elif self.parent and self.parent.last:
                     tmp = self.parent
                 else:
-                    tmp = (self.parent or self).children.select(lambda x: x.last).first()
+                    tmp = (self.parent or self).children.filter(lambda x: x.last).first()
                 self.__last_edition = tmp
             return self.__last_edition
 
