@@ -21,7 +21,7 @@
 #  MA 02110-1301, USA.
 #
 from datetime import datetime
-from pony.orm import PrimaryKey, Required, Optional, Set, Json, left_join, commit
+from pony.orm import PrimaryKey, Required, Optional, Set, Json, left_join, commit, select
 from networkx import relabel_nodes
 from bitstring import BitArray
 from networkx.readwrite.json_graph import node_link_graph, node_link_data
@@ -75,9 +75,8 @@ def load_tables(db, schema):
         parent = Optional('Molecule', reverse='children')
         last = Required(bool, default=True)
 
-        merge_source = Set('Molecule', reverse='merge_target')  # molecules where self is more correct
-        merge_target = Set('Molecule', reverse='merge_source',
-                           table='%s_merge' % schema if DEBUG else (schema, 'merge'))  # links to correct molecules
+        merge_source = Set('MoleculeMerge', reverse='target')  # molecules where self is more correct
+        merge_target = Set('MoleculeMerge', reverse='source')  # links to correct molecules
 
         reactions = Set('MoleculeReaction')
 
@@ -116,20 +115,24 @@ def load_tables(db, schema):
 
             ex_parent = exists.parent or exists
             if ex_parent != (self.parent or self):
-                if not any((x.parent or x) == ex_parent for x in self.merge_target):
-                    self.merge_target.add(exists)
+                if not any((x.target.parent or x.target) == ex_parent for x in self.merge_target):
+                    iso = cgr_reactor.get_cgr_matcher(exists.structure_raw, molecule).isomorphisms_iter()
+                    MoleculeMerge(target=exists, source=self,
+                                  mapping=[(k, v) for k, v in next(iso).items() if k != v] or None)
 
             return False
 
-        def merge_molecule(self, molecule, mapping):
+        def merge_molecule(self, molecule):
             m = Molecule[molecule]
             if m not in self.merge_target:
                 return False
             ''' replace self in reactions to last edition of mergable molecule.
             '''
+
             mapping = [(k, v) for k, v in mapping.items() if k != v] or None
             for mr in self.last_edition.reactions:
-                mr.mapping = mapping
+
+                mr.mapping = [zip(mr.mapping or [])] or None
                 mr.molecule = m.last_edition
                 mr.reaction.refresh_fear_fingerprint()
 
@@ -308,6 +311,13 @@ def load_tables(db, schema):
         reaction = Required('Reaction')
         molecule = Required('Molecule')
         product = Required(bool, default=False)
+        mapping = Optional(Json)
+
+    class MoleculeMerge(db.Entity):
+        _table_ = '%s_molecule_merge' % schema if DEBUG else (schema, 'molecule_merge')
+        id = PrimaryKey(int, auto=True)
+        source = Required('Molecule', reverse='merge_target')
+        target = Required('Molecule', reverse='merge_source')
         mapping = Optional(Json)
 
     class Conditions(db.Entity):
