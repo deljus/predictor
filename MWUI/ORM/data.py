@@ -116,7 +116,7 @@ def load_tables(db, schema):
             ex_parent = exists.parent or exists
             if ex_parent != (self.parent or self):
                 if not any((x.target.parent or x.target) == ex_parent for x in self.merge_target):
-                    iso = cgr_reactor.get_cgr_matcher(exists.structure_raw, molecule).isomorphisms_iter()
+                    iso = cgr_reactor.get_cgr_matcher(molecule, exists.structure_raw).isomorphisms_iter()
                     MoleculeMerge(target=exists, source=self,
                                   mapping=[(k, v) for k, v in next(iso).items() if k != v] or None)
 
@@ -124,15 +124,16 @@ def load_tables(db, schema):
 
         def merge_molecule(self, molecule):
             m = Molecule[molecule]
-            if m not in self.merge_target:
+            mm = MoleculeMerge.get(target=m, source=self)
+            if not mm:
                 return False
             ''' replace self in reactions to last edition of mergable molecule.
             '''
-
-            mapping = [(k, v) for k, v in mapping.items() if k != v] or None
+            mmap = dict(mm.mapping or [])
+            mapping = [(n, mmap.get(n, n)) for n in self.structure_raw.nodes()]
             for mr in self.last_edition.reactions:
-
-                mr.mapping = [zip(mr.mapping or [])] or None
+                rmap = dict(mr.mapping or [])
+                mr.mapping = [(k, v) for k, v in ((v, rmap.get(k, k)) for k, v in mapping) if k != v] or None
                 mr.molecule = m.last_edition
                 mr.reaction.refresh_fear_fingerprint()
 
@@ -144,10 +145,11 @@ def load_tables(db, schema):
                 tmp = [m] + list(m.children)
 
             for x in tmp:
-                x.parent = self
+                x.parent = self.parent or self
 
             self.last_edition.last = False
             self.__last_edition = m.last_edition
+            mm.delete()
             return True
 
         @staticmethod
