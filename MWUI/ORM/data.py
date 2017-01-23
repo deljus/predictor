@@ -230,6 +230,7 @@ def load_tables(db, schema):
 
         def __init__(self, reaction, user, conditions=None, fingerprint=None, fear_string=None, cgr=None,
                      substrats_fears=None, products_fears=None):
+            db_user = db.User[user]
             new_mols, batch = [], []
             fears = dict(substrats=iter(substrats_fears if substrats_fears and
                                         len(substrats_fears) == len(reaction.substrats) else []),
@@ -265,11 +266,14 @@ def load_tables(db, schema):
 
             ml_fear = '%s||%s' % ('$$'.join(sorted(ml_fears['substrats'])), '$$'.join(sorted(ml_fears['products'])))
 
-            super(Reaction, self).__init__(user=db.User[user], fear=fear_string, fingerprint=fingerprint.bin,
+            super(Reaction, self).__init__(user=db_user, fear=fear_string, fingerprint=fingerprint.bin,
                                            mapless_fear=ml_fear)
 
             for m, is_p, mapping in batch:
                 MoleculeReaction(reaction=self, molecule=m, product=is_p, mapping=mapping)
+
+            if conditions and not self.conditions.exists(data=conditions):
+                Conditions(data=conditions, reaction=self, user=db_user)
 
             self.__cached_cgr = cgr
             self.__cached_structure = reaction
@@ -380,10 +384,9 @@ def load_tables(db, schema):
     class Conditions(db.Entity):
         _table_ = '%s_conditions' % schema if DEBUG else (schema, 'conditions')
         id = PrimaryKey(int, auto=True)
-
-        children = Set('Conditions', cascade_delete=True)
-        parent = Optional('Conditions')
-
+        date = Required(datetime, default=datetime.utcnow())
+        user = Required('User')
+        data = Required(Json)
         reaction = Required('Reaction')
 
     return Molecule, Reaction
