@@ -137,6 +137,15 @@ def load_tables(db, schema):
                 mr.molecule = m.last_edition
                 mr.reaction.refresh_fear_fingerprint()
 
+            ''' remap self'''
+            if self.parent:
+                tmp = [self.parent] + list(self.parent.children)
+            else:
+                tmp = [self] + list(self.children)
+
+            for x in tmp:
+                x.data = node_link_data(relabel_nodes(x.structure_raw, mmap))
+
             ''' set self.parent to molecule chain
             '''
             if m.parent:
@@ -209,6 +218,7 @@ def load_tables(db, schema):
         date = Required(datetime, default=datetime.utcnow())
         user = Required('User')
         fear = Required(str, unique=True)
+        mapless_fear = Required(str)
         fingerprint = Required(str) if DEBUG else Required(str, sql_type='bit(%s)' % (2 ** FP_SIZE))
 
         children = Set('Reaction', cascade_delete=True)
@@ -225,6 +235,8 @@ def load_tables(db, schema):
                                         len(substrats_fears) == len(reaction.substrats) else []),
                          products=iter(products_fears if products_fears and
                                        len(products_fears) == len(reaction.products) else []))
+
+            ml_fears = dict(substrats=[], products=[])
             for i, is_p in (('substrats', False), ('products', True)):
                 for x in reaction[i]:
                     m_fear_string = next(fears[i], fear.get_cgr_string(x))
@@ -232,8 +244,10 @@ def load_tables(db, schema):
                     if m:
                         mapping = next(cgr_reactor.get_cgr_matcher(m.structure_raw, x).isomorphisms_iter())
                         batch.append((m.last_edition, is_p, [(k, v) for k, v in mapping.items() if k != v] or None))
+                        ml_fears[i].append(m.last_edition.fear)
                     else:
                         new_mols.append((x, is_p, m_fear_string))
+                        ml_fears[i].append(m_fear_string)
 
             if new_mols:
                 for fp, (x, is_p, m_fear_string) in zip(Molecule.get_fingerprints([x for x, *_ in new_mols]),
@@ -249,7 +263,10 @@ def load_tables(db, schema):
             if fingerprint is None:
                 fingerprint = self.get_fingerprints([cgr], is_cgr=True)[0]
 
-            super(Reaction, self).__init__(user=db.User[user], fear=fear_string, fingerprint=fingerprint.bin)
+            ml_fear = '%s||%s' % ('$$'.join(sorted(ml_fears['substrats'])), '$$'.join(sorted(ml_fears['products'])))
+
+            super(Reaction, self).__init__(user=db.User[user], fear=fear_string, fingerprint=fingerprint.bin,
+                                           mapless_fear=ml_fear)
 
             for m, is_p, mapping in batch:
                 MoleculeReaction(reaction=self, molecule=m, product=is_p, mapping=mapping)
@@ -257,6 +274,44 @@ def load_tables(db, schema):
             self.__cached_cgr = cgr
             self.__cached_structure = reaction
             self.__cached_bitstring = fingerprint
+
+        @staticmethod
+        def fresh_reaction(reaction):
+            fresh = dict(substrats=[], products=[])
+            for i, is_p in (('substrats', False), ('products', True)):
+                for x in reaction[i]:
+                    m_fear_string = fear.get_cgr_string(x)
+                    m = Molecule.get(fear=m_fear_string)
+                    if m:
+                        fresh[i].append(m)
+                    else:
+                        return False
+            return fresh
+
+        @staticmethod
+        def mapless_exists(reaction):
+            fresh = Reaction.fresh_reaction(reaction)
+            if fresh:
+                ml_fear = '%s||%s' % ('$$'.join(sorted(x.last_edition.fear for x in fresh['substrats'])),
+                                      '$$'.join(sorted(x.last_edition.fear for x in fresh['products'])))
+                return Reaction.exists(mapless_fear=ml_fear)
+            return False
+
+        @staticmethod
+        def cgr_exists(reaction):
+            fresh = Reaction.fresh_reaction(reaction)
+            if fresh:
+                r = ReactionContainer(substrats=[relabel_nodes(x.structure,
+                                                               next(cgr_reactor.get_cgr_matcher(x.structure_raw,
+                                                                                                y).isomorphisms_iter()))
+                                                 for x, y in zip(fresh['substrats'], reaction.substrats)],
+                                      products=[relabel_nodes(x.structure,
+                                                              next(cgr_reactor.get_cgr_matcher(x.structure_raw,
+                                                                                               y).isomorphisms_iter()))
+                                                for x, y in zip(fresh['products'], reaction.products)])
+                fear_string = fear.get_cgr_string(cgr_core.getCGR(r))
+                return Reaction.exists(fear=fear_string)
+            return False
 
         @staticmethod
         def get_fingerprints(reactions, is_cgr=False):
