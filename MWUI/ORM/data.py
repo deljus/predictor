@@ -251,10 +251,24 @@ def load_tables(db, schema):
                         refreshed[i].append(x)
 
             if new_mols:
-                for fp, (x, is_p, m_fear_string) in zip(Molecule.get_fingerprints([x for x, *_ in new_mols]),
-                                                        new_mols):
-                    m = Molecule(x, user, fear_string=m_fear_string, fingerprint=fp)
-                    batch.append((m, is_p, None))
+                for_fp, for_x = [], []
+                for x, _, m_fp in new_mols:
+                    if m_fp not in for_fp:
+                        for_fp.append(m_fp)
+                        for_x.append(x)
+                    
+                fp_dict = dict(zip(for_fp, Molecule.get_fingerprints(for_x)))
+                dups = {}
+                for x, is_p, m_fear_string in new_mols:
+                    if m_fear_string not in dups:
+                        m = Molecule(x, user, fear_string=m_fear_string, fingerprint=fp_dict[m_fear_string])
+                        dups[m_fear_string] = m
+                        mapping = None
+                    else:
+                        m = dups[m_fear_string]
+                        iso = next(cgr_reactor.get_cgr_matcher(m.structure_raw, x).isomorphisms_iter())
+                        mapping = [(k, v) for k, v in iso.items() if k != v] or None
+                    batch.append((m, is_p, mapping))
 
             if fear_string is None:
                 fear_string, cgr = self.get_fear(reaction, get_cgr=True)
