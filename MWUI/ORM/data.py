@@ -20,10 +20,12 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+from collections import OrderedDict
 from datetime import datetime
-from pony.orm import PrimaryKey, Required, Optional, Set, Json, left_join, commit, select
+from pony.orm import PrimaryKey, Required, Optional, Set, Json
 from networkx import relabel_nodes
 from bitstring import BitArray
+from itertools import count
 from networkx.readwrite.json_graph import node_link_graph, node_link_data
 from CGRtools.FEAR import FEAR
 from CGRtools.CGRreactor import CGRreactor
@@ -231,35 +233,37 @@ def load_tables(db, schema):
         def __init__(self, reaction, user, conditions=None, fingerprint=None, fear_string=None, cgr=None,
                      substrats_fears=None, products_fears=None):
             db_user = db.User[user]
-            new_mols, batch = [], []
+            new_mols, batch = OrderedDict(), {}
             fears = dict(substrats=iter(substrats_fears if substrats_fears and
                                         len(substrats_fears) == len(reaction.substrats) else []),
                          products=iter(products_fears if products_fears and
                                        len(products_fears) == len(reaction.products) else []))
 
             refreshed = ReactionContainer()
+            m_count = count()
             for i, is_p in (('substrats', False), ('products', True)):
                 for x in reaction[i]:
                     m_fear_string = next(fears[i], fear.get_cgr_string(x))
                     m = Molecule.get(fear=m_fear_string)
                     if m:
                         mapping = next(cgr_reactor.get_cgr_matcher(m.structure_raw, x).isomorphisms_iter())
-                        batch.append((m.last_edition, is_p, [(k, v) for k, v in mapping.items() if k != v] or None))
+                        batch[next(m_count)] = (m.last_edition, is_p,
+                                                [(k, v) for k, v in mapping.items() if k != v] or None)
                         refreshed[i].append(relabel_nodes(m.structure, mapping))
                     else:
-                        new_mols.append((x, is_p, m_fear_string))
+                        new_mols[next(m_count)] = (x, is_p, m_fear_string)
                         refreshed[i].append(x)
 
             if new_mols:
                 for_fp, for_x = [], []
-                for x, _, m_fp in new_mols:
+                for x, _, m_fp in new_mols.values():
                     if m_fp not in for_fp:
                         for_fp.append(m_fp)
                         for_x.append(x)
                     
                 fp_dict = dict(zip(for_fp, Molecule.get_fingerprints(for_x)))
                 dups = {}
-                for x, is_p, m_fear_string in new_mols:
+                for n, (x, is_p, m_fear_string) in new_mols.items():
                     if m_fear_string not in dups:
                         m = Molecule(x, user, fear_string=m_fear_string, fingerprint=fp_dict[m_fear_string])
                         dups[m_fear_string] = m
@@ -268,7 +272,7 @@ def load_tables(db, schema):
                         m = dups[m_fear_string]
                         iso = next(cgr_reactor.get_cgr_matcher(m.structure_raw, x).isomorphisms_iter())
                         mapping = [(k, v) for k, v in iso.items() if k != v] or None
-                    batch.append((m, is_p, mapping))
+                    batch[n] = (m, is_p, mapping)
 
             if fear_string is None:
                 fear_string, cgr = self.get_fear(reaction, get_cgr=True)
@@ -283,7 +287,7 @@ def load_tables(db, schema):
                                            mapless_fear='%s>>%s' % (Molecule.get_fear(merged['substrats']),
                                                                     Molecule.get_fear(merged['products'])))
 
-            for m, is_p, mapping in batch:
+            for m, is_p, mapping in (batch[x] for x in sorted(batch)):
                 MoleculeReaction(reaction=self, molecule=m, product=is_p, mapping=mapping)
 
             if conditions:
