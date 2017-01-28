@@ -23,12 +23,12 @@
 import uuid
 from .forms import (LoginForm, RegistrationForm, ReLoginForm, ChangePasswordForm, PostForm, ChangeRoleForm, BanUserForm,
                     ForgotPasswordForm, ProfileForm, DeleteButtonForm, LogoutForm, MeetingForm, EmailForm, ThesisForm,
-                    TeamForm)
+                    TeamForm, MeetForm)
 from .redirect import get_redirect_target
 from .logins import UserLogin
-from .models import User, BlogPost, Email, Meeting, Post, TeamPost, Thesis, Attachment
+from .models import User, BlogPost, Email, Meeting, Post, TeamPost, Thesis, Attachment, Subscription
 from .config import (UserRole, BLOG_POSTS_PER_PAGE, UPLOAD_PATH, IMAGES_ROOT, BlogPostType, LAB_NAME, MeetingPostType,
-                     FormRoute, EmailPostType, TeamPostType)
+                     FormRoute, EmailPostType, TeamPostType, MeetingPartType)
 from .bootstrap import Pagination
 from .sendmail import send_mail
 from .scopus import get_articles
@@ -117,7 +117,8 @@ def login(action=1):
                 meeting = mid and mid.isdigit() and Meeting.get(id=int(mid))
                 m = meeting and Email.get(post_parent=meeting.meeting,
                                           post_type=EmailPostType.MEETING_REGISTRATION.value) or \
-                    select(x for x in Email if x.post_type == EmailPostType.REGISTRATION.value).first()
+                    Email.select(lambda x: x.post_type == EmailPostType.REGISTRATION.value
+                                 and not x.post_parent).first()
 
                 u = User(email=active_form.email.data.lower(), password=active_form.password.data,
                          name=active_form.name.data, surname=active_form.surname.data,
@@ -170,8 +171,8 @@ def logout():
 
 @view_bp.route('/profile/', methods=['GET', 'POST'])
 @view_bp.route('/profile/<int:action>', methods=['GET', 'POST'])
-@login_required
 @db_session
+@login_required
 def profile(action=4):
     form = FormRoute.get(action)
     if not form or not form.is_profile():
@@ -258,7 +259,7 @@ def profile(action=4):
             banner_name, file_name = combo_save(active_form.banner_field, active_form.attachment)
             p = BlogPost(type=active_form.type, title=active_form.title.data, slug=active_form.slug.data,
                          body=active_form.body.data, banner=banner_name, attachments=file_name,
-                         author=current_user.id)
+                         author=current_user.get_user())
             commit()
             return redirect(url_for('.blog_post', post=p.id))
 
@@ -270,14 +271,14 @@ def profile(action=4):
         def add_post():
             banner_name, file_name = combo_save(active_form.banner_field, active_form.attachment)
             p = Meeting(meeting=active_form.meeting_id.data, deadline=active_form.deadline.data,
-                        order=active_form.order.data, type=active_form.type, author=current_user.id,
+                        order=active_form.order.data, type=active_form.type, author=current_user.get_user(),
                         title=active_form.title.data, slug=active_form.slug.data, body_name=active_form.body_name.data,
                         body=active_form.body.data, banner=banner_name, attachments=file_name)
             commit()
             return p.id
 
         if active_form.validate_on_submit():
-            if active_form.type in (MeetingPostType.REGISTRATION, MeetingPostType.COMMON):
+            if active_form.type != MeetingPostType.MEETING:
                 if active_form.meeting_id.data and Meeting.exists(id=active_form.meeting_id.data,
                                                                   post_type=MeetingPostType.MEETING.value):
                     return redirect(url_for('.blog_post', post=add_post()))
@@ -296,7 +297,7 @@ def profile(action=4):
             banner_name, file_name = combo_save(active_form.banner_field, active_form.attachment)
             p = Email(from_name=active_form.from_name.data, reply_name=active_form.reply_name.data,
                       reply_mail=active_form.reply_mail.data, meeting=active_form.meeting_id.data,
-                      type=active_form.type, author=current_user.id,
+                      type=active_form.type, author=current_user.get_user(),
                       title=active_form.title.data, slug=active_form.slug.data,
                       body=active_form.body.data, banner=banner_name, attachments=file_name)
             commit()
@@ -319,7 +320,7 @@ def profile(action=4):
             banner_name, file_name = combo_save(active_form.banner_field, active_form.attachment)
             p = TeamPost(type=active_form.type, title=active_form.title.data, slug=active_form.slug.data,
                          body=active_form.body.data, banner=banner_name, attachments=file_name,
-                         author=current_user.id, role=active_form.role.data, scopus=active_form.scopus.data,
+                         author=current_user.get_user(), role=active_form.role.data, scopus=active_form.scopus.data,
                          order=active_form.order.data)
             commit()
             return redirect(url_for('.blog_post', post=p.id))
@@ -488,17 +489,38 @@ def blog_post(post):
         if p.type != MeetingPostType.MEETING:
             crumb = dict(url=url_for('.blog_post', post=p.meeting_id), title=p.title, parent='Event main page')
 
-            if p.type == MeetingPostType.REGISTRATION and p.deadline > datetime.utcnow():
-                if current_user.is_authenticated and \
-                        not select(x for x in Thesis
-                                   if x.post_parent == p.meeting and x.author.id == current_user.id).exists():
+            if current_user.is_authenticated and p.type == MeetingPostType.REGISTRATION \
+                    and p.deadline > datetime.utcnow():
+
+                sub = Subscription.get(user=current_user.get_user(), meeting=p.meeting)
+                special_form = MeetForm(prefix='special', obj=sub)
+
+                if special_form.validate_on_submit():
+                    if sub:
+                        if special_form.type == MeetingPartType.LISTENER and \
+                                Thesis.exists(post_parent=p.meeting, author=current_user.get_user()):
+                            special_form.part_type.errors = ['Invalid participation type. You send thesis earlier.']
+                            flash('Participation type change error', 'error')
+                        else:
+                            sub.update_type(special_form.type)
+                            flash('Participation type changed!')
+                    else:
+                        Subscription(current_user.get_user(), p.meeting, special_form.type)
+                        flash('Welcome to meeting!')
+
+            elif current_user.is_authenticated and p.type == MeetingPostType.SUBMISSION \
+                    and p.deadline > datetime.utcnow():
+
+                sub = Subscription.get(user=current_user.get_user(), meeting=p.meeting)
+                if sub and sub.type != MeetingPartType.LISTENER and \
+                        not Thesis.exists(post_parent=p.meeting, author=current_user.get_user()):
 
                     special_form = ThesisForm(prefix='special', body_name=p.body_name)
                     if special_form.validate_on_submit():
                         banner_name, file_name = combo_save(special_form.banner_field, special_form.attachment)
                         t = Thesis(p.meeting_id, type=special_form.type,
                                    title=special_form.title.data, body=special_form.body.data,
-                                   banner=banner_name, attachments=file_name, author=current_user.id)
+                                   banner=banner_name, attachments=file_name, author=current_user.get_user())
                         commit()
 
                         m = Email.get(post_parent=p.meeting, post_type=EmailPostType.MEETING_THESIS.value)
@@ -579,7 +601,7 @@ def predictor():
 def blog(page=1):
     q = select(x for x in Post
                if x.classtype not in ('Thesis', 'Email')
-               and x.post_type not in (MeetingPostType.COMMON.value,
+               and x.post_type not in (MeetingPostType.COMMON.value, MeetingPostType.SUBMISSION.value,
                                        MeetingPostType.REGISTRATION.value)).order_by(Post.date.desc())
     return blog_viewer(page, q, '.blog', 'News', 'list')
 
