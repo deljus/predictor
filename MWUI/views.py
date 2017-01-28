@@ -508,6 +508,13 @@ def blog_post(post):
                         Subscription(current_user.get_user(), p.meeting, special_form.type)
                         flash('Welcome to meeting!')
 
+                        m = Email.get(post_parent=p.meeting, post_type=EmailPostType.MEETING_THESIS.value)
+                        send_mail((m and m.body or '%s\n\nYou registered to meeting') % current_user.name,
+                                  current_user.email, to_name=current_user.name, title=m and m.title,
+                                  subject=m and m.title or 'Welcome to meeting', banner=m and m.banner,
+                                  from_name=m and m.from_name, reply_mail=m and m.reply_mail,
+                                  reply_name=m and m.reply_name)
+
             elif current_user.is_authenticated and p.type == MeetingPostType.SUBMISSION \
                     and p.deadline > datetime.utcnow():
 
@@ -522,15 +529,6 @@ def blog_post(post):
                                    title=special_form.title.data, body=special_form.body.data,
                                    banner=banner_name, attachments=file_name, author=current_user.get_user())
                         commit()
-
-                        m = Email.get(post_parent=p.meeting, post_type=EmailPostType.MEETING_THESIS.value)
-                        send_mail((m and m.body or '%s\n\nYou registered to meeting') % current_user.name,
-                                  current_user.email, to_name=current_user.name, title=m and m.title,
-                                  subject=m and m.title or 'Welcome to meeting', banner=m and m.banner,
-                                  from_name=m and m.from_name, reply_mail=m and m.reply_mail,
-                                  reply_name=m and m.reply_name)
-
-                        flash('Welcome to meeting!')
                         return redirect(url_for('.blog_post', post=t.id))
         else:
             crumb = dict(url=url_for('.blog'), title='Post', parent='News')
