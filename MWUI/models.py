@@ -19,8 +19,8 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from .ORM import db, main_tables, save_tables, data_tables
+from .ORM import db, main_tables as mt, save_tables as st, data_tables as dt
 
-User, Post, Attachment, Model, Destination, Additive, BlogPost, TeamPost, Meeting, Thesis, Email = main_tables
-Task, Structure, Result, Additiveset = save_tables
-Molecule, Reaction = data_tables
+User, Subscription, Model, Destination, Additive, Post, BlogPost, TeamPost, Meeting, Thesis, Email, Attachment = mt
+Task, Structure, Result, Additiveset = st
+Molecule, Reaction = dt

@@ -26,7 +26,7 @@ from collections import OrderedDict
 from pycountry import countries
 from .models import User, Meeting
 from .config import (BlogPostType, UserRole, ThesisPostType, ProfileDegree, ProfileStatus, MeetingPostType,
-                     EmailPostType, TeamPostType)
+                     EmailPostType, TeamPostType, MeetingPartType)
 from .redirect import get_redirect_target, is_safe_url
 from flask import url_for, redirect
 from flask_wtf import FlaskForm
@@ -211,6 +211,17 @@ class ChangeRoleForm(Email):
 
 class BanUserForm(Email):
     submit_btn = SubmitField('Ban User')
+
+
+class MeetForm(CustomForm):
+    part_type = SelectField('Participation Type',
+                            [validators.DataRequired(), PostValidator([x.value for x in MeetingPartType])],
+                            choices=[(x.value, x.fancy) for x in MeetingPartType], coerce=int)
+    submit_btn = SubmitField('Confirm')
+
+    @property
+    def type(self):
+        return MeetingPartType(self.part_type.data)
 
 
 class CommonPost(CustomForm):

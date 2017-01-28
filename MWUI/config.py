@@ -168,6 +168,7 @@ class MeetingPostType(Enum):
     MEETING = 15
     REGISTRATION = 16
     COMMON = 17
+    SUBMISSION = 22
 
 
 class ThesisPostType(Enum):
@@ -178,6 +179,16 @@ class ThesisPostType(Enum):
     @property
     def fancy(self):
         names = {18: 'Oral', 19: 'Poster', 20: 'Plenary'}
+        return names[self.value]
+
+
+class MeetingPartType(Enum):
+    SPEAKER = 1
+    LISTENER = 2
+
+    @property
+    def fancy(self):
+        names = {1: 'Speaker', 2: 'Listener'}
         return names[self.value]
 
 

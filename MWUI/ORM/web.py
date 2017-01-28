@@ -25,7 +25,7 @@ import hashlib
 from datetime import datetime
 from pony.orm import PrimaryKey, Required, Optional, Set, Json
 from ..config import (ModelType, AdditiveType, UserRole, ProfileDegree, ProfileStatus, Glyph, DEBUG,
-                      BlogPostType, MeetingPostType, ThesisPostType, EmailPostType, TeamPostType)
+                      BlogPostType, MeetingPostType, ThesisPostType, EmailPostType, TeamPostType, MeetingPartType)
 
 
 def filter_kwargs(kwargs):
@@ -72,6 +72,8 @@ def load_tables(db, schema):
         reactions = Set('Reaction')
         conditions = Set('Conditions')
 
+        subscriptions = Set('Subscription')
+
         def __init__(self, email, password, role=UserRole.COMMON, **kwargs):
             password = self.__hash_password(password)
             token = self.__gen_token(email, str(datetime.utcnow()))
@@ -107,6 +109,23 @@ def load_tables(db, schema):
         def role(self):
             return UserRole(self.user_role)
 
+    class Subscription(db.Entity):
+        _table_ = '%s_subscription' % schema if DEBUG else (schema, 'subscription')
+        id = PrimaryKey(int, auto=True)
+        user = Required('User')
+        meeting = Required('Meeting')
+        part_type = Required(int)
+
+        def __init__(self, user, meeting, part_type):
+            super(Subscription, self).__init__(user=user, meeting=meeting, part_type=part_type.value)
+
+        @property
+        def type(self):
+            return MeetingPartType(self.part_type)
+
+        def update_type(self, _type):
+            self.part_type = _type.value
+
     class Attachment(db.Entity):
         _table_ = '%s_attachment' % schema if DEBUG else (schema, 'attachment')
         id = PrimaryKey(int, auto=True)
@@ -132,8 +151,7 @@ def load_tables(db, schema):
 
         def __init__(self, **kwargs):
             attachments = kwargs.pop('attachments', None) or []
-            user = User[kwargs.pop('author')]
-            super(Post, self).__init__(author=user, **filter_kwargs(kwargs))
+            super(Post, self).__init__(**filter_kwargs(kwargs))
 
             for file, name in attachments:
                 self.add_attachment(file, name)
@@ -199,6 +217,8 @@ def load_tables(db, schema):
             self.post_type = _type.value
 
     class Meeting(Post, MeetingMixin):
+        subscribers = Set('Subscription')
+
         def __init__(self, meeting=None, deadline=None, order=0, body_name=None, **kwargs):
             _type = kwargs.pop('type', MeetingPostType.MEETING)
             special = dict(order=order)
@@ -228,6 +248,14 @@ def load_tables(db, schema):
         @property
         def type(self):
             return MeetingPostType(self.post_type)
+
+        def update_type(self, _type):
+            if self.type == MeetingPostType.MEETING:
+                raise Exception('Meeting page can not be changed')
+            elif _type == MeetingPostType.MEETING:
+                raise Exception('Page can not be changed to Meeting page')
+
+            self.post_type = _type.value
 
         @property
         def deadline(self):
@@ -391,4 +419,5 @@ def load_tables(db, schema):
         def type(self):
             return AdditiveType(self.additive_type)
 
-    return User, Post, Attachment, Model, Destination, Additive, BlogPost, TeamPost, Meeting, Thesis, Email
+    return (User, Subscription, Model, Destination, Additive,
+            Post, BlogPost, TeamPost, Meeting, Thesis, Email, Attachment)
