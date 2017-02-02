@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2016, 2017 Ramil Nugmanov <stsouko@live.ru>
-# This file is part of MWUI.
+#  Copyright 2016, 2017 Ramil Nugmanov <stsouko@live.ru>
+#  This file is part of MWUI.
 #
 #  MWUI is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2015-2017 Ramil Nugmanov <stsouko@live.ru>
-# Copyright 2015 Oleg Varlamov <ovarlamo@gmail.com>
-# This file is part of MWUI.
+#  Copyright 2015-2017 Ramil Nugmanov <stsouko@live.ru>
+#  Copyright 2015 Oleg Varlamov <ovarlamo@gmail.com>
+#  This file is part of MWUI.
 #
 #  MWUI is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published by
