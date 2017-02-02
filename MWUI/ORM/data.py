@@ -405,4 +405,4 @@ def load_tables(db, schema):
         data = Required(Json)
         reaction = Required('Reaction')
 
-    return Molecule, Reaction
+    return Molecule, Reaction, Conditions

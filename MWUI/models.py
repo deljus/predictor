@@ -23,4 +23,4 @@ from .ORM import db, main_tables as mt, save_tables as st, data_tables as dt
 
 User, Subscription, Model, Destination, Additive, Post, BlogPost, TeamPost, Meeting, Thesis, Email, Attachment = mt
 Task, Structure, Result, Additiveset = st
-Molecule, Reaction = dt
+Molecule, Reaction, Conditions = dt
