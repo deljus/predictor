@@ -228,7 +228,7 @@ def load_tables(db, schema):
         conditions = Set('Conditions')
         special = Optional(Json)
 
-        def __init__(self, reaction, user, conditions=None, fingerprint=None, fear_string=None, cgr=None,
+        def __init__(self, reaction, user, conditions=None, special=None, fingerprint=None, fear_string=None, cgr=None,
                      substrats_fears=None, products_fears=None):
             db_user = db.User[user]
             new_mols, batch = OrderedDict(), {}
@@ -290,6 +290,9 @@ def load_tables(db, schema):
 
             if conditions:
                 Conditions(data=conditions, reaction=self, user=db_user)
+
+            if special:
+                self.special = special
 
             self.__cached_cgr = cgr
             self.__cached_structure = reaction
