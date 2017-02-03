@@ -33,12 +33,12 @@ from hashlib import md5
 from MODtools.descriptors.fragmentor import Fragmentor
 from ..config import (FP_SIZE, FP_ACTIVE_BITS, FRAGMENTOR_VERSION, DEBUG,
                       FRAGMENT_TYPE_CGR, FRAGMENT_MIN_CGR, FRAGMENT_MAX_CGR, FRAGMENT_DYNBOND_CGR,
-                      FRAGMENT_TYPE_MOL, FRAGMENT_MIN_MOL, FRAGMENT_MAX_MOL)
+                      FRAGMENT_TYPE_MOL, FRAGMENT_MIN_MOL, FRAGMENT_MAX_MOL, DATA_ISOTOPE, DATA_STEREO)
 
 
-fear = FEAR(isotop=True)
+fear = FEAR(isotope=DATA_ISOTOPE, stereo=DATA_STEREO)
 cgr_core = CGRcore()
-cgr_reactor = CGRreactor(isotop=True)
+cgr_reactor = CGRreactor(isotope=DATA_ISOTOPE, stereo=DATA_STEREO)
 
 
 def get_fingerprints(df):
