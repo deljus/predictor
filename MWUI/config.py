@@ -50,6 +50,7 @@ MAIL_SIGNER = None
 DB_USER = None
 DB_PASS = None
 DB_HOST = None
+DB_BASE = None
 DB_MAIN = None
 DB_PRED = None
 DB_DATA = None
@@ -273,14 +274,14 @@ class ProfileStatus(Enum):
         return names[self.value]
 
 
-config_list = ['UPLOAD_PATH', 'PORTAL_NON_ROOT', 'SECRET_KEY', 'RESIZE_URL', 'MAX_UPLOAD_SIZE', 'IMAGES_ROOT',
-               'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_MAIN', 'DB_PRED', 'DB_DATA', 'YANDEX_METRIKA',
+config_list = ('UPLOAD_PATH', 'PORTAL_NON_ROOT', 'SECRET_KEY', 'RESIZE_URL', 'MAX_UPLOAD_SIZE', 'IMAGES_ROOT',
+               'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_BASE', 'DB_MAIN', 'DB_PRED', 'DB_DATA', 'YANDEX_METRIKA',
                'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD', 'REDIS_TTL', 'REDIS_JOB_TIMEOUT', 'REDIS_MAIL',
                'LAB_NAME', 'LAB_SHORT', 'BLOG_POSTS_PER_PAGE', 'SCOPUS_API_KEY', 'SCOPUS_TTL',
                'SMPT_HOST', 'SMTP_PORT', 'SMTP_LOGIN', 'SMTP_PASSWORD', 'SMTP_MAIL', 'MAIL_INKEY', 'MAIL_SIGNER',
                'FP_SIZE', 'FP_ACTIVE_BITS', 'FRAGMENTOR_VERSION',
                'FRAGMENT_TYPE_CGR', 'FRAGMENT_MIN_CGR', 'FRAGMENT_MAX_CGR', 'FRAGMENT_DYNBOND_CGR',
-               'FRAGMENT_TYPE_MOL', 'FRAGMENT_MIN_MOL', 'FRAGMENT_MAX_MOL']
+               'FRAGMENT_TYPE_MOL', 'FRAGMENT_MIN_MOL', 'FRAGMENT_MAX_MOL')
 
 if not path.exists(path.join(path.dirname(__file__), "config.ini")):
     with open(path.join(path.dirname(__file__), "config.ini"), 'w') as f:

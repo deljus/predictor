@@ -47,9 +47,8 @@ class Model(CGRcombo):
         b_templates = open(b_path) if path.exists(b_path) else None
         m_templates = open(m_path) if path.exists(m_path) else None
 
-        CGRcombo.__init__(self, cgr_type='0',
-                          extralabels=True, isotop=False, element=True, deep=0, stereo=False,
-                          b_templates=b_templates, m_templates=m_templates, speed=False)
+        CGRcombo.__init__(self, cgr_type='0', extralabels=True, isotop=False, element=True, deep=0, stereo=False,
+                          b_templates=b_templates, m_templates=m_templates)
 
         with open(path.join(config_path, 'preparer.xml')) as f:
             self.__pre_rules = f.read()
