@@ -37,7 +37,7 @@ def init():
     from .views import view_bp
     from .bootstrap import top_nav, CustomBootstrapRenderer, CustomMisakaRenderer
     from .config import (PORTAL_NON_ROOT, SECRET_KEY, DEBUG, LAB_NAME, RESIZE_URL, UPLOAD_PATH, IMAGES_ROOT,
-                         MAX_UPLOAD_SIZE, YANDEX_METRIKA, DB_PASS, DB_HOST, DB_USER)
+                         MAX_UPLOAD_SIZE, YANDEX_METRIKA, DB_PASS, DB_HOST, DB_USER, DB_NAME)
     from .logins import load_user
     from .models import db
 
@@ -45,7 +45,7 @@ def init():
         sql_debug(True)
         db.bind('sqlite', 'database.sqlite')
     else:
-        db.bind('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST)
+        db.bind('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST, database=DB_NAME)
     db.generate_mapping(create_tables=DEBUG)
 
     app = Flask(__name__)
