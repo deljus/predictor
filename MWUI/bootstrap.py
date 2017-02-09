@@ -31,9 +31,6 @@ from misaka import HtmlRenderer
 
 
 class CustomMisakaRenderer(HtmlRenderer):
-    def __init__(self, flags=0):
-        super(CustomMisakaRenderer, self).__init__(flags=flags)
-
     def table(self, content):
         return '<table class="table">{}</table>'.format(content)
 

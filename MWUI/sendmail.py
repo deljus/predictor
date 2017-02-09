@@ -26,6 +26,8 @@ from subprocess import Popen, PIPE
 from rq import Queue
 from flask_misaka import markdown
 from flask import render_template
+from misaka import HTML_ESCAPE
+from .bootstrap import CustomMisakaRenderer
 from .config import (LAB_NAME, SMTP_MAIL, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_MAIL, DEBUG,
                      MAIL_INKEY, MAIL_SIGNER)
 
@@ -42,7 +44,8 @@ def send_mail(message, to_mail, to_name=None, from_name=None, subject=None, bann
         r.ping()
         sender = Queue(connection=r, name=REDIS_MAIL, default_timeout=3600)
     except ConnectionError:
-        return DEBUG or False
+        if not DEBUG:
+            return False
 
     out = ['Subject: %s' % Header(subject).encode() or 'No Title',
            'To: %s' % ('%s <%s>' % (Header(to_name).encode(), to_mail) if to_name else to_mail),
@@ -54,7 +57,11 @@ def send_mail(message, to_mail, to_name=None, from_name=None, subject=None, bann
 
     msg = MIMEMultipart('alternative')
     msg.attach(MIMEText(message, 'plain'))
-    msg.attach(MIMEText(render_template('email.html', body=markdown(message), banner=banner, title=title), 'html'))
+    msg.attach(MIMEText(render_template('email.html',
+                                        body=markdown(message, renderer=CustomMisakaRenderer(flags=0 | HTML_ESCAPE),
+                                                      tables=True, underline=True, math=True, strikethrough=True,
+                                                      superscript=True, footnotes=True, smartypants=False),
+                                        banner=banner, title=title), 'html'))
 
     if MAIL_INKEY and MAIL_SIGNER:
         p = Popen(['openssl', 'smime', '-sign', '-inkey', MAIL_INKEY, '-signer', MAIL_SIGNER], stdin=PIPE, stdout=PIPE)
@@ -65,4 +72,6 @@ def send_mail(message, to_mail, to_name=None, from_name=None, subject=None, bann
     try:
         return sender.enqueue_call('redis_mail.run', args=(to_mail, '\n'.join(out)), result_ttl=60).id
     except:
-        return False
+        if not DEBUG:
+            return False
+        print('\n'.join(out))
