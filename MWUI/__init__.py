@@ -32,8 +32,9 @@ def init():
     from flask_nav import Nav, register_renderer
     from flask_resize import Resize
     from pony.orm import sql_debug
+    from flask_restful_swagger_2 import get_swagger_blueprint
 
-    from .api import api_bp
+    from .api import api
     from .views import view_bp
     from .bootstrap import top_nav, CustomBootstrapRenderer, CustomMisakaRenderer
     from .config import (PORTAL_NON_ROOT, SECRET_KEY, DEBUG, LAB_NAME, RESIZE_URL, UPLOAD_PATH, IMAGES_ROOT,
@@ -75,7 +76,10 @@ def init():
     login_manager.login_view = '.login'
     login_manager.user_loader(load_user)
 
-    app.register_blueprint(api_bp, url_prefix=join('/', PORTAL_NON_ROOT, 'api'))
+    app.register_blueprint(api.blueprint, url_prefix=join('/', PORTAL_NON_ROOT, 'api'))
     app.register_blueprint(view_bp, url_prefix=join('/', PORTAL_NON_ROOT) if PORTAL_NON_ROOT else None)
+    app.register_blueprint(get_swagger_blueprint([api.get_swagger_doc()],
+                                                 '/swagger', title='MWUI Predictor API', api_version='1'),
+                           url_prefix=join('/', PORTAL_NON_ROOT, 'doc'))
 
     return app
