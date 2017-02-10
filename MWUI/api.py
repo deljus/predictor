@@ -28,16 +28,17 @@ from .models import Task, Structure, Additive, Model, Additiveset, Destination, 
 from .redis import RedisCombiner
 from flask import Blueprint, url_for, send_from_directory, request, Response
 from flask_login import current_user, login_user
-from flask_restful import reqparse, fields, marshal, abort, inputs, Resource
+from flask_restful import reqparse, fields, marshal, abort, inputs, Api, Resource
 from functools import wraps
 from pony.orm import db_session, select, left_join
 from validators import url
 from werkzeug import datastructures
 from typing import Dict, Tuple
-from flask_restful_swagger_2 import Api, swagger
+from flask_restful_swagger import swagger
 
 api_bp = Blueprint('api', __name__)
-api = Api(api_bp, add_api_spec_resource=False)
+api = swagger.docs(Api(api_bp), apiVersion='1.0', description='MWUI API', api_spec_url='/doc/spec',
+                   resourcePath='/', produces=["application/json", "text/html"])
 
 redis = RedisCombiner(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD, result_ttl=REDIS_TTL,
                       job_timeout=REDIS_JOB_TIMEOUT)
@@ -473,30 +474,30 @@ uf_post.add_argument('structures', type=datastructures.FileStorage, location='fi
 
 
 class UploadTask(AuthResource):
-    @swagger.doc({
-        'tags': ['upload', 'chemical structure'],
-        'description': 'Upload chemical structures file for task creation',
-        'parameters': [
+    @swagger.operation(
+        notes='some really good notes',
+        nickname='post',
+        parameters=[
             {
-                'name': '_type',
-                'description': 'task type id',
-                'in': 'path',
-                'type': 'integer'
+                "name": "_type",
+                "description": "Task type ID",
+                "required": True,
+                "allowMultiple": False,
+                "dataType": 'int',
+                "paramType": "path"
             }
         ],
-        'responses': {
-            '201': {
-                'description': 'task data',
-                #'schema': UserModel,
-                #'examples': {
-                #    'application/json': {
-                #        'id': 1,
-                #        'name': 'somebody'
-                #    }
-                #}
+        responseMessages=[
+            {
+                "code": 201,
+                "message": "Created."
+            },
+            {
+                "code": 403,
+                "message": "Invalid input"
             }
-        }
-     })
+        ]
+    )
     def post(self, _type: int) -> Tuple[Dict, int]:
         try:
             _type = TaskType(_type)
