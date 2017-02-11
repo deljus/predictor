@@ -38,10 +38,11 @@ from flask_restful_swagger import swagger
 
 api_bp = Blueprint('api', __name__)
 api = swagger.docs(Api(api_bp), apiVersion='1.0', description='MWUI API', api_spec_url='/doc/spec',
-                   resourcePath='/', produces=["application/json", "text/html"])
+                   resourcePath='/', produces=["application/json"])
 
 redis = RedisCombiner(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD, result_ttl=REDIS_TTL,
                       job_timeout=REDIS_JOB_TIMEOUT)
+task_types_desc = ', '.join('{0.value} - {0.name}'.format(x) for x in TaskType)
 
 
 class ModelTypeField(fields.Raw):
@@ -49,15 +50,41 @@ class ModelTypeField(fields.Raw):
         return ModelType(value)
 
 
-taskstructurefields = dict(structure=fields.Integer, data=fields.String, temperature=fields.Float(298),
-                           pressure=fields.Float(1),
-                           todelete=fields.Boolean(False),
-                           additives=fields.List(fields.Nested(dict(additive=fields.Integer, amount=fields.Float))),
-                           models=fields.List(fields.Nested(dict(model=fields.Integer, name=fields.String))))
+@swagger.model
+class TaskPostResponse:
+    resource_fields = dict(task=fields.String, status=fields.Integer, type=fields.Integer,
+                           date=fields.String, user=fields.Integer)
 
-modelfields = dict(example=fields.String, description=fields.String, type=ModelTypeField, name=fields.String,
-                   destinations=fields.List(fields.Nested(dict(host=fields.String, port=fields.Integer(6379),
-                                                               password=fields.String, name=fields.String))))
+
+@swagger.model
+class DestinationsFields:
+    resource_fields = dict(host=fields.String, port=fields.Integer(6379), password=fields.String, name=fields.String)
+
+
+@swagger.model
+@swagger.nested(destinations=DestinationsFields.__name__)
+class ModelRegisterFields:
+    resource_fields = dict(example=fields.String, description=fields.String, type=ModelTypeField, name=fields.String,
+                           destinations=fields.List(fields.Nested(DestinationsFields.resource_fields)))
+
+
+@swagger.model
+class AdditivesFields:
+    resource_fields = dict(additive=fields.Integer, amount=fields.Float)
+
+
+@swagger.model
+class ModelsFields:
+    resource_fields = dict(model=fields.Integer, name=fields.String)
+
+
+@swagger.model
+@swagger.nested(additives=AdditivesFields.__name__, models=ModelsFields.__name__)
+class TaskStructureFields:
+    resource_fields = dict(structure=fields.Integer, data=fields.String, temperature=fields.Float(298),
+                           pressure=fields.Float(1), todelete=fields.Boolean(False),
+                           additives=fields.List(fields.Nested(AdditivesFields.resource_fields)),
+                           models=fields.List(fields.Nested(ModelsFields.resource_fields)))
 
 
 @api_bp.route('/task/batch_file/<string:file>', methods=['GET'])
@@ -167,7 +194,7 @@ class AdminResource(Resource):
 
 class RegisterModels(AdminResource):
     def post(self):
-        data = marshal(request.get_json(force=True), modelfields)
+        data = marshal(request.get_json(force=True), ModelRegisterFields.resource_fields)
         models = data if isinstance(data, list) else [data]
         available = {x['name']: [(d['host'], d['port'], d['name']) for d in x['destinations']]
                      for x in get_models_list(skip_prep=False).values()}
@@ -313,7 +340,7 @@ class ModelTask(AuthResource):
         return format_results(task, TaskStatus.DONE, page=page), 200
 
     def post(self, task):
-        data = marshal(request.get_json(force=True), taskstructurefields)
+        data = marshal(request.get_json(force=True), TaskStructureFields.resource_fields)
         result = fetchtask(task, TaskStatus.PREPARED)[0]
 
         prepared = {s['structure']: s for s in result['structures']}
@@ -374,7 +401,7 @@ class PrepareTask(AuthResource):
         return format_results(task, TaskStatus.PREPARED, page=page), 200
 
     def post(self, task):
-        data = marshal(request.get_json(force=True), taskstructurefields)
+        data = marshal(request.get_json(force=True), TaskStructureFields.resource_fields)
         result = fetchtask(task, TaskStatus.PREPARED)[0]
         preparer = get_model(ModelType.PREPARER)
 
@@ -424,18 +451,49 @@ class PrepareTask(AuthResource):
 
 
 class CreateTask(AuthResource):
-    """ ===================================================
-        api for task creation.
-        ===================================================
-    """
+    @swagger.operation(
+        notes='some really good notes',
+        nickname='post',
+        parameters=[
+            {
+                "name": "_type",
+                "description": "Task type ID",
+                "required": True,
+                "allowMultiple": False,
+                "dataType": 'int',
+                "paramType": "path"
+            },
+            {
+                "name": "data",
+                "description": "A TODO item",
+                "required": True,
+                "allowMultiple": False,
+                "dataType": TaskStructureFields.__name__,
+                "paramType": "body"
+            }
+        ],
+        responseMessages=[
+            {
+                "code": 201,
+                "message": "Created."
+            },
+            {
+                "code": 403,
+                "message": "Invalid input"
+            }
+        ]
+    )
     def post(self, _type):
+        """
+        Task creation. bla bla
+        """
         try:
             _type = TaskType(_type)
         except ValueError:
             msg = 'invalid task type [%s]. valid values are %s' % (_type, ', '.join(str(e.value) for e in TaskType))
             abort(400, message=msg)
 
-        data = marshal(request.get_json(force=True), taskstructurefields)
+        data = marshal(request.get_json(force=True), TaskStructureFields.resource_fields)
 
         additives = get_additives()
 
@@ -475,35 +533,29 @@ uf_post.add_argument('structures', type=datastructures.FileStorage, location='fi
 
 class UploadTask(AuthResource):
     @swagger.operation(
-        notes='some really good notes',
-        nickname='post',
-        parameters=[
-            {
-                "name": "_type",
-                "description": "Task type ID",
-                "required": True,
-                "allowMultiple": False,
-                "dataType": 'int',
-                "paramType": "path"
-            }
-        ],
-        responseMessages=[
-            {
-                "code": 201,
-                "message": "Created."
-            },
-            {
-                "code": 403,
-                "message": "Invalid input"
-            }
-        ]
-    )
+        notes='Structures file upload',
+        nickname='upload',
+        responseClass=TaskPostResponse.__name__,
+        responseType='json',
+        parameters=[dict(name='_type', description='Task type ID: %s' % task_types_desc, required=True,
+                         allowMultiple=False, dataType='int', paramType='path'),
+                    dict(name='structures', description='RDF SDF MRV SMILES file', required=True,
+                         allowMultiple=False, dataType='file', paramType='body')],
+        responseMessages=[dict(code=201, message="task created"),
+                          dict(code=400, message="structure file required"),
+                          dict(code=403, message="invalid task type"),
+                          dict(code=500, message="modeling server error")])
     def post(self, _type: int) -> Tuple[Dict, int]:
+        """
+        Structures file upload
+
+        Need for batch mode.
+        Any chemical structure formats convertable with Chemaxon JChem can be passed.
+        """
         try:
             _type = TaskType(_type)
         except ValueError:
-            msg = 'invalid task type [%s]. valid values are %s' % (_type, ', '.join(str(e.value) for e in TaskType))
-            abort(403, message=msg)
+            abort(403, message='invalid task type [%s]. valid values are %s' % (_type, task_types_desc))
 
         args = uf_post.parse_args()
 
@@ -519,7 +571,7 @@ class UploadTask(AuthResource):
             args['structures'].save(path.join(UPLOAD_PATH, file_name))
             file_url = url_for('.batch_file', file=file_name)
         else:
-            abort(400, message='invalid structure data')
+            abort(400, message='structure file required')
 
         new_job = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id,
                                      structures=[dict(data=dict(url=file_url), status=StructureStatus.RAW,
