@@ -23,7 +23,7 @@ from collections import defaultdict
 from os import path
 from .logins import UserLogin
 from .config import (UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, REDIS_HOST, REDIS_JOB_TIMEOUT,
-                     REDIS_PASSWORD, REDIS_PORT, REDIS_TTL, StructureType, UserRole, BLOG_POSTS_PER_PAGE)
+                     REDIS_PASSWORD, REDIS_PORT, REDIS_TTL, StructureType, UserRole, BLOG_POSTS_PER_PAGE, AdditiveType)
 from .models import Task, Structure, Additive, Model, Additiveset, Destination, User, Result
 from .redis import RedisCombiner
 from flask import Blueprint, url_for, send_from_directory, request, Response
@@ -37,8 +37,7 @@ from typing import Dict, Tuple
 from flask_restful_swagger import swagger
 
 api_bp = Blueprint('api', __name__)
-api = swagger.docs(Api(api_bp), apiVersion='1.0', description='MWUI API', api_spec_url='/doc/spec',
-                   resourcePath='/', produces=["application/json"])
+api = swagger.docs(Api(api_bp), apiVersion='1.0', description='MWUI API', api_spec_url='/doc/spec')
 
 redis = RedisCombiner(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD, result_ttl=REDIS_TTL,
                       job_timeout=REDIS_JOB_TIMEOUT)
@@ -51,7 +50,12 @@ class ModelTypeField(fields.Raw):
 
 
 @swagger.model
-class TaskPostResponse:
+class LogInFields:
+    resource_fields = dict(user=fields.String, password=fields.String)
+
+
+@swagger.model
+class TaskPostResponseFields:
     resource_fields = dict(task=fields.String, status=fields.Integer, type=fields.Integer,
                            date=fields.String, user=fields.Integer)
 
@@ -360,7 +364,9 @@ class ModelTask(AuthResource):
                 if d['additives'] is not None:
                     alist = []
                     for a in d['additives']:
-                        if a['additive'] in additives and 0 < a['amount'] <= 1:
+                        if a['additive'] in additives and (0 < a['amount'] <= 1
+                                                           if additives[a['additive']]['type'] == AdditiveType.SOLVENT
+                                                           else a['amount'] > 0):
                             a.update(additives[a['additive']])
                             alist.append(a)
                     prepared[s]['additives'] = alist
@@ -392,10 +398,6 @@ class ModelTask(AuthResource):
 
 
 class PrepareTask(AuthResource):
-    """ ===================================================
-        api for task preparation.
-        ===================================================
-    """
     def get(self, task):
         page = results_fetch.parse_args().get('page')
         return format_results(task, TaskStatus.PREPARED, page=page), 200
@@ -421,7 +423,9 @@ class PrepareTask(AuthResource):
                 if d['additives'] is not None:
                     alist = []
                     for a in d['additives']:
-                        if a['additive'] in additives and 0 < a['amount'] < 1:
+                        if a['additive'] in additives and (0 < a['amount'] <= 1
+                                                           if additives[a['additive']]['type'] == AdditiveType.SOLVENT
+                                                           else a['amount'] > 0):
                             a.update(additives[a['additive']])
                             alist.append(a)
                     prepared[s]['additives'] = alist
@@ -454,7 +458,7 @@ class CreateTask(AuthResource):
     @swagger.operation(
         notes='Create new task',
         nickname='create',
-        responseClass=TaskPostResponse.__name__,
+        responseClass=TaskPostResponseFields.__name__,
         parameters=[dict(name='_type', description='Task type ID: %s' % task_types_desc, required=True,
                          allowMultiple=False, dataType='int', paramType='path'),
                     dict(name='structures', description='Structure of molecule or reaction with optional conditions',
@@ -467,8 +471,14 @@ class CreateTask(AuthResource):
         """
         Create new task
 
-        data field is required.
+        also possible to send list of TaskStructureFields.
+
+        data field is required. field should be a string containing marvin document or cml or smiles/smirks
         todelete and models fields not usable
+        additive should be in list of available additives.
+        amount should be in range 0 to 1 for additives type 0 [SOLVENT], and positive for overs.
+        temperature in Kelvin
+        pressure in Bar
         """
         try:
             _type = TaskType(_type)
@@ -487,7 +497,9 @@ class CreateTask(AuthResource):
             if d['data']:
                 alist = []
                 for a in d['additives'] or []:
-                    if a['additive'] in additives and 0 < a['amount'] < 1:
+                    if a['additive'] in additives and (0 < a['amount'] <= 1
+                                                       if additives[a['additive']]['type'] == AdditiveType.SOLVENT
+                                                       else a['amount'] > 0):
                         a.update(additives[a['additive']])
                         alist.append(a)
 
@@ -517,7 +529,7 @@ class UploadTask(AuthResource):
     @swagger.operation(
         notes='Structures file upload',
         nickname='upload',
-        responseClass=TaskPostResponse.__name__,
+        responseClass=TaskPostResponseFields.__name__,
         parameters=[dict(name='_type', description='Task type ID: %s' % task_types_desc, required=True,
                          allowMultiple=False, dataType='int', paramType='path'),
                     dict(name='structures', description='RDF SDF MRV SMILES file', required=True,
@@ -532,6 +544,31 @@ class UploadTask(AuthResource):
 
         Need for batch mode.
         Any chemical structure formats convertable with Chemaxon JChem can be passed.
+
+        conditions in files should be present in next key-value format:
+        additive.amount.1 --> string = float [possible delimiters: :, :=, =]
+        temperature --> float
+        pressure --> float
+        additive.2 --> string
+        amount.2 --> float
+        where .1[.2] is index of additive. possible set multiple additives.
+
+        example [RDF]:
+        $DTYPE additive.amount.1
+        $DATUM water = .4
+        $DTYPE temperature
+        $DATUM 298
+        $DTYPE pressure
+        $DATUM 0.9
+        $DTYPE additive.2
+        $DATUM DMSO
+        $DTYPE amount.2
+        $DATUM 0.6
+
+        parsed as:
+        additives = {'water': 0.4, 'DMSO': 0.6}
+        temperature = 298
+        pressure = 0.9
         """
         try:
             _type = TaskType(_type)
@@ -566,7 +603,21 @@ class UploadTask(AuthResource):
 
 
 class LogIn(Resource):
-    def get(self):
+    @swagger.operation(
+        notes='App login',
+        nickname='login',
+        parameters=[dict(name='credentials', description='user credentials', required=True,
+                         allowMultiple=False, dataType=LogInFields.__name__, paramType='body')],
+        responseMessages=[dict(code=200, message="logged in"),
+                          dict(code=400, message="invalid data"),
+                          dict(code=403, message="bad credentials")])
+    def post(self):
+        """
+        Get auth token
+
+        Token returned in headers as remember_token.
+        for use task api send in requests headers Cookie: 'remember_token=_token_'
+        """
         data = request.get_json(force=True)
         if data:
             username = data.get('user')
@@ -575,8 +626,8 @@ class LogIn(Resource):
                 user = UserLogin.get(username.lower(), password)
                 if user:
                     login_user(user, remember=True)
-                    return dict(message='Logged in'), 200
-        return dict(message='Bad credentials'), 403
+                    return dict(message='logged in'), 200
+        return dict(message='bad credentials'), 403
 
 
 api.add_resource(CreateTask, '/task/create/<int:_type>')
