@@ -452,46 +452,28 @@ class PrepareTask(AuthResource):
 
 class CreateTask(AuthResource):
     @swagger.operation(
-        notes='some really good notes',
-        nickname='post',
-        parameters=[
-            {
-                "name": "_type",
-                "description": "Task type ID",
-                "required": True,
-                "allowMultiple": False,
-                "dataType": 'int',
-                "paramType": "path"
-            },
-            {
-                "name": "data",
-                "description": "A TODO item",
-                "required": True,
-                "allowMultiple": False,
-                "dataType": TaskStructureFields.__name__,
-                "paramType": "body"
-            }
-        ],
-        responseMessages=[
-            {
-                "code": 201,
-                "message": "Created."
-            },
-            {
-                "code": 403,
-                "message": "Invalid input"
-            }
-        ]
-    )
+        notes='Create new task',
+        nickname='create',
+        responseClass=TaskPostResponse.__name__,
+        parameters=[dict(name='_type', description='Task type ID: %s' % task_types_desc, required=True,
+                         allowMultiple=False, dataType='int', paramType='path'),
+                    dict(name='structures', description='Structure of molecule or reaction with optional conditions',
+                         required=True, allowMultiple=False, dataType=TaskStructureFields.__name__, paramType='body')],
+        responseMessages=[dict(code=201, message="task created"),
+                          dict(code=400, message="invalid structure data"),
+                          dict(code=403, message="invalid task type"),
+                          dict(code=500, message="modeling server error")])
     def post(self, _type):
         """
-        Task creation. bla bla
+        Create new task
+
+        data field is required.
+        todelete and models fields not usable
         """
         try:
             _type = TaskType(_type)
         except ValueError:
-            msg = 'invalid task type [%s]. valid values are %s' % (_type, ', '.join(str(e.value) for e in TaskType))
-            abort(400, message=msg)
+            abort(403, message='invalid task type [%s]. valid values are %s' % (_type, task_types_desc))
 
         data = marshal(request.get_json(force=True), TaskStructureFields.resource_fields)
 
@@ -536,7 +518,6 @@ class UploadTask(AuthResource):
         notes='Structures file upload',
         nickname='upload',
         responseClass=TaskPostResponse.__name__,
-        responseType='json',
         parameters=[dict(name='_type', description='Task type ID: %s' % task_types_desc, required=True,
                          allowMultiple=False, dataType='int', paramType='path'),
                     dict(name='structures', description='RDF SDF MRV SMILES file', required=True,
