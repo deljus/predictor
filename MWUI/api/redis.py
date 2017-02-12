@@ -24,7 +24,7 @@ from datetime import datetime
 from uuid import uuid4
 from redis import Redis, ConnectionError
 from rq import Queue
-from .config import TaskStatus, StructureStatus, ModelType
+from ..config import TaskStatus, StructureStatus, ModelType
 
 
 class RedisCombiner(object):
