@@ -52,9 +52,9 @@ def run(structures=None, model=None):
         if isinstance(structures[0]['data'], dict):
             raise Exception('Preparer model failed on file processing')
 
-        # if failed return empty models list
+        # if failed return model without results
         for s in structures:
-            s['models'] = []
+            s['models'] = [model]
 
     shutil.rmtree(workpath)
     return structures
