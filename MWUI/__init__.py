@@ -33,7 +33,7 @@ def init():
     from flask_resize import Resize
     from pony.orm import sql_debug
 
-    from .api import api_bp
+    from .API import api_bp
     from .views import view_bp
     from .bootstrap import top_nav, CustomBootstrapRenderer, CustomMisakaRenderer
     from .config import (PORTAL_NON_ROOT, SECRET_KEY, DEBUG, LAB_NAME, RESIZE_URL, UPLOAD_PATH, IMAGES_ROOT,

@@ -24,7 +24,7 @@ from datetime import datetime
 from uuid import uuid4
 from redis import Redis, ConnectionError
 from rq import Queue
-from .config import TaskStatus, StructureStatus, ModelType
+from ..config import TaskStatus, StructureStatus, ModelType
 
 
 class RedisCombiner(object):
@@ -63,19 +63,26 @@ class RedisCombiner(object):
         for s in task['structures']:
             # check for models in structures
             if task['status'] == TaskStatus.MODELING:
-                models = ((x['model'], x) for x in s.pop('models') if x['type'] != ModelType.PREPARER)
+                models = [(x['model'], x) for x in s.pop('models') if x['type'] != ModelType.PREPARER]
             elif s['status'] == StructureStatus.RAW:
-                models = ((x['model'], x) for x in s.pop('models') if x['type'] == ModelType.PREPARER)
-            else:
+                models = [next((x['model'], x) for x in s.pop('models') if x['type'] == ModelType.PREPARER)]
+            else:  # clean or error structures in prepare task.
                 models = []
 
-            populate = [model_struct[m].append(s) for m, model in models
-                        if (model_worker.get(m) or
-                            model_worker.setdefault(m, (self.__new_worker(model.pop('destinations')), model)))[0]
-                        is not None]
+            failed = []
+            for m, model in models:
+                if (model_worker.get(m) or
+                        model_worker.setdefault(m, (self.__new_worker(model['destinations']), model)))[0] is not None:
+                    model_struct[m].append(s)
+                else:
+                    failed.append(model)
 
-            if not populate and not isinstance(s['data'], dict):  # second cond ad-hoc for file upload.
-                s.setdefault('models', [])
+            if (failed or not models) and not isinstance(s['data'], dict):
+                """ save failed models in structures.
+                ad-hoc: file upload task return empty structures list.
+                store in redis failed or unused structures.
+                """
+                s.setdefault('models', failed)
                 tmp.append(s)
 
         task['structures'] = tmp
@@ -117,9 +124,7 @@ class RedisCombiner(object):
                 if tmp is not None:
                     if tmp.is_finished:
                         sub_jobs_fin.append(tmp)
-                    elif tmp.is_failed:  # skip failed jobs
-                        pass
-                    else:
+                    elif not tmp.is_failed:  # skip failed jobs
                         sub_jobs_unf.append((dest, sub_task))
 
         if sub_jobs_fin:

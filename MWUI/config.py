@@ -178,11 +178,12 @@ class ThesisPostType(Enum):
     ORAL = 18
     POSTER = 19
     PLENARY = 20
+    CORRESPONDENCE = 23
 
     @property
     def fancy(self):
-        names = {18: 'Oral', 19: 'Poster', 20: 'Plenary'}
-        return names[self.value]
+        names = dict(ORAL='Oral', POSTER='Poster', PLENARY='Plenary', CORRESPONDENCE='Correspondence participation')
+        return names[self.name]
 
 
 class MeetingPartType(Enum):
@@ -191,8 +192,8 @@ class MeetingPartType(Enum):
 
     @property
     def fancy(self):
-        names = {1: 'Speaker', 2: 'Listener'}
-        return names[self.value]
+        names = dict(SPEAKER='Speaker', LISTENER='Listener')
+        return names[self.name]
 
 
 class Glyph(Enum):
@@ -256,8 +257,8 @@ class ProfileDegree(Enum):
 
     @property
     def fancy(self):
-        names = {1: 'No Degree', 2: 'Doctor of Philosophy', 3: 'Doctor of Science'}
-        return names[self.value]
+        names = dict(NO_DEGREE='No Degree', PHD='Doctor of Philosophy', SCID='Doctor of Science')
+        return names[self.name]
 
 
 class ProfileStatus(Enum):
@@ -271,9 +272,10 @@ class ProfileStatus(Enum):
 
     @property
     def fancy(self):
-        names = {1: 'Common', 2: 'Foreign participant', 3: 'Russian Scientist (from 40 year old)',
-                 4: 'Russian young scientist (up to 39 year old)', 5: 'Ph.D. student', 6: 'Student', 7: 'Intern'}
-        return names[self.value]
+        names = dict(COMMON='Common', FOREIGN='Foreign participant', PHD_STUDENT='Ph.D. student',
+                     RUS_SCIENTIST='Russian Scientist (from 40 year old)', STUDENT='Student', INTERN='Intern',
+                     RUS_YOUNG='Russian young scientist (up to 39 year old)')
+        return names[self.name]
 
 
 config_list = ('UPLOAD_PATH', 'PORTAL_NON_ROOT', 'SECRET_KEY', 'RESIZE_URL', 'MAX_UPLOAD_SIZE', 'IMAGES_ROOT',

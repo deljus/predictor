@@ -26,7 +26,6 @@ from io import StringIO
 from os import path
 from CGRtools.CGRpreparer import CGRcombo
 from CGRtools.files.RDFrw import RDFread, RDFwrite
-from CGRtools.files.SDFrw import SDFwrite
 from CGRtools.files import ReactionContainer, MoleculeContainer
 from MODtools.config import MOLCONVERT
 from . import get_additives, chemaxpost, ModelType, ResultType, StructureType, StructureStatus
