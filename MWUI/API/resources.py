@@ -35,7 +35,8 @@ from .structures import (ModelRegisterFields, TaskPostResponseFields, TaskGetRes
                          LogInFields)
 from ..logins import UserLogin
 from ..config import (UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, REDIS_HOST, REDIS_JOB_TIMEOUT,
-                      REDIS_PASSWORD, REDIS_PORT, REDIS_TTL, StructureType, UserRole, BLOG_POSTS_PER_PAGE, AdditiveType)
+                      REDIS_PASSWORD, REDIS_PORT, REDIS_TTL, StructureType, UserRole, BLOG_POSTS_PER_PAGE, AdditiveType,
+                      ResultType)
 from ..models import Task, Structure, Additive, Model, Additiveset, Destination, User, Result
 from .redis import RedisCombiner
 
@@ -44,6 +45,7 @@ redis = RedisCombiner(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD,
                       job_timeout=REDIS_JOB_TIMEOUT)
 
 task_types_desc = ', '.join('{0.value} - {0.name}'.format(x) for x in TaskType)
+results_types_desc = ', '.join('{0.value} - {0.name}'.format(x) for x in ResultType)
 
 
 def fetch_task(task, status):
@@ -168,7 +170,25 @@ results_fetch.add_argument('page', type=inputs.positive)
 
 
 class ResultsTask(AuthResource):
+    @swagger.operation(
+        notes='Get saved modeled task',
+        nickname='saved',
+        responseClass=TaskGetResponseFields.__name__,
+        parameters=[dict(name='task', description='Task ID', required=True,
+                         allowMultiple=False, dataType='str', paramType='path')],
+        responseMessages=[dict(code=200, message="modeled task"),
+                          dict(code=403, message='user access deny. you do not have permission to this task'),
+                          dict(code=404, message='invalid task id. perhaps this task has already been removed'),
+                          dict(code=406, message='task status is invalid. only validation tasks acceptable'),
+                          dict(code=500, message="modeling server error"),
+                          dict(code=512, message='task not ready')])
     def get(self, task):
+        """
+        Task with modeling results of structures with conditions
+
+        all structures include only models with nonempty results lists.
+        see /task/model get doc.
+        """
         try:
             task = int(task)
         except ValueError:
@@ -237,7 +257,8 @@ class ResultsTask(AuthResource):
         """
         Store in database modeled task
 
-        only modeled task can be saved.
+        only modeled tasks can be saved.
+        failed models in structures skipped.
         """
         result, ended_at = fetch_task(task, TaskStatus.DONE)
 
@@ -258,7 +279,30 @@ class ResultsTask(AuthResource):
 
 
 class ModelTask(AuthResource):
+    @swagger.operation(
+        notes='Get modeled task',
+        nickname='modeled',
+        responseClass=TaskGetResponseFields.__name__,
+        parameters=[dict(name='task', description='Task ID', required=True,
+                         allowMultiple=False, dataType='str', paramType='path')],
+        responseMessages=[dict(code=200, message="modeled task"),
+                          dict(code=403, message='user access deny. you do not have permission to this task'),
+                          dict(code=404, message='invalid task id. perhaps this task has already been removed'),
+                          dict(code=406, message='task status is invalid. only validation tasks acceptable'),
+                          dict(code=500, message="modeling server error"),
+                          dict(code=512, message='task not ready')])
+    @dynamic_docstring(results_types_desc)
     def get(self, task):
+        """
+        Task with results of structures with conditions modeling
+
+        all structures include models with results lists.
+        failed models contain empty results lists.
+
+        see also /task/prepare get doc.
+
+        available model results response types: {0}
+        """
         page = results_fetch.parse_args().get('page')
         return format_results(task, fetch_task(task, TaskStatus.DONE), page=page), 200
 
@@ -281,7 +325,7 @@ class ModelTask(AuthResource):
         """
         Modeling task structures and conditions
 
-        send only changed conditions or delete structure marks. see task/prepare docs.
+        send only changed conditions or todelete marks. see task/prepare doc.
         data, status and type fields unusable.
         """
         data = marshal(request.get_json(force=True), TaskStructureFields.resource_fields)
@@ -301,6 +345,7 @@ class ModelTask(AuthResource):
             if d['todelete']:
                 prepared.pop(s)
             else:
+                ps = prepared[s]
                 if d['additives'] is not None:
                     alist = []
                     for a in d['additives']:
@@ -309,22 +354,20 @@ class ModelTask(AuthResource):
                                                            else a['amount'] > 0):
                             a.update(additives[a['additive']])
                             alist.append(a)
-                    prepared[s]['additives'] = alist
+                    ps['additives'] = alist
 
                 if result['type'] != TaskType.MODELING:  # for search tasks assign compatible models
-                    prepared[s]['models'] = [get_model(ModelType.select(prepared[s]['type'], result['type']))]
+                    ps['models'] = [get_model(ModelType.select(ps['type'], result['type']))]
 
-                elif d['models'] is not None and prepared[s]['status'] == StructureStatus.CLEAR:
-                    prepared[s]['models'] = [models[m['model']] for m in d['models']
-                                             if m['model'] in models and
-                                             models[m['model']]['type'].compatible(prepared[s]['type'],
-                                                                                   TaskType.MODELING)]
+                elif d['models'] is not None and ps['status'] == StructureStatus.CLEAR:
+                    ps['models'] = [models[m['model']].copy() for m in d['models'] if m['model'] in models and
+                                    models[m['model']]['type'].compatible(ps['type'], TaskType.MODELING)]
 
                 if d['temperature']:
-                    prepared[s]['temperature'] = d['temperature']
+                    ps['temperature'] = d['temperature']
 
                 if d['pressure']:
-                    prepared[s]['pressure'] = d['pressure']
+                    ps['pressure'] = d['pressure']
 
         result['structures'] = list(prepared.values())
         result['status'] = TaskStatus.MODELING
@@ -350,20 +393,30 @@ class PrepareTask(AuthResource):
                           dict(code=406, message='task status is invalid. only validation tasks acceptable'),
                           dict(code=500, message="modeling server error"),
                           dict(code=512, message='task not ready')])
-    @dynamic_docstring(ModelType.PREPARER, StructureStatus.CLEAR, StructureStatus.RAW)
+    @dynamic_docstring(ModelType.PREPARER, StructureStatus.CLEAR, StructureStatus.RAW, StructureStatus.HAS_ERROR,
+                       ResultType.TEXT, StructureType.REACTION, StructureType.MOLECULE)
     def get(self, task):
         """
         Task with validated structure and conditions data
 
+        all structures has check status = {1.value} [{1.name}] - all checks passed. {3.value} [{3.name}] - structure \
+        has errors. {2.value} [{2.name}] - validation failed.
+        structure type also autoassigned: {5.value} [{5.name}] or {6.value} [{6.name}].
+
         all newly validated structures include model with type = {0.value} [{0.name}] with results containing \
         errors or warning information.
-        if task not newly created by upload file or create task api it can contain models different from \
+        if task not newly created by upload file or create task api it can contain models with types different from \
         {0.value} [{0.name}] which previously selected on revalidaton for structures with status = {1.value} [{1.name}].
         this models contain empty results list.
 
         if preparer model failed [due to server lag etc] returned structures with status = {2.value} [{2.name}] and\
         {0.name} model with empty results list. In this case possible to resend this task to revalidation as is.
         for upload task failed validation return empty structure list and resend impossible.
+
+        model results response structure:
+        key: string - header
+        type: data type = {4.value} [{4.name}] - plain text information
+        value: string - body
         """
         page = results_fetch.parse_args().get('page')
         return format_results(task, fetch_task(task, TaskStatus.PREPARED), page=page), 200
@@ -395,7 +448,7 @@ class PrepareTask(AuthResource):
 
         unchanged data server kept as is.
 
-        status and type fields not usable
+        structures status and type fields not usable
 
         todelete field marks structure for delete.
         example json: [{{"structure": 5, "todetele": true}}]
@@ -410,7 +463,7 @@ class PrepareTask(AuthResource):
 
         for SEARCH type tasks models field unusable.
 
-        see also task/create docs.
+        see also task/create doc.
         """
         data = marshal(request.get_json(force=True), TaskStructureFields.resource_fields)
         result = fetch_task(task, TaskStatus.PREPARED)[0]
@@ -484,7 +537,8 @@ class CreateTask(AuthResource):
                           dict(code=400, message="invalid structure data"),
                           dict(code=403, message="invalid task type"),
                           dict(code=500, message="modeling server error")])
-    @dynamic_docstring(AdditiveType.SOLVENT)
+    @dynamic_docstring(AdditiveType.SOLVENT, TaskStatus.PREPARING,
+                       TaskType.MODELING, TaskType.SIMILARITY, TaskType.SUBSTRUCTURE)
     def post(self, _type):
         """
         Create new task
@@ -498,6 +552,13 @@ class CreateTask(AuthResource):
         additive should be in list of available additives.
         amount should be in range 0 to 1 for additives type = {0.value} [{0.name}], and positive for overs.
         temperature in Kelvin and pressure in Bar also should be positive.
+
+        response include next information:
+        date: creation date time
+        status: {1.value} [{1.name}]
+        task: task id
+        type: {2.value} [{2.name}] or {3.value} [{3.name}] or {4.value} [{4.name}]
+        user: user id
         """
         try:
             _type = TaskType(_type)
@@ -585,11 +646,11 @@ class UploadTask(AuthResource):
         parsed as:
         temperature = 298
         pressure = 0.9
-        additives = [{"name": "water", "amount": 0.4, "type": x, "additive": y1},
+        additives = [{"name": "water", "amount": 0.4, "type": x, "additive": y1}, \
                      {"name": "DMSO", "amount": 0.6, "type": x, "additive": y2}]
         where "type" and "additive" obtained from DataBase by name
 
-        see task/create docs about acceptable conditions values and additives types
+        see task/create doc about acceptable conditions values and additives types and response structure.
         """
         try:
             _type = TaskType(_type)
