@@ -164,6 +164,7 @@ class AvailableModels(Resource):
         description - description of model. in markdown format.
         name - model name
         type - model type: {0.value} [{0.name}] or {1.value} [{1.name}]
+        model - id
         """
         out = []
         for x in get_models_list(skip_destinations=True, skip_example=False).values():

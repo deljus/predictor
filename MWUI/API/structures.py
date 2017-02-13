@@ -114,4 +114,5 @@ class AdditivesListFields:
 
 @swagger.model
 class ModelListFields:
-    resource_fields = dict(example=fields.String, description=fields.String, type=ModelTypeField, name=fields.String)
+    resource_fields = dict(example=fields.String, description=fields.String, type=ModelTypeField, name=fields.String,
+                           model=fields.Integer)
