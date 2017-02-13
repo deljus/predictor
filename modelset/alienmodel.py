@@ -55,7 +55,7 @@ class Model(object):
     def get_type(self):
         return ModelType(self.__conf.get('type'))
 
-    def setworkpath(self, workpath):
+    def set_work_path(self, workpath):
         self.__workpath = workpath
 
     def get_results(self, structures):

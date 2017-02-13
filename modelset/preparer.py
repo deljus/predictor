@@ -79,7 +79,7 @@ class Model(CGRcombo):
     def get_type():
         return ModelType.PREPARER
 
-    def setworkpath(self, workpath):
+    def set_work_path(self, workpath):
         self.__workpath = workpath
 
     def get_results(self, structures):

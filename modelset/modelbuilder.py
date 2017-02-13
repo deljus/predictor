@@ -59,7 +59,7 @@ class Model(ConsensusDragos):
     def get_type(self):
         return ModelType(self.__conf['type'])
 
-    def setworkpath(self, workpath):
+    def set_work_path(self, workpath):
         self.__workpath = workpath
         for m in self.__models:
             m.setworkpath(workpath)

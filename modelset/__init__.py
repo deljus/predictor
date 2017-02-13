@@ -52,7 +52,7 @@ class ModelSet(object):
     def load_model(self, name, workpath='.'):
         if name in self.__models:
             model = self.__loader(self.__models[name][0]).load_model(name)
-            model.setworkpath(workpath)
+            model.set_work_path(workpath)
             return model
 
     def get_models(self):
