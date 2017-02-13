@@ -105,3 +105,13 @@ class TaskGetResponseFields:
                            type=fields.Integer, user=fields.Integer,
                            structures=fields.List(fields.Nested(TaskStructureResponseFields.resource_fields)))
 
+
+@swagger.model
+class AdditivesListFields:
+    resource_fields = dict(additive=fields.Integer, name=fields.String, structure=fields.String,
+                           type=fields.Integer)
+
+
+@swagger.model
+class ModelListFields:
+    resource_fields = dict(example=fields.String, description=fields.String, type=ModelTypeField, name=fields.String)

@@ -122,6 +122,7 @@ class TaskType(Enum):
 class AdditiveType(Enum):
     SOLVENT = 0
     CATALYST = 1
+    OVER = 2
 
 
 class ResultType(Enum):

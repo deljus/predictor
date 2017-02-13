@@ -32,7 +32,7 @@ from typing import Dict, Tuple
 from flask_restful_swagger import swagger
 from .data import get_additives, get_model, get_models_list, format_results
 from .structures import (ModelRegisterFields, TaskPostResponseFields, TaskGetResponseFields, TaskStructureFields,
-                         LogInFields)
+                         LogInFields, AdditivesListFields, ModelListFields)
 from ..logins import UserLogin
 from ..config import (UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, REDIS_HOST, REDIS_JOB_TIMEOUT,
                       REDIS_PASSWORD, REDIS_PORT, REDIS_TTL, StructureType, UserRole, BLOG_POSTS_PER_PAGE, AdditiveType,
@@ -46,6 +46,7 @@ redis = RedisCombiner(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD,
 
 task_types_desc = ', '.join('{0.value} - {0.name}'.format(x) for x in TaskType)
 results_types_desc = ', '.join('{0.value} - {0.name}'.format(x) for x in ResultType)
+additives_types_desc = ', '.join('{0.value} - {0.name}'.format(x) for x in AdditiveType)
 
 
 def fetch_task(task, status):
@@ -148,7 +149,22 @@ class RegisterModels(AdminResource):
 
 
 class AvailableModels(Resource):
+    @swagger.operation(
+        notes='Get available models',
+        nickname='modellist',
+        responseClass=ModelListFields.__name__,
+        responseMessages=[dict(code=200, message="models list")])
+    @dynamic_docstring(ModelType.MOLECULE_MODELING, ModelType.REACTION_MODELING)
     def get(self):
+        """
+        Get available models list
+
+        response format:
+        example - chemical structure in in smiles or marvin or cml format
+        description - description of model. in markdown format.
+        name - model name
+        type - model type: {0.value} [{0.name}] or {1.value} [{1.name}]
+        """
         out = []
         for x in get_models_list(skip_destinations=True, skip_example=False).values():
             x['type'] = x['type'].value
@@ -157,7 +173,22 @@ class AvailableModels(Resource):
 
 
 class AvailableAdditives(Resource):
+    @swagger.operation(
+        notes='Get available additives',
+        nickname='additives',
+        responseClass=AdditivesListFields.__name__,
+        responseMessages=[dict(code=200, message="additives list")])
+    @dynamic_docstring(additives_types_desc)
     def get(self):
+        """
+        Get available additives list
+
+        response format:
+        additive - id
+        name - name of additive
+        structure - chemical structure in smiles or marvin or cml format
+        type - additive type: {0}
+        """
         out = []
         for x in get_additives().values():
             x['type'] = x['type'].value
