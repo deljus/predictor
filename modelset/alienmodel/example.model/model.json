@@ -1,7 +1,0 @@
-{
-  "description": "bla",
-  "name": "short bla",
-  "example": "smiles or cml or mrv",
-  "start": "launcher.sh",
-  "type": 1
-}
