@@ -217,7 +217,8 @@ def load_tables(db, schema):
     class Meeting(Post, MeetingMixin):
         subscribers = Set('Subscription')
 
-        def __init__(self, meeting=None, deadline=None, order=0, body_name=None, **kwargs):
+        def __init__(self, meeting=None, deadline=None, poster_deadline=None, order=0, body_name=None,
+                     participation_types=None, thesis_types=None, **kwargs):
             _type = kwargs.pop('type', MeetingPostType.MEETING)
             special = dict(order=order)
 
@@ -229,12 +230,41 @@ def load_tables(db, schema):
             else:
                 parent = None
                 special['body_name'] = body_name or None
-                if deadline:
+                if deadline and poster_deadline:
                     special['deadline'] = deadline.timestamp()
+                    special['poster_deadline'] = poster_deadline.timestamp()
                 else:
-                    raise Exception('Need deadline information')
+                    raise Exception('Need deadlines information')
+
+                if participation_types is not None:
+                    special['participation_types'] = [x.value for x in participation_types]
+
+                if thesis_types is not None:
+                    special['thesis_types'] = [x.value for x in thesis_types]
 
             super(Meeting, self).__init__(post_type=_type.value, post_parent=parent, special=special, **kwargs)
+
+        @property
+        def participation_types(self):
+            return [MeetingPartType(x) for x in self.meeting.special.get('participation_types', [])]
+
+        @property
+        def participation_types_id(self):
+            return self.meeting.special.get('participation_types', [])
+
+        def update_participation_types(self, types):
+            self.meeting.special['participation_types'] = [x.value for x in types]
+
+        @property
+        def thesis_types(self):
+            return [MeetingPartType(x) for x in self.meeting.special.get('participation_types', [])]
+
+        @property
+        def thesis_types_id(self):
+            return self.meeting.special.get('thesis_types', [])
+
+        def update_thesis_types(self, types):
+            self.meeting.special['thesis_types'] = [x.value for x in types]
 
         @property
         def body_name(self):
@@ -249,6 +279,8 @@ def load_tables(db, schema):
 
         def update_type(self, _type):
             if self.type == MeetingPostType.MEETING:
+                if _type == MeetingPostType.MEETING:
+                    return None
                 raise Exception('Meeting page can not be changed')
             elif _type == MeetingPostType.MEETING:
                 raise Exception('Page can not be changed to Meeting page')
