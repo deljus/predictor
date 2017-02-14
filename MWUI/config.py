@@ -187,11 +187,11 @@ class ThesisPostType(Enum):
     @property
     def fancy(self):
         names = dict(PLENARY='Plenary', LECTURE='Lecture', KEYNOTE='Key-note', ORAL='Oral',
-                     SHORTCOMM='Short Communication', POSTER='Poster', EXTRAMURAL='Correspondence participation')
+                     SHORTCOMM='Short Communication', POSTER='Poster', EXTRAMURAL='Extramural participation')
         return names[self.name]
 
     @staticmethod
-    def thesis_post_type(part_type):
+    def thesis_types(part_type):
         if part_type == MeetingPartType.ORAL:
             return [ThesisPostType.PLENARY, ThesisPostType.LECTURE, ThesisPostType.KEYNOTE, ThesisPostType.ORAL,
                     ThesisPostType.SHORTCOMM]

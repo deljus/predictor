@@ -212,6 +212,12 @@ class MeetForm(CustomForm):
                             choices=[(x.value, x.fancy) for x in MeetingPartType], coerce=int)
     submit_btn = SubmitField('Confirm')
 
+    def __init__(self, *args, types=None, **kwargs):
+        super(MeetForm, self).__init__(*args, **kwargs)
+        if types is not None:
+            self.part_type.choices = [(x.value, x.fancy) for x in types]
+            self.part_type.validators[1] = SelectValidator([x.value for x in types])
+
     @property
     def type(self):
         return MeetingPartType(self.part_type.data)
@@ -234,11 +240,12 @@ class ThesisForm(CommonPost):
 
     __order = ('csrf_token', 'next', 'title', 'body', 'banner_field', 'attachment', 'post_type', 'submit_btn')
 
-    def __init__(self, *args, body_name=None, part_type=None, **kwargs):
+    def __init__(self, *args, body_name=None, types=None, **kwargs):
         self._order = self.reorder(self.__order, kwargs.get('prefix'))
         super(ThesisForm, self).__init__(*args, **kwargs)
-        if part_type is not None:
-            self.post_type.choices = [(x.value, x.fancy) for x in ThesisPostType.thesis_post_type(part_type)]
+        if types is not None:
+            self.post_type.choices = [(x.value, x.fancy) for x in types]
+            self.post_type.validators[1] = SelectValidator([x.value for x in types])
         self.body.label.text = body_name and '%s *' % body_name or 'Short Abstract'
 
     @property

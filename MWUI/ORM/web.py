@@ -257,7 +257,7 @@ def load_tables(db, schema):
 
         @property
         def thesis_types(self):
-            return [MeetingPartType(x) for x in self.meeting.special.get('participation_types', [])]
+            return [ThesisPostType(x) for x in self.meeting.special.get('thesis_types', [])]
 
         @property
         def thesis_types_id(self):
