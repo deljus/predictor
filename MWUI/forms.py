@@ -298,11 +298,11 @@ class MeetingForm(Post):
 
     @property
     def participation_types(self):
-        return [MeetingPartType(x) for x in self.participation_types_id.data]
+        return [MeetingPartType(x) for x in self.participation_types_id.data] or None
 
     @property
     def thesis_types(self):
-        return [ThesisPostType(x) for x in self.thesis_types_id.data]
+        return [ThesisPostType(x) for x in self.thesis_types_id.data] or None
 
 
 class EmailForm(Post):

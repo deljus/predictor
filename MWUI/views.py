@@ -270,6 +270,8 @@ def profile(action=4):
         def add_post():
             banner_name, file_name = combo_save(active_form.banner_field, active_form.attachment)
             p = Meeting(meeting=active_form.meeting_id.data, deadline=active_form.deadline.data,
+                        poster_deadline=active_form.poster_deadline.data,
+                        participation_types=active_form.participation_types, thesis_types=active_form.thesis_types,
                         order=active_form.order.data, type=active_form.type, author=current_user.get_user(),
                         title=active_form.title.data, slug=active_form.slug.data, body_name=active_form.body_name.data,
                         body=active_form.body.data, banner=banner_name, attachments=file_name)
@@ -283,9 +285,10 @@ def profile(action=4):
                     return redirect(url_for('.blog_post', post=add_post()))
                 active_form.meeting_id.errors = ['Bad parent']
             else:
-                if active_form.deadline.data:
+                if active_form.deadline.data and active_form.poster_deadline.data:
                     return redirect(url_for('.blog_post', post=add_post()))
                 active_form.deadline.errors = ["Need deadline"]
+                active_form.poster_deadline.errors = ["Need deadline"]
 
     elif admin and form == FormRoute.NEW_EMAIL_TEMPLATE:
         message = 'New Email Template'
@@ -480,6 +483,12 @@ def blog_post(post):
 
             if hasattr(p, 'update_poster_deadline') and edit_post.poster_deadline.data:
                 p.update_poster_deadline(edit_post.poster_deadline.data)
+
+            if hasattr(p, 'update_participation_types') and edit_post.participation_types:
+                p.update_participation_types(edit_post.participation_types)
+
+            if hasattr(p, 'update_thesis_types') and edit_post.thesis_types:
+                p.update_thesis_types(edit_post.thesis_types)
 
     """ Meetings sidebar and title
     """
