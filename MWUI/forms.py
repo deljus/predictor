@@ -273,12 +273,13 @@ class MeetingForm(Post):
     post_type = SelectField('Post Type', [validators.DataRequired(), PostValidator([x.value for x in MeetingPostType])],
                             choices=[(x.value, x.name) for x in MeetingPostType], coerce=int)
     deadline = DateTimeField('Deadline', [validators.Optional()], format='%d/%m/%Y %H:%M')
+    poster_deadline = DateTimeField('Poster Deadline', [validators.Optional()], format='%d/%m/%Y %H:%M')
     meeting_id = IntegerField('Meeting page', [validators.Optional(), CheckMeetingExist()])
     order = IntegerField('Order', [validators.Optional()])
     body_name = StringField('Body Name')
 
     __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner_field', 'attachment', 'post_type', 'deadline',
-               'meeting_id', 'order', 'body_name', 'submit_btn')
+               'poster_deadline', 'meeting_id', 'order', 'body_name', 'submit_btn')
 
     def __init__(self, *args, **kwargs):
         self._order = self.reorder(self.__order, kwargs.get('prefix'))

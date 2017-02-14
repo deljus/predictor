@@ -263,6 +263,13 @@ def load_tables(db, schema):
             self.meeting.special['deadline'] = deadline.timestamp()
 
         @property
+        def poster_deadline(self):
+            return datetime.fromtimestamp(self.meeting.special['poster_deadline'])
+
+        def update_poster_deadline(self, deadline):
+            self.meeting.special['poster_deadline'] = deadline.timestamp()
+
+        @property
         def order(self):
             return self.special['order']
 

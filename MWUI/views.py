@@ -26,14 +26,15 @@ from .redirect import get_redirect_target
 from .logins import UserLogin
 from .models import User, BlogPost, Email, Meeting, Post, TeamPost, Thesis, Attachment, Subscription
 from .config import (UserRole, BLOG_POSTS_PER_PAGE, UPLOAD_PATH, IMAGES_ROOT, BlogPostType, LAB_NAME, MeetingPostType,
-                     FormRoute, EmailPostType, TeamPostType, MeetingPartType)
+                     FormRoute, EmailPostType, TeamPostType, MeetingPartType, ProfileStatus)
 from .bootstrap import Pagination
 from .sendmail import send_mail
 from .scopus import get_articles
 from flask import redirect, url_for, render_template, Blueprint, flash, abort, make_response, request
 from flask_login import login_user, logout_user, login_required, current_user
-from pony.orm import db_session, select, commit
+from pony.orm import db_session, select, commit, left_join
 from datetime import datetime
+from pycountry import countries
 from os import path
 from werkzeug.utils import secure_filename
 
@@ -399,7 +400,6 @@ def blog_post(post):
     children = []
     title = None
     info = None
-    theses = None
 
     p = Post.get(id=post)
     if not p:
@@ -475,14 +475,21 @@ def blog_post(post):
             if hasattr(p, 'update_deadline') and edit_post.deadline.data:
                 p.update_deadline(edit_post.deadline.data)
 
+            if hasattr(p, 'update_poster_deadline') and edit_post.poster_deadline.data:
+                p.update_poster_deadline(edit_post.poster_deadline.data)
+
     """ Meetings sidebar and title
     """
     if p.classtype == 'Meeting':
         title = p.meeting.title
-        theses = dict(title='Participants', url=url_for('.participants', event=p.meeting_id))
-        children.append(dict(title='Event main page', id=p.meeting_id))
-        children.extend(p.meeting.children.
+
+        children.append(dict(title='Event main page', url=url_for('.blog_post', post=p.meeting_id)))
+        children.extend(dict(title=x.title, url=url_for('.blog_post', post=x.id))
+                        for x in p.meeting.children.
                         filter(lambda x: x.classtype == 'Meeting').order_by(lambda x: x.special['order']))
+
+        children.append(dict(title='Participants', url=url_for('.participants', event=p.meeting_id)))
+        children.append(dict(title='Abstracts', url=url_for('.abstracts', event=p.meeting_id)))
 
         if p.type != MeetingPostType.MEETING:
             crumb = dict(url=url_for('.blog_post', post=p.meeting_id), title=p.title, parent='Event main page')
@@ -497,7 +504,8 @@ def blog_post(post):
                     if sub:
                         if special_form.type == MeetingPartType.LISTENER and \
                                 Thesis.exists(post_parent=p.meeting, author=current_user.get_user()):
-                            special_form.part_type.errors = ['Invalid participation type. You send thesis earlier.']
+                            special_form.part_type.errors = ['Listener participation type unavailable. '
+                                                             'You send thesis earlier.']
                             flash('Participation type change error', 'error')
                         else:
                             sub.update_type(special_form.type)
@@ -514,7 +522,7 @@ def blog_post(post):
                                   reply_name=m and m.reply_name)
 
             elif current_user.is_authenticated and p.type == MeetingPostType.SUBMISSION \
-                    and p.deadline > datetime.utcnow():
+                    and p.poster_deadline > datetime.utcnow():
 
                 sub = Subscription.get(user=current_user.get_user(), meeting=p.meeting)
                 if sub and sub.type != MeetingPartType.LISTENER and \
@@ -532,7 +540,7 @@ def blog_post(post):
             crumb = dict(url=url_for('.blog'), title='Post', parent='News')
 
     elif p.classtype == 'Thesis':
-        if current_user.is_authenticated and opened_by_author and p.meeting.deadline > datetime.utcnow():
+        if current_user.is_authenticated and opened_by_author and p.meeting.poster_deadline > datetime.utcnow():
             special_form = ThesisForm(prefix='special', obj=p, body_name=p.body_name)
             if special_form.validate_on_submit():
                 p.title = special_form.title.data
@@ -562,7 +570,7 @@ def blog_post(post):
                                       MeetingPostType.MEETING.value)).order_by(Post.date.desc()).limit(3)
 
     return render_template("post.html", title=title or p.title, post=p, info=info, downloadable=downloadable,
-                           children=children, participants=theses, deletable=deletable,
+                           children=children, deletable=deletable,
                            edit_form=edit_post, remove_form=remove_post_form, crumb=crumb,
                            special_form=special_form, special_field=special_field)
 
@@ -611,18 +619,17 @@ def events(page=1):
     return blog_viewer(page, q, '.events', 'Events', 'Abstracts')
 
 
-@view_bp.route('/participants/<int:event>', methods=['GET'])
-@view_bp.route('/participants/<int:event>/<int:page>', methods=['GET'])
+@view_bp.route('/abstracts/<int:event>', methods=['GET'])
+@view_bp.route('/abstracts/<int:event>/<int:page>', methods=['GET'])
 @db_session
-def participants(event, page=1):
+def abstracts(event, page=1):
     m = Meeting.get(id=event, post_type=MeetingPostType.MEETING.value)
     if not m:
         return redirect(url_for('.blog'))
 
     q = select(x for x in Thesis if x.post_parent == m).order_by(Thesis.id.desc())
-    return blog_viewer(page, q, '.participants', m.title, 'Participants',
-                       crumb=dict(url=url_for('.blog_post', post=event), title='Presentations',
-                                  parent='Event main page'))
+    return blog_viewer(page, q, '.participants', m.title, 'Abstracts',
+                       crumb=dict(url=url_for('.blog_post', post=event), title='Abstracts', parent='Event main page'))
 
 
 @view_bp.route('/emails', methods=['GET'])
@@ -674,8 +681,26 @@ def remove(file, name):
             a = Attachment.get(file=file)
             if a and (current_user.role_is(UserRole.ADMIN)
                       or a.post.classtype == 'Thesis' and a.post.author.id == current_user.id
-                      and a.post.meeting.deadline > datetime.utcnow()):
+                      and a.post.meeting.poster_deadline > datetime.utcnow()):
                 a.delete()
         return form.redirect()
 
     return render_template('button.html', form=form, title='Delete', subtitle=name)
+
+
+@view_bp.route('/participants/<int:event>', methods=['GET'])
+@db_session
+def participants(event):
+    m = Meeting.get(id=event, post_type=MeetingPostType.MEETING.value)
+    if not m:
+        return redirect(url_for('.blog'))
+
+    subs = Subscription.select(lambda x: x.meeting == m).order_by(Subscription.id.desc())
+    users = {x.id: x for x in left_join(x for x in User for s in x.subscriptions if s.meeting == m)}
+
+    data = [dict(type=x.type.fancy, status=ProfileStatus(users[x.user.id].status).fancy,
+                 country=countries.get(alpha_3=users[x.user.id].country).name,
+                 user='{0.name} {0.surname}'.format(users[x.user.id])) for x in subs]
+    return render_template('participants.html', data=data, title=m.title, subtitle='Participants',
+                           crumb=dict(url=url_for('.blog_post', post=event), title='Participants',
+                                      parent='Event main page'))

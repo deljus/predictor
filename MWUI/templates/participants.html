@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block page %}
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="panel panel-default">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Participant</th>
+                            <th>Country</th>
+                            <th>Status</th>
+                            <th>Presentation type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for x in data %}
+                            <tr>
+                                <th scope="row">{{ loop.index }}</th>
+                                <td>{{ x.user }}</td>
+                                <td>{{ x.country }}</td>
+                                <td>{{ x.status }}</td>
+                                <td>{{ x.type }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

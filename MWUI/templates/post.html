@@ -104,12 +104,9 @@
                 <ul class="nav list-group">
                     {% for i in children %}
                         <li>
-                            <a href="{{ url_for('.blog_post', post=i.id) }}">{{ i.title }}</a>
+                            <a href="{{ i.url }}">{{ i.title }}</a>
                         </li>
                     {% endfor %}
-                    <li>
-                        <a href="{{ participants.url }}">{{ participants.title }}</a>
-                    </li>
                 </ul>
             {% endif %}
             {% if info %}

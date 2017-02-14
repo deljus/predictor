@@ -176,24 +176,31 @@ class MeetingPostType(Enum):
 
 
 class ThesisPostType(Enum):
-    ORAL = 18
-    POSTER = 19
     PLENARY = 20
-    CORRESPONDENCE = 23
+    LECTURE = 25
+    KEYNOTE = 24
+    ORAL = 18
+    SHORTCOMM = 26
+    POSTER = 19
+    EXTRAMURAL = 23
 
     @property
     def fancy(self):
-        names = dict(ORAL='Oral', POSTER='Poster', PLENARY='Plenary', CORRESPONDENCE='Correspondence participation')
+        names = dict(PLENARY='Plenary', LECTURE='Lecture', KEYNOTE='Key-note', ORAL='Oral',
+                     SHORTCOMM='Short Communication', POSTER='Poster', EXTRAMURAL='Correspondence participation')
         return names[self.name]
 
 
 class MeetingPartType(Enum):
-    SPEAKER = 1
+    ORAL = 1
     LISTENER = 2
+    POSTER = 3
+    EXTRAMURAL = 4
 
     @property
     def fancy(self):
-        names = dict(SPEAKER='Speaker', LISTENER='Listener')
+        names = dict(ORAL='Oral/Plenary Presentation', POSTER='Poster Presentation', LISTENER='Without Presentation',
+                     EXTRAMURAL='Extramural Participation')
         return names[self.name]
 
 
