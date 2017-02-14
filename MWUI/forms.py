@@ -82,24 +82,6 @@ class VerifyImage(object):
             raise ValidationError('Invalid image')
 
 
-class SelectValidator(object):
-    def __init__(self, types):
-        self.__types = types
-
-    def __call__(self, form, field):
-        if field.data not in self.__types:
-            raise ValidationError('Invalid Data')
-
-
-class MultiSelectValidator(object):
-    def __init__(self, types):
-        self.__types = types
-
-    def __call__(self, form, field):
-        if set(field.data).difference(self.__types):
-            raise ValidationError('Invalid data')
-
-
 class CustomForm(FlaskForm):
     next = HiddenField()
     _order = None
@@ -207,8 +189,7 @@ class BanUserForm(Email):
 
 
 class MeetForm(CustomForm):
-    part_type = SelectField('Participation Type',
-                            [validators.DataRequired(), SelectValidator([x.value for x in MeetingPartType])],
+    part_type = SelectField('Participation Type', [validators.DataRequired()],
                             choices=[(x.value, x.fancy) for x in MeetingPartType], coerce=int)
     submit_btn = SubmitField('Confirm')
 
@@ -216,7 +197,6 @@ class MeetForm(CustomForm):
         super(MeetForm, self).__init__(*args, **kwargs)
         if types is not None:
             self.part_type.choices = [(x.value, x.fancy) for x in types]
-            self.part_type.validators[1] = SelectValidator([x.value for x in types])
 
     @property
     def type(self):
@@ -233,8 +213,7 @@ class CommonPost(CustomForm):
 
 
 class ThesisForm(CommonPost):
-    post_type = SelectField('Presentation Type *',
-                            [validators.DataRequired(), SelectValidator([x.value for x in ThesisPostType])],
+    post_type = SelectField('Presentation Type *', [validators.DataRequired()],
                             choices=[(x.value, x.fancy) for x in ThesisPostType], coerce=int)
     submit_btn = SubmitField('Confirm')
 
@@ -245,7 +224,6 @@ class ThesisForm(CommonPost):
         super(ThesisForm, self).__init__(*args, **kwargs)
         if types is not None:
             self.post_type.choices = [(x.value, x.fancy) for x in types]
-            self.post_type.validators[1] = SelectValidator([x.value for x in types])
         self.body.label.text = body_name and '%s *' % body_name or 'Short Abstract'
 
     @property
@@ -259,7 +237,7 @@ class Post(CommonPost):
 
 
 class PostForm(Post):
-    post_type = SelectField('Post Type', [validators.DataRequired(), SelectValidator([x.value for x in BlogPostType])],
+    post_type = SelectField('Post Type', [validators.DataRequired()],
                             choices=[(x.value, x.name) for x in BlogPostType], coerce=int)
 
     __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner_field', 'attachment', 'post_type', 'submit_btn')
@@ -274,21 +252,16 @@ class PostForm(Post):
 
 
 class MeetingForm(Post):
-    post_type = SelectField('Post Type', [validators.DataRequired(),
-                                          SelectValidator([x.value for x in MeetingPostType])],
+    post_type = SelectField('Post Type', [validators.DataRequired()],
                             choices=[(x.value, x.name) for x in MeetingPostType], coerce=int)
     deadline = DateTimeField('Deadline', [validators.Optional()], format='%d/%m/%Y %H:%M')
     poster_deadline = DateTimeField('Poster Deadline', [validators.Optional()], format='%d/%m/%Y %H:%M')
     meeting_id = IntegerField('Meeting page', [validators.Optional(), CheckMeetingExist()])
     order = IntegerField('Order', [validators.Optional()])
     body_name = StringField('Body Name')
-    participation_types_id = SelectMultipleField('Participation Types',
-                                                 [validators.Optional(),
-                                                  MultiSelectValidator([x.value for x in MeetingPartType])],
+    participation_types_id = SelectMultipleField('Participation Types', [validators.Optional()],
                                                  choices=[(x.value, x.name) for x in MeetingPartType], coerce=int)
-    thesis_types_id = SelectMultipleField('Presentation Types',
-                                          [validators.Optional(),
-                                           MultiSelectValidator([x.value for x in ThesisPostType])],
+    thesis_types_id = SelectMultipleField('Presentation Types', [validators.Optional()],
                                           choices=[(x.value, x.name) for x in ThesisPostType], coerce=int)
 
     __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner_field', 'attachment', 'post_type', 'deadline',
@@ -313,7 +286,7 @@ class MeetingForm(Post):
 
 
 class EmailForm(Post):
-    post_type = SelectField('Post Type', [validators.DataRequired(), SelectValidator([x.value for x in EmailPostType])],
+    post_type = SelectField('Post Type', [validators.DataRequired()],
                             choices=[(x.value, x.name) for x in EmailPostType], coerce=int)
     from_name = StringField('From Name')
     reply_name = StringField('Reply Name')
@@ -333,8 +306,7 @@ class EmailForm(Post):
 
 
 class TeamForm(Post):
-    post_type = SelectField('Member Type', [validators.DataRequired(),
-                                            SelectValidator([x.value for x in TeamPostType])],
+    post_type = SelectField('Member Type', [validators.DataRequired()],
                             choices=[(x.value, x.name) for x in TeamPostType], coerce=int)
     role = StringField('Role', [validators.DataRequired()])
     order = IntegerField('Order', [validators.Optional()])

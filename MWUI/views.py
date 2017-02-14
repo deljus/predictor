@@ -26,7 +26,7 @@ from .redirect import get_redirect_target
 from .logins import UserLogin
 from .models import User, BlogPost, Email, Meeting, Post, TeamPost, Thesis, Attachment, Subscription
 from .config import (UserRole, BLOG_POSTS_PER_PAGE, UPLOAD_PATH, IMAGES_ROOT, BlogPostType, LAB_NAME, MeetingPostType,
-                     FormRoute, EmailPostType, TeamPostType, MeetingPartType, ProfileStatus)
+                     FormRoute, EmailPostType, TeamPostType, MeetingPartType, ProfileStatus, ThesisPostType)
 from .bootstrap import Pagination
 from .sendmail import send_mail
 from .scopus import get_articles
@@ -510,17 +510,21 @@ def blog_post(post):
                     and p.deadline > datetime.utcnow():
 
                 sub = Subscription.get(user=current_user.get_user(), meeting=p.meeting)
-                special_form = MeetForm(prefix='special', obj=sub)
+                special_form = MeetForm(prefix='special', obj=sub, types=p.meeting.participation_types)
 
                 if special_form.validate_on_submit():
+                    thesis = Thesis.get(post_parent=p.meeting, author=current_user.get_user())
                     if sub:
-                        if special_form.type == MeetingPartType.LISTENER and \
-                                Thesis.exists(post_parent=p.meeting, author=current_user.get_user()):
+                        if special_form.type == MeetingPartType.LISTENER and thesis:
                             special_form.part_type.errors = ['Listener participation type unavailable. '
-                                                             'You send thesis earlier.']
+                                                             'You sent thesis earlier.']
                             flash('Participation type change error', 'error')
                         else:
                             sub.update_type(special_form.type)
+                            thesis_type = ThesisPostType.thesis_types(special_form.type)[-1]
+                            if thesis and thesis.type != thesis_type:
+                                thesis.update_type(thesis_type)
+                                flash('Thesis type changed! Check it.')
                             flash('Participation type changed!')
                     else:
                         Subscription(current_user.get_user(), p.meeting, special_form.type)
@@ -539,8 +543,10 @@ def blog_post(post):
                 sub = Subscription.get(user=current_user.get_user(), meeting=p.meeting)
                 if sub and sub.type != MeetingPartType.LISTENER and \
                         not Thesis.exists(post_parent=p.meeting, author=current_user.get_user()):
-
-                    special_form = ThesisForm(prefix='special', body_name=p.body_name, part_type=sub.type)
+                    thesis_types = p.meeting.thesis_types
+                    special_form = ThesisForm(prefix='special', body_name=p.body_name,
+                                              types=[x for x in ThesisPostType.thesis_types(sub.type)
+                                                     if x in thesis_types])
                     if special_form.validate_on_submit():
                         banner_name, file_name = combo_save(special_form.banner_field, special_form.attachment)
                         t = Thesis(p.meeting_id, type=special_form.type,
@@ -554,7 +560,9 @@ def blog_post(post):
     elif p.classtype == 'Thesis':
         if current_user.is_authenticated and opened_by_author and p.meeting.poster_deadline > datetime.utcnow():
             sub = Subscription.get(user=current_user.get_user(), meeting=p.meeting)
-            special_form = ThesisForm(prefix='special', obj=p, body_name=p.body_name, part_type=sub.type)
+            thesis_types = p.meeting.thesis_types
+            special_form = ThesisForm(prefix='special', obj=p, body_name=p.body_name,
+                                      types=[x for x in ThesisPostType.thesis_types(sub.type) if x in thesis_types])
             if special_form.validate_on_submit():
                 p.title = special_form.title.data
                 p.body = special_form.body.data
