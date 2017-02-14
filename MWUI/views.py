@@ -445,8 +445,11 @@ def blog_post(post):
             if hasattr(p, 'update_type'):
                 try:
                     p.update_type(edit_post.type)
-                except:
-                    edit_post.post_type.errors = ['Meeting emails can be changed only to meeting Email']
+                    if p.classtype == 'Thesis':
+                        sub = Subscription.get(user=p.author, meeting=p.meeting)
+                        sub.update_type(edit_post.type.participation_type)
+                except Exception as e:
+                    edit_post.post_type.errors = [str(e)]
 
             if hasattr(p, 'update_meeting') and p.can_update_meeting() and edit_post.meeting_id.data:
                 p.update_meeting(edit_post.meeting_id.data)
@@ -528,7 +531,7 @@ def blog_post(post):
                 if sub and sub.type != MeetingPartType.LISTENER and \
                         not Thesis.exists(post_parent=p.meeting, author=current_user.get_user()):
 
-                    special_form = ThesisForm(prefix='special', body_name=p.body_name)
+                    special_form = ThesisForm(prefix='special', body_name=p.body_name, part_type=sub.type)
                     if special_form.validate_on_submit():
                         banner_name, file_name = combo_save(special_form.banner_field, special_form.attachment)
                         t = Thesis(p.meeting_id, type=special_form.type,
@@ -541,7 +544,8 @@ def blog_post(post):
 
     elif p.classtype == 'Thesis':
         if current_user.is_authenticated and opened_by_author and p.meeting.poster_deadline > datetime.utcnow():
-            special_form = ThesisForm(prefix='special', obj=p, body_name=p.body_name)
+            sub = Subscription.get(user=current_user.get_user(), meeting=p.meeting)
+            special_form = ThesisForm(prefix='special', obj=p, body_name=p.body_name, part_type=sub.type)
             if special_form.validate_on_submit():
                 p.title = special_form.title.data
                 p.body = special_form.body.data
@@ -552,7 +556,7 @@ def blog_post(post):
                 if special_form.attachment.data:
                     p.add_attachment(*save_upload(special_form.attachment.data))
 
-        crumb = dict(url=url_for('.participants', event=p.meeting_id), title='Abstract', parent='Event participants')
+        crumb = dict(url=url_for('.abstracts', event=p.meeting_id), title='Abstract', parent='Event participants')
         special_field = '**Presentation Type**: *%s*' % p.type.fancy
     elif p.classtype == 'TeamPost':
         crumb = dict(url=url_for('.students'), title='Student', parent='Laboratory') if p.type == TeamPostType.STUDENT \

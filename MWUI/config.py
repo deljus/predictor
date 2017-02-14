@@ -190,6 +190,25 @@ class ThesisPostType(Enum):
                      SHORTCOMM='Short Communication', POSTER='Poster', EXTRAMURAL='Correspondence participation')
         return names[self.name]
 
+    @staticmethod
+    def thesis_post_type(part_type):
+        if part_type == MeetingPartType.ORAL:
+            return [ThesisPostType.PLENARY, ThesisPostType.LECTURE, ThesisPostType.KEYNOTE, ThesisPostType.ORAL,
+                    ThesisPostType.SHORTCOMM]
+        elif part_type == MeetingPartType.EXTRAMURAL:
+            return [ThesisPostType.EXTRAMURAL]
+
+        return [ThesisPostType.POSTER]
+
+    @property
+    def participation_type(self):
+        if self == ThesisPostType.POSTER:
+            return MeetingPartType.POSTER
+        elif self == ThesisPostType.EXTRAMURAL:
+            return MeetingPartType.EXTRAMURAL
+
+        return MeetingPartType.ORAL
+
 
 class MeetingPartType(Enum):
     ORAL = 1
@@ -227,6 +246,10 @@ class Glyph(Enum):
     ORAL = 'blackboard'
     POSTER = 'blackboard'
     PLENARY = 'blackboard'
+    LECTURE = 'blackboard'
+    KEYNOTE = 'blackboard'
+    SHORTCOMM = 'blackboard'
+    EXTRAMURAL = 'blackboard'
 
     LESSON = 'education'
 

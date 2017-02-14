@@ -239,9 +239,11 @@ class ThesisForm(CommonPost):
 
     __order = ('csrf_token', 'next', 'title', 'body', 'banner_field', 'attachment', 'post_type', 'submit_btn')
 
-    def __init__(self, *args, body_name=None, **kwargs):
+    def __init__(self, *args, body_name=None, part_type=None, **kwargs):
         self._order = self.reorder(self.__order, kwargs.get('prefix'))
         super(ThesisForm, self).__init__(*args, **kwargs)
+        if part_type is not None:
+            self.post_type.choices = [(x.value, x.fancy) for x in ThesisPostType.thesis_post_type(part_type)]
         self.body.label.text = body_name and '%s *' % body_name or 'Short Abstract'
 
     @property
