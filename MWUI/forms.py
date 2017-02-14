@@ -33,76 +33,71 @@ from flask_login import current_user
 from pony.orm import db_session
 from werkzeug.datastructures import FileStorage
 from wtforms import (StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError,
-                     TextAreaField, SelectField, HiddenField, IntegerField, DateTimeField)
+                     TextAreaField, SelectField, HiddenField, IntegerField, DateTimeField, SelectMultipleField)
 
 
 class JsonValidator(object):
-    message = 'Bad Json'
-
     def __call__(self, form, field):
         try:
             loads(field.data)
         except Exception:
-            raise ValidationError(self.message)
+            raise ValidationError('Bad Json')
 
 
 class CheckMeetingExist(object):
-    message = 'Bad meeting post id'
-
     def __call__(self, form, field):
         with db_session:
             if not Meeting.exists(id=field.data, post_type=MeetingPostType.MEETING.value):
-                raise ValidationError(self.message)
+                raise ValidationError('Bad meeting post id')
 
 
 class CheckUserFree(object):
-    message = 'User exist. Please Log in or if you forgot password use restore procedure'
-
     def __call__(self, form, field):
         with db_session:
             if User.exists(email=field.data.lower()):
-                raise ValidationError(self.message)
+                raise ValidationError('User exist. Please Log in or if you forgot password use restore procedure')
 
 
 class CheckUserExist(object):
-    message = 'User not found'
-
     def __call__(self, form, field):
         with db_session:
             if not User.exists(email=field.data.lower()):
-                raise ValidationError(self.message)
+                raise ValidationError('User not found')
 
 
 class VerifyPassword(object):
-    message = 'Bad password'
-
     def __call__(self, form, field):
         with db_session:
             user = User.get(id=current_user.id)
             if not user or not user.verify_password(field.data):
-                raise ValidationError(self.message)
+                raise ValidationError('Bad password')
 
 
 class VerifyImage(object):
-    message = 'Invalid image'
-
     def __init__(self, types):
         self.__types = types
 
     def __call__(self, form, field):
         if isinstance(field.data, FileStorage) and field.data and imghdr.what(field.data.stream) not in self.__types:
-            raise ValidationError(self.message)
+            raise ValidationError('Invalid image')
 
 
-class PostValidator(object):
-    message = 'Invalid Post Type'
-
+class SelectValidator(object):
     def __init__(self, types):
         self.__types = types
 
     def __call__(self, form, field):
         if field.data not in self.__types:
-            raise ValidationError(self.message)
+            raise ValidationError('Invalid Data')
+
+
+class MultiSelectValidator(object):
+    def __init__(self, types):
+        self.__types = types
+
+    def __call__(self, form, field):
+        if set(field.data).difference(self.__types):
+            raise ValidationError('Invalid data')
 
 
 class CustomForm(FlaskForm):
@@ -213,7 +208,7 @@ class BanUserForm(Email):
 
 class MeetForm(CustomForm):
     part_type = SelectField('Participation Type',
-                            [validators.DataRequired(), PostValidator([x.value for x in MeetingPartType])],
+                            [validators.DataRequired(), SelectValidator([x.value for x in MeetingPartType])],
                             choices=[(x.value, x.fancy) for x in MeetingPartType], coerce=int)
     submit_btn = SubmitField('Confirm')
 
@@ -233,7 +228,7 @@ class CommonPost(CustomForm):
 
 class ThesisForm(CommonPost):
     post_type = SelectField('Presentation Type *',
-                            [validators.DataRequired(), PostValidator([x.value for x in ThesisPostType])],
+                            [validators.DataRequired(), SelectValidator([x.value for x in ThesisPostType])],
                             choices=[(x.value, x.fancy) for x in ThesisPostType], coerce=int)
     submit_btn = SubmitField('Confirm')
 
@@ -257,7 +252,7 @@ class Post(CommonPost):
 
 
 class PostForm(Post):
-    post_type = SelectField('Post Type', [validators.DataRequired(), PostValidator([x.value for x in BlogPostType])],
+    post_type = SelectField('Post Type', [validators.DataRequired(), SelectValidator([x.value for x in BlogPostType])],
                             choices=[(x.value, x.name) for x in BlogPostType], coerce=int)
 
     __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner_field', 'attachment', 'post_type', 'submit_btn')
@@ -272,16 +267,26 @@ class PostForm(Post):
 
 
 class MeetingForm(Post):
-    post_type = SelectField('Post Type', [validators.DataRequired(), PostValidator([x.value for x in MeetingPostType])],
+    post_type = SelectField('Post Type', [validators.DataRequired(),
+                                          SelectValidator([x.value for x in MeetingPostType])],
                             choices=[(x.value, x.name) for x in MeetingPostType], coerce=int)
     deadline = DateTimeField('Deadline', [validators.Optional()], format='%d/%m/%Y %H:%M')
     poster_deadline = DateTimeField('Poster Deadline', [validators.Optional()], format='%d/%m/%Y %H:%M')
     meeting_id = IntegerField('Meeting page', [validators.Optional(), CheckMeetingExist()])
     order = IntegerField('Order', [validators.Optional()])
     body_name = StringField('Body Name')
+    participation_types_id = SelectMultipleField('Participation Types',
+                                                 [validators.Optional(),
+                                                  MultiSelectValidator([x.value for x in MeetingPartType])],
+                                                 choices=[(x.value, x.name) for x in MeetingPartType], coerce=int)
+    thesis_types_id = SelectMultipleField('Presentation Types',
+                                          [validators.Optional(),
+                                           MultiSelectValidator([x.value for x in ThesisPostType])],
+                                          choices=[(x.value, x.name) for x in ThesisPostType], coerce=int)
 
     __order = ('csrf_token', 'next', 'title', 'body', 'slug', 'banner_field', 'attachment', 'post_type', 'deadline',
-               'poster_deadline', 'meeting_id', 'order', 'body_name', 'submit_btn')
+               'poster_deadline', 'meeting_id', 'order', 'body_name', 'participation_types_id', 'thesis_types_id',
+               'submit_btn')
 
     def __init__(self, *args, **kwargs):
         self._order = self.reorder(self.__order, kwargs.get('prefix'))
@@ -291,9 +296,17 @@ class MeetingForm(Post):
     def type(self):
         return MeetingPostType(self.post_type.data)
 
+    @property
+    def participation_types(self):
+        return [MeetingPartType(x) for x in self.participation_types_id.data]
+
+    @property
+    def thesis_types(self):
+        return [ThesisPostType(x) for x in self.thesis_types_id.data]
+
 
 class EmailForm(Post):
-    post_type = SelectField('Post Type', [validators.DataRequired(), PostValidator([x.value for x in EmailPostType])],
+    post_type = SelectField('Post Type', [validators.DataRequired(), SelectValidator([x.value for x in EmailPostType])],
                             choices=[(x.value, x.name) for x in EmailPostType], coerce=int)
     from_name = StringField('From Name')
     reply_name = StringField('Reply Name')
@@ -313,7 +326,8 @@ class EmailForm(Post):
 
 
 class TeamForm(Post):
-    post_type = SelectField('Member Type', [validators.DataRequired(), PostValidator([x.value for x in TeamPostType])],
+    post_type = SelectField('Member Type', [validators.DataRequired(),
+                                            SelectValidator([x.value for x in TeamPostType])],
                             choices=[(x.value, x.name) for x in TeamPostType], coerce=int)
     role = StringField('Role', [validators.DataRequired()])
     order = IntegerField('Order', [validators.Optional()])
