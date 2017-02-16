@@ -138,7 +138,7 @@ def load_tables(db, schema):
         author = Required('User')
         title = Required(str)
         body = Required(str)
-        date = Required(datetime, default=datetime.utcnow())
+        date = Required(datetime)
         banner = Optional(str)
         attachments = Set('Attachment')
         slug = Optional(str, unique=True)
@@ -149,7 +149,8 @@ def load_tables(db, schema):
 
         def __init__(self, **kwargs):
             attachments = kwargs.pop('attachments', None) or []
-            super(Post, self).__init__(**filter_kwargs(kwargs))
+            date = kwargs.pop('date', datetime.utcnow())
+            super(Post, self).__init__(date=date, **filter_kwargs(kwargs))
 
             for file, name in attachments:
                 self.add_attachment(file, name)

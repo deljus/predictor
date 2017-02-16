@@ -65,7 +65,7 @@ def load_tables(db, schema):
     class Molecule(db.Entity):
         _table_ = '%s_molecule' % schema if DEBUG else (schema, 'molecule')
         id = PrimaryKey(int, auto=True)
-        date = Required(datetime, default=datetime.utcnow())
+        date = Required(datetime)
         user = Required('User')
         data = Required(Json)
         fear = Required(str, unique=True)
@@ -90,7 +90,8 @@ def load_tables(db, schema):
 
             self.__cached_structure_raw = molecule
             self.__cached_bitstring = fingerprint
-            super(Molecule, self).__init__(data=data, user=db.User[user], fear=fear_string, fingerprint=fingerprint.bin)
+            super(Molecule, self).__init__(data=data, user=db.User[user], fear=fear_string, fingerprint=fingerprint.bin,
+                                           date=datetime.utcnow())
 
         def update(self, molecule, user):
             new_hash = {k: v['element'] for k, v in molecule.nodes(data=True)}
@@ -215,7 +216,7 @@ def load_tables(db, schema):
     class Reaction(db.Entity):
         _table_ = '%s_reaction' % schema if DEBUG else (schema, 'reaction')
         id = PrimaryKey(int, auto=True)
-        date = Required(datetime, default=datetime.utcnow())
+        date = Required(datetime)
         user = Required('User')
         fear = Required(str, unique=True)
         mapless_fear = Required(str)
@@ -282,6 +283,7 @@ def load_tables(db, schema):
 
             merged = cgr_core.merge_mols(refreshed)
             super(Reaction, self).__init__(user=db_user, fear=fear_string, fingerprint=fingerprint.bin,
+                                           date=datetime.utcnow(),
                                            mapless_fear='%s>>%s' % (Molecule.get_fear(merged['substrats']),
                                                                     Molecule.get_fear(merged['products'])))
 
@@ -403,9 +405,13 @@ def load_tables(db, schema):
     class Conditions(db.Entity):
         _table_ = '%s_conditions' % schema if DEBUG else (schema, 'conditions')
         id = PrimaryKey(int, auto=True)
-        date = Required(datetime, default=datetime.utcnow())
+        date = Required(datetime)
         user = Required('User')
         data = Required(Json)
         reaction = Required('Reaction')
+
+        def __init__(self, **kwargs):
+            date = kwargs.pop('date', datetime.utcnow())
+            super(Conditions, self).__init__(date=date, **kwargs)
 
     return Molecule, Reaction, Conditions
