@@ -90,7 +90,7 @@ def load_tables(db, schema):
 
             self.__cached_structure_raw = molecule
             self.__cached_bitstring = fingerprint
-            super(Molecule, self).__init__(data=data, user=db.User[user], fear=fear_string, fingerprint=fingerprint.bin,
+            super(Molecule, self).__init__(data=data, user=user, fear=fear_string, fingerprint=fingerprint.bin,
                                            date=datetime.utcnow())
 
         def update(self, molecule, user):
@@ -229,9 +229,8 @@ def load_tables(db, schema):
         conditions = Set('Conditions')
         special = Optional(Json)
 
-        def __init__(self, reaction, user, conditions=None, special=None, fingerprint=None, fear_string=None, cgr=None,
-                     substrats_fears=None, products_fears=None):
-            db_user = db.User[user]
+        def __init__(self, reaction, user, conditions=None, special=None, fingerprint=None, fear_string=None,
+                     mapless_fear_string=None, cgr=None, substrats_fears=None, products_fears=None):
             new_mols, batch = OrderedDict(), {}
             fears = dict(substrats=iter(substrats_fears if substrats_fears and
                                         len(substrats_fears) == len(reaction.substrats) else []),
@@ -259,7 +258,7 @@ def load_tables(db, schema):
                     if m_fp not in for_fp:
                         for_fp.append(m_fp)
                         for_x.append(x)
-                    
+
                 fp_dict = dict(zip(for_fp, Molecule.get_fingerprints(for_x)))
                 dups = {}
                 for n, (x, is_p, m_fear_string) in new_mols.items():
@@ -278,20 +277,22 @@ def load_tables(db, schema):
             elif cgr is None:
                 cgr = cgr_core.getCGR(reaction)
 
+            if mapless_fear_string is None:
+                merged = cgr_core.merge_mols(refreshed)
+                mapless_fear_string = '%s>>%s' % (Molecule.get_fear(merged['substrats']),
+                                                  Molecule.get_fear(merged['products']))
+
             if fingerprint is None:
                 fingerprint = self.get_fingerprints([cgr], is_cgr=True)[0]
 
-            merged = cgr_core.merge_mols(refreshed)
-            super(Reaction, self).__init__(user=db_user, fear=fear_string, fingerprint=fingerprint.bin,
-                                           date=datetime.utcnow(),
-                                           mapless_fear='%s>>%s' % (Molecule.get_fear(merged['substrats']),
-                                                                    Molecule.get_fear(merged['products'])))
+            super(Reaction, self).__init__(user=user, fear=fear_string, fingerprint=fingerprint.bin,
+                                           date=datetime.utcnow(), mapless_fear=mapless_fear_string)
 
             for m, is_p, mapping in (batch[x] for x in sorted(batch)):
                 MoleculeReaction(reaction=self, molecule=m, product=is_p, mapping=mapping)
 
             if conditions:
-                Conditions(data=conditions, reaction=self, user=db_user)
+                Conditions(data=conditions, reaction=self, user=user)
 
             if special:
                 self.special = special
