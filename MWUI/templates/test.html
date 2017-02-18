@@ -1,23 +1,11 @@
 {% extends "layout.html" %}
+{% block scripts %}
+    {{super()}}
+    <script src="//unpkg.com/react@15/dist/react.min.js"></script>
+    <script src="//unpkg.com/react-dom@15/dist/react-dom.min.js"></script>
+{% endblock scripts %}
+
 {% block page %}
-    <link href="{{ url_for('static', filename='css/bootstrap-slider.min.css') }}" rel="stylesheet">
-    <script src="{{ url_for('static', filename='js/bootstrap-slider.min.js') }}"></script>
     <div class="row">
-        <div class="col-md-8">
-             <ul class="list-group">
-  <li class="list-group-item">New <span class="badge">12</span></li>
-  <li class="list-group-item">Deleted <span class="badge">5</span></li>
-  <li class="list-group-item">Warnings <span class="badge"><input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value="0.7"
-
-            ></span></li>
-</ul>
-
-
-        </div>
     </div>
 {% endblock %}
