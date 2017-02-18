@@ -1,7 +1,7 @@
 {% extends "bootstrap/base.html" %}
 {% import "bootstrap/wtf.html" as wtf %}
 {% import "bootstrap/fixes.html" as fixes %}
-{% import "bootstrap/utils.html" as utils %}
+{% from "bootstrap/utils.html" import flashed_messages %}
 {% from "macroses.html" import metrika %}
 
 {% block navbar %}
@@ -27,7 +27,7 @@
         </div>
         <div class="row">
             <div class="col-md-12">
-                {{ utils.flashed_messages(container=False) }}
+                {{ flashed_messages(container=False) }}
             </div>
         </div>
         {% block page %}{% endblock %}
