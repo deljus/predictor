@@ -5,7 +5,7 @@
 {% endblock styles %}
 {% block scripts %}
     {{super()}}
-    <script src="{{ url_for('static', filename='js/ace/ace.js') }}"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/ace/1.2.6/ace.js"></script>
     <script src="{{ url_for('static', filename='js/bootstrap-markdown-editor.js') }}"></script>
     <script>
         {% if edit_form %}
