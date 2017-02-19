@@ -1,0 +1,128 @@
+.hidden-sketcher-frame {
+            width: 0;
+            height: 0;
+            display: initial;
+            position: absolute;
+            left: -1000px;
+            top: -1000px;
+            margin: -1000px;
+            padding: 0;
+        }
+.sketcher-frame {
+	margin: -2px;
+	resize: none;
+	min-width: 370px;
+	min-height: 370px;
+	height: 100%;
+	width: 100%;
+	overflow: hidden;
+}
+
+.resizable{
+	border: none;
+	padding: 0px 8px 8px 0px;
+	border: 0px;
+	resize: both;
+	min-width: 510px;
+	min-height: 510px;
+	min-width: 370px;
+	min-height: 370px;
+	overflow: auto;
+	background-color: transparent;
+}
+
+li.dropdown > a.dropdown-toggle.btn.btn-default
+{
+    width:120px;
+	padding-bottom:6px;
+	padding-top:6px;
+}
+.dropdown-menu
+{
+    width:50px;
+}
+.addivitve-amount
+{
+    float:right;
+	width: 40px;
+
+}
+.table.reactions-tbl th, .table.reactions-tbl td {
+	text-align: center;
+	vertical-align: middle;
+}
+
+.reactions-tbl th button.multiselect.dropdown-toggle.btn.btn-default
+{
+	font-weight: bold;
+}
+
+.hdn {
+	display: none;
+}
+
+tr.delete-structure-tr td {
+	background-color: #c12e2a;
+}
+
+
+#loader {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  width: 150px;
+  height: 150px;
+  margin: -75px 0 0 -75px;
+  border: 16px solid #f3f3f3;
+  border-radius: 50%;
+  border-top: 16px solid #286090;
+  width: 120px;
+  height: 120px;
+  -webkit-animation: spin 2s linear infinite;
+  animation: spin 2s linear infinite;
+}
+
+@-webkit-keyframes spin {
+  0% { -webkit-transform: rotate(0deg); }
+  100% { -webkit-transform: rotate(360deg); }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Add animation to "page content" */
+.animate-bottom {
+  position: relative;
+  -webkit-animation-name: animatebottom;
+  -webkit-animation-duration: 1s;
+  animation-name: animatebottom;
+  animation-duration: 1s
+}
+
+@-webkit-keyframes animatebottom {
+  from { bottom:-100px; opacity:0 }
+  to { bottom:0px; opacity:1 }
+}
+
+@keyframes animatebottom {
+  from{ bottom:-100px; opacity:0 }
+  to{ bottom:0; opacity:1 }
+}
+
+
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgb(0,0,0); /* Fallback color */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+}
+
