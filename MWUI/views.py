@@ -725,8 +725,3 @@ def participants(event):
     return render_template('participants.html', data=data, title=m.title, subtitle='Participants',
                            crumb=dict(url=url_for('.blog_post', post=event), title='Participants',
                                       parent='Event main page'))
-
-
-@view_bp.route('/test', methods=['GET', 'POST'])
-def test():
-    return render_template('test.html')
