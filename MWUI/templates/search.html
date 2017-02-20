@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block styles %}
+    {{super()}}
+    <link href="{{ url_for('static', filename='css/predictor.css') }}" rel="stylesheet">
+{% endblock styles %}
+{% block scripts %}
+    {{super()}}
+    <script src="{{ url_for('static', filename='js/predictor/app.js') }}"></script>
+    <script>
+        //script code
+    </script>
+{% endblock scripts %}
+
+{% block page %}
+    <div id="predictor-app"></div>
+{% endblock %}
