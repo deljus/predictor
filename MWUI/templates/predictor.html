@@ -1,18 +1,18 @@
 {% extends "layout.html" %}
 {% block styles %}
     {{super()}}
-    <link href="{{ url_for('static', filename='css/loader.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/bootstrap-slider.min.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/bootstrap-select.css') }}" rel="stylesheet">
+    <link href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/9.7.2/css/bootstrap-slider.min.css" rel="stylesheet">
+    <link href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.2/css/bootstrap-select.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/bootstrap.fd.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/loader.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/predictor.css') }}" rel="stylesheet">
 {% endblock styles %}
 {% block scripts %}
     {{super()}}
+    <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/9.7.2/bootstrap-slider.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/9.7.2/css/bootstrap-slider.min.css"></script>
     <script src="{{ url_for('static', filename='js/router.js') }}"></script>
     <script src="{{ url_for('static', filename='js/bootstrap.fd.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/bootstrap-select.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/bootstrap-slider.js') }}"></script>
 
     <script src="{{ url_for('static', filename='marvinjs/gui/lib/promise-1.0.0.min.js') }}"></script>
     <script src="{{ url_for('static', filename='marvinjs/js/webservices.js') }}"></script>
