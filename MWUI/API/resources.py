@@ -22,8 +22,9 @@ import uuid
 from collections import defaultdict
 from os import path
 from flask import url_for, request, Response
+from werkzeug.exceptions import HTTPException, Aborter
 from flask_login import current_user, login_user
-from flask_restful import reqparse, marshal, abort, inputs, Resource
+from flask_restful import reqparse, marshal, inputs, Resource
 from functools import wraps
 from pony.orm import db_session, select, left_join
 from validators import url
@@ -47,6 +48,24 @@ redis = RedisCombiner(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD,
 task_types_desc = ', '.join('{0.value} - {0.name}'.format(x) for x in TaskType)
 results_types_desc = ', '.join('{0.value} - {0.name}'.format(x) for x in ResultType)
 additives_types_desc = ', '.join('{0.value} - {0.name}'.format(x) for x in AdditiveType)
+
+
+class Abort512(HTTPException):
+    code = 512
+    description = 'task not ready'
+
+original_flask_abort = Aborter(extra={512: Abort512})
+
+
+def abort(http_status_code, **kwargs):
+    """ copy-paste from flask-restful
+    """
+    try:
+        original_flask_abort(http_status_code)
+    except HTTPException as e:
+        if len(kwargs):
+            e.data = kwargs
+        raise
 
 
 def fetch_task(task, status):
@@ -691,18 +710,20 @@ class UploadTask(AuthResource):
 
         args = uf_post.parse_args()
 
-        if args['file.url'] and url(args['file.url']):
-            # smart frontend
-            file_url = args['file.url']
-        elif args['file.path'] and path.exists(path.join(UPLOAD_PATH, path.basename(args['file.path']))):
-            # NGINX upload
-            file_url = url_for('.batch_file', file=path.basename(args['file.path']))
-        elif args['structures']:
-            # flask
+        file_url = None
+        if args['file.url']:  # smart frontend
+            if url(args['file.url']):
+                file_url = args['file.url']
+        elif args['file.path']:  # NGINX upload
+            file_name = path.basename(args['file.path'])
+            if path.exists(path.join(UPLOAD_PATH, file_name)):
+                file_url = url_for('.batch_file', file=file_name, _external=True)
+        elif args['structures']:  # flask
             file_name = str(uuid.uuid4())
             args['structures'].save(path.join(UPLOAD_PATH, file_name))
-            file_url = url_for('.batch_file', file=file_name)
-        else:
+            file_url = url_for('.batch_file', file=file_name, _external=True)
+
+        if file_url is None:
             abort(400, message='structure file required')
 
         new_job = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id,
