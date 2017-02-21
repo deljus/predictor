@@ -33,7 +33,7 @@ $.fn.modelSelect = function (obj) {
                 model: {
                     title: $('<li class="list-title ">Models: </li>'),
                     body: $('<li class="list-select list-group-item"></li>'),
-                    select: $('<select class="selectpicker" data-width="100%" multiple data-actions-box="false" title="Selected models of reactions"></select>'),
+                    select: $('<select class="selectpicker" data-width="100%" multiple data-actions-box="false" title="Selected models of reactions"></select>')
                 },
                 //dom condition
                 condition:{
@@ -48,7 +48,7 @@ $.fn.modelSelect = function (obj) {
                     container: $('<ul class="list-group-select list-group"></ul>'),
                     title: $('<li class="list-title ">Catalisators: </li>'),
                     select: $('<select class="selectpicker" data-width="100%" multiple data-actions-box="false" title="Selected catalisators"></select>'),
-                    body: $('<li class="list-select list-group-item" ></li>'),
+                    body: $('<li class="list-select list-group-item" ></li>')
                 },
 
                 // dom Solvents
@@ -56,7 +56,7 @@ $.fn.modelSelect = function (obj) {
                     container: $('<ul class="list-group-select list-group"></ul>'),
                     title: $('<li class="list-title ">Solvents: </li>'),
                     body: $('<li class="list-select list-group-item" ></li>'),
-                    select: $('<select class="selectpicker" data-width="100%" multiple data-actions-box="false" title="Selected solvents"></select>'),
+                    select: $('<select class="selectpicker" data-width="100%" multiple data-actions-box="false" title="Selected solvents"></select>')
                 },
 
                 total: {
@@ -222,7 +222,7 @@ $.fn.modelSelect = function (obj) {
                     step: 0.1,
                     value: amount,
                     handlerStyle: 'green',
-                    blockVal: 6,
+                    blockVal: 6
                 });
                 dom.cat.container.append($slider);
             }
@@ -300,8 +300,9 @@ $.fn.modelSelect = function (obj) {
             });
 
             $(this).data(containerName, oldList);
-            if(e.data.type == 0){methods.total({data:{dom: dom}})};
-
+            if(e.data.type == 0) {
+                methods.total({data:{dom: dom}})
+            }
 
         },
 
@@ -321,20 +322,18 @@ $.fn.modelSelect = function (obj) {
 
             $.each(dom.model.select.find("option:selected"), function() {
                 modelObj.push({model : parseInt($(this).attr('model'))});
-            })
+            });
 
-            if(modelObj.length == 0){
+            if(modelObj.length == 0) {
                 return 1;
-            };
-
-
-            var json = {
-                temperature : String(dom.condition.temp.listSettings('getValue').value),
-                pressure : String(dom.condition.pres.listSettings('getValue').value),
-                additives :  aditivesObj,
-                models: modelObj
             }
-            return json;
+
+            return {
+                temperature: String(dom.condition.temp.listSettings('getValue').value),
+                pressure: String(dom.condition.pres.listSettings('getValue').value),
+                additives: aditivesObj,
+                models: modelObj
+            };
         }
 
     };

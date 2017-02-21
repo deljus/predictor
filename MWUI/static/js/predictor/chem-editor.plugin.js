@@ -23,7 +23,7 @@
                     typeImg: 'png',
                     zoomMode: 'autoshrink',
                     backgroundColor: 'white',
-                    defaultImage: 'img/start.svg',
+                    defaultImage: 'static/predictor-start.svg',
 
                     typePres: 'default'
 
@@ -40,7 +40,7 @@
                     conf: {
                         container: $('<div class="col-md-5"></div>'),
                         body: $('<div class="conf"></div>')
-                    },
+                    }
                 };
 
                 this.data('dom', dom);

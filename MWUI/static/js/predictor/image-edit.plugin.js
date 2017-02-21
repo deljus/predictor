@@ -40,10 +40,10 @@
                         if (settings.cml) {
                             var params = {
                                 'inputFormat': settings.cml
-                            }
+                            };
                             var base64;
                             base64 = marvin.ImageExporter(params);
-                            console.log(base64)
+                            console.log(base64);
                             dom.img.attr({"src": base64, "alt": settings.cml});
                             _this.append(dom.img);
                         }
@@ -68,7 +68,7 @@
                             marvinSketcherInstance.exportStructure("mrv").then(function (s) {
                                 dom.img.attr('alt', s);
                                 if (s == '<cml><MDocument></MDocument></cml>') {
-                                    dom.img.attr('src', settings.defaultImage)
+                                    dom.img.attr('src', settings.defaultImage);
                                     settings.onDefaultImage.call()
                                 }
                                 else {
@@ -77,7 +77,7 @@
                                     settings.onChangeImage.call(src);
                                 }
 
-                                _this.data('flag', false)
+                                _this.data('flag', false);
                                 $("#myModal").modal('hide');
 
                             });
@@ -89,7 +89,7 @@
             },
 
             getCVL: function () {
-                var img = this.data('dom').img
+                var img = this.data('dom').img;
                 return unescape($(img).attr('alt'));
             },
             destroy: function () {

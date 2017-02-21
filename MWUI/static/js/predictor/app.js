@@ -21,10 +21,10 @@
             loader      : $("#loader"),
             errorMessage: $("#error-messange"),
             fileButton  : $("#upload")
-        }
+        };
 
         var serverError = "<p>Unfortunately, we were unable to load the data. Maybe they just aren't ready. " +
-            "To try again, click refresh <span class='glyphicon glyphicon-repeat'></span></p>"
+            "To try again, click refresh <span class='glyphicon glyphicon-repeat'></span></p>";
 
         var timeOut = 400,
             increament = 400,
@@ -41,11 +41,11 @@
                     $.ajax(API.models, {type: 'GET'}),
                     $.ajax(API.additives, {type: 'GET'})
                 ).done(function ($models, $additives) {
-                    models = $models[0]
+                    models = $models[0];
                     additives = $additives[0];
                 }).fail(function () {
                     $("#draw").append("Сервер не отвечает((((")
-                })
+                });
 
                 obj = $('<div id="chemeditor"></div>').chemEditor({
                     onDefaultImage: function () {
@@ -143,9 +143,9 @@
 
                         $page.loader.hide();
                     }).fail(function () {
-                        console.log(time + '-' + inc + '-' + count)
+                        console.log(time + '-' + inc + '-' + count);
                         if(count > 0) {
-                            count -= 1
+                            count -= 1;
                             time += inc;
                             setTimeout(function(){func(time, inc, count)}, time);
                         }else{
@@ -203,9 +203,9 @@
                         $page.resultPage.append(JSON.stringify(data));
 
                     }).fail(function () {
-                        console.log(time + '-' + inc + '-' + count)
+                        console.log(time + '-' + inc + '-' + count);
                         if(count > 0) {
-                            count -= 1
+                            count -= 1;
                             time += inc;
                             setTimeout(function(){func(time, inc, count)}, time);
                         }else{
@@ -244,7 +244,7 @@
             }
 
         }
-    }
+    };
 
 
 
