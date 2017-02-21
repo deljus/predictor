@@ -67,8 +67,6 @@
                 dom.container.append(dom.image.container);
                 dom.container.append(dom.conf.container);
                 this.append(dom.container);
-                this.append("<div class='col-lg-12'><hr></div>");
-
 
                 return this;
 
