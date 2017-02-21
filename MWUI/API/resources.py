@@ -22,8 +22,9 @@ import uuid
 from collections import defaultdict
 from os import path
 from flask import url_for, request, Response
+from werkzeug.exceptions import HTTPException, Aborter
 from flask_login import current_user, login_user
-from flask_restful import reqparse, marshal, abort, inputs, Resource
+from flask_restful import reqparse, marshal, inputs, Resource
 from functools import wraps
 from pony.orm import db_session, select, left_join
 from validators import url
@@ -47,6 +48,24 @@ redis = RedisCombiner(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD,
 task_types_desc = ', '.join('{0.value} - {0.name}'.format(x) for x in TaskType)
 results_types_desc = ', '.join('{0.value} - {0.name}'.format(x) for x in ResultType)
 additives_types_desc = ', '.join('{0.value} - {0.name}'.format(x) for x in AdditiveType)
+
+
+class Abort512(HTTPException):
+    code = 512
+    description = 'task not ready'
+
+original_flask_abort = Aborter(extra={512: Abort512})
+
+
+def abort(http_status_code, **kwargs):
+    """ copy-paste from flask-restful
+    """
+    try:
+        original_flask_abort(http_status_code)
+    except HTTPException as e:
+        if len(kwargs):
+            e.data = kwargs
+        raise
 
 
 def fetch_task(task, status):
