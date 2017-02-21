@@ -710,18 +710,20 @@ class UploadTask(AuthResource):
 
         args = uf_post.parse_args()
 
-        if args['file.url'] and url(args['file.url']):
-            # smart frontend
-            file_url = args['file.url']
-        elif args['file.path'] and path.exists(path.join(UPLOAD_PATH, path.basename(args['file.path']))):
-            # NGINX upload
-            file_url = url_for('.batch_file', file=path.basename(args['file.path']))
-        elif args['structures']:
-            # flask
+        file_url = None
+        if args['file.url']:  # smart frontend
+            if url(args['file.url']):
+                file_url = args['file.url']
+        elif args['file.path']:  # NGINX upload
+            file_name = path.basename(args['file.path'])
+            if path.exists(path.join(UPLOAD_PATH, file_name)):
+                file_url = url_for('.batch_file', file=file_name, _external=True)
+        elif args['structures']:  # flask
             file_name = str(uuid.uuid4())
             args['structures'].save(path.join(UPLOAD_PATH, file_name))
-            file_url = url_for('.batch_file', file=file_name)
-        else:
+            file_url = url_for('.batch_file', file=file_name, _external=True)
+
+        if file_url is None:
             abort(400, message='structure file required')
 
         new_job = redis.new_job(dict(status=TaskStatus.NEW, type=_type, user=current_user.id,
