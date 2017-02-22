@@ -246,7 +246,7 @@ def load_tables(db, schema):
             m_count = count()
             for i, is_p in (('substrats', False), ('products', True)):
                 for x in reaction[i]:
-                    m_fear_string = next(fears[i], fear.get_cgr_string(x))
+                    m_fear_string = next(fears[i], Molecule.get_fear(x))
                     m = Molecule.get(fear=m_fear_string)
                     if m:
                         mapping = next(cgr_reactor.get_cgr_matcher(m.structure_raw, x).isomorphisms_iter())
@@ -277,13 +277,16 @@ def load_tables(db, schema):
                         mapping = [(k, v) for k, v in iso.items() if k != v] or None
                     batch[n] = (m, is_p, mapping)
 
-            if fear_string is None:
-                fear_string, cgr = self.get_fear(reaction, get_cgr=True)
-            elif cgr is None:
-                cgr = cgr_core.getCGR(reaction)
-
             if mapless_fear_string is None:
-                mapless_fear_string = self.get_mapless_fear(refreshed)
+                mapless_fear_string, merged = self.get_mapless_fear(refreshed, get_merged=True)
+            else:
+                merged = None
+
+            if fear_string is None:
+                fear_string, cgr = (self.get_fear(reaction, get_cgr=True) if merged is None else
+                                    self.get_fear(merged, is_merged=True, get_cgr=True))
+            elif cgr is None:
+                cgr = cgr_core.getCGR(refreshed) if merged is None else cgr_core.getCGR(merged, is_merged=True)
 
             if fingerprint is None:
                 fingerprint = self.get_fingerprints([cgr], is_cgr=True)[0]
@@ -309,8 +312,7 @@ def load_tables(db, schema):
             fresh = dict(substrats=[], products=[])
             for i, is_p in (('substrats', False), ('products', True)):
                 for x in reaction[i]:
-                    m_fear_string = fear.get_cgr_string(x)
-                    m = Molecule.get(fear=m_fear_string)
+                    m = Molecule.get(fear=Molecule.get_fear(x))
                     if m:
                         fresh[i].append(m)
                     else:
@@ -348,15 +350,16 @@ def load_tables(db, schema):
             return get_fingerprints(f)
 
         @staticmethod
-        def get_fear(reaction, get_cgr=False):
-            cgr = cgr_core.getCGR(reaction)
-            cgr_string = fear.get_cgr_string(cgr)
-            return (cgr_string, cgr) if get_cgr else cgr_string
+        def get_fear(reaction, is_merged=False, get_cgr=False):
+            cgr = cgr_core.getCGR(reaction, is_merged=is_merged)
+            fear_string = Molecule.get_fear(cgr)
+            return (fear_string, cgr) if get_cgr else fear_string
 
         @staticmethod
-        def get_mapless_fear(reaction):
-            merged = cgr_core.merge_mols(reaction)
-            return '%s>>%s' % (Molecule.get_fear(merged['substrats']), Molecule.get_fear(merged['products']))
+        def get_mapless_fear(reaction, is_merged=False, get_merged=False):
+            merged = reaction if is_merged else cgr_core.merge_mols(reaction)
+            fear_string = '%s>>%s' % (Molecule.get_fear(merged['substrats']), Molecule.get_fear(merged['products']))
+            return (fear_string, merged) if get_merged else fear_string
 
         @property
         def cgr(self):
