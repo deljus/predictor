@@ -213,6 +213,11 @@ def load_tables(db, schema):
         __last_edition = None
         __cached_bitstring = None
 
+        def flush_cache(self):
+            self.__cached_structure_raw = None
+            self.__last_edition = None
+            self.__cached_bitstring = None
+
     class Reaction(db.Entity):
         _table_ = '%s_reaction' % schema if DEBUG else (schema, 'reaction')
         id = PrimaryKey(int, auto=True)
@@ -387,6 +392,12 @@ def load_tables(db, schema):
         __cached_cgr = None
         __cached_conditions = None
         __cached_bitstring = None
+
+        def flush_cache(self):
+            self.__cached_structure = None
+            self.__cached_cgr = None
+            self.__cached_conditions = None
+            self.__cached_bitstring = None
 
     class MoleculeReaction(db.Entity):
         _table_ = '%s_molecule_reaction' % schema if DEBUG else (schema, 'molecule_reaction')
