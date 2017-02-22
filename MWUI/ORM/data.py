@@ -213,6 +213,11 @@ def load_tables(db, schema):
         __last_edition = None
         __cached_bitstring = None
 
+        def flush_cache(self):
+            self.__cached_structure_raw = None
+            self.__last_edition = None
+            self.__cached_bitstring = None
+
     class Reaction(db.Entity):
         _table_ = '%s_reaction' % schema if DEBUG else (schema, 'reaction')
         id = PrimaryKey(int, auto=True)
@@ -278,9 +283,7 @@ def load_tables(db, schema):
                 cgr = cgr_core.getCGR(reaction)
 
             if mapless_fear_string is None:
-                merged = cgr_core.merge_mols(refreshed)
-                mapless_fear_string = '%s>>%s' % (Molecule.get_fear(merged['substrats']),
-                                                  Molecule.get_fear(merged['products']))
+                mapless_fear_string = self.get_mapless_fear(refreshed)
 
             if fingerprint is None:
                 fingerprint = self.get_fingerprints([cgr], is_cgr=True)[0]
@@ -326,17 +329,14 @@ def load_tables(db, schema):
         def mapless_exists(reaction):
             fresh = Reaction.refresh_reaction(reaction)
             if fresh:
-                merged = cgr_core.merge_mols(fresh)
-                ml_fear = '%s>>%s' % (Molecule.get_fear(merged['substrats']), Molecule.get_fear(merged['products']))
-                return Reaction.exists(mapless_fear=ml_fear)
+                return Reaction.exists(mapless_fear=Reaction.get_mapless_fear(fresh))
             return False
 
         @staticmethod
         def cgr_exists(reaction):
             fresh = Reaction.refresh_reaction(reaction)
             if fresh:
-                fear_string = fear.get_cgr_string(cgr_core.getCGR(fresh))
-                return Reaction.exists(fear=fear_string)
+                return Reaction.exists(fear=Reaction.get_fear(fresh))
             return False
 
         @staticmethod
@@ -352,6 +352,11 @@ def load_tables(db, schema):
             cgr = cgr_core.getCGR(reaction)
             cgr_string = fear.get_cgr_string(cgr)
             return (cgr_string, cgr) if get_cgr else cgr_string
+
+        @staticmethod
+        def get_mapless_fear(reaction):
+            merged = cgr_core.merge_mols(reaction)
+            return '%s>>%s' % (Molecule.get_fear(merged['substrats']), Molecule.get_fear(merged['products']))
 
         @property
         def cgr(self):
@@ -387,6 +392,12 @@ def load_tables(db, schema):
         __cached_cgr = None
         __cached_conditions = None
         __cached_bitstring = None
+
+        def flush_cache(self):
+            self.__cached_structure = None
+            self.__cached_cgr = None
+            self.__cached_conditions = None
+            self.__cached_bitstring = None
 
     class MoleculeReaction(db.Entity):
         _table_ = '%s_molecule_reaction' % schema if DEBUG else (schema, 'molecule_reaction')
