@@ -20,12 +20,12 @@
 #  MA 02110-1301, USA.
 #
 from enum import Enum
-from os import path
+from os.path import join, exists, expanduser, dirname
 
 
 UPLOAD_PATH = 'upload'
 MAX_UPLOAD_SIZE = 16 * 1024 * 1024
-IMAGES_ROOT = path.join(UPLOAD_PATH, 'images')
+IMAGES_ROOT = join(UPLOAD_PATH, 'images')
 RESIZE_URL = '/static/images'
 PORTAL_NON_ROOT = ''
 SECRET_KEY = 'development key'
@@ -321,17 +321,19 @@ config_list = ('UPLOAD_PATH', 'PORTAL_NON_ROOT', 'SECRET_KEY', 'RESIZE_URL', 'MA
 config_load_list = ['DEBUG']
 config_load_list.extend(config_list)
 
-if not path.exists(path.join(path.dirname(__file__), "config.ini")):
-    with open(path.join(path.dirname(__file__), "config.ini"), 'w') as f:
-        f.write('\n'.join('%s = %s' % (x, y) for x, y in globals().items() if x in config_list))
+config_dirs = [join(x, '.MWUI.ini') for x in (expanduser('~'), '/etc', dirname(__file__))]
 
-with open(path.join(path.dirname(__file__), "config.ini")) as f:
+if not any(exists(x) for x in config_dirs):
+    with open(config_dirs[0], 'w') as f:
+        f.write('\n'.join('%s = %s' % (x, y or '') for x, y in globals().items() if x in config_list))
+
+with open(next(x for x in config_dirs if exists(x))) as f:
     for line in f:
         try:
             k, v = line.split('=')
             k = k.strip()
             v = v.strip()
             if k in config_load_list:
-                globals()[k] = int(v) if v.isdigit() else v
+                globals()[k] = int(v) if v.isdigit() else v == 'True' if v in ('True', 'False', '') else v
         except:
             pass

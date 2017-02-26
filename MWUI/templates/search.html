@@ -1,129 +1,16 @@
 {% extends "layout.html" %}
-{% block page %}
-
-
-<div id="modal-loader" class="modal" style="display: none">
-    <div id="loader"></div>
-</div>
-
-    <div class="row">
-
-        <div class="col-md-12" >
-
-            <div   id="editor-div" >
-
-                <iframe style="width: 100%" src="{{ url_for('static', filename='editorws.html') }}" id="sketch" data-toolbars="reaction" class="sketcher-frame"></iframe>
-
-
-                <div style="text-align:center;" id="btn-upload-sketcher-data-div">
-
-<div class="btn-group" id="search-type-selector">
-  <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-    Search type <span class="caret"></span>
-  </button>
-
-  <ul class="dropdown-menu" data-role="search-type-select">
-    <li><a href="#" onclick="$('#btn-upload-sketcher-data').removeClass('disabled'); set_task_type(TaskType.SIMILARITY);">Similarity</a></li>
-    <li><a href="#" onclick="$('#btn-upload-sketcher-data').removeClass('disabled'); set_task_type(TaskType.SUBSTRUCTURE);">Substructure</a></li>
-  </ul>
-</div>
-    <button data-task-type="" class="btn btn-primary disabled" id="btn-upload-sketcher-data">Submit</button>
-
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div id="prepare-reactions-div" style="display:none">
-
-<div class="panel panel-default">
-  <div class="panel-heading"><h3>Prepare structures  for search</h3></div>
-  <div class="panel-body">
-    <p>...</p>
-  </div>
-
-  <form id="prepare-reactions-form" name="model-reactions-form" enctype="multipart/form-data">
-    <input id="task_id" name="task_id" type="hidden" value=""/>
-    <input id="structure_id" name="structure_id" type="hidden" value=""/>
-  <table class="table reactions-tbl">
-                        <colgroup>
-                            <col width="80%">
-                            <col width="10%">
-                            <col width="10%">
-                        </colgroup>
-                        <thead>
-                        <tr>
-                            <th>Structure</th>
-                            <th>Check status</th>
-                            <th>Delete</th>
-                        </tr>
-                        </thead>
-                        <tbody id="prepare-reactions-tbd"></tbody>
-  </table>
-  </form>
-</div>
-
-
-
-                <div style="text-align:center">
-                    <button id="validate-btn" data-role="validate-task-btn" onclick="upload_data_for_prepare_task()" class="btn btn-primary" >Revalidate</button>
-                    <button onclick="upload_task_for_searching()" class="btn btn-primary">Go to Search</button>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-
-
-    <div class="row">
-        <div id="results-div"   class="col-md-12 hdn">
-
-              <div class="panel panel-default">
-                  <div class="panel-heading"><h3>Search results</h3></div>
-                  <div class="panel-body">
-                    <p>...</p>
-                  </div>
-
-                <table class="table reactions-tbl" id="results-tbl">
-                <colgroup>
-                    <col width="60%">
-                    <col width="20%">
-                    <col width="20%">
-                </colgroup>
-        <thead>
-            <tr>
-                <th>Structure</th>
-                <th>Parameter</th>
-                <th>Value</th>
-            </tr>
-        </thead>
-        <tbody id="results-tbody"></tbody>
-        </table>
-              </div>
-              <div style="text-align:center">
-                  <button onclick="download_results('xls')" class="btn btn-primary">Export (MS Excel)</button>
-                  <button onclick="download_results('csv')" class="btn btn-primary">Export (CSV)</button>
-              </div>
-        </div>
-    </div>
-
-{% endblock %}
+{% block styles %}
+    {{super()}}
+    <link href="{{ url_for('static', filename='css/predictor.css') }}" rel="stylesheet">
+{% endblock styles %}
 {% block scripts %}
-    {{ super() }}
-	<script src="{{ url_for('static', filename='js/webservices.js') }}"></script>
-    <script src="{{ url_for('static', filename='gui/lib/promise-1.0.0.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/marvinjslauncher.js') }}"></script>
-
-    <script src="{{ url_for('static', filename='js/cookie.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/predictor.js') }}"></script>
-
+    {{super()}}
+    <script src="{{ url_for('static', filename='js/predictor/app.js') }}"></script>
+    <script>
+        //script code
+    </script>
 {% endblock scripts %}
 
-{% block styles %}
-    {{ super() }}
-    <link rel="stylesheet"
-      href="{{url_for('static', filename='css/mystyle.css')}}">
-
-
-{% endblock styles %}
+{% block page %}
+    <div id="search-app"></div>
+{% endblock %}
