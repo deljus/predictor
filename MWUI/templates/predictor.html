@@ -3,7 +3,6 @@
     {{super()}}
     <link href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/9.7.2/css/bootstrap-slider.min.css" rel="stylesheet">
     <link href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.2/css/bootstrap-select.min.css" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/bootstrap.fd.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/loader.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/predictor.css') }}" rel="stylesheet">
 {% endblock styles %}
@@ -12,7 +11,7 @@
     <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/9.7.2/bootstrap-slider.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/9.7.2/css/bootstrap-slider.min.css"></script>
     <script src="{{ url_for('static', filename='js/router.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/bootstrap.fd.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.6/handlebars.min.js"></script>
 
     <script src="{{ url_for('static', filename='marvinjs/gui/lib/promise-1.0.0.min.js') }}"></script>
     <script src="{{ url_for('static', filename='marvinjs/js/webservices.js') }}"></script>
@@ -31,9 +30,10 @@
             <nav class="navbar navbar-custom">
                 <div class="container-fluid">
                     <div class="navbar-header">
-                        <button id="upload" class="btn btn-file navbar-btn">
-                            <span class="glyphicon glyphicon-upload"></span>
-                        </button>
+                        <label id="upload" class="btn btn-default btn-file navbar-btn" data-loading-text="<i class='glyphicon glyphicon-refresh spinning'></i> Uploading...">
+                            <i class="glyphicon glyphicon-upload"></i>
+                            Browse <form id="upload-file" method="post" accept-charset="utf-8" enctype="multipart/form-data"><input  type="file" name="structures" style="display: none;" /></form>
+                        </label>
                     </div>
                     <div class="navbar-right-btn">
                         <ul class="nav navbar-nav">
@@ -80,17 +80,77 @@
 
     </div>
 
-    <div id="myModal" class="modal fade">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content modal-content-custom">
-                <div class="modal-body">
-                    <iframe id="marvinjs-iframe" data-toolbars="reaction" src="{{ url_for('static', filename='marvinjs/editorws.html') }}"></iframe>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Discard changes</button>
-                    <button id="close-modal" type="button" class="btn btn-primary">Save changes</button>
-                </div>
+<div id="myModal" class="predictor-modal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content modal-content-custom">
+            <div class="modal-body">
+                <iframe id="marvinjs-iframe" data-toolbars="reaction" src="https://cimm.kpfu.ru/static/editorws.html"></iframe>
+            </div>
+            <div class="modal-footer">
+                <button id="close-wo-save" type="button" class="btn btn-default" data-dismiss="modal">Отмена</button>
+                <button id="close-modal" type="button" class="btn btn-primary">Сохранить изменения</button>
+
             </div>
         </div>
     </div>
+</div>
+
+
+<script id="result-tmp" type="text/x-handlebars-template">
+    {{#each structures}}
+    <div class="row">
+
+        <div class="col-lg-6">
+            <div class="image-container">
+                {{base data}}
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    Result
+                </div>
+                <div class="panel-body">
+                    {{#if additives}}
+                    <p>Additive :
+                        {{#each additives}}
+                        {{ name }}-{{ amount }};
+                        {{/each}}</p>
+                    {{/if}}
+                    <p>T : {{ temperature }} (K);</p>
+                    <p>P : {{ pressure }} (atm);</p>
+                    {{#each models}}
+                    <p>Model : {{ name }};</p>
+
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Key</th>
+                            <th>Value</th>
+                            <th>Type</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {{#each results}}
+                        <tr>
+
+                            <th scope="row"> {{inc @index }}</th>
+                            <td>{{ key }}</td>
+                            <td>{{ value }}</td>
+                            <td>{{ type }}</td>
+                        </tr>
+                        {{/each}}
+                        </tbody>
+                    </table>
+
+                    {{/each}}
+                </div>
+            </div>
+        </div>
+
+    </div>
+    </div>
+    {{/each}}
+</script>
 {% endblock %}

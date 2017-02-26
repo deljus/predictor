@@ -1,4 +1,5 @@
 (function ($) {
+    "use struct";
     $.fn.imageEdit = function (obj) {
         var methods = {
             init: function (params) {
@@ -9,14 +10,14 @@
                     typeImg: 'png',
                     zoomMode: 'autoshrink',
                     backgroundColor: 'white',
-                    defaultImage: 'img/start.svg',
+                    defaultImage: 'start.svg',
                     onDefaultImage: function () {
                     },
                     onChangeImage: function () {
                     }
                 }, params);
                 var dom = {
-                    img: $("<img class='image' alt='<cml><MDocument></MDocument></cml>'>").attr({src: settings.defaultImage}),
+                    img: $("<img class='image'>").attr({src: settings.defaultImage}),
                     error: $('<div class="alert alert-list alert-danger" role="alert" ><button type="button" class="close"> <span aria-hidden="true">&times;</span> </button><span class="text"></span></div>')
                 };
 
@@ -24,40 +25,47 @@
                 this.data('settings', settings);
                 this.data('flag', false);
 
-                var marvin;
+
                 var _this = this;
+                var marvin, marvinSketcherInstance;
+
+                $('#close-wo-save').click(function() {
+                    $("#myModal").css({'z-index' : -40, opacity: 0, 'background' : 'rgba(0,0,0,0)'});
+                })
+
 
 
                 MarvinJSUtil.getPackage("marvinjs-iframe").then(function (marvinNameSpace) {
                     marvinNameSpace.onReady(function () {
 
                         marvin = marvinNameSpace;
+                        try {
+                            if (settings.cml) {
+                                var base64 = marvin.ImageExporter.mrvToDataUrl(settings.cml, settings.typeImg, settings);
+                                dom.img.attr({"src": base64, "alt": settings.cml});
+                                console.log(base64);
+                                _this.append(dom.img);
+                            }
+                            else {
+                                _this.append(dom.img);
+                            }
+
+                        } catch (err) {
+                            console.log(err)
 
 
-                  
-
-
-                        if (settings.cml) {
-                            var params = {
-                                'inputFormat': settings.cml
-                            };
-                            var base64;
-                            base64 = marvin.ImageExporter(params);
-                            console.log(base64);
-                            dom.img.attr({"src": base64, "alt": settings.cml});
-                            _this.append(dom.img);
                         }
-                        else {
-                            _this.append(dom.img);
-                        }
-                    })
+
+
+                    });
+                }, function () {
+                    alert("Cannot retrieve marvin instance from iframe");
                 });
 
                 MarvinJSUtil.getEditor("marvinjs-iframe").then(function (sketcherInstance) {
                     marvinSketcherInstance = sketcherInstance;
-
                     _this.click(function () {
-                        $("#myModal").modal({'backdrop': 'static'});
+                        $("#myModal").css({'z-index' : 1050, 'opacity': 1, 'background': 'rgba(0,0,0,.5)'});
                         marvinSketcherInstance.importStructure("mrv", dom.img.attr('alt'));
                         _this.data('flag', true);
                     });
@@ -67,8 +75,9 @@
                         if (_this.data('flag')) {
                             marvinSketcherInstance.exportStructure("mrv").then(function (s) {
                                 dom.img.attr('alt', s);
+                                console.log(s);
                                 if (s == '<cml><MDocument></MDocument></cml>') {
-                                    dom.img.attr('src', settings.defaultImage);
+                                    dom.img.attr('src', settings.defaultImage)
                                     settings.onDefaultImage.call()
                                 }
                                 else {
@@ -77,19 +86,21 @@
                                     settings.onChangeImage.call(src);
                                 }
 
-                                _this.data('flag', false);
-                                $("#myModal").modal('hide');
+                                _this.data('flag', false)
+                                $("#myModal").css({'z-index' : -40, opacity: 0, 'background' : 'rgba(0,0,0,0)'});
 
                             });
                         }
                     });
+                }, function () {
+                    alert("Cannot retrieve sketcher instance from iframe");
                 });
 
                 return this;
             },
 
             getCVL: function () {
-                var img = this.data('dom').img;
+                var img = this.data('dom').img
                 return unescape($(img).attr('alt'));
             },
             destroy: function () {
@@ -106,4 +117,4 @@
             $.error('Метод "' + obj + '" не найден в плагине jQuery.mySimplePlugin');
         }
     };
-})(jQuery);
+})(jQuery,window,document);
