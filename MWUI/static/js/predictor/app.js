@@ -11,7 +11,7 @@
             additives: BASE_URL + 'api/resources/additives',
             models: BASE_URL + 'api/resources/models',
             upload: BASE_URL + 'api/task/upload/0',
-            resultTemplate: BASE_URL + 'static/delus/js/predictor/result.htm' // your template
+            resultTemplate: BASE_URL + 'static/result.htm' // your template
         },
 
         /* Delay between requests */
