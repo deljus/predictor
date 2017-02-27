@@ -10,7 +10,8 @@
             result: BASE_URL + 'api/task/model/',
             additives: BASE_URL + 'api/resources/additives',
             models: BASE_URL + 'api/resources/models',
-            upload: BASE_URL + 'api/task/upload/0'
+            upload: BASE_URL + 'api/task/upload/0',
+            resultTemplate: BASE_URL + 'static/delus/js/predictor/result.htm' // your template
         },
 
         /* Delay between requests */
@@ -53,7 +54,8 @@
 
             var model,
                 additives,
-                task_model;
+                task_model,
+                templateData;
 
             return {
                 init: function () {
@@ -61,12 +63,12 @@
                         $.ajax(API.models, {type: 'GET'}),
                         $.ajax(API.additives, {type: 'GET'})
                     ).done(function ($models, $additives) {
-                        models = $models[0]
+                        models = $models[0];
                         additives = $additives[0];
                     }).fail(function () {
                         $page.indexPage.append(serverMassange.error);
                         return false;
-                    })
+                    });
 
                     /* create info chemdraw object */
 
@@ -257,6 +259,7 @@
                     $page.resultPage.html('').show();
                     $page.loader.show();
 
+                    var tempData;
 
                     var _this = this;
 
@@ -264,37 +267,39 @@
                         $.get(API.result + id).done(function (data) {
 
 
-                            MarvinJSUtil.getPackage("marvinjs-iframe").then(function (marvinNameSpace) {
-                                marvinNameSpace.onReady(function () {
-                                    marvin = marvinNameSpace;
-                                    Handlebars.registerHelper("inc", function (value, options) {
-                                        return parseInt(value) + 1;
+                            $.ajax(API.resultTemplate, {type: 'GET'}).done(function(tmpData) {
+
+
+
+
+                                MarvinJSUtil.getPackage("marvinjs-iframe").then(function (marvinNameSpace) {
+                                    marvinNameSpace.onReady(function () {
+                                        marvin = marvinNameSpace;
+                                        Handlebars.registerHelper("inc", function (value, options) {
+                                            return parseInt(value) + 1;
+                                        });
+
+                                        Handlebars.registerHelper("base", function (value, options) {
+                                            var bs64 = marvin.ImageExporter.mrvToDataUrl(value, "png", {width: 500,
+                                                height: 410,
+                                                zoomMode: 'autoshrink'});
+                                            return new Handlebars.SafeString('<img src="' + bs64 + '" class="image">');
+                                        });
+
+                                        var template = Handlebars.compile(tmpData);
+                                        var html = template(data);
+                                        ;
+                                        $page.resultPage.append(html);
+
+                                        $page.loader.hide();
+
+
                                     });
 
-                                    Handlebars.registerHelper("base", function (value, options) {
-                                        var bs64 = marvin.ImageExporter.mrvToDataUrl(value, "png", {width: 500,
-                                            height: 410,
-                                            zoomMode: 'autoshrink'});
-                                        return new Handlebars.SafeString('<img src="' + bs64 + '" class="image">');
-                                    });
-
-                                    var source   = $("#result-tmp").html();
-
-                                    var template = Handlebars.compile(source);
-
-                                    var html = template(data);
-
-
-                                    $page.resultPage.append(html);
-
-                                    $page.loader.hide();
 
                                 });
+
                             });
-
-
-
-
                         }).fail(function () {
                             console.log(time + '-' + inc + '-' + count)
                             if (count > 0) {
