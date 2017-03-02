@@ -30,7 +30,7 @@ from .auth import LoginView, LogoutView
 from .profile import ProfileView
 from .post import PostView
 from .visitcard import IndexView, AboutView, StudentsView, LessonsView
-from .blog import BlogView, AbstractsView, EmailsView, EventsView
+from .blog import BlogView, AbstractsView, EmailsView, ThesesView, EventsView
 
 
 view_bp = Blueprint('view', __name__)
@@ -58,6 +58,10 @@ view_bp.add_url_rule('/lessons', view_func=LessonsView.as_view('lessons'))
 blog_view = BlogView.as_view('blog')
 view_bp.add_url_rule('/news', view_func=blog_view)
 view_bp.add_url_rule('/news/<int:page>', view_func=blog_view)
+
+theses_view = ThesesView.as_view('theses')
+view_bp.add_url_rule('/theses', view_func=theses_view)
+view_bp.add_url_rule('/theses/<int:page>', view_func=theses_view)
 
 events_view = EventsView.as_view('events')
 view_bp.add_url_rule('/events', view_func=events_view)

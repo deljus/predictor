@@ -22,7 +22,7 @@ from flask.views import View
 from flask import redirect, url_for, render_template
 from flask_login import login_required, current_user
 from pony.orm import db_session, select
-from ..models import Email, Meeting, Post, Thesis
+from ..models import Email, Meeting, Post, Thesis, Subscription
 from ..config import UserRole, BLOG_POSTS_PER_PAGE, MeetingPostType
 from ..bootstrap import Pagination
 
@@ -51,15 +51,6 @@ class BlogView(View):
         return blog_viewer(page, q, '.blog', 'News', 'list')
 
 
-class EventsView(View):
-    methods = ['GET']
-    decorators = [db_session, login_required]
-
-    def dispatch_request(self, page=1):
-        q = select(x for x in Thesis if x.author.id == current_user.id).order_by(Thesis.id.desc())
-        return blog_viewer(page, q, '.events', 'Events', 'Abstracts')
-
-
 class AbstractsView(View):
     methods = ['GET']
     decorators = [db_session]
@@ -85,3 +76,21 @@ class EmailsView(View):
 
         q = select(x for x in Email).order_by(Email.id.desc())
         return blog_viewer(page, q, '.emails', 'E-mail templates', 'list')
+
+
+class ThesesView(View):
+    methods = ['GET']
+    decorators = [db_session, login_required]
+
+    def dispatch_request(self, page=1):
+        q = select(x for x in Thesis if x.author.id == current_user.id).order_by(Thesis.id.desc())
+        return blog_viewer(page, q, '.theses', 'Events', 'Abstracts')
+
+
+class EventsView(View):
+    methods = ['GET']
+    decorators = [db_session, login_required]
+
+    def dispatch_request(self, page=1):
+        q = select(x.meeting for x in Subscription if x.user == current_user.get_user()).order_by(Meeting.id.desc())
+        return blog_viewer(page, q, '.events', 'Events', 'Participation')
