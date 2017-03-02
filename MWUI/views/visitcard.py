@@ -50,3 +50,24 @@ class AboutView(View):
         return render_template("about.html", title='About', subtitle='Laboratory', about=about_us,
                                chief=(chief[x: x + 3] for x in range(0, len(chief), 3)),
                                team=(team[x: x + 3] for x in range(0, len(team), 3)))
+
+
+class StudentsView(View):
+    methods = ['GET']
+    decorators = [db_session]
+
+    def dispatch_request(self):
+        studs = select(x for x in TeamPost if x.post_type == TeamPostType.STUDENT.value).order_by(TeamPost.id.desc())
+        return render_template("students.html", title='Laboratory', subtitle='students',
+                               students=(studs[x: x + 4] for x in range(0, len(studs), 4)))
+
+
+class LessonsView(View):
+    methods = ['GET']
+    decorators = [db_session]
+
+    def dispatch_request(self):
+        less = select(x for x in BlogPost if x.post_type == BlogPostType.LESSON.value).order_by(BlogPost.id.desc())
+        return render_template("lessons.html", title='Master', subtitle='courses',
+                               lessons=(less[x: x + 3] for x in range(0, len(less), 3)))
+
