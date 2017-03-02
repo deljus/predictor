@@ -118,32 +118,32 @@ def slug(_slug):
 
 
 @view_bp.route('/download/<file>/<name>', methods=['GET'])
+@db_session
 @login_required
 def download(file, name):
-    with db_session:
-        a = Attachment.get(file=file)
-        if current_user.role_is(UserRole.ADMIN) or a.post.classtype != 'Thesis' or a.post.author.id == current_user.id:
-            resp = make_response()
-            resp.headers['X-Accel-Redirect'] = '/file/%s' % file
-            resp.headers['Content-Description'] = 'File Transfer'
-            resp.headers['Content-Transfer-Encoding'] = 'binary'
-            resp.headers['Content-Disposition'] = 'attachment; filename=%s' % name
-            resp.headers['Content-Type'] = 'application/octet-stream'
-            return resp
-        abort(404)
+    a = Attachment.get(file=file)
+    if current_user.role_is(UserRole.ADMIN) or a.post.classtype != 'Thesis' or a.post.author.id == current_user.id:
+        resp = make_response()
+        resp.headers['X-Accel-Redirect'] = '/file/%s' % file
+        resp.headers['Content-Description'] = 'File Transfer'
+        resp.headers['Content-Transfer-Encoding'] = 'binary'
+        resp.headers['Content-Disposition'] = 'attachment; filename=%s' % name
+        resp.headers['Content-Type'] = 'application/octet-stream'
+        return resp
+    abort(404)
 
 
 @view_bp.route('/remove/<file>/<name>', methods=['GET', 'POST'])
+@db_session
 @login_required
 def remove(file, name):
     form = DeleteButtonForm()
     if form.validate_on_submit():
-        with db_session:
-            a = Attachment.get(file=file)
-            if a and (current_user.role_is(UserRole.ADMIN)
-                      or a.post.classtype == 'Thesis' and a.post.author.id == current_user.id
-                      and a.post.meeting.poster_deadline > datetime.utcnow()):
-                a.delete()
+        a = Attachment.get(file=file)
+        if a and (current_user.role_is(UserRole.ADMIN)
+                  or a.post.classtype == 'Thesis' and a.post.author.id == current_user.id
+                  and a.post.meeting.poster_deadline > datetime.utcnow()):
+            a.delete()
         return form.redirect()
 
     return render_template('button.html', form=form, title='Delete', subtitle=name)
