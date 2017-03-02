@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+{% block page %}
+    <div class="row">
+        <div class="col-md-2"></div>
+        <div class="col-md-10">
+            <p><b><abbr title="Science degree">Degree</abbr></b>: {{ data.sci_degree.fancy }}</p>
+            <p><b><abbr title="Science or education status">Status</abbr></b>: {{ data.sci_status.fancy }}</p>
+            <p><b>Country</b>: {{ data.country_name }}</p>
+            <p><b>Town</b>: {{ data.town }}</p>
+            <p><b><abbr title="Work place or institution">Affiliation</abbr></b>: {{ data.affiliation }}</p>
+            <p><b><abbr title="Position in work place or institution">Position</abbr></b>: {{ data.position }}</p>
+        </div>
+    </div>
+{% endblock %}

@@ -160,7 +160,7 @@ def top_nav():
         rsg = RightSubgroup(Subgroup('Searching', View('Search', '.search'), Separator(), View('History', '.queries')),
                             Subgroup('Modeling', View('Modeling', '.predictor'), Separator(),
                                      View('History', '.results')),
-                            Subgroup(current_user.name, *user_menu))
+                            Subgroup(current_user.full_name, *user_menu))
     else:
         rsg = RightSubgroup(View('Searching', '.search'), View('Modeling', '.predictor'),
                             View('Login', '.login', next=get_redirect_target() or request.path))

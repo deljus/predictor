@@ -210,5 +210,5 @@ class ProfileView(View):
         else:  # admin or GTFO
             return redirect(url_for('.profile'))
 
-        return render_template("forms.html", title='Profile', subtitle=current_user.name,
+        return render_template("forms.html", title='Profile', subtitle=current_user.full_name,
                                tabs=tabs, form=active_form, message=message)

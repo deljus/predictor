@@ -53,8 +53,8 @@ class UserLogin(UserMixin):
         return self.__user.email
 
     @property
-    def name(self):
-        return '%s %s' % (self.__user.name, self.__user.surname)
+    def full_name(self):
+        return self.__user.full_name
 
     def get_id(self):
         return self.__user.token

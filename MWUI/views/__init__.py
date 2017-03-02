@@ -161,7 +161,16 @@ def participants(event):
 
     data = [dict(type=x.type.fancy, status=ProfileStatus(users[x.user.id].status).fancy,
                  country=countries.get(alpha_3=users[x.user.id].country).name,
-                 user='{0.name} {0.surname}'.format(users[x.user.id])) for x in subs]
+                 user=users[x.user.id].full_name, useid=x.user.id) for x in subs]
     return render_template('participants.html', data=data, title=m.title, subtitle='Participants',
                            crumb=dict(url=url_for('.blog_post', post=event), title='Participants',
                                       parent='Event main page'))
+
+
+@view_bp.route('/user/<int:_user>', methods=['GET'])
+@db_session
+def user(_user):
+    u = User.get(id=_user)
+    if not u:
+        return redirect(url_for('.index'))
+    return render_template('user.html', data=u, title=u.full_name, subtitle='profile')

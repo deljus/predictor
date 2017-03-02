@@ -20,6 +20,7 @@
 #
 import bcrypt
 import hashlib
+from pycountry import countries
 from datetime import datetime
 from pony.orm import PrimaryKey, Required, Optional, Set, Json
 from ..config import (ModelType, AdditiveType, UserRole, ProfileDegree, ProfileStatus, Glyph, DEBUG,
@@ -77,6 +78,22 @@ def load_tables(db, schema):
             token = self.__gen_token(email, str(datetime.utcnow()))
             super(User, self).__init__(email=email, password=password, token=token, user_role=role.value,
                                        **filter_kwargs(kwargs))
+
+        @property
+        def full_name(self):
+            return '{0.name} {0.surname}'.format(self)
+
+        @property
+        def sci_degree(self):
+            return ProfileDegree(self.degree)
+
+        @property
+        def sci_status(self):
+            return ProfileStatus(self.status)
+
+        @property
+        def country_name(self):
+            return countries.get(alpha_3=self.country).name
 
         @staticmethod
         def __hash_password(password):
@@ -167,7 +184,7 @@ def load_tables(db, schema):
 
         @property
         def author_name(self):
-            return '%s %s' % (self.author.name, self.author.surname)
+            return self.author.full_name
 
     class BlogPost(Post):
         def __init__(self, **kwargs):

@@ -17,7 +17,7 @@
                         {% for x in data %}
                             <tr>
                                 <th scope="row">{{ loop.index }}</th>
-                                <td>{{ x.user }}</td>
+                                <td><a href="{{ url_for('.user', _user=x.useid) }}">{{ x.user }}</a></td>
                                 <td>{{ x.country }}</td>
                                 <td>{{ x.status }}</td>
                                 <td>{{ x.type }}</td>
