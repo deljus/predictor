@@ -29,12 +29,11 @@ from ..models import User, BlogPost, Email, Meeting, TeamPost
 from ..upload import combo_save
 
 
-class Profile(View):
+class ProfileView(View):
     methods = ['GET', 'POST']
     decorators = [db_session, login_required]
 
     def dispatch_request(self, action=4):
-
         form = FormRoute.get(action)
         if not form or not form.is_profile():
             return redirect(url_for('.profile'))

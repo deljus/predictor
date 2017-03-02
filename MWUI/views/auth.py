@@ -30,7 +30,7 @@ from ..config import FormRoute, EmailPostType
 from ..sendmail import send_mail
 
 
-class Login(View):
+class LoginView(View):
     methods = ['GET', 'POST']
 
     def dispatch_request(self, action=1):
@@ -111,7 +111,7 @@ class Login(View):
         return render_template('forms.html', form=active_form, title='Authorization', tabs=tabs, message=message)
 
 
-class Logout(View):
+class LogoutView(View):
     methods = ['GET', 'POST']
     decorators = [login_required]
 
