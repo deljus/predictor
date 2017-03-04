@@ -1,8 +1,10 @@
 {% extends "layout.html" %}
 {% block page %}
     <div class="row">
-        <div class="col-md-2"></div>
-        <div class="col-md-10">
+        <div class="col-md-4">
+            <img class="img-responsive img-hover" src="{{ data.banner and data.banner|resize('500x500', upscale=False) or '//placehold.it/500x500' }}" alt="">
+        </div>
+        <div class="col-md-8">
             <p><b><abbr title="Science degree">Degree</abbr></b>: {{ data.sci_degree.fancy }}</p>
             <p><b><abbr title="Science or education status">Status</abbr></b>: {{ data.sci_status.fancy }}</p>
             <p><b>Country</b>: {{ data.country_name }}</p>

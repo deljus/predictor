@@ -114,6 +114,8 @@ class DeleteButtonForm(CustomForm):
 class ProfileForm(CustomForm):
     name = StringField('Name *', [validators.DataRequired()])
     surname = StringField('Surname *', [validators.DataRequired()])
+    banner_field = FileField('Photo', validators=[FileAllowed('jpg jpe jpeg png'.split(), 'JPEG or PNG images only'),
+                                                  VerifyImage('jpeg png'.split())])
     degree = SelectField('Degree *', [validators.DataRequired()], choices=[(x.value, x.fancy) for x in ProfileDegree],
                          coerce=int)
     status = SelectField('Status *', [validators.DataRequired()], choices=[(x.value, x.fancy) for x in ProfileStatus],

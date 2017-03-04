@@ -152,8 +152,9 @@ def top_nav():
     lsg = LeftSubgroup(View('News', '.blog'), View('About Us', '.about'),
                        Subgroup('Education', View('Students', '.students'), View('Lessons', '.lessons')))
     if current_user.is_authenticated:
-        user_menu = [View('My Events', '.events'), View('Submitted Abstracts', '.theses'),
-                     View('Profile', '.profile'), Separator(), View('Logout', '.logout')]
+        user_menu = [View('My Events', '.events'), View('Submitted Abstracts', '.theses'), Separator(),
+                     View('Profile', '.user', _user=current_user.id), View('Edit Profile', '.profile'), Separator(),
+                     View('Logout', '.logout')]
         if current_user.role_is(UserRole.ADMIN):
             user_menu.insert(2, View('Email Templates', '.emails'))
 

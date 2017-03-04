@@ -173,4 +173,4 @@ def user(_user):
     u = User.get(id=_user)
     if not u:
         return redirect(url_for('.index'))
-    return render_template('user.html', data=u, title=u.full_name, subtitle='profile')
+    return render_template('user.html', data=u, title=u.full_name, subtitle='Profile')

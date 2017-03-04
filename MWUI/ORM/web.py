@@ -57,6 +57,7 @@ def load_tables(db, schema):
 
         name = Required(str)
         surname = Required(str)
+        banner = Optional(str)
         degree = Required(int, default=ProfileDegree.NO_DEGREE.value)
         status = Required(int, default=ProfileStatus.COMMON.value)
 

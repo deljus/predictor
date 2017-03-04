@@ -26,7 +26,7 @@ from ..config import UserRole, MeetingPostType, FormRoute
 from ..forms import (ReLoginForm, ChangePasswordForm, PostForm, ChangeRoleForm, BanUserForm,
                      ProfileForm, MeetingForm, EmailForm, TeamForm)
 from ..models import User, BlogPost, Email, Meeting, TeamPost
-from ..upload import combo_save
+from ..upload import combo_save, save_upload
 
 
 class ProfileView(View):
@@ -71,6 +71,9 @@ class ProfileView(View):
                 u.country = active_form.country.data
                 u.degree = active_form.degree.data
                 u.status = active_form.status.data
+
+                if active_form.banner_field.data:
+                    u.banner = save_upload(active_form.banner_field.data, images=True)
 
                 if active_form.affiliation.data:
                     u.affiliation = active_form.affiliation.data
@@ -210,5 +213,5 @@ class ProfileView(View):
         else:  # admin or GTFO
             return redirect(url_for('.profile'))
 
-        return render_template("forms.html", title='Profile', subtitle=current_user.full_name,
+        return render_template("forms.html", subtitle='Profile', title=current_user.full_name,
                                tabs=tabs, form=active_form, message=message)
