@@ -23,7 +23,7 @@
                     typeImg: 'png',
                     zoomMode: 'autoshrink',
                     backgroundColor: 'white',
-                    defaultImage: 'static/predictor-start.svg',
+                    defaultImage: 'static/start.svg',
 
                     typePres: 'default'
 

@@ -90,7 +90,7 @@
                 $page.revalidButton.on("click", this.onRevalidating);
                 $page.errorMessage.find("button").on('click', function () {$page.errorMessage.hide()});
                 $page.fileButton.find('input[type=file]').on('change', this.prepareUpload);
-                $page.saveButton.on("click", this.onSaving)
+                $page.saveButton.on("click", this.onSaving);
                 /* Hide loader on load page */
                 $(window).load(function () {$page.loader.hide();});
             },
@@ -340,9 +340,9 @@
 
                         });
                     }).fail(function () {
-                        console.log(time + '-' + inc + '-' + count)
+                        console.log(time + '-' + inc + '-' + count);
                         if (count > 0) {
-                            count -= 1
+                            count -= 1;
                             time += inc;
                             setTimeout(function () {
                                 func(time, inc, count)
@@ -404,7 +404,7 @@
             }
 
         }
-    }
+    };
 
 
     var app = appPage();
@@ -421,7 +421,7 @@
     });
     $.routes.add('/history/{id:string}/', function() {
         app.resulting(this.id, 'history')
-    })
+    });
 
     if (window.location.hash == '') {
         window.location.href = "#/index/"
