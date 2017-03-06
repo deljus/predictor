@@ -11,7 +11,8 @@
             additives: BASE_URL + 'api/resources/additives',
             models: BASE_URL + 'api/resources/models',
             upload: BASE_URL + 'api/task/upload/0',
-            resultTemplate: BASE_URL + 'static/result.htm' // your template
+            resultTemplate: BASE_URL + 'static/delus/js/predictor/result.htm',
+            saveTask: BASE_URL + 'api/task/results/'
         },
 
         /* Delay between requests */
@@ -32,321 +33,378 @@
             revalidButton: $("#newstructure"),
             modellButton: $("#modelling"),
             loader: $("#loader"),
-            errorMessage: $("#error-messange"),
-            fileButton: $("#upload")
+            errorMessage: $("#messange"),
+            fileButton: $("#upload"),
+            saveButton: $("#saving"),
+            downloadButton: $("#downloading")
         },
 
         /* Server error massange */
 
         serverMassange = {
-            modelError: "<p>Unfortunately, we were unable to load the data. Maybe they just aren't ready. " +
-            "To try again, click refresh <span class='glyphicon glyphicon-repeat'></span></p>",
-            error: "Heavy battles our server fell as a hero",
-            fileUpload: "Could not load file",
-            taskCreate: "Could not create new task"
+            modelError  : "<p>Unfortunately, we were unable to load the data. Maybe they just aren't ready. " +
+            "To try again, click refresh <button class='btn btn-danger' onclick='window.location.reload()'><span class='glyphicon glyphicon-repeat'></span> Reload page</button></p>",
+            error       :   "Heavy battles our server fell as a hero",
+            fileUpload  :   "Could not load file",
+            taskCreate  :   "Could not create new task",
+            error403    :	"User access deny. you do not have permission to this task",
+            error404    :	"Invalid task id. perhaps this task has already been removed",
+            error406    :	"Task status is invalid. only validation tasks acceptable",
+            error500    :	"Modeling server error"
         },
 
+        /* Error messange */
 
-        /* main page object */
+        $messange = function(text, type) {
+            $page.errorMessage.hide();
+            $page.errorMessage.removeClass("alert-info","alert-warning","alert-danger","alert-success");
+            if(type == 'error'){
+                $page.errorMessage.addClass("alert-danger");
+            }else if(type=='success'){
+                $page.errorMessage.addClass("alert-success");
+            }else if(type == 'info'){
+                $page.errorMessage.addClass("alert-info");
+            }else if(type == 'warning'){
+                $page.errorMessage.addClass("alert-warning");
+            }
+            $page.errorMessage.find(".text").html(text);
+            $page.errorMessage.fadeIn(300).delay(10000).fadeOut(800);
+        };
 
-        appPage = function () {
+    /* main page object */
 
+    appPage = function () {
 
-            var model,
-                additives,
-                task_model,
-                templateData;
+        var models,
+            additives,
+            task_model,
+            templateData,
+            self = this,
+            result_task;
 
-            return {
-                init: function () {
-                    $.when(
-                        $.ajax(API.models, {type: 'GET'}),
-                        $.ajax(API.additives, {type: 'GET'})
-                    ).done(function ($models, $additives) {
-                        models = $models[0];
-                        additives = $additives[0];
-                    }).fail(function () {
-                        $page.indexPage.append(serverMassange.error);
-                        return false;
-                    });
+        return {
+            init: function () {
+                /* events of buttons */
+                $page.validButton.on("click", this.onValidate);
+                $page.modellButton.on("click", this.onModelling);
+                $page.revalidButton.on("click", this.onRevalidating);
+                $page.errorMessage.find("button").on('click', function () {$page.errorMessage.hide()});
+                $page.fileButton.find('input[type=file]').on('change', this.prepareUpload);
+                $page.saveButton.on("click", this.onSaving)
+                /* Hide loader on load page */
+                $(window).load(function () {$page.loader.hide();});
+            },
 
-                    /* create info chemdraw object */
+            /* hide all pages and buttons */
 
+            hideCom: function () {
+                $.each($page, function (id, key) {
+                    key.hide();
+                })
+            },
+
+            /* Index page */
+
+            index: function () {
+                this.hideCom();
+                $page.indexPage.html('').show();
+                $page.validButton.show();
+                $page.fileButton.show();
+
+                /* create info chemdraw object if index page empty*/
+                if(!$page.indexPage.html()) {
                     var obj = $('<div id="chemeditor" class="row"></div>').chemEditor({
-                        onDefaultImage: function () {
-                            $page.validButton.prop('disabled', true);
-                        },
-                        onChangeImage: function (data) {
-                            $page.validButton.prop('disabled', false);
-                        },
+                        onDefaultImage: function () {$page.validButton.prop('disabled', true);},
+                        onChangeImage: function (data) {$page.validButton.prop('disabled', false);},
                         typePres: 'info'
                     });
-
                     $page.indexPage.append(obj);
-                    $page.validButton.show();
+                }
 
-                    /* events of buttons */
+                $page.indexPage.show();
 
-                    $page.validButton.on("click", this.onValidate);
-                    $page.modellButton.on("click", this.onModelling);
-                    $page.revalidButton.on("click", this.onRevalidating);
-                    $page.errorMessage.find("button").on('click', function () {
-                        $page.errorMessage.hide()
-                    });
-                    $page.fileButton.find('input[type=file]').on('change', this.prepareUpload);
+            },
+
+            /* Load file */
+
+            prepareUpload: function (event) {
+                var data = new FormData($('#upload-file')[0]);
+
+                $.ajax({
+                    type: 'POST',
+                    url: API.upload,
+                    data: data,
+                    dataType: 'json',
+                    contentType: false,
+                    cache: false,
+                    processData: false,
+                    success: function (data) {
+                        window.location.href = '#/model/' + data.task + '/';
+                    },
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        $messange('File upload error: ' + jqXHR.status + "-" + errorThrown);
+                    }
+                });
+
+            },
 
 
-                    $(window).load(function () {
+
+            onValidate: function () {
+
+
+                $page.validButton.button('loading');
+
+                var dataObj = $("#chemeditor").chemEditor('getDataCVL');
+
+                $.ajax({
+                    url: API.createTask,
+                    type: 'POST',
+                    dataType: "json",
+                    contentType: "application/json",
+                    data: JSON.stringify(dataObj),
+                    success: function (data) {
+                        window.location.href = '#/model/' + data.task + '/';
+                    },
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        $messange('Task creation error: ' + jqXHR.status + "-" + errorThrown, 'error');
+                    },
+                    complete: function () {
+                        $page.validButton.button('reset');
+                    }
+                });
+            },
+
+            modelling: function (id) {
+                task_model = id;
+                console.log(task_model);
+                this.hideCom();
+                $page.loader.show();
+                $page.modellButton.show();
+                $page.modelPage.html('').show();
+
+                $.when(
+                    $.ajax(API.models, {type: 'GET'}),
+                    $.ajax(API.additives, {type: 'GET'})
+                ).done(function ($models, $additives) {
+
+                    models = $models[0];
+                    additives = $additives[0];
+                    func(request.timeOut, request.increament, request.count);
+                }).fail(function (jqXHR, textStatus, errorThrown) {
+                    $messange('Models (Additives): ' + jqXHR.status + "-" + errorThrown, 'error');
+                });
+
+
+                function func(time, inc, count) {
+                    $.get(API.prepareTask + id).done(function (data) {
+                        $.each(data.structures, function (key, struct) {
+                            var setting = {};
+                            setting.additives = additives;
+                            setting.models = models;
+                            setting.selectedModels = struct.models[0];
+                            setting.selectAdditives = struct.additives;
+                            setting.cml = struct.data;
+                            setting.modelsId = struct.type;
+                            setting.temp = struct.temperature;
+                            setting.pres = struct.pressure;
+                            setting.structure = struct.structure;
+                            setting.onChangeImage = function (data) {
+                                $page.modellButton.hide();
+                                $page.revalidButton.show();
+                            };
+
+                            var object = $('<div class="chemeditor row"></div>').chemEditor(setting);
+                            $page.modelPage.append(object);
+                        });
                         $page.loader.hide();
-                    });
+                    }).fail(function (jqXHR, textStatus, errorThrown) {
 
-                },
+                        if (count > 0) {
+                            count -= 1
+                            time += inc;
+                            setTimeout(function () {
+                                func(time, inc, count)
+                            }, time);
 
-                hideCom: function () {
-                    $.each($page, function (id, key) {
-                        key.hide();
+                            console.log(jqXHR.status +'-' + textStatus + '' + errorThrown)
+
+                        } else {
+                            $page.modelPage.append(serverMassange.modelError);
+                            $page.loader.hide();
+                        }
+
+
+
+
                     })
-                },
 
-                prepareUpload: function (event) {
-                    $page.fileButton.label('loading');
-                    var data = new FormData($('#upload-file')[0]);
+                }
 
+            },
+
+            onModelling: function () {
+
+                var obj1 = [],
+                    flag = true;
+
+
+                $.each($(".chemeditor"),function() {
+                    var e = $(this).chemEditor('getAllData');
+                    if(e){
+                        obj1.push(e)
+                    }
+                    else{
+                        flag = false
+                    }
+                });
+
+
+
+                if (flag) {
+                    $page.modellButton.button('loading');
                     $.ajax({
+                        url: API.result + task_model,
                         type: 'POST',
-                        url: API.upload,
-                        data: data,
-                        dataType: 'json',
-                        contentType: false,
-                        cache: false,
-                        processData: false
-                    }).done(function (response) {
-                        window.location.href = '#/model/' + response.task + '/';
-                    }).fail(function() {
-                        $page.errorMessage.html(serverMassange.fileUpload);
-                    });
-
-                },
-
-                index: function () {
-                    this.hideCom();
-                    $page.indexPage.show();
-                    $page.validButton.show();
-                    $page.fileButton.show();
-                },
-
-                onValidate: function () {
-                    $page.validButton.button('loading');
-
-                    var dataObj = $("#chemeditor").chemEditor('getDataCVL');
-
-                    $.ajax({
-                        url: API.createTask,
-                        type: 'POST',
-                        dataType: "json",
-                        contentType: "application/json",
-                        data: JSON.stringify(dataObj),
+                        data: JSON.stringify(obj1),
                         success: function (data) {
-
-                            window.location.href = '#/model/' + data.task + '/';
+                            window.location.href = '#/result/' + data.task + '/';
                         },
                         error: function (data) {
-                            $page.errorMessage.html(serverMassange.taskCreate);
+
+
                         },
                         complete: function () {
-                            $page.validButton.button('reset');
+                            $page.modellButton.button('reset');
                         }
                     });
-                },
+                }
+                else {
+                    $messange("Please make sure that the model field is filled and the total percentage of the solvent is equal to 100 (if the solvent is selected)", 'error');
+                }
+            },
 
-                modelling: function (id) {
-                    task_model = id;
-                    this.hideCom();
-                    $page.loader.show();
-                    $page.modellButton.show();
-                    $page.modelPage.html('').show();
+            resulting: function (id, typePage) {
 
-                    function func(time, inc, count) {
-                        $.get(API.prepareTask + id).done(function (data) {
+                var url;
+                if(typePage == 'result'){
+                    url = API.result;
+                }else if(typePage == 'history'){
+                    url = API.saveTask
+                }
 
-                            $.each(data.structures, function (key, struct) {
-                                var setting = {};
-                                setting.additives = additives;
-                                setting.models = models;
-                                setting.selectedModels = struct.models[0];
-                                setting.selectAdditives = struct.additives;
-                                setting.cml = struct.data;
-                                setting.modelsId = struct.type;
-                                setting.temp = struct.temperature;
-                                setting.pres = struct.pressure;
-                                setting.structure = struct.structure;
-                                setting.onChangeImage = function (data) {
-                                    $page.modellButton.hide();
-                                    $page.revalidButton.show();
-                                };
+                this.hideCom();
+                $page.resultPage.html('').show();
+                $page.loader.show();
 
-                                var object = $('<div class="chemeditor row"></div>').chemEditor(setting);
-                                $page.modelPage.append(object);
-                            })
+                var tempData;
 
+                var _this = this;
 
-                            $page.loader.hide();
-                        }).fail(function () {
-                            if (count > 0) {
-                                count -= 1
-                                time += inc;
-                                setTimeout(function () {
-                                    func(time, inc, count)
-                                }, time);
-                            } else {
-                                $page.modelPage.append(serverMassange.modelError);
-                                $page.loader.hide();
-                            }
+                function func(time, inc, count) {
+                    $.get(url + id).done(function (data) {
+                        result_task = id;
 
-                        })
+                        $.ajax(API.resultTemplate, {type: 'GET'}).done(function(tmpData) {
 
-                    }
-
-                    func(request.timeOut, request.increament, request.count);
-
-                },
-
-                onModelling: function () {
-
-                    var obj1 = [],
-                        flag = true;
+                            $page.saveButton.show();
+                            $page.downloadButton.show();
 
 
-                    $.each($(".chemeditor"),function() {
-                        var e = $(this).chemEditor('getAllData');
-                        if(e){
-                            obj1.push(e)
-                        }
-                        else{
-                            flag = false
-                        }
-                    });
-
-
-
-                    if (flag) {
-                        $page.modellButton.button('loading');
-                        $.ajax({
-                            url: API.result + task_model,
-                            type: 'POST',
-                            data: JSON.stringify(obj1),
-                            success: function (data) {
-                                window.location.href = '#/result/' + data.task + '/';
-                            },
-                            error: function (data) {
-
-
-                            },
-                            complete: function () {
-                                $page.modellButton.button('reset');
-                            }
-                        });
-                    }
-                    else {
-                        $page.errorMessage.find(".text").html("Please make sure that the model field is filled and the total percentage of the solvent is equal to 100 (if the solvent is selected)");
-                        $page.errorMessage.fadeIn(300).delay(4000).fadeOut(800);
-                    }
-                },
-
-                resulting: function (id) {
-
-                    this.hideCom();
-                    $page.resultPage.html('').show();
-                    $page.loader.show();
-
-                    var tempData;
-
-                    var _this = this;
-
-                    function func(time, inc, count) {
-                        $.get(API.result + id).done(function (data) {
-
-
-                            $.ajax(API.resultTemplate, {type: 'GET'}).done(function(tmpData) {
-
-
-
-
-                                MarvinJSUtil.getPackage("marvinjs-iframe").then(function (marvinNameSpace) {
-                                    marvinNameSpace.onReady(function () {
-                                        marvin = marvinNameSpace;
-                                        Handlebars.registerHelper("inc", function (value, options) {
-                                            return parseInt(value) + 1;
-                                        });
-
-                                        Handlebars.registerHelper("base", function (value, options) {
-                                            var bs64 = marvin.ImageExporter.mrvToDataUrl(value, "png", {width: 500,
-                                                height: 410,
-                                                zoomMode: 'autoshrink'});
-                                            return new Handlebars.SafeString('<img src="' + bs64 + '" class="image">');
-                                        });
-
-                                        var template = Handlebars.compile(tmpData);
-                                        var html = template(data);
-                                        ;
-                                        $page.resultPage.append(html);
-
-                                        $page.loader.hide();
-
-
+                            MarvinJSUtil.getPackage("marvinjs-iframe").then(function (marvinNameSpace) {
+                                marvinNameSpace.onReady(function () {
+                                    marvin = marvinNameSpace;
+                                    Handlebars.registerHelper("inc", function (value, options) {
+                                        return parseInt(value) + 1;
                                     });
+
+                                    Handlebars.registerHelper("base", function (value, options) {
+                                        var bs64 = marvin.ImageExporter.mrvToDataUrl(value, "png", {width: 500,
+                                            height: 410,
+                                            zoomMode: 'autoshrink'});
+                                        return new Handlebars.SafeString('<img src="' + bs64 + '" class="image">');
+                                    });
+
+                                    var template = Handlebars.compile(tmpData);
+                                    var html = template(data);
+
+                                    $page.resultPage.append(html);
+
+                                    $page.loader.hide();
 
 
                                 });
 
+
                             });
-                        }).fail(function () {
-                            console.log(time + '-' + inc + '-' + count)
-                            if (count > 0) {
-                                count -= 1
-                                time += inc;
-                                setTimeout(function () {
-                                    func(time, inc, count)
-                                }, time);
-                            } else {
-                                $page.resultPage.append(serverMassange.modelError);
-                                $page.loader.hide();
-                            }
 
-                        })
-                    }
-
-
-                    func(request.timeOut, request.increament, request.count);
-                },
-
-
-
-                onRevalidating: function () {
-                    $page.revalidButton.button('loading');
-                    var obj1 = $(".chemeditor").chemEditor('getDataCVL');
-                    var struct = $(".chemeditor").chemEditor('getSrtuct');
-                    obj1.structure = struct;
-                    $.ajax({
-                        url: API.prepareTask + task_model,
-                        type: 'POST',
-                        data: JSON.stringify([obj1]),
-                        success: function (data) {
+                        });
+                    }).fail(function () {
+                        console.log(time + '-' + inc + '-' + count)
+                        if (count > 0) {
+                            count -= 1
+                            time += inc;
+                            setTimeout(function () {
+                                func(time, inc, count)
+                            }, time);
+                        } else {
+                            $page.resultPage.append(serverMassange.modelError);
                             $page.loader.hide();
-                            $page.revalidButton.button('reset');
-                            window.location.href = '#/model/' + data.task + '/';
-                        },
-                        error: function (data) {
-                            $page.revalidButton.button('reset');
-                            $page.loader.hide();
-                        },
-                        complete: function () {
                         }
-                    });
+
+                    })
                 }
 
+
+                func(request.timeOut, request.increament, request.count);
+            },
+
+
+
+            onRevalidating: function () {
+                $page.revalidButton.button('loading');
+                var obj1 = $(".chemeditor").chemEditor('getDataCVL');
+                var struct = $(".chemeditor").chemEditor('getSrtuct');
+                obj1.structure = struct;
+                $.ajax({
+                    url: API.prepareTask + task_model,
+                    type: 'POST',
+                    data: JSON.stringify([obj1]),
+                    success: function (data) {
+                        $page.loader.hide();
+                        $page.revalidButton.button('reset');
+                        window.location.href = '#/model/' + data.task + '/';
+                    },
+                    error: function (data) {
+                        $page.revalidButton.button('reset');
+                        $page.loader.hide();
+                    },
+                    complete: function () {
+                    }
+                });
+            },
+
+            onSaving: function() {
+                $page.saveButton.button('loading');
+                $.ajax({
+                    url: API.saveTask + result_task,
+                    type: 'POST',
+                    contentType: "application/json",
+                    success: function (data) {
+                        $page.saveButton.prop('disabled', true);
+                        $messange('Task saved', 'success');
+                    },
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        $messange('Task save error: ' + jqXHR.status + "-" + errorThrown, 'error');
+                    },
+                    complete: function () {
+                        $page.saveButton.button('reset');
+                    }
+                });
             }
+
         }
+    }
 
 
     var app = appPage();
@@ -358,9 +416,12 @@
     $.routes.add('/model/{id:string}/', function () {
         app.modelling(this.id);
     });
-    $.routes.add('/result/{id:string}/', function () {
-        app.resulting(this.id);
+    $.routes.add('/result/{id:string}/', function() {
+        app.resulting(this.id, 'result');
     });
+    $.routes.add('/history/{id:string}/', function() {
+        app.resulting(this.id, 'history')
+    })
 
     if (window.location.hash == '') {
         window.location.href = "#/index/"

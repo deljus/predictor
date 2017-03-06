@@ -39,17 +39,6 @@
                         </label>
                     </div>
                     <div class="navbar-right-btn">
-                        <ul class="nav navbar-nav">
-                            <li id="dropdown" class="dropdown">
-                                <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                                    Tasks <span class="caret"></span>
-                                </a>
-                                <ul id="task" class="dropdown-menu">
-                                    <li><a>modelling task</a></li>
-                                    <li><a>result task</a></li>
-                                </ul>
-                            </li>
-                        </ul>
                         <button type="button" class="btn btn-primary start navbar-btn" id="validate" disabled="true"
                                 data-loading-text="<i class='glyphicon glyphicon-refresh spinning'></i> Validating...">
                             <i class="glyphicon glyphicon-share-alt"></i>
@@ -64,6 +53,14 @@
                                 data-loading-text="<i class='glyphicon glyphicon-refresh spinning'></i> Modelling...">
                             <i class="glyphicon glyphicon-play-circle"></i>
                             <span>Modelling</span>
+                        </button>
+                        <button  type="button"
+                                 class="btn btn-danger navbar-btn"
+                                 id = "saving"
+                                 data-loading-text="<i class='glyphicon glyphicon-refresh spinning'></i> Saving..."
+                                 style="display: none">
+                            <i class="glyphicon glyphicon-floppy-save"></i>
+                            <span>Save</span>
                         </button>
                     </div>
                 </div>

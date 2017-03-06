@@ -31,7 +31,8 @@
 
                 $('#close-wo-save').click(function() {
                     $("#myModal").css({'z-index' : -40, opacity: 0, 'background' : 'rgba(0,0,0,0)'});
-                })
+                    $("body").removeClass('modal-open');
+                });
 
 
 
@@ -66,6 +67,7 @@
                     marvinSketcherInstance = sketcherInstance;
                     _this.click(function () {
                         $("#myModal").css({'z-index' : 1050, 'opacity': 1, 'background': 'rgba(0,0,0,.5)'});
+                        $("body").addClass('modal-open');
                         marvinSketcherInstance.importStructure("mrv", dom.img.attr('alt'));
                         _this.data('flag', true);
                     });
