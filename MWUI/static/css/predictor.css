@@ -231,4 +231,5 @@
     -webkit-overflow-scrolling: touch;
     outline: 0;
     opacity: 0;
+    overflow-y: auto;
 }
