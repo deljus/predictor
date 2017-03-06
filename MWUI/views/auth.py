@@ -78,8 +78,8 @@ class LoginView(View):
                              town=active_form.town.data, country=active_form.country.data,
                              status=active_form.status.data, degree=active_form.degree.data)
 
-                    send_mail((m and m.body or 'Welcome! %s.') % ('%s %s' % (u.name, u.surname)), u.email,
-                              to_name='%s %s' % (u.name, u.surname), subject=m and m.title or 'Welcome',
+                    send_mail((m and m.body or 'Welcome! %s.') % u.full_name, u.email,
+                              to_name=u.full_name, subject=m and m.title or 'Welcome',
                               banner=m and m.banner, title=m and m.title,
                               from_name=m and m.from_name, reply_mail=m and m.reply_mail, reply_name=m and m.reply_name)
 
@@ -96,8 +96,8 @@ class LoginView(View):
                     if u:
                         m = select(x for x in Email if x.post_type == EmailPostType.FORGOT.value).first()
                         restore = u.gen_restore()
-                        send_mail((m and m.body or '%s\n\nNew password: %s') % ('%s %s' % (u.name, u.surname), restore),
-                                  u.email, to_name='%s %s' % (u.name, u.surname),
+                        send_mail((m and m.body or '%s\n\nNew password: %s') % (u.full_name, restore),
+                                  u.email, to_name=u.full_name,
                                   subject=m and m.title or 'Forgot password?',
                                   banner=m and m.banner, title=m and m.title,
                                   from_name=m and m.from_name, reply_mail=m and m.reply_mail,
