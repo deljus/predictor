@@ -27,9 +27,6 @@
 
 {% block page %}
     <div class="row">
-        <div id="loader" class="cssload-container" style="display: none">
-            <div class="cssload-speeding-wheel"></div>
-        </div>
         <div class="col-lg-12">
             <nav class="navbar navbar-custom">
                 <div class="container-fluid">
@@ -96,3 +93,10 @@
         </div>
     </div>
 {% endblock %}
+
+{% block body %}
+    {{super()}}
+    <div id="loader" class="cssload-container" style="display: none">
+        <div class="cssload-speeding-wheel"></div>
+    </div>
+{% endblock body %}

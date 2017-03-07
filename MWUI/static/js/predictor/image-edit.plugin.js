@@ -1,5 +1,4 @@
 (function ($) {
-    "use struct";
     $.fn.imageEdit = function (obj) {
         var methods = {
             init: function (params) {
@@ -29,11 +28,10 @@
                 var _this = this;
                 var marvin, marvinSketcherInstance;
 
-                $('#close-wo-save').click(function() {
-                    $("#myModal").css({'z-index' : -40, opacity: 0, 'background' : 'rgba(0,0,0,0)'});
+                $('#close-wo-save').click(function () {
+                    $("#myModal").css({'z-index': -40, opacity: 0, 'background': 'rgba(0,0,0,0)'});
                     $("body").removeClass('modal-open');
                 });
-
 
 
                 MarvinJSUtil.getPackage("marvinjs-iframe").then(function (marvinNameSpace) {
@@ -66,7 +64,7 @@
                 MarvinJSUtil.getEditor("marvinjs-iframe").then(function (sketcherInstance) {
                     marvinSketcherInstance = sketcherInstance;
                     _this.click(function () {
-                        $("#myModal").css({'z-index' : 1050, 'opacity': 1, 'background': 'rgba(0,0,0,.5)'});
+                        $("#myModal").css({'z-index': 1050, 'opacity': 1, 'background': 'rgba(0,0,0,.5)'});
                         $("body").addClass('modal-open');
                         marvinSketcherInstance.importStructure("mrv", dom.img.attr('alt'));
                         _this.data('flag', true);
@@ -79,7 +77,7 @@
                                 dom.img.attr('alt', s);
                                 console.log(s);
                                 if (s == '<cml><MDocument></MDocument></cml>') {
-                                    dom.img.attr('src', settings.defaultImage)
+                                    dom.img.attr('src', settings.defaultImage);
                                     settings.onDefaultImage.call()
                                 }
                                 else {
@@ -88,8 +86,8 @@
                                     settings.onChangeImage.call(src);
                                 }
 
-                                _this.data('flag', false)
-                                $("#myModal").css({'z-index' : -40, opacity: 0, 'background' : 'rgba(0,0,0,0)'});
+                                _this.data('flag', false);
+                                $("#myModal").css({'z-index': -40, opacity: 0, 'background': 'rgba(0,0,0,0)'});
 
                             });
                         }
@@ -102,7 +100,7 @@
             },
 
             getCVL: function () {
-                var img = this.data('dom').img
+                var img = this.data('dom').img;
                 return unescape($(img).attr('alt'));
             },
             destroy: function () {
@@ -119,4 +117,4 @@
             $.error('Метод "' + obj + '" не найден в плагине jQuery.mySimplePlugin');
         }
     };
-})(jQuery,window,document);
+})(jQuery, window, document);

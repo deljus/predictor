@@ -1,9 +1,6 @@
 (function ($) {
-
     var BASE_URL = window.location.protocol + "//" + window.location.host + "/",
-
         /* Server api urls */
-
         API = {
             createTask: BASE_URL + 'api/task/create/0',
             prepareTask: BASE_URL + 'api/task/prepare/',
@@ -18,9 +15,9 @@
         /* Delay between requests */
 
         request = {
-            timeOut : 400,
-            increament : 400,
-            count : 6
+            timeOut: 400,
+            increament: 400,
+            count: 6
         },
 
         /* Pages and buttons is show and hide */
@@ -42,29 +39,25 @@
         /* Server error massange */
 
         serverMassange = {
-            modelError  : "<p>Unfortunately, we were unable to load the data. Maybe they just aren't ready. " +
+            modelError: "<p>Unfortunately, we were unable to load the data. Maybe they just aren't ready. " +
             "To try again, click refresh <button class='btn btn-danger' onclick='window.location.reload()'><span class='glyphicon glyphicon-repeat'></span> Reload page</button></p>",
-            error       :   "Heavy battles our server fell as a hero",
-            fileUpload  :   "Could not load file",
-            taskCreate  :   "Could not create new task",
-            error403    :	"User access deny. you do not have permission to this task",
-            error404    :	"Invalid task id. perhaps this task has already been removed",
-            error406    :	"Task status is invalid. only validation tasks acceptable",
-            error500    :	"Modeling server error"
+            error: "Heavy battles our server fell as a hero",
+            fileUpload: "Could not load file",
+            taskCreate: "Could not create new task"
         },
 
         /* Error messange */
 
-        $messange = function(text, type) {
+        $messange = function (text, type) {
             $page.errorMessage.hide();
-            $page.errorMessage.removeClass("alert-info","alert-warning","alert-danger","alert-success");
-            if(type == 'error'){
+            $page.errorMessage.removeClass("alert-info", "alert-warning", "alert-danger", "alert-success");
+            if (type == 'error') {
                 $page.errorMessage.addClass("alert-danger");
-            }else if(type=='success'){
+            } else if (type == 'success') {
                 $page.errorMessage.addClass("alert-success");
-            }else if(type == 'info'){
+            } else if (type == 'info') {
                 $page.errorMessage.addClass("alert-info");
-            }else if(type == 'warning'){
+            } else if (type == 'warning') {
                 $page.errorMessage.addClass("alert-warning");
             }
             $page.errorMessage.find(".text").html(text);
@@ -88,11 +81,11 @@
                 $page.validButton.on("click", this.onValidate);
                 $page.modellButton.on("click", this.onModelling);
                 $page.revalidButton.on("click", this.onRevalidating);
-                $page.errorMessage.find("button").on('click', function () {$page.errorMessage.hide()});
+                $page.errorMessage.find("button").on('click', function () {
+                    $page.errorMessage.hide()
+                });
                 $page.fileButton.find('input[type=file]').on('change', this.prepareUpload);
-                $page.saveButton.on("click", this.onSaving);
-                /* Hide loader on load page */
-                $(window).load(function () {$page.loader.hide();});
+                $page.saveButton.on("click", this.onSaving)
             },
 
             /* hide all pages and buttons */
@@ -110,19 +103,20 @@
                 $page.indexPage.html('').show();
                 $page.validButton.show();
                 $page.fileButton.show();
-
                 /* create info chemdraw object if index page empty*/
-                if(!$page.indexPage.html()) {
+                if (!$page.indexPage.html()) {
                     var obj = $('<div id="chemeditor" class="row"></div>').chemEditor({
-                        onDefaultImage: function () {$page.validButton.prop('disabled', true);},
-                        onChangeImage: function (data) {$page.validButton.prop('disabled', false);},
+                        onDefaultImage: function () {
+                            $page.validButton.prop('disabled', true);
+                        },
+                        onChangeImage: function (data) {
+                            $page.validButton.prop('disabled', false);
+                        },
                         typePres: 'info'
                     });
                     $page.indexPage.append(obj);
                 }
-
                 $page.indexPage.show();
-
             },
 
             /* Load file */
@@ -149,12 +143,8 @@
             },
 
 
-
             onValidate: function () {
-
-
                 $page.validButton.button('loading');
-
                 var dataObj = $("#chemeditor").chemEditor('getDataCVL');
 
                 $.ajax({
@@ -177,7 +167,6 @@
 
             modelling: function (id) {
                 task_model = id;
-                console.log(task_model);
                 this.hideCom();
                 $page.loader.show();
                 $page.modellButton.show();
@@ -198,6 +187,7 @@
 
                 function func(time, inc, count) {
                     $.get(API.prepareTask + id).done(function (data) {
+                        $page.loader.hide();
                         $.each(data.structures, function (key, struct) {
                             var setting = {};
                             setting.additives = additives;
@@ -217,26 +207,20 @@
                             var object = $('<div class="chemeditor row"></div>').chemEditor(setting);
                             $page.modelPage.append(object);
                         });
-                        $page.loader.hide();
+
                     }).fail(function (jqXHR, textStatus, errorThrown) {
 
                         if (count > 0) {
-                            count -= 1
+                            count -= 1;
                             time += inc;
                             setTimeout(function () {
                                 func(time, inc, count)
                             }, time);
 
-                            console.log(jqXHR.status +'-' + textStatus + '' + errorThrown)
-
                         } else {
                             $page.modelPage.append(serverMassange.modelError);
                             $page.loader.hide();
                         }
-
-
-
-
                     })
 
                 }
@@ -249,16 +233,15 @@
                     flag = true;
 
 
-                $.each($(".chemeditor"),function() {
+                $.each($(".chemeditor"), function () {
                     var e = $(this).chemEditor('getAllData');
-                    if(e){
+                    if (e) {
                         obj1.push(e)
                     }
-                    else{
+                    else {
                         flag = false
                     }
                 });
-
 
 
                 if (flag) {
@@ -287,9 +270,9 @@
             resulting: function (id, typePage) {
 
                 var url;
-                if(typePage == 'result'){
+                if (typePage == 'result') {
                     url = API.result;
-                }else if(typePage == 'history'){
+                } else if (typePage == 'history') {
                     url = API.saveTask
                 }
 
@@ -305,10 +288,9 @@
                     $.get(url + id).done(function (data) {
                         result_task = id;
 
-                        $.ajax(API.resultTemplate, {type: 'GET'}).done(function(tmpData) {
+                        $.ajax(API.resultTemplate, {type: 'GET'}).done(function (tmpData) {
 
-                            $page.saveButton.show();
-                            $page.downloadButton.show();
+                            if (typePage == 'result') $page.saveButton.show();
 
 
                             MarvinJSUtil.getPackage("marvinjs-iframe").then(function (marvinNameSpace) {
@@ -319,9 +301,11 @@
                                     });
 
                                     Handlebars.registerHelper("base", function (value, options) {
-                                        var bs64 = marvin.ImageExporter.mrvToDataUrl(value, "png", {width: 500,
+                                        var bs64 = marvin.ImageExporter.mrvToDataUrl(value, "png", {
+                                            width: 500,
                                             height: 410,
-                                            zoomMode: 'autoshrink'});
+                                            zoomMode: 'autoshrink'
+                                        });
                                         return new Handlebars.SafeString('<img src="' + bs64 + '" class="image">');
                                     });
 
@@ -359,8 +343,6 @@
                 func(request.timeOut, request.increament, request.count);
             },
 
-
-
             onRevalidating: function () {
                 $page.revalidButton.button('loading');
                 var obj1 = $(".chemeditor").chemEditor('getDataCVL');
@@ -384,7 +366,7 @@
                 });
             },
 
-            onSaving: function() {
+            onSaving: function () {
                 $page.saveButton.button('loading');
                 $.ajax({
                     url: API.saveTask + result_task,
@@ -406,7 +388,6 @@
         }
     };
 
-
     var app = appPage();
     app.init();
 
@@ -416,10 +397,10 @@
     $.routes.add('/model/{id:string}/', function () {
         app.modelling(this.id);
     });
-    $.routes.add('/result/{id:string}/', function() {
+    $.routes.add('/result/{id:string}/', function () {
         app.resulting(this.id, 'result');
     });
-    $.routes.add('/history/{id:string}/', function() {
+    $.routes.add('/history/{id:string}/', function () {
         app.resulting(this.id, 'history')
     });
 
@@ -428,4 +409,3 @@
     }
 
 })(jQuery, window);
-
