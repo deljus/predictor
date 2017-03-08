@@ -20,7 +20,7 @@
 #
 from flask_restful_swagger import swagger
 from flask_restful import fields
-from ..config import ModelType
+from ..constants import ModelType
 
 
 class ModelTypeField(fields.Raw):

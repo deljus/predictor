@@ -23,7 +23,8 @@ from flask import redirect, url_for, render_template
 from flask_login import login_required, current_user
 from pony.orm import db_session, select
 from ..models import Email, Meeting, Post, Thesis, Subscription
-from ..config import UserRole, BLOG_POSTS_PER_PAGE, MeetingPostType
+from ..config import BLOG_POSTS_PER_PAGE
+from ..constants import UserRole, MeetingPostType
 from ..bootstrap import Pagination
 
 

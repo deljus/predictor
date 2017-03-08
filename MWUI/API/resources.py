@@ -35,9 +35,10 @@ from .data import get_additives, get_model, get_models_list, format_results
 from .structures import (ModelRegisterFields, TaskPostResponseFields, TaskGetResponseFields, TaskStructureFields,
                          LogInFields, AdditivesListFields, ModelListFields)
 from ..logins import UserLogin
-from ..config import (UPLOAD_PATH, StructureStatus, TaskStatus, ModelType, TaskType, REDIS_HOST, REDIS_JOB_TIMEOUT,
-                      REDIS_PASSWORD, REDIS_PORT, REDIS_TTL, StructureType, UserRole, BLOG_POSTS_PER_PAGE, AdditiveType,
-                      ResultType)
+from ..config import (UPLOAD_PATH, REDIS_HOST, REDIS_JOB_TIMEOUT, REDIS_PASSWORD, REDIS_PORT, REDIS_TTL,
+                      BLOG_POSTS_PER_PAGE)
+from ..constants import (StructureStatus, TaskStatus, ModelType, TaskType, StructureType, UserRole, AdditiveType,
+                         ResultType)
 from ..models import Task, Structure, Additive, Model, Additiveset, Destination, User, Result
 from .redis import RedisCombiner
 

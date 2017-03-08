@@ -22,7 +22,7 @@ from flask import redirect, url_for, render_template, flash
 from flask.views import View
 from flask_login import logout_user, login_required, current_user
 from pony.orm import db_session, commit
-from ..config import UserRole, MeetingPostType, FormRoute
+from ..constants import UserRole, MeetingPostType, FormRoute
 from ..forms import (ReLoginForm, ChangePasswordForm, PostForm, ChangeRoleForm, BanUserForm,
                      ProfileForm, MeetingForm, EmailForm, TeamForm)
 from ..models import User, BlogPost, Email, Meeting, TeamPost

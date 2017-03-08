@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#  Copyright 2015-2017 Ramil Nugmanov <stsouko@live.ru>
-#  Copyright 2015 Oleg Varlamov <ovarlamo@gmail.com>
+#  Copyright 2017 Ramil Nugmanov <stsouko@live.ru>
 #  This file is part of MWUI.
 #
 #  MWUI is free software; you can redistribute it and/or modify
@@ -19,8 +18,14 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from .ORM import db, main_tables as mt, save_tables as st, data_tables as dt
+from pony.orm import Database
+from ..config import DB_MAIN, DB_PRED
+from .web import load_tables as main
+from .predictions import load_tables as save
+from .data import load_tables as data
 
-User, Subscription, Model, Destination, Additive, Post, BlogPost, TeamPost, Meeting, Thesis, Email, Attachment = mt
-Task, Structure, Result, Additiveset = st
-Molecule, Reaction, Conditions = dt
+db = Database()
+
+(User, Subscription, Model, Destination, Additive,
+ Post, BlogPost, TeamPost, Meeting, Thesis, Email, Attachment) = main(db, DB_MAIN)
+Task, Structure, Result, Additiveset = save(db, DB_PRED)

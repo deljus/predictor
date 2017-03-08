@@ -23,8 +23,8 @@ from json import loads
 from collections import OrderedDict
 from pycountry import countries
 from .models import User, Meeting
-from .config import (BlogPostType, UserRole, ThesisPostType, ProfileDegree, ProfileStatus, MeetingPostType,
-                     EmailPostType, TeamPostType, MeetingPartType)
+from .constants import (BlogPostType, UserRole, ThesisPostType, ProfileDegree, ProfileStatus, MeetingPostType,
+                        EmailPostType, TeamPostType, MeetingPartType)
 from .redirect import get_redirect_target, is_safe_url
 from flask import url_for, redirect
 from flask_wtf import FlaskForm

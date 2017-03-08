@@ -23,8 +23,9 @@ import hashlib
 from pycountry import countries
 from datetime import datetime
 from pony.orm import PrimaryKey, Required, Optional, Set, Json
-from ..config import (ModelType, AdditiveType, UserRole, ProfileDegree, ProfileStatus, Glyph, DEBUG,
-                      BlogPostType, MeetingPostType, ThesisPostType, EmailPostType, TeamPostType, MeetingPartType)
+from ..constants import (ModelType, AdditiveType, UserRole, ProfileDegree, ProfileStatus, Glyph, BlogPostType,
+                         MeetingPostType, ThesisPostType, EmailPostType, TeamPostType, MeetingPartType)
+from ..config import DEBUG
 
 
 def filter_kwargs(kwargs):
@@ -67,11 +68,6 @@ def load_tables(db, schema):
         position = Optional(str)
 
         posts = Set('Post')
-
-        molecules = Set('Molecule')
-        reactions = Set('Reaction')
-        conditions = Set('Conditions')
-
         subscriptions = Set('Subscription')
 
         def __init__(self, email, password, role=UserRole.COMMON, **kwargs):

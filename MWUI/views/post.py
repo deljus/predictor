@@ -25,8 +25,8 @@ from pony.orm import db_session, select, commit
 from datetime import datetime
 from ..forms import PostForm, DeleteButtonForm, MeetingForm, EmailForm, ThesisForm, TeamForm, MeetForm
 from ..models import Email, Post, Thesis, Subscription
-from ..config import (UserRole, BlogPostType, MeetingPostType, EmailPostType, TeamPostType, MeetingPartType,
-                      ThesisPostType)
+from ..constants import (UserRole, BlogPostType, MeetingPostType, EmailPostType, TeamPostType, MeetingPartType,
+                         ThesisPostType)
 from ..sendmail import send_mail
 from ..scopus import get_articles
 from ..upload import save_upload, combo_save

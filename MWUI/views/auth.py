@@ -26,7 +26,7 @@ from ..forms import LoginForm, RegistrationForm, ForgotPasswordForm, LogoutForm
 from ..redirect import get_redirect_target
 from ..logins import UserLogin
 from ..models import User, Email, Meeting
-from ..config import FormRoute, EmailPostType
+from ..constants import FormRoute, EmailPostType
 from ..sendmail import send_mail
 
 

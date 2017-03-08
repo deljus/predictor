@@ -46,7 +46,7 @@ def init():
         db.bind('sqlite', 'database.sqlite')
     else:
         db.bind('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST, database=DB_NAME)
-    db.generate_mapping(create_tables=DEBUG)
+    db.generate_mapping()
 
     app = Flask(__name__)
 

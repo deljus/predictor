@@ -20,7 +20,8 @@
 #
 from datetime import datetime
 from pony.orm import PrimaryKey, Required, Optional, Set
-from ..config import TaskType, ResultType, StructureType, StructureStatus, DEBUG
+from ..config import DEBUG
+from ..constants import TaskType, ResultType, StructureType, StructureStatus
 
 
 def load_tables(db, schema):

@@ -20,7 +20,14 @@
 #
 from pony.orm import db_session, select
 from ..models import Additive, Model
-from ..config import ModelType, BLOG_POSTS_PER_PAGE
+from ..config import BLOG_POSTS_PER_PAGE
+from ..constants import ModelType
+
+'''
+molecules = Set('Molecule')
+reactions = Set('Reaction')
+conditions = Set('Conditions')
+'''
 
 
 def get_model(_type):

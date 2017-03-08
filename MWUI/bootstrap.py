@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#  Copyright 2016 Ramil Nugmanov <stsouko@live.ru>
+#  Copyright 2016, 2017 Ramil Nugmanov <stsouko@live.ru>
 #  This file is part of MWUI.
 #
 #  MWUI is free software; you can redistribute it and/or modify
@@ -25,7 +25,8 @@ from flask_nav.elements import View, NavigationItem, Navbar, Separator, Subgroup
 from flask_bootstrap.nav import BootstrapRenderer
 from hashlib import sha1
 from dominate import tags
-from .config import LAB_SHORT, UserRole
+from .config import LAB_SHORT
+from .constants import UserRole
 from .redirect import get_redirect_target
 from misaka import HtmlRenderer
 

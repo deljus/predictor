@@ -22,7 +22,8 @@ from flask import render_template
 from pony.orm import db_session, select
 from flask.views import View
 from ..models import BlogPost, Post, TeamPost
-from ..config import BLOG_POSTS_PER_PAGE, BlogPostType, LAB_NAME, MeetingPostType, TeamPostType
+from ..config import BLOG_POSTS_PER_PAGE, LAB_NAME
+from ..constants import BlogPostType, MeetingPostType, TeamPostType
 
 
 class IndexView(View):

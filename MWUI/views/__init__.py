@@ -25,7 +25,7 @@ from datetime import datetime
 from pycountry import countries
 from ..forms import DeleteButtonForm
 from ..models import User, Meeting, Post, Attachment, Subscription
-from ..config import UserRole, MeetingPostType, ProfileStatus
+from ..constants import UserRole, MeetingPostType, ProfileStatus
 from .auth import LoginView, LogoutView
 from .profile import ProfileView
 from .post import PostView
