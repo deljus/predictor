@@ -104,5 +104,4 @@ with open(next(x for x in config_dirs if exists(x))) as f:
         except:
             pass
 
-if DB_DATA:
-    DB_DATA_LIST = DB_DATA.split()
+DB_DATA_LIST = DB_DATA.split() if DB_DATA else []
