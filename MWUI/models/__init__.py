@@ -19,7 +19,7 @@
 #  MA 02110-1301, USA.
 #
 from pony.orm import Database
-from ..config import DB_MAIN, DB_PRED
+from ..config import DB_MAIN, DB_PRED, DB_DATA_LIST
 from .web import load_tables as main
 from .predictions import load_tables as save
 from .data import load_tables as data
@@ -29,3 +29,6 @@ db = Database()
 (User, Subscription, Model, Destination, Additive,
  Post, BlogPost, TeamPost, Meeting, Thesis, Email, Attachment) = main(db, DB_MAIN)
 Task, Structure, Result, Additiveset = save(db, DB_PRED)
+
+for schema in DB_DATA_LIST:
+    data(db, schema)
