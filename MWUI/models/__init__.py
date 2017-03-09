@@ -30,5 +30,9 @@ db = Database()
  Post, BlogPost, TeamPost, Meeting, Thesis, Email, Attachment) = main(db, DB_MAIN)
 Task, Structure, Result, Additiveset = save(db, DB_PRED)
 
+data_db = []
+data_tables = []
 for schema in DB_DATA_LIST:
-    data(db, schema)
+    x = Database()
+    data_db.append(x)
+    data_tables.append(data(x, schema, db))

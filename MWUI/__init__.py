@@ -39,14 +39,24 @@ def init():
     from .config import (PORTAL_NON_ROOT, SECRET_KEY, DEBUG, LAB_NAME, RESIZE_URL, UPLOAD_PATH, IMAGES_ROOT,
                          MAX_UPLOAD_SIZE, YANDEX_METRIKA, DB_PASS, DB_HOST, DB_USER, DB_NAME)
     from .logins import load_user
-    from .models import db
+    from .models import db, data_db
 
     if DEBUG:
         sql_debug(True)
         db.bind('sqlite', 'database.sqlite')
+        for x in data_db:
+            x.bind('sqlite', 'database.sqlite')
+        db.generate_mapping(create_tables=True)
+        for x in data_db:
+            x.generate_mapping(create_tables=True)
     else:
         db.bind('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST, database=DB_NAME)
-    db.generate_mapping()
+        for x in data_db:
+            x.bind('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST, database=DB_NAME)
+
+        db.generate_mapping()
+        for x in data_db:
+            x.generate_mapping()
 
     app = Flask(__name__)
 

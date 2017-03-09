@@ -61,12 +61,17 @@ def get_fingerprints(df):
     return result
 
 
-def load_tables(db, schema):
-    class Molecule(db.Entity):
+def load_tables(db, schema, user_db):
+    class UserMixin(object):
+        @property
+        def user(self):
+            return user_db.User[self.user_id]
+
+    class Molecule(db.Entity, UserMixin):
         _table_ = '%s_molecule' % schema if DEBUG else (schema, 'molecule')
         id = PrimaryKey(int, auto=True)
         date = Required(datetime)
-        user = Required(int)
+        user_id = Required(int)
         data = Required(Json)
         fear = Required(str, unique=True)
         fingerprint = Required(str) if DEBUG else Required(str, sql_type='bit(%s)' % (2 ** FP_SIZE))
@@ -90,8 +95,8 @@ def load_tables(db, schema):
 
             self.__cached_structure_raw = molecule
             self.__cached_bitstring = fingerprint
-            super(Molecule, self).__init__(data=data, user=user, fear=fear_string, fingerprint=fingerprint.bin,
-                                           date=datetime.utcnow())
+            db.Entity.__init__(self, data=data, user_id=user.id, fear=fear_string, fingerprint=fingerprint.bin,
+                               date=datetime.utcnow())
 
         def update(self, molecule, user):
             new_hash = {k: v['element'] for k, v in molecule.nodes(data=True)}
@@ -218,11 +223,11 @@ def load_tables(db, schema):
             self.__last_edition = None
             self.__cached_bitstring = None
 
-    class Reaction(db.Entity):
+    class Reaction(db.Entity, UserMixin):
         _table_ = '%s_reaction' % schema if DEBUG else (schema, 'reaction')
         id = PrimaryKey(int, auto=True)
         date = Required(datetime)
-        user = Required(int)
+        user_id = Required(int)
         fear = Required(str, unique=True)
         mapless_fear = Required(str)
         fingerprint = Required(str) if DEBUG else Required(str, sql_type='bit(%s)' % (2 ** FP_SIZE))
@@ -291,14 +296,14 @@ def load_tables(db, schema):
             if fingerprint is None:
                 fingerprint = self.get_fingerprints([cgr], is_cgr=True)[0]
 
-            super(Reaction, self).__init__(user=user, fear=fear_string, fingerprint=fingerprint.bin,
-                                           date=datetime.utcnow(), mapless_fear=mapless_fear_string)
+            db.Entity.__init__(self, user_id=user.id, fear=fear_string, fingerprint=fingerprint.bin,
+                               date=datetime.utcnow(), mapless_fear=mapless_fear_string)
 
             for m, is_p, mapping in (batch[x] for x in sorted(batch)):
                 MoleculeReaction(reaction=self, molecule=m, product=is_p, mapping=mapping)
 
             if conditions:
-                Conditions(data=conditions, reaction=self, user=user)
+                Conditions(conditions, self, user)
 
             if special:
                 self.special = special
@@ -417,16 +422,17 @@ def load_tables(db, schema):
         target = Required('Molecule', reverse='merge_source')
         mapping = Optional(Json)
 
-    class Conditions(db.Entity):
+    class Conditions(db.Entity, UserMixin):
         _table_ = '%s_conditions' % schema if DEBUG else (schema, 'conditions')
         id = PrimaryKey(int, auto=True)
         date = Required(datetime)
-        user = Required(int)
+        user_id = Required(int)
         data = Required(Json)
         reaction = Required('Reaction')
 
-        def __init__(self, **kwargs):
-            date = kwargs.pop('date', datetime.utcnow())
-            super(Conditions, self).__init__(date=date, **kwargs)
+        def __init__(self, data, reaction, user, date=None):
+            if date is None:
+                date = datetime.utcnow()
+            db.Entity.__init__(self, user_id=user.id, date=date, reaction=reaction, data=data)
 
     return Molecule, Reaction, Conditions
