@@ -8,7 +8,7 @@
             additives: BASE_URL + 'api/resources/additives',
             models: BASE_URL + 'api/resources/models',
             upload: BASE_URL + 'api/task/upload/0',
-            resultTemplate: BASE_URL + 'static/delus/js/predictor/result.htm',
+            resultTemplate: BASE_URL + 'static/js/predictor/result.htm',
             saveTask: BASE_URL + 'api/task/results/'
         },
 
