@@ -19,7 +19,7 @@
 #  MA 02110-1301, USA.
 #
 from flask.views import View
-from flask import redirect, url_for, render_template
+from flask import redirect, url_for, render_template, flash
 from flask_login import login_required, current_user
 from pony.orm import db_session, select
 from ..models import Email, Meeting, Post, Thesis, Subscription
@@ -55,11 +55,16 @@ class BlogView(View):
 class AbstractsView(View):
     methods = ['GET']
     decorators = [db_session]
+    txt = '''Abstract here are the ones submitted by participants. If you want to submit it,
+             please log in to the site, confirm your participation in the Conference
+             and then follow submission procedure.'''
 
     def dispatch_request(self, event, page=1):
         m = Meeting.get(id=event, post_type=MeetingPostType.MEETING.value)
         if not m:
             return redirect(url_for('.blog'))
+
+        flash(self.txt, 'warning')
 
         q = select(x for x in Thesis if x.post_parent == m).order_by(Thesis.id.desc())
         return blog_viewer(page, q, '.participants', m.title, 'Abstracts',
