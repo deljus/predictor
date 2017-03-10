@@ -44,18 +44,15 @@ def init():
     if DEBUG:
         sql_debug(True)
         db.bind('sqlite', 'database.sqlite')
-        for x in data_db:
-            x.bind('sqlite', 'database.sqlite')
         db.generate_mapping(create_tables=True)
-        for x in data_db:
+        for x in data_db.values():
+            x.bind('sqlite', 'database.sqlite')
             x.generate_mapping(create_tables=True)
     else:
         db.bind('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST, database=DB_NAME)
-        for x in data_db:
-            x.bind('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST, database=DB_NAME)
-
         db.generate_mapping()
-        for x in data_db:
+        for x in data_db.values():
+            x.bind('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST, database=DB_NAME)
             x.generate_mapping()
 
     app = Flask(__name__)
