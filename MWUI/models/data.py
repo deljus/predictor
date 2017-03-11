@@ -29,36 +29,16 @@ from CGRtools.FEAR import FEAR
 from CGRtools.CGRreactor import CGRreactor
 from CGRtools.CGRcore import CGRcore
 from CGRtools.files import MoleculeContainer, ReactionContainer
-from hashlib import md5
 from MODtools.descriptors.fragmentor import Fragmentor
-from ..config import (FP_SIZE, FP_ACTIVE_BITS, FRAGMENTOR_VERSION, DEBUG,
+from .search.fingerprints import Fingerprints
+from ..config import (FP_SIZE, FP_ACTIVE_BITS, FRAGMENTOR_VERSION, DEBUG, DATA_ISOTOPE, DATA_STEREO,
                       FRAGMENT_TYPE_CGR, FRAGMENT_MIN_CGR, FRAGMENT_MAX_CGR, FRAGMENT_DYNBOND_CGR,
-                      FRAGMENT_TYPE_MOL, FRAGMENT_MIN_MOL, FRAGMENT_MAX_MOL, DATA_ISOTOPE, DATA_STEREO)
-
+                      FRAGMENT_TYPE_MOL, FRAGMENT_MIN_MOL, FRAGMENT_MAX_MOL)
 
 fear = FEAR(isotope=DATA_ISOTOPE, stereo=DATA_STEREO)
 cgr_core = CGRcore()
 cgr_reactor = CGRreactor(isotope=DATA_ISOTOPE, stereo=DATA_STEREO)
-
-
-def get_fingerprints(df):
-    bits_map = {}
-    for fragment in df.columns:
-        b = BitArray(md5(fragment.encode()).digest())
-        bits_map[fragment] = [b[r * FP_SIZE: (r + 1) * FP_SIZE].uint for r in range(FP_ACTIVE_BITS)]
-
-    result = []
-    for _, s in df.iterrows():
-        active_bits = set()
-        for k, v in s.items():
-            if v:
-                active_bits.update(bits_map[k])
-
-        fp = BitArray(2 ** FP_SIZE)
-        fp.set(True, active_bits)
-        result.append(fp)
-
-    return result
+fingerprints = Fingerprints(FP_SIZE, active_bits=FP_ACTIVE_BITS)
 
 
 def load_tables(db, schema, user_db):
@@ -67,7 +47,19 @@ def load_tables(db, schema, user_db):
         def user(self):
             return user_db.User[self.user_id]
 
-    class Molecule(db.Entity, UserMixin):
+    class FingerprintMixin(object):
+        @property
+        def bitstring_fingerprint(self):
+            if self.__cached_bitstring is None:
+                self.__cached_bitstring = BitArray(bin=self.fingerprint)
+            return self.__cached_bitstring
+
+        def flush_cache(self):
+            self.__cached_bitstring = None
+
+        __cached_bitstring = None
+
+    class Molecule(db.Entity, UserMixin, FingerprintMixin):
         _table_ = '%s_molecule' % schema if DEBUG else (schema, 'molecule')
         id = PrimaryKey(int, auto=True)
         date = Required(datetime)
@@ -176,7 +168,7 @@ def load_tables(db, schema, user_db):
             f = Fragmentor(workpath='.', version=FRAGMENTOR_VERSION, fragment_type=FRAGMENT_TYPE_MOL,
                            min_length=FRAGMENT_MIN_MOL, max_length=FRAGMENT_MAX_MOL,
                            useformalcharge=True).get(structures)['X']
-            return get_fingerprints(f)
+            return fingerprints.get_fingerprints(f)
 
         @property
         def structure_raw(self):
@@ -208,22 +200,15 @@ def load_tables(db, schema, user_db):
                 self.__last_edition = tmp
             return self.__last_edition
 
-        @property
-        def bitstring_fingerprint(self):
-            if self.__cached_bitstring is None:
-                self.__cached_bitstring = BitArray(bin=self.fingerprint)
-            return self.__cached_bitstring
-
         __cached_structure_raw = None
         __last_edition = None
-        __cached_bitstring = None
 
         def flush_cache(self):
             self.__cached_structure_raw = None
             self.__last_edition = None
-            self.__cached_bitstring = None
+            FingerprintMixin.flush_cache(self)
 
-    class Reaction(db.Entity, UserMixin):
+    class Reaction(db.Entity, UserMixin, FingerprintMixin):
         _table_ = '%s_reaction' % schema if DEBUG else (schema, 'reaction')
         id = PrimaryKey(int, auto=True)
         date = Required(datetime)
@@ -352,7 +337,7 @@ def load_tables(db, schema, user_db):
             f = Fragmentor(workpath='.', version=FRAGMENTOR_VERSION, fragment_type=FRAGMENT_TYPE_CGR,
                            min_length=FRAGMENT_MIN_CGR, max_length=FRAGMENT_MAX_CGR,
                            cgr_dynbonds=FRAGMENT_DYNBOND_CGR, useformalcharge=True).get(cgrs)['X']
-            return get_fingerprints(f)
+            return fingerprints.get_fingerprints(f)
 
         @staticmethod
         def get_fear(reaction, is_merged=False, get_cgr=False):
@@ -382,12 +367,6 @@ def load_tables(db, schema, user_db):
                 self.__cached_structure = r
             return self.__cached_structure
 
-        @property
-        def bitstring_fingerprint(self):
-            if self.__cached_bitstring is None:
-                self.__cached_bitstring = BitArray(bin=self.fingerprint)
-            return self.__cached_bitstring
-
         def refresh_fear_fingerprint(self):
             fear_string, cgr = Reaction.get_fear(self.structure, get_cgr=True)
             fingerprint = Reaction.get_fingerprints([cgr], is_cgr=True)[0]
@@ -399,13 +378,12 @@ def load_tables(db, schema, user_db):
         __cached_structure = None
         __cached_cgr = None
         __cached_conditions = None
-        __cached_bitstring = None
 
         def flush_cache(self):
             self.__cached_structure = None
             self.__cached_cgr = None
             self.__cached_conditions = None
-            self.__cached_bitstring = None
+            FingerprintMixin.flush_cache(self)
 
     class MoleculeReaction(db.Entity):
         _table_ = '%s_molecule_reaction' % schema if DEBUG else (schema, 'molecule_reaction')
