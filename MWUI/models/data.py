@@ -31,6 +31,7 @@ from CGRtools.CGRcore import CGRcore
 from CGRtools.files import MoleculeContainer, ReactionContainer
 from MODtools.descriptors.fragmentor import Fragmentor
 from .search.fingerprints import Fingerprints
+from .search.similarity import Similarity
 from ..config import (FP_SIZE, FP_ACTIVE_BITS, FRAGMENTOR_VERSION, DEBUG, DATA_ISOTOPE, DATA_STEREO,
                       FRAGMENT_TYPE_CGR, FRAGMENT_MIN_CGR, FRAGMENT_MAX_CGR, FRAGMENT_DYNBOND_CGR,
                       FRAGMENT_TYPE_MOL, FRAGMENT_MIN_MOL, FRAGMENT_MAX_MOL)
