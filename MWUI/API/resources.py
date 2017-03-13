@@ -168,12 +168,12 @@ class RegisterModels(AdminResource):
         return report, 201
 
 
-class AvailableModels(Resource):
+class AvailableModels(AuthResource):
     @swagger.operation(
         notes='Get available models',
         nickname='modellist',
         responseClass=ModelListFields.__name__,
-        responseMessages=[dict(code=200, message="models list")])
+        responseMessages=[dict(code=200, message="models list"), dict(code=401, message="user not authenticated")])
     @dynamic_docstring(ModelType.MOLECULE_MODELING, ModelType.REACTION_MODELING)
     def get(self):
         """
@@ -193,12 +193,12 @@ class AvailableModels(Resource):
         return out, 200
 
 
-class AvailableAdditives(Resource):
+class AvailableAdditives(AuthResource):
     @swagger.operation(
         notes='Get available additives',
         nickname='additives',
         responseClass=AdditivesListFields.__name__,
-        responseMessages=[dict(code=200, message="additives list")])
+        responseMessages=[dict(code=200, message="additives list"), dict(code=401, message="user not authenticated")])
     @dynamic_docstring(additives_types_desc)
     def get(self):
         """
@@ -229,6 +229,7 @@ class ResultsTask(AuthResource):
         parameters=[dict(name='task', description='Task ID', required=True,
                          allowMultiple=False, dataType='str', paramType='path')],
         responseMessages=[dict(code=200, message="modeled task"),
+                          dict(code=401, message="user not authenticated"),
                           dict(code=403, message='user access deny. you do not have permission to this task'),
                           dict(code=404, message='invalid task id. perhaps this task has already been removed'),
                           dict(code=406, message='task status is invalid. only validation tasks acceptable'),
@@ -300,6 +301,7 @@ class ResultsTask(AuthResource):
         parameters=[dict(name='task', description='Task ID', required=True,
                          allowMultiple=False, dataType='str', paramType='path')],
         responseMessages=[dict(code=201, message="modeled task saved"),
+                          dict(code=401, message="user not authenticated"),
                           dict(code=403, message='user access deny. you do not have permission to this task'),
                           dict(code=404, message='invalid task id. perhaps this task has already been removed'),
                           dict(code=406, message='task status is invalid. only modeled tasks acceptable'),
@@ -338,6 +340,7 @@ class ModelTask(AuthResource):
         parameters=[dict(name='task', description='Task ID', required=True,
                          allowMultiple=False, dataType='str', paramType='path')],
         responseMessages=[dict(code=200, message="modeled task"),
+                          dict(code=401, message="user not authenticated"),
                           dict(code=403, message='user access deny. you do not have permission to this task'),
                           dict(code=404, message='invalid task id. perhaps this task has already been removed'),
                           dict(code=406, message='task status is invalid. only validation tasks acceptable'),
@@ -368,6 +371,7 @@ class ModelTask(AuthResource):
                          required=True, allowMultiple=False, dataType=TaskStructureFields.__name__, paramType='body')],
         responseMessages=[dict(code=201, message="modeling task created"),
                           dict(code=400, message="invalid structure data"),
+                          dict(code=401, message="user not authenticated"),
                           dict(code=403, message='user access deny. you do not have permission to this task'),
                           dict(code=404, message='invalid task id. perhaps this task has already been removed'),
                           dict(code=406, message='task status is invalid. only validation tasks acceptable'),
@@ -440,6 +444,7 @@ class PrepareTask(AuthResource):
         parameters=[dict(name='task', description='Task ID', required=True,
                          allowMultiple=False, dataType='str', paramType='path')],
         responseMessages=[dict(code=200, message="validated task"),
+                          dict(code=401, message="user not authenticated"),
                           dict(code=403, message='user access deny. you do not have permission to this task'),
                           dict(code=404, message='invalid task id. perhaps this task has already been removed'),
                           dict(code=406, message='task status is invalid. only validation tasks acceptable'),
@@ -483,6 +488,7 @@ class PrepareTask(AuthResource):
                          required=True, allowMultiple=False, dataType=TaskStructureFields.__name__, paramType='body')],
         responseMessages=[dict(code=201, message="revalidation task created"),
                           dict(code=400, message="invalid structure data"),
+                          dict(code=401, message="user not authenticated"),
                           dict(code=403, message='user access deny. you do not have permission to this task'),
                           dict(code=404, message='invalid task id. perhaps this task has already been removed'),
                           dict(code=406, message='task status is invalid. only validation tasks acceptable'),
@@ -587,6 +593,7 @@ class CreateTask(AuthResource):
                          required=True, allowMultiple=False, dataType=TaskStructureFields.__name__, paramType='body')],
         responseMessages=[dict(code=201, message="validation task created"),
                           dict(code=400, message="invalid structure data"),
+                          dict(code=401, message="user not authenticated"),
                           dict(code=403, message="invalid task type"),
                           dict(code=500, message="modeling server error")])
     @dynamic_docstring(AdditiveType.SOLVENT, TaskStatus.PREPARING,
@@ -665,6 +672,7 @@ class UploadTask(AuthResource):
                     dict(name='structures', description='RDF SDF MRV SMILES file', required=True,
                          allowMultiple=False, dataType='file', paramType='body')],
         responseMessages=[dict(code=201, message="validation task created"),
+                          dict(code=401, message="user not authenticated"),
                           dict(code=400, message="structure file required"),
                           dict(code=403, message="invalid task type"),
                           dict(code=500, message="modeling server error")])
@@ -764,3 +772,30 @@ class LogIn(Resource):
                     login_user(user, remember=True)
                     return dict(message='logged in'), 200
         return dict(message='bad credentials'), 403
+
+
+class MagicNumbers(AuthResource):
+    @swagger.operation(
+        notes='Magic Numbers',
+        nickname='magic',
+        parameters=[],
+        responseMessages=[dict(code=200, message="magic numbers"),
+                          dict(code=401, message="user not authenticated")])
+    def get(self):
+        """
+        Get auth token
+
+        Token returned in headers as remember_token.
+        for use task api send in requests headers Cookie: 'remember_token=_token_'
+        """
+        data = {x.__name__: self.__to_dict(x) for x in [TaskType, TaskStatus, StructureType, StructureStatus,
+                                                        AdditiveType, ResultType]}
+
+        data['ModelType'] = {ModelType.MOLECULE_MODELING.name: ModelType.MOLECULE_MODELING.value,
+                             ModelType.REACTION_MODELING.name: ModelType.REACTION_MODELING.value}
+
+        return data, 200
+
+    @staticmethod
+    def __to_dict(enum):
+        return {x.name: x.value for x in enum}

@@ -23,7 +23,7 @@ from flask_restful_swagger import swagger
 from flask_restful import Api
 from ..config import UPLOAD_PATH
 from .resources import (CreateTask, UploadTask, PrepareTask, ModelTask, ResultsTask, AvailableAdditives, LogIn,
-                        AvailableModels, RegisterModels)
+                        AvailableModels, RegisterModels, MagicNumbers)
 
 api_bp = Blueprint('api', __name__)
 api = swagger.docs(Api(api_bp), apiVersion='1.0', description='MWUI API', api_spec_url='/doc/spec')
@@ -36,6 +36,7 @@ api.add_resource(ModelTask, '/task/model/<string:task>')
 api.add_resource(ResultsTask, '/task/results/<string:task>')
 api.add_resource(AvailableAdditives, '/resources/additives')
 api.add_resource(AvailableModels, '/resources/models')
+api.add_resource(MagicNumbers, '/resources/magic')
 api.add_resource(RegisterModels, '/admin/models')
 api.add_resource(LogIn, '/auth')
 
