@@ -783,10 +783,9 @@ class MagicNumbers(AuthResource):
                           dict(code=401, message="user not authenticated")])
     def get(self):
         """
-        Get auth token
+        Get Magic numbers
 
-        Token returned in headers as remember_token.
-        for use task api send in requests headers Cookie: 'remember_token=_token_'
+        Dict of all magic numbers with values.
         """
         data = {x.__name__: self.__to_dict(x) for x in [TaskType, TaskStatus, StructureType, StructureStatus,
                                                         AdditiveType, ResultType]}
