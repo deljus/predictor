@@ -87,10 +87,10 @@ config_list = ('UPLOAD_PATH', 'PORTAL_NON_ROOT', 'SECRET_KEY', 'RESIZE_URL', 'MA
 config_load_list = ['DEBUG']
 config_load_list.extend(config_list)
 
-config_dirs = [join(x, '.MWUI.ini') for x in (expanduser('~'), '/etc', dirname(__file__))]
+config_dirs = [join(x, '.MWUI.ini') for x in (dirname(__file__), expanduser('~'), '/etc')]
 
 if not any(exists(x) for x in config_dirs):
-    with open(config_dirs[0], 'w') as f:
+    with open(config_dirs[1], 'w') as f:
         f.write('\n'.join('%s = %s' % (x, y or '') for x, y in globals().items() if x in config_list))
 
 with open(next(x for x in config_dirs if exists(x))) as f:
