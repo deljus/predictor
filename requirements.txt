@@ -21,4 +21,6 @@ flask-bootstrap
 flask-login
 psycopg2cffi
 flask-restful-swagger
+git+https://github.com/networkx/networkx.git@master#egg=networkx-2.0.dev
+git+https://github.com/stsouko/CGRtools.git@master#egg=CGRtools
 git+https://github.com/stsouko/MODtools.git@master#egg=MODtools
