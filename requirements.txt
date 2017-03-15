@@ -1,5 +1,4 @@
 bitstring
-networkx
 redis
 rq
 bcrypt
@@ -22,3 +21,4 @@ flask-bootstrap
 flask-login
 psycopg2cffi
 flask-restful-swagger
+git+https://github.com/stsouko/MODtools.git@master#egg=MODtools
