@@ -29,7 +29,7 @@ from CGRtools.FEAR import FEAR
 from CGRtools.CGRreactor import CGRreactor
 from CGRtools.CGRcore import CGRcore
 from CGRtools.files import MoleculeContainer, ReactionContainer
-from MODtools.descriptors.fragmentor import Fragmentor
+from CIMtools.descriptors.fragmentor import Fragmentor
 from .search.fingerprints import Fingerprints
 from .search.similarity import Similarity
 from ..config import (FP_SIZE, FP_ACTIVE_BITS, FRAGMENTOR_VERSION, DEBUG, DATA_ISOTOPE, DATA_STEREO,
