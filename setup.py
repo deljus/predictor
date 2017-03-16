@@ -40,8 +40,8 @@ setup(
                       'misaka', 'werkzeug', 'jinja2', 'flask', 'flask-misaka', 'flask-nav', 'flask-restful',
                       'flask-resize', 'flask-wtf', 'flask-bootstrap', 'flask-login', 'flask-restful-swagger'],
     dependency_links=['git+https://github.com/networkx/networkx.git@master#egg=networkx-2.0.dev',
-                      'git+https://github.com/stsouko/CGRtools.git@master#egg=CGRtools-2.6',
-                      'git+https://github.com/stsouko/MODtools.git@master#egg=CIMtools-1.2'],
+                      'git+https://github.com/stsouko/CGRtools.git@2.6#egg=CGRtools-2.6',
+                      'git+https://github.com/stsouko/MODtools.git@1.2#egg=CIMtools-1.2'],
     long_description="MWUI - DataBase Management system and WEB QSPR predictor with Blog and Meeting's Management",
 
     keywords="MWUI database QSPR predictions interface WEB",
