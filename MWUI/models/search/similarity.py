@@ -23,12 +23,10 @@
 class Similarity(object):
     @classmethod
     def load_tree(cls, reindex=False):
-        if cls.__name__ not in cls.__cached_tree:
-            tree = cls.__loader()
+        if reindex or cls.__name__ not in cls.__cached_tree:
+            tree = loader()
             if tree:
                 cls.__cached_tree[cls.__name__] = tree
-
-        return super(Similarity, cls).__new__(cls)
 
     __cached_tree = {}
 

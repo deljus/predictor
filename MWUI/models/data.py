@@ -33,6 +33,8 @@ from CIMtools.descriptors.fragmentor import Fragmentor
 from .search.fingerprints import Fingerprints
 from .search.similarity import Similarity
 from .search.structure import ReactionSearch as ReactionStructureSearch, MoleculeSearch as MoleculeStructureSearch
+from .search.substructure import (ReactionSearch as ReactionSubStructureSearch,
+                                  MoleculeSearch as MoleculeSubStructureSearch)
 from ..config import (FP_SIZE, FP_ACTIVE_BITS, FRAGMENTOR_VERSION, DEBUG, DATA_ISOTOPE, DATA_STEREO,
                       FRAGMENT_TYPE_CGR, FRAGMENT_MIN_CGR, FRAGMENT_MAX_CGR, FRAGMENT_DYNBOND_CGR,
                       FRAGMENT_TYPE_MOL, FRAGMENT_MIN_MOL, FRAGMENT_MAX_MOL)
@@ -69,7 +71,8 @@ def load_tables(db, schema, user_db):
         def user(self):
             return user_db.User[self.user_id]
 
-    class Molecule(db.Entity, UserMixin, FingerprintMixin, IsomorphismMixin, MoleculeStructureSearch):
+    class Molecule(db.Entity, UserMixin, FingerprintMixin, IsomorphismMixin, Similarity,
+                   MoleculeStructureSearch, MoleculeSubStructureSearch):
         _table_ = '%s_molecule' % schema if DEBUG else (schema, 'molecule')
         id = PrimaryKey(int, auto=True)
         date = Required(datetime)
@@ -228,7 +231,8 @@ def load_tables(db, schema, user_db):
             self.__last_edition = None
             FingerprintMixin.flush_cache(self)
 
-    class Reaction(db.Entity, UserMixin, FingerprintMixin, IsomorphismMixin, ReactionStructureSearch):
+    class Reaction(db.Entity, UserMixin, FingerprintMixin, IsomorphismMixin, Similarity,
+                   ReactionStructureSearch, ReactionSubStructureSearch):
         _table_ = '%s_reaction' % schema if DEBUG else (schema, 'reaction')
         id = PrimaryKey(int, auto=True)
         date = Required(datetime)
@@ -418,4 +422,6 @@ def load_tables(db, schema, user_db):
                 date = datetime.utcnow()
             db.Entity.__init__(self, user_id=user.id, date=date, reaction=reaction, data=data)
 
+    Molecule.load_tree()
+    Reaction.load_tree()
     return Molecule, Reaction, Conditions
