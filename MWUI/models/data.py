@@ -20,7 +20,7 @@
 #
 from collections import OrderedDict
 from datetime import datetime
-from pony.orm import PrimaryKey, Required, Optional, Set, Json
+from pony.orm import PrimaryKey, Required, Optional, Set, Json, db_session
 from networkx import relabel_nodes
 from bitstring import BitArray
 from itertools import count
@@ -32,6 +32,7 @@ from CGRtools.files import MoleculeContainer, ReactionContainer
 from CIMtools.descriptors.fragmentor import Fragmentor
 from .search.fingerprints import Fingerprints
 from .search.similarity import Similarity
+from .search.structure import ReactionSearch as ReactionStructureSearch, MoleculeSearch as MoleculeStructureSearch
 from ..config import (FP_SIZE, FP_ACTIVE_BITS, FRAGMENTOR_VERSION, DEBUG, DATA_ISOTOPE, DATA_STEREO,
                       FRAGMENT_TYPE_CGR, FRAGMENT_MIN_CGR, FRAGMENT_MAX_CGR, FRAGMENT_DYNBOND_CGR,
                       FRAGMENT_TYPE_MOL, FRAGMENT_MIN_MOL, FRAGMENT_MAX_MOL)
@@ -42,29 +43,37 @@ cgr_reactor = CGRreactor(isotope=DATA_ISOTOPE, stereo=DATA_STEREO)
 fingerprints = Fingerprints(FP_SIZE, active_bits=FP_ACTIVE_BITS)
 
 
+class FingerprintMixin(object):
+    @property
+    def bitstring_fingerprint(self):
+        if self.__cached_bitstring is None:
+            self.__cached_bitstring = BitArray(bin=self.fingerprint)
+        return self.__cached_bitstring
+
+    def flush_cache(self):
+        self.__cached_bitstring = None
+
+    __cached_bitstring = None
+
+
+class IsomorphismMixin(object):
+    @staticmethod
+    def match_structures(g, h):
+        return next(cgr_reactor.get_cgr_matcher(g, h).isomorphisms_iter())
+
+
 def load_tables(db, schema, user_db):
     class UserMixin(object):
         @property
+        @db_session
         def user(self):
             return user_db.User[self.user_id]
 
-    class FingerprintMixin(object):
-        @property
-        def bitstring_fingerprint(self):
-            if self.__cached_bitstring is None:
-                self.__cached_bitstring = BitArray(bin=self.fingerprint)
-            return self.__cached_bitstring
-
-        def flush_cache(self):
-            self.__cached_bitstring = None
-
-        __cached_bitstring = None
-
-    class Molecule(db.Entity, UserMixin, FingerprintMixin):
+    class Molecule(db.Entity, UserMixin, FingerprintMixin, IsomorphismMixin, MoleculeStructureSearch):
         _table_ = '%s_molecule' % schema if DEBUG else (schema, 'molecule')
         id = PrimaryKey(int, auto=True)
         date = Required(datetime)
-        user_id = Required(int)
+        user_id = Required(int, column='user')
         data = Required(Json)
         fear = Required(str, unique=True)
         fingerprint = Required(str) if DEBUG else Required(str, sql_type='bit(%s)' % (2 ** FP_SIZE))
@@ -78,29 +87,35 @@ def load_tables(db, schema, user_db):
 
         reactions = Set('MoleculeReaction')
 
-        def __init__(self, molecule, user, fingerprint=None, fear_string=None):
-            data = node_link_data(molecule)
+        def __init__(self, structure, user, fingerprint=None, fear_string=None):
+            data = node_link_data(structure)
 
             if fear_string is None:
-                fear_string = self.get_fear(molecule)
+                fear_string = self.get_fear(structure)
             if fingerprint is None:
-                fingerprint = self.get_fingerprints([molecule])[0]
+                fingerprint = self.get_fingerprints([structure])[0]
 
-            self.__cached_structure_raw = molecule
+            self.__cached_structure_raw = structure
             self.__cached_bitstring = fingerprint
             db.Entity.__init__(self, data=data, user_id=user.id, fear=fear_string, fingerprint=fingerprint.bin,
                                date=datetime.utcnow())
 
-        def update(self, molecule, user):
-            new_hash = {k: v['element'] for k, v in molecule.nodes(data=True)}
+        def update_structure(self, structure, user):
+            """
+            update structure representation. atom mapping should be equal to self.
+            :param structure: Molecule container
+            :param user: user entity
+            :return: True if updated. False if conflict found.
+            """
+            new_hash = {k: v['element'] for k, v in structure.nodes(data=True)}
             old_hash = {k: v['element'] for k, v in self.structure_raw.nodes(data=True)}
             if new_hash != old_hash:
-                return False
+                raise Exception('Structure or mapping not match')
 
-            fear_string = self.get_fear(molecule)
+            fear_string = self.get_fear(structure)
             exists = Molecule.get(fear=fear_string)
             if not exists:
-                m = Molecule(molecule, user, fear_string=fear_string)
+                m = Molecule(structure, user, fear_string=fear_string)
                 for mr in self.last_edition.reactions:
                     ''' replace current last molecule edition in all reactions.
                     '''
@@ -112,12 +127,16 @@ def load_tables(db, schema, user_db):
                 self.__last_edition = m
                 return True
 
+            ''' this code not optimal. but this procedure is rare if db correctly standardized before population.
+            '''
             ex_parent = exists.parent or exists
-            if ex_parent != (self.parent or self):
-                if not any((x.target.parent or x.target) == ex_parent for x in self.merge_target):
-                    iso = cgr_reactor.get_cgr_matcher(molecule, exists.structure_raw).isomorphisms_iter()
-                    MoleculeMerge(target=exists, source=self,
-                                  mapping=[(k, v) for k, v in next(iso).items() if k != v] or None)
+            if ex_parent != (self.parent or self) and not any((x.target.parent or x.target) == ex_parent
+                                                              for x in self.merge_target):
+                ''' if exists structure not already in merge list
+                '''
+                mapping = self.match_structures(structure, exists.structure_raw)
+                MoleculeMerge(target=exists, source=self,
+                              mapping=[(k, v) for k, v in mapping.items() if k != v] or None)
 
             return False
 
@@ -161,8 +180,8 @@ def load_tables(db, schema, user_db):
             return True
 
         @staticmethod
-        def get_fear(molecule):
-            return fear.get_cgr_string(molecule)
+        def get_fear(structure):
+            return fear.get_cgr_string(structure)
 
         @staticmethod
         def get_fingerprints(structures):
@@ -209,11 +228,11 @@ def load_tables(db, schema, user_db):
             self.__last_edition = None
             FingerprintMixin.flush_cache(self)
 
-    class Reaction(db.Entity, UserMixin, FingerprintMixin):
+    class Reaction(db.Entity, UserMixin, FingerprintMixin, IsomorphismMixin, ReactionStructureSearch):
         _table_ = '%s_reaction' % schema if DEBUG else (schema, 'reaction')
         id = PrimaryKey(int, auto=True)
         date = Required(datetime)
-        user_id = Required(int)
+        user_id = Required(int, column='user')
         fear = Required(str, unique=True)
         mapless_fear = Required(str)
         fingerprint = Required(str) if DEBUG else Required(str, sql_type='bit(%s)' % (2 ** FP_SIZE))
@@ -225,22 +244,22 @@ def load_tables(db, schema, user_db):
         conditions = Set('Conditions')
         special = Optional(Json)
 
-        def __init__(self, reaction, user, conditions=None, special=None, fingerprint=None, fear_string=None,
+        def __init__(self, structure, user, conditions=None, special=None, fingerprint=None, fear_string=None,
                      mapless_fear_string=None, cgr=None, substrats_fears=None, products_fears=None):
             new_mols, batch = OrderedDict(), {}
             fears = dict(substrats=iter(substrats_fears if substrats_fears and
-                                        len(substrats_fears) == len(reaction.substrats) else []),
+                                        len(substrats_fears) == len(structure.substrats) else []),
                          products=iter(products_fears if products_fears and
-                                       len(products_fears) == len(reaction.products) else []))
+                                       len(products_fears) == len(structure.products) else []))
 
             refreshed = ReactionContainer()
             m_count = count()
             for i, is_p in (('substrats', False), ('products', True)):
-                for x in reaction[i]:
+                for x in structure[i]:
                     m_fear_string = next(fears[i], Molecule.get_fear(x))
                     m = Molecule.get(fear=m_fear_string)
                     if m:
-                        mapping = next(cgr_reactor.get_cgr_matcher(m.structure_raw, x).isomorphisms_iter())
+                        mapping = self.match_structures(m.structure_raw, x)
                         batch[next(m_count)] = (m.last_edition, is_p,
                                                 [(k, v) for k, v in mapping.items() if k != v] or None)
                         refreshed[i].append(relabel_nodes(m.structure, mapping))
@@ -264,8 +283,8 @@ def load_tables(db, schema, user_db):
                         mapping = None
                     else:
                         m = dups[m_fear_string]
-                        iso = next(cgr_reactor.get_cgr_matcher(m.structure_raw, x).isomorphisms_iter())
-                        mapping = [(k, v) for k, v in iso.items() if k != v] or None
+                        mapping = [(k, v) for k, v in
+                                   self.match_structures(m.structure_raw, x).items() if k != v] or None
                     batch[n] = (m, is_p, mapping)
 
             if mapless_fear_string is None:
@@ -274,7 +293,7 @@ def load_tables(db, schema, user_db):
                 merged = None
 
             if fear_string is None:
-                fear_string, cgr = (self.get_fear(reaction, get_cgr=True) if merged is None else
+                fear_string, cgr = (self.get_fear(structure, get_cgr=True) if merged is None else
                                     self.get_fear(merged, is_merged=True, get_cgr=True))
             elif cgr is None:
                 cgr = cgr_core.getCGR(refreshed) if merged is None else cgr_core.getCGR(merged, is_merged=True)
@@ -295,60 +314,45 @@ def load_tables(db, schema, user_db):
                 self.special = special
 
             self.__cached_cgr = cgr
-            self.__cached_structure = reaction
+            self.__cached_structure = structure
             self.__cached_bitstring = fingerprint
 
-        @staticmethod
-        def refresh_reaction(reaction):
+        @classmethod
+        def refresh_reaction(cls, structure):
             fresh = dict(substrats=[], products=[])
             for i, is_p in (('substrats', False), ('products', True)):
-                for x in reaction[i]:
+                for x in structure[i]:
                     m = Molecule.get(fear=Molecule.get_fear(x))
                     if m:
                         fresh[i].append(m)
                     else:
                         return False
 
-            return ReactionContainer(substrats=[relabel_nodes(x.structure,
-                                                              next(cgr_reactor.get_cgr_matcher(x.structure_raw,
-                                                                                               y).isomorphisms_iter()))
-                                                for x, y in zip(fresh['substrats'], reaction.substrats)],
-                                     products=[relabel_nodes(x.structure,
-                                                             next(cgr_reactor.get_cgr_matcher(x.structure_raw,
-                                                                                              y).isomorphisms_iter()))
-                                               for x, y in zip(fresh['products'], reaction.products)])
+            res = ReactionContainer()
+            for k in ('products', 'substrats'):
+                for x, y in zip(fresh[k], structure[k]):
+                    mapping = cls.match_structures(x.structure_raw, y)
+                    res[k].append(relabel_nodes(x.structure, mapping))
+
+            return res
 
         @staticmethod
-        def mapless_exists(reaction):
-            fresh = Reaction.refresh_reaction(reaction)
-            if fresh:
-                return Reaction.exists(mapless_fear=Reaction.get_mapless_fear(fresh))
-            return False
-
-        @staticmethod
-        def cgr_exists(reaction):
-            fresh = Reaction.refresh_reaction(reaction)
-            if fresh:
-                return Reaction.exists(fear=Reaction.get_fear(fresh))
-            return False
-
-        @staticmethod
-        def get_fingerprints(reactions, is_cgr=False):
-            cgrs = reactions if is_cgr else [cgr_core.getCGR(x) for x in reactions]
+        def get_fingerprints(structures, is_cgr=False):
+            cgrs = structures if is_cgr else [cgr_core.getCGR(x) for x in structures]
             f = Fragmentor(workpath='.', version=FRAGMENTOR_VERSION, fragment_type=FRAGMENT_TYPE_CGR,
                            min_length=FRAGMENT_MIN_CGR, max_length=FRAGMENT_MAX_CGR,
                            cgr_dynbonds=FRAGMENT_DYNBOND_CGR, useformalcharge=True).get(cgrs)['X']
             return fingerprints.get_fingerprints(f)
 
         @staticmethod
-        def get_fear(reaction, is_merged=False, get_cgr=False):
-            cgr = cgr_core.getCGR(reaction, is_merged=is_merged)
+        def get_fear(structure, is_merged=False, get_cgr=False):
+            cgr = cgr_core.getCGR(structure, is_merged=is_merged)
             fear_string = Molecule.get_fear(cgr)
             return (fear_string, cgr) if get_cgr else fear_string
 
         @staticmethod
-        def get_mapless_fear(reaction, is_merged=False, get_merged=False):
-            merged = reaction if is_merged else cgr_core.merge_mols(reaction)
+        def get_mapless_fear(structure, is_merged=False, get_merged=False):
+            merged = structure if is_merged else cgr_core.merge_mols(structure)
             fear_string = '%s>>%s' % (Molecule.get_fear(merged['substrats']), Molecule.get_fear(merged['products']))
             return (fear_string, merged) if get_merged else fear_string
 
@@ -369,8 +373,8 @@ def load_tables(db, schema, user_db):
             return self.__cached_structure
 
         def refresh_fear_fingerprint(self):
-            fear_string, cgr = Reaction.get_fear(self.structure, get_cgr=True)
-            fingerprint = Reaction.get_fingerprints([cgr], is_cgr=True)[0]
+            fear_string, cgr = self.get_fear(self.structure, get_cgr=True)
+            fingerprint = self.get_fingerprints([cgr], is_cgr=True)[0]
             print(self.date)  # Pony BUG. AD-HOC!
             self.fear = fear_string
             self.fingerprint = fingerprint.bin
@@ -405,7 +409,7 @@ def load_tables(db, schema, user_db):
         _table_ = '%s_conditions' % schema if DEBUG else (schema, 'conditions')
         id = PrimaryKey(int, auto=True)
         date = Required(datetime)
-        user_id = Required(int)
+        user_id = Required(int, column='user')
         data = Required(Json)
         reaction = Required('Reaction')
 

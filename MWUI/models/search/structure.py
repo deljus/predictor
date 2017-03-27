@@ -20,18 +20,31 @@
 #
 
 
-class Similarity(object):
+class MoleculeSearch(object):
     @classmethod
-    def load_tree(cls, reindex=False):
-        if cls.__name__ not in cls.__cached_tree:
-            tree = cls.__loader()
-            if tree:
-                cls.__cached_tree[cls.__name__] = tree
-
-        return super(Similarity, cls).__new__(cls)
-
-    __cached_tree = {}
+    def structure_exists(cls, structure):
+        pass
 
     @classmethod
-    def find_similar(cls, structures):
+    def find_structure(cls, structure):
+        pass
+
+
+class ReactionSearch(object):
+    @classmethod
+    def mapless_exists(cls, structure):
+        fresh = cls.refresh_reaction(structure)
+        if fresh:
+            return cls.exists(mapless_fear=cls.get_mapless_fear(fresh))
+        return False
+
+    @classmethod
+    def structure_exists(cls, structure):
+        fresh = cls.refresh_reaction(structure)
+        if fresh:
+            return cls.exists(fear=cls.get_fear(fresh))
+        return False
+
+    @classmethod
+    def find_structure(cls, structure):
         pass

@@ -20,18 +20,13 @@
 #
 
 
-class Similarity(object):
+class MoleculeSearch(object):
     @classmethod
-    def load_tree(cls, reindex=False):
-        if cls.__name__ not in cls.__cached_tree:
-            tree = cls.__loader()
-            if tree:
-                cls.__cached_tree[cls.__name__] = tree
+    def find_substructures(cls, structures):
+        pass
 
-        return super(Similarity, cls).__new__(cls)
 
-    __cached_tree = {}
-
+class ReactionSearch(object):
     @classmethod
-    def find_similar(cls, structures):
+    def find_substructures(cls, structures):
         pass
