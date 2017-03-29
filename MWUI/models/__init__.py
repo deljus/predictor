@@ -19,10 +19,10 @@
 #  MA 02110-1301, USA.
 #
 from pony.orm import Database
-from ..config import DB_MAIN, DB_PRED, DB_DATA_LIST
+from ..config import DB_MAIN, DB_PRED
 from .web import load_tables as main
 from .predictions import load_tables as save
-from .data import load_tables as data
+from CGRdb import load_databases
 
 db = Database()
 
@@ -30,8 +30,4 @@ db = Database()
  Post, BlogPost, TeamPost, Meeting, Thesis, Email, Attachment) = main(db, DB_MAIN)
 Task, Structure, Result, Additiveset = save(db, DB_PRED)
 
-data_db, data_tables = {}, {}
-for schema in DB_DATA_LIST:
-    x = Database()
-    data_db[schema] = x
-    data_tables[schema] = data(x, schema, db)
+cgr_databases = load_databases(user_entity=User)
