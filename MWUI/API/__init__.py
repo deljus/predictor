@@ -19,14 +19,20 @@
 #  MA 02110-1301, USA.
 #
 from flask import Blueprint, send_from_directory
-from flask_restful_swagger import swagger
 from flask_restful import Api
-from ..config import UPLOAD_PATH
+from importlib.util import find_spec
+from ..config import UPLOAD_PATH, SWAGGER
 from .resources import (CreateTask, UploadTask, PrepareTask, ModelTask, ResultsTask, AvailableAdditives, LogIn,
                         AvailableModels, RegisterModels, MagicNumbers)
 
 api_bp = Blueprint('api', __name__)
-api = swagger.docs(Api(api_bp), apiVersion='1.0', description='MWUI API', api_spec_url='/doc/spec')
+
+if SWAGGER and find_spec('flask_restful_swagger'):
+    from flask_restful_swagger import swagger
+
+    api = swagger.docs(Api(api_bp), apiVersion='1.0', description='MWUI API', api_spec_url='/doc/spec')
+else:
+    api = Api(api_bp)
 
 
 api.add_resource(CreateTask, '/task/create/<int:_type>')

@@ -18,17 +18,17 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+from datetime import datetime
 from flask import redirect, url_for, render_template, flash
 from flask.views import View
 from flask_login import current_user
 from pony.orm import db_session, select, commit
-from datetime import datetime
-from ..forms import PostForm, DeleteButtonForm, MeetingForm, EmailForm, ThesisForm, TeamForm, MeetForm
-from ..models import Email, Post, Thesis, Subscription
 from ..constants import (UserRole, BlogPostType, MeetingPostType, EmailPostType, TeamPostType, MeetingPartType,
                          ThesisPostType)
-from ..sendmail import send_mail
+from ..forms import PostForm, DeleteButtonForm, MeetingForm, EmailForm, ThesisForm, TeamForm, MeetForm
+from ..models import Email, Post, Thesis, Subscription
 from ..scopus import get_articles
+from ..sendmail import send_mail
 from ..upload import save_upload, combo_save
 
 

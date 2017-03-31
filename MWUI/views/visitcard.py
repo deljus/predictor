@@ -19,11 +19,11 @@
 #  MA 02110-1301, USA.
 #
 from flask import render_template
-from pony.orm import db_session, select
 from flask.views import View
-from ..models import BlogPost, Post, TeamPost
+from pony.orm import db_session, select
 from ..config import BLOG_POSTS_PER_PAGE, LAB_NAME
 from ..constants import BlogPostType, MeetingPostType, TeamPostType
+from ..models import BlogPost, Post, TeamPost
 
 
 class IndexView(View):

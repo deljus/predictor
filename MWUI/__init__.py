@@ -22,35 +22,35 @@
 
 
 def init():
+    from CGRdb import Loader
     from datetime import datetime
-    from os.path import join
     from flask import Flask
     from flask_bootstrap import Bootstrap
     from flask_login import LoginManager
     from flask_misaka import Misaka
-    from misaka import HTML_ESCAPE
     from flask_nav import Nav, register_renderer
     from flask_resize import Resize
+    from misaka import HTML_ESCAPE
+    from os.path import join
     from pony.orm import sql_debug
-    from CGRdb import init as data_init
-
     from .API import api_bp
-    from .views import view_bp
     from .bootstrap import top_nav, CustomBootstrapRenderer, CustomMisakaRenderer
     from .config import (PORTAL_NON_ROOT, SECRET_KEY, DEBUG, LAB_NAME, RESIZE_URL, UPLOAD_PATH, IMAGES_ROOT,
-                         MAX_UPLOAD_SIZE, YANDEX_METRIKA, DB_PASS, DB_HOST, DB_USER, DB_NAME)
+                         MAX_UPLOAD_SIZE, YANDEX_METRIKA)
     from .logins import load_user
-    from .models import db
+    from .models import db, User
+    from .views import view_bp
 
     if DEBUG:
         sql_debug(True)
         db.bind('sqlite', 'database.sqlite')
         db.generate_mapping(create_tables=True)
     else:
+        from .config import DB_PASS, DB_HOST, DB_USER, DB_NAME
         db.bind('postgres', user=DB_USER, password=DB_PASS, host=DB_HOST, database=DB_NAME)
         db.generate_mapping()
 
-    data_init()
+    Loader.load_schemas(user_entity=User)
 
     app = Flask(__name__)
 

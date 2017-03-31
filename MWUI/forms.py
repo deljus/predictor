@@ -18,22 +18,22 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import imghdr
-from json import loads
 from collections import OrderedDict
-from pycountry import countries
-from .models import User, Meeting
-from .constants import (BlogPostType, UserRole, ThesisPostType, ProfileDegree, ProfileStatus, MeetingPostType,
-                        EmailPostType, TeamPostType, MeetingPartType)
-from .redirect import get_redirect_target, is_safe_url
 from flask import url_for, redirect
+from flask_login import current_user
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
-from flask_login import current_user
+from json import loads
+from imghdr import what
 from pony.orm import db_session
+from pycountry import countries
 from werkzeug.datastructures import FileStorage
 from wtforms import (StringField, validators, BooleanField, SubmitField, PasswordField, ValidationError,
                      TextAreaField, SelectField, HiddenField, IntegerField, DateTimeField, SelectMultipleField)
+from .constants import (BlogPostType, UserRole, ThesisPostType, ProfileDegree, ProfileStatus, MeetingPostType,
+                        EmailPostType, TeamPostType, MeetingPartType)
+from .models import User, Meeting
+from .redirect import get_redirect_target, is_safe_url
 
 
 class JsonValidator(object):
@@ -78,7 +78,7 @@ class VerifyImage(object):
         self.__types = types
 
     def __call__(self, form, field):
-        if isinstance(field.data, FileStorage) and field.data and imghdr.what(field.data.stream) not in self.__types:
+        if isinstance(field.data, FileStorage) and field.data and what(field.data.stream) not in self.__types:
             raise ValidationError('Invalid image')
 
 

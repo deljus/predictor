@@ -30,6 +30,7 @@ PORTAL_NON_ROOT = ''
 SECRET_KEY = 'development key'
 YANDEX_METRIKA = None
 DEBUG = False
+SWAGGER = False
 
 LAB_NAME = 'Kazan Chemoinformatics and Molecular Modeling Laboratory'
 LAB_SHORT = 'CIMM'
@@ -62,7 +63,7 @@ REDIS_MAIL = 'mail'
 
 
 config_list = ('UPLOAD_PATH', 'PORTAL_NON_ROOT', 'SECRET_KEY', 'RESIZE_URL', 'MAX_UPLOAD_SIZE', 'IMAGES_ROOT',
-               'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME', 'DB_MAIN', 'DB_PRED', 'YANDEX_METRIKA',
+               'DB_USER', 'DB_PASS', 'DB_HOST', 'DB_NAME', 'DB_MAIN', 'DB_PRED', 'YANDEX_METRIKA', 'SWAGGER',
                'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD', 'REDIS_TTL', 'REDIS_JOB_TIMEOUT', 'REDIS_MAIL',
                'LAB_NAME', 'LAB_SHORT', 'BLOG_POSTS_PER_PAGE', 'SCOPUS_API_KEY', 'SCOPUS_TTL',
                'SMPT_HOST', 'SMTP_PORT', 'SMTP_LOGIN', 'SMTP_PASSWORD', 'SMTP_MAIL', 'MAIL_INKEY', 'MAIL_SIGNER')

@@ -20,6 +20,7 @@
 #  MA 02110-1301, USA.
 #
 from MWUI.version import version
+from os.path import join, dirname
 from setuptools import setup, find_packages
 
 setup(
@@ -31,19 +32,20 @@ setup(
     author='Dr. Ramil Nugmanov',
     author_email='stsouko@live.ru',
     description='MWUI',
-    package_data={'': ['templates/*.html', 'static/css/*.css', 'static/js/*.js', 'static/js/predictor/*.js',
-                       'static/js/predictor/result.htm', 'static/marvinjs/js/webservices.js',
-                       'static/favicon.ico', 'static/logo.png', 'static/start.svg']},
+    package_data={'MWUI': ['templates/*.html', 'static/css/*.css', 'static/js/*.js', 'static/js/predictor/*.js',
+                           'static/js/predictor/result.htm', 'static/marvinjs/js/webservices.js',
+                           'static/favicon.ico', 'static/logo.png', 'static/start.svg']},
     scripts=['mwui.py'],
     install_requires=['networkx>=2.0.dev', 'CGRtools>=2.6', 'CIMtools>=1.2', 'bitstring', 'redis', 'rq', 'bcrypt',
-                      'cffi', 'psycopg2cffi', 'pony', 'validators', 'requests', 'pycountry', 'wtforms', 'dominate',
-                      'misaka', 'werkzeug', 'jinja2', 'flask', 'flask-misaka', 'flask-nav', 'flask-restful',
-                      'flask-resize', 'flask-wtf', 'flask-bootstrap', 'flask-login', 'flask-restful-swagger'],
+                      'pony', 'validators', 'requests', 'pycountry', 'wtforms', 'dominate', 'misaka',
+                      'werkzeug', 'jinja2', 'flask', 'flask-misaka', 'flask-nav', 'flask-restful',
+                      'flask-resize', 'flask-wtf', 'flask-bootstrap', 'flask-login'],
+    extras_require={'postgres':  ['cffi', 'psycopg2cffi'],
+                    'swagger': ['flask-restful-swagger']},
     dependency_links=['git+https://github.com/networkx/networkx.git@master#egg=networkx-2.0.dev',
                       'git+https://github.com/stsouko/CGRtools.git@2.6#egg=CGRtools-2.6',
                       'git+https://github.com/stsouko/MODtools.git@1.2#egg=CIMtools-1.2'],
-    long_description="MWUI - DataBase Management system and WEB QSPR predictor with Blog and Meeting's Management",
-
+    long_description=open(join(dirname(__file__), 'README.md')).read(),
     keywords="MWUI database QSPR predictions interface WEB",
     classifiers=['Environment :: Web Environment',
                  'Intended Audience :: Science/Research',

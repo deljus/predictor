@@ -18,12 +18,12 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import pickle
 from collections import defaultdict
 from datetime import datetime
-from uuid import uuid4
+from pickle import dumps, loads
 from redis import Redis, ConnectionError
 from rq import Queue
+from uuid import uuid4
 from ..constants import TaskStatus, StructureStatus, ModelType
 
 
@@ -97,7 +97,7 @@ class RedisCombiner(object):
             task['status'] = TaskStatus.DONE if task['status'] == TaskStatus.MODELING else TaskStatus.PREPARED
 
             _id = str(uuid4())
-            self.__tasks.set(_id, pickle.dumps((task, datetime.utcnow())), ex=self.__result_ttl)
+            self.__tasks.set(_id, dumps((task, datetime.utcnow())), ex=self.__result_ttl)
             return dict(id=_id, created_at=datetime.utcnow())
         except Exception as err:
             print("new_job->ERROR:", err)
@@ -113,7 +113,7 @@ class RedisCombiner(object):
         if job is None:
             return None
 
-        result, ended_at = pickle.loads(job)
+        result, ended_at = loads(job)
 
         sub_jobs_fin = []
         sub_jobs_unf = []
@@ -141,7 +141,7 @@ class RedisCombiner(object):
             result['jobs'] = sub_jobs_unf
             ended_at = max(x.ended_at for x in sub_jobs_fin)
 
-            self.__tasks.set(task, pickle.dumps((result, ended_at)), ex=self.__result_ttl)
+            self.__tasks.set(task, dumps((result, ended_at)), ex=self.__result_ttl)
 
         if sub_jobs_unf:
             return dict(is_finished=False)

@@ -18,15 +18,15 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from redis import Redis, ConnectionError
+from email.header import Header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.header import Header
-from subprocess import Popen, PIPE
-from rq import Queue
-from flask_misaka import markdown
 from flask import render_template
+from flask_misaka import markdown
 from misaka import HTML_ESCAPE
+from redis import Redis, ConnectionError
+from rq import Queue
+from subprocess import Popen, PIPE
 from .bootstrap import CustomMisakaRenderer
 from .config import (LAB_NAME, SMTP_MAIL, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_MAIL, DEBUG,
                      MAIL_INKEY, MAIL_SIGNER)
@@ -34,7 +34,6 @@ from .config import (LAB_NAME, SMTP_MAIL, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
 
 def send_mail(message, to_mail, to_name=None, from_name=None, subject=None, banner=None, title=None,
               reply_name=None, reply_mail=None):
-
     if reply_name and not reply_mail:
         reply_name = None
 

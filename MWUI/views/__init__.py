@@ -18,20 +18,19 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
+from datetime import datetime
 from flask import redirect, url_for, render_template, Blueprint, abort, make_response
 from flask_login import login_required, current_user
 from pony.orm import db_session, left_join
-from datetime import datetime
 from pycountry import countries
+from .auth import LoginView, LogoutView
+from .blog import BlogView, AbstractsView, EmailsView, ThesesView, EventsView
+from .post import PostView
+from .profile import ProfileView
+from .visitcard import IndexView, AboutView, StudentsView, LessonsView
+from ..constants import UserRole, MeetingPostType, ProfileStatus
 from ..forms import DeleteButtonForm
 from ..models import User, Meeting, Post, Attachment, Subscription
-from ..constants import UserRole, MeetingPostType, ProfileStatus
-from .auth import LoginView, LogoutView
-from .profile import ProfileView
-from .post import PostView
-from .visitcard import IndexView, AboutView, StudentsView, LessonsView
-from .blog import BlogView, AbstractsView, EmailsView, ThesesView, EventsView
-
 
 view_bp = Blueprint('view', __name__)
 

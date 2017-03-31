@@ -18,9 +18,28 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from flask_restful_swagger import swagger
 from flask_restful import fields
+from importlib.util import find_spec
+from ..config import SWAGGER
 from ..constants import ModelType
+
+
+if SWAGGER and find_spec('flask_restful_swagger'):
+    from flask_restful_swagger import swagger
+else:
+    class Swagger:
+        @staticmethod
+        def nested(*args, **kwargs):
+            def decorator(f):
+                return f
+
+            return decorator
+
+        @staticmethod
+        def model(f):
+            return f
+
+    swagger = Swagger()
 
 
 class ModelTypeField(fields.Raw):

@@ -18,9 +18,9 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from urllib.parse import urlparse, urljoin
 from flask import request
 from os import path
+from urllib.parse import urlparse, urljoin
 
 
 def is_safe_url(target):

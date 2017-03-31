@@ -18,14 +18,14 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import bcrypt
-import hashlib
-from pycountry import countries
+from bcrypt import hashpw, gensalt
 from datetime import datetime
+from hashlib import md5
 from pony.orm import PrimaryKey, Required, Optional, Set, Json
+from pycountry import countries
+from ..config import DEBUG
 from ..constants import (ModelType, AdditiveType, UserRole, ProfileDegree, ProfileStatus, Glyph, BlogPostType,
                          MeetingPostType, ThesisPostType, EmailPostType, TeamPostType, MeetingPartType)
-from ..config import DEBUG
 
 
 def filter_kwargs(kwargs):
@@ -94,13 +94,13 @@ def load_tables(db, schema):
 
         @staticmethod
         def __hash_password(password):
-            return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+            return hashpw(password.encode(), gensalt()).decode()
 
         def verify_password(self, password):
-            return bcrypt.hashpw(password.encode(), self.password.encode()) == self.password.encode()
+            return hashpw(password.encode(), self.password.encode()) == self.password.encode()
 
         def verify_restore(self, restore):
-            return self.restore and bcrypt.hashpw(restore.encode(), self.restore.encode()) == self.restore.encode()
+            return self.restore and hashpw(restore.encode(), self.restore.encode()) == self.restore.encode()
 
         def gen_restore(self):
             restore = self.__gen_token(self.email, str(datetime.utcnow()))[:8]
@@ -112,7 +112,7 @@ def load_tables(db, schema):
 
         @staticmethod
         def __gen_token(email, password):
-            return hashlib.md5((email + password).encode()).hexdigest()
+            return md5((email + password).encode()).hexdigest()
 
         def change_token(self):
             self.token = self.__gen_token(self.email, str(datetime.utcnow()))

@@ -18,9 +18,9 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from .models import User
 from flask_login import UserMixin
 from pony.orm import db_session
+from .models import User
 
 
 def load_user(token):

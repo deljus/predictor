@@ -18,17 +18,17 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from math import ceil
+from dominate import tags
 from flask import request
+from flask_bootstrap.nav import BootstrapRenderer
 from flask_login import current_user
 from flask_nav.elements import View, NavigationItem, Navbar, Separator, Subgroup
-from flask_bootstrap.nav import BootstrapRenderer
 from hashlib import sha1
-from dominate import tags
+from math import ceil
+from misaka import HtmlRenderer
 from .config import LAB_SHORT
 from .constants import UserRole
 from .redirect import get_redirect_target
-from misaka import HtmlRenderer
 
 
 class CustomMisakaRenderer(HtmlRenderer):

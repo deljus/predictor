@@ -18,29 +18,42 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-import uuid
 from collections import defaultdict
-from os import path
 from flask import url_for, request, Response
-from werkzeug.exceptions import HTTPException, Aborter
 from flask_login import current_user, login_user
 from flask_restful import reqparse, marshal, inputs, Resource
 from functools import wraps
+from importlib.util import find_spec
+from os import path
 from pony.orm import db_session, select, left_join
+from typing import Dict, Tuple
+from uuid import uuid4
 from validators import url
 from werkzeug import datastructures
-from typing import Dict, Tuple
-from flask_restful_swagger import swagger
+from werkzeug.exceptions import HTTPException, Aborter
 from .data import get_additives, get_model, get_models_list, format_results
+from .redis import RedisCombiner
 from .structures import (ModelRegisterFields, TaskPostResponseFields, TaskGetResponseFields, TaskStructureFields,
                          LogInFields, AdditivesListFields, ModelListFields)
-from ..logins import UserLogin
-from ..config import (UPLOAD_PATH, REDIS_HOST, REDIS_JOB_TIMEOUT, REDIS_PASSWORD, REDIS_PORT, REDIS_TTL,
+from ..config import (UPLOAD_PATH, REDIS_HOST, REDIS_JOB_TIMEOUT, REDIS_PASSWORD, REDIS_PORT, REDIS_TTL, SWAGGER,
                       BLOG_POSTS_PER_PAGE)
 from ..constants import (StructureStatus, TaskStatus, ModelType, TaskType, StructureType, UserRole, AdditiveType,
                          ResultType)
+from ..logins import UserLogin
 from ..models import Task, Structure, Additive, Model, Additiveset, Destination, User, Result
-from .redis import RedisCombiner
+
+if SWAGGER and find_spec('flask_restful_swagger'):
+    from flask_restful_swagger import swagger
+else:
+    class Swagger:
+        @staticmethod
+        def operation(*args, **kwargs):
+            def decorator(f):
+                return f
+
+            return decorator
+
+    swagger = Swagger()
 
 
 redis = RedisCombiner(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD, result_ttl=REDIS_TTL,
@@ -90,11 +103,11 @@ def fetch_task(task, status):
 
 
 def dynamic_docstring(*sub):
-    def wrapper(f):
+    def decorator(f):
         f.__doc__ = f.__doc__.format(*sub)
         return f
 
-    return wrapper
+    return decorator
 
 
 def authenticate(f):
@@ -728,7 +741,7 @@ class UploadTask(AuthResource):
             if path.exists(path.join(UPLOAD_PATH, file_name)):
                 file_url = url_for('.batch_file', file=file_name, _external=True)
         elif args['structures']:  # flask
-            file_name = str(uuid.uuid4())
+            file_name = str(uuid4())
             args['structures'].save(path.join(UPLOAD_PATH, file_name))
             file_url = url_for('.batch_file', file=file_name, _external=True)
 

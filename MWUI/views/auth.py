@@ -18,15 +18,15 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from flask.views import View
 from flask import redirect, url_for, render_template, flash, request
+from flask.views import View
 from flask_login import login_user, logout_user, login_required, current_user
 from pony.orm import db_session, select
+from ..constants import FormRoute, EmailPostType
 from ..forms import LoginForm, RegistrationForm, ForgotPasswordForm, LogoutForm
-from ..redirect import get_redirect_target
 from ..logins import UserLogin
 from ..models import User, Email, Meeting
-from ..constants import FormRoute, EmailPostType
+from ..redirect import get_redirect_target
 from ..sendmail import send_mail
 
 

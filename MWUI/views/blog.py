@@ -18,14 +18,14 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from flask.views import View
 from flask import redirect, url_for, render_template, flash
+from flask.views import View
 from flask_login import login_required, current_user
 from pony.orm import db_session, select
-from ..models import Email, Meeting, Post, Thesis, Subscription
+from ..bootstrap import Pagination
 from ..config import BLOG_POSTS_PER_PAGE
 from ..constants import UserRole, MeetingPostType
-from ..bootstrap import Pagination
+from ..models import Email, Meeting, Post, Thesis, Subscription
 
 
 def blog_viewer(page, query, redirect_url, title, subtitle, crumb=None):

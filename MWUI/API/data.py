@@ -19,15 +19,9 @@
 #  MA 02110-1301, USA.
 #
 from pony.orm import db_session, select
-from ..models import Additive, Model
 from ..config import BLOG_POSTS_PER_PAGE
 from ..constants import ModelType
-
-'''
-molecules = Set('Molecule')
-reactions = Set('Reaction')
-conditions = Set('Conditions')
-'''
+from ..models import Additive, Model
 
 
 def get_model(_type):

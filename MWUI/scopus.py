@@ -18,9 +18,9 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 #
-from requests import get
-from redis import Redis, ConnectionError
 from collections import MutableSet
+from redis import Redis, ConnectionError
+from requests import get
 from .config import SCOPUS_API_KEY, REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, SCOPUS_TTL
 
 
