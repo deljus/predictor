@@ -31,7 +31,7 @@ from ..upload import combo_save, save_upload
 
 class ProfileView(View):
     methods = ['GET', 'POST']
-    decorators = [db_session, login_required]
+    decorators = [login_required, db_session]
 
     def dispatch_request(self, action=4):
         form = FormRoute.get(action)
