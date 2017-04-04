@@ -88,7 +88,7 @@
 
                                 _this.data('flag', false);
                                 $("#myModal").css({'z-index': -40, opacity: 0, 'background': 'rgba(0,0,0,0)'});
-
+                                $("body").removeClass('modal-open');
                             });
                         }
                     });
